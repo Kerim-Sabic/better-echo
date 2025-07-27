@@ -12,3 +12,5 @@ build/
 # General
 .DS_Store
 .env
+.idea/
+*.iml
