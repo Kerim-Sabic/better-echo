@@ -1,0 +1,24 @@
+2025-07-27 17:00:37,557 - INFO - main - Health check endpoint hit.
+2025-07-27 17:00:41,003 - INFO - main - Health check endpoint hit.
+2025-07-27 17:01:45,089 - INFO - api.upload - File saved locally at uploads\20250727170145_image-00000.dcm
+2025-07-27 17:01:45,089 - INFO - services.orthanc_client - Sending DICOM file to Orthanc: uploads\20250727170145_image-00000.dcm
+2025-07-27 17:01:45,157 - INFO - services.orthanc_client - Orthanc returned instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-07-27 17:01:45,159 - INFO - api.upload - File uploaded to Orthanc. Instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-07-27 17:01:45,159 - INFO - services.orthanc_client - Fetching tags for instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-07-27 17:01:45,171 - INFO - services.orthanc_client - Fetched tags for instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4 from Orthanc
+2025-07-27 17:01:45,171 - INFO - api.upload - Retrieved tags from Orthanc for instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-07-27 17:01:45,171 - INFO - api.upload - Extracted Patient ID: 0, Study Date: Unknown
+2025-07-27 17:01:45,184 - ERROR - api.upload - Upload failed: (sqlite3.IntegrityError) UNIQUE constraint failed: studies.instance_id
+[SQL: INSERT INTO studies (instance_id, patient_id, study_date, file_path, uploaded_at) VALUES (?, ?, ?, ?, ?)]
+[parameters: ('6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4', '0', 'Unknown', 'uploads\\20250727170145_image-00000.dcm', '2025-07-27 21:01:45.180945')]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+2025-07-27 17:56:43,239 - INFO - api.upload - File saved locally at uploads\20250727175643_image-00000.dcm
+2025-07-27 17:56:43,241 - INFO - services.orthanc_client - Sending DICOM file to Orthanc: uploads\20250727175643_image-00000.dcm
+2025-07-27 17:56:43,361 - INFO - services.orthanc_client - Orthanc returned instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-07-27 17:56:43,361 - INFO - api.upload - File uploaded to Orthanc. Instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-07-27 17:56:43,361 - INFO - services.orthanc_client - Fetching tags for instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-07-27 17:56:43,375 - INFO - services.orthanc_client - Fetched tags for instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4 from Orthanc
+2025-07-27 17:56:43,376 - INFO - api.upload - Retrieved tags from Orthanc for instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-07-27 17:56:43,376 - INFO - api.upload - Extracted Patient ID: 0, Study Date: Unknown
+2025-07-27 17:56:43,405 - INFO - api.upload - Study saved to database. Instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-07-27 17:56:43,406 - INFO - api.upload - Temporary file uploads\20250727175643_image-00000.dcm deleted
