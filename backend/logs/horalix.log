@@ -22,3 +22,12 @@
 2025-07-27 17:56:43,376 - INFO - api.upload - Extracted Patient ID: 0, Study Date: Unknown
 2025-07-27 17:56:43,405 - INFO - api.upload - Study saved to database. Instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
 2025-07-27 17:56:43,406 - INFO - api.upload - Temporary file uploads\20250727175643_image-00000.dcm deleted
+2025-07-27 18:59:25,456 - INFO - api.upload - File saved locally at uploads\20250727185925_image-00000.dcm
+2025-07-27 18:59:25,457 - INFO - services.orthanc_client - Sending DICOM file to Orthanc: uploads\20250727185925_image-00000.dcm
+2025-07-27 18:59:25,510 - INFO - services.orthanc_client - Orthanc returned instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-07-27 18:59:25,512 - INFO - api.upload - File uploaded to Orthanc. Instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-07-27 18:59:25,512 - INFO - services.orthanc_client - Fetching tags for instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-07-27 18:59:25,523 - INFO - services.orthanc_client - Fetched tags for instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4 from Orthanc
+2025-07-27 18:59:25,523 - INFO - api.upload - Retrieved tags from Orthanc for instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-07-27 18:59:25,525 - INFO - api.upload - Extracted Patient ID: 0, Study Date: Unknown
+2025-07-27 18:59:25,540 - INFO - api.upload - Study saved to database. Instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
