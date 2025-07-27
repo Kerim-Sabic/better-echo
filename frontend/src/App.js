@@ -1,21 +1,28 @@
-import { useEffect, useState } from 'react';
-import './App.css';
+import React, { useState } from 'react';
+import UploadForm from './components/UploadForm';
+import Viewer from './components/Viewer';
+import ResultPanel from './components/ResultPanel';
 
 function App() {
-  const [msg, setMsg] = useState('');
+    const [orthancId, setOrthancId] = useState(null);
+    const [status, setStatus] = useState("");
+    // const [ef, setEf] = useState(null);  // (optional)
+    // const [maskUrl, setMaskUrl] = useState(null);  // (optional)
 
-  useEffect(() => {
-    fetch("http://localhost:8000/")
-      .then((res) => res.json())
-      .then((data) => setMsg(data.message));
-  }, []);
-
-  return (
-    <div>
-      <h1>Horalix Frontend</h1>
-      <p>Backend says: {msg}</p>
-    </div>
-  );
+    return (
+        <div>
+            <h1>Horalix Echo Viewer</h1>
+            <p>{status}</p>
+            {!orthancId ? (
+                <UploadForm setOrthancId={setOrthancId} setStatus={setStatus} />
+            ) : (
+                <>
+                    <Viewer orthancId={orthancId} />
+                    {/*<ResultPanel ef={ef} segmentationUrl={maskUrl} />*/}
+                </>
+            )}
+        </div>
+    );
 }
 
 export default App;
