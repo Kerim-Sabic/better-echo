@@ -10,6 +10,7 @@ class Study(Base):
     id = Column(Integer, primary_key=True, index=True)
     instance_id = Column(String, unique=True, nullable=False)
     patient_id = Column(String)
+    study_uid = Column(String, nullable=True)
     study_date = Column(String)
     file_path = Column(String)
     uploaded_at = Column(DateTime, default=datetime.utcnow)
