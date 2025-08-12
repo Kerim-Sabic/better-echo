@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from api.upload import router as upload_router
 from pydantic import BaseModel
 import uvicorn
+from api.infer import router as infer_router
 
 os.makedirs("logs", exist_ok=True)
 
@@ -30,6 +31,7 @@ app.add_middleware(
 )
 
 app.include_router(upload_router)
+app.include_router(infer_router)
 
 @app.get("/")
 def root():

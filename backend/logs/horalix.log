@@ -70,3 +70,22 @@ WHERE studies.instance_id = ?
 2025-08-09 18:47:05,218 - INFO - api.upload - Retrieved tags from Orthanc for instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
 2025-08-09 18:47:05,218 - INFO - api.upload - Extracted Patient ID: 123-45-6789, Study Date: 19940323
 2025-08-09 18:47:05,239 - INFO - api.upload - Study saved to database. Instance ID: 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-12 16:47:28,789 - INFO - api.upload - File saved locally at uploads/20250812164728_0020.DCM
+2025-08-12 16:47:28,799 - INFO - services.orthanc_client - Sending DICOM file to Orthanc: uploads/20250812164728_0020.DCM
+2025-08-12 16:47:29,117 - INFO - services.orthanc_client - Orthanc returned instance ID: 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-12 16:47:29,118 - INFO - api.upload - File uploaded to Orthanc. Instance ID: 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-12 16:47:29,118 - INFO - services.orthanc_client - Fetching tags for instance ID: 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-12 16:47:29,142 - INFO - services.orthanc_client - Fetched tags for instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d from Orthanc
+2025-08-12 16:47:29,142 - INFO - api.upload - Retrieved tags from Orthanc for instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-12 16:47:29,142 - INFO - api.upload - Extracted Patient ID: 123-45-6789, Study Date: 19940323
+2025-08-12 16:47:29,296 - WARNING - api.upload - Duplicate instance ID found: 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d. Skipping insert.
+2025-08-12 16:49:34,877 - INFO - main - Health check endpoint hit.
+2025-08-12 17:12:26,738 - INFO - api.upload - File saved locally at uploads/20250812171226_0020.DCM
+2025-08-12 17:12:26,745 - INFO - services.orthanc_client - Sending DICOM file to Orthanc: uploads/20250812171226_0020.DCM
+2025-08-12 17:12:26,796 - INFO - services.orthanc_client - Orthanc returned instance ID: 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-12 17:12:26,796 - INFO - api.upload - File uploaded to Orthanc. Instance ID: 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-12 17:12:26,797 - INFO - services.orthanc_client - Fetching tags for instance ID: 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-12 17:12:26,805 - INFO - services.orthanc_client - Fetched tags for instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d from Orthanc
+2025-08-12 17:12:26,806 - INFO - api.upload - Retrieved tags from Orthanc for instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-12 17:12:26,806 - INFO - api.upload - Extracted Patient ID: 123-45-6789, Study Date: 19940323
+2025-08-12 17:12:26,826 - WARNING - api.upload - Duplicate instance ID found: 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d. Skipping insert.
