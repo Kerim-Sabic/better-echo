@@ -10,6 +10,7 @@ load_dotenv()
 ORTHANC_URL = os.getenv("ORTHANC_URL", "http://localhost:8042")
 ORTHANC_USERNAME = os.getenv("ORTHANC_USERNAME", "orthanc")
 ORTHANC_PASSWORD = os.getenv("ORTHANC_PASSWORD", "orthanc")
+AUTH = (ORTHANC_USERNAME, ORTHANC_PASSWORD)
 
 # Uploads a DICOM file to Orthanc and returns the instance ID.
 def send_dicom_to_orthanc(filepath: str) -> str:
@@ -49,4 +50,13 @@ def get_instance_tags(instance_id: str) -> dict:
     except requests.RequestException as e:
         logger.error(f"Failed to fetch tags from Orthanc for instance {instance_id}: {str(e)}")
         raise RuntimeError(f"Failed to fetch tags from Orthanc: {e}")
+
+def get_series_id_from_instance(instance_id: str) -> str:
+    # GET /instances/{id}
+    r = requests.get(f"{ORTHANC_URL}/instances/{instance_id}", auth=AUTH, timeout=30)
+    r.raise_for_status()
+    data = r.json()
+    return data.get("ParentSeries")  # <- Orthanc series internal ID (UUID-like)
+
+
 

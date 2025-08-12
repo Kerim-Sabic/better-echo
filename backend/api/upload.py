@@ -5,7 +5,7 @@ from datetime import datetime
 from fastapi import APIRouter, UploadFile, File, HTTPException
 
 
-from services.orthanc_client import send_dicom_to_orthanc, get_instance_tags
+from services.orthanc_client import send_dicom_to_orthanc, get_instance_tags, get_series_id_from_instance
 from db import SessionLocal
 from models.study import Study
 
@@ -38,9 +38,22 @@ async def upload_dicom(file: UploadFile = File(...)):
         logger.info(f"Retrieved tags from Orthanc for instance {instance_id}")
 
         # Extract relevant fields
-        patient_id = tags.get("0010,0020", {}).get("Value", ["Unknown"])[0]
-        study_date = tags.get("0008,0020", {}).get("Value", ["Unknown"])[0]
+        patient_id = tags.get("0010,0020", {}).get("Value", ["Unknown"])
+        study_date = tags.get("0008,0020", {}).get("Value", ["Unknown"])
+        study_uid = tags.get("0020,000d", {}).get("Value", ["Unknown"])
         logger.info(f"Extracted Patient ID: {patient_id}, Study Date: {study_date}")
+
+        # Save to DB with duplicate check
+        db = SessionLocal()
+        existing = db.query(Study).filter_by(instance_id=instance_id).first()
+        if existing:
+            logger.warning(f"Duplicate instance ID found: {instance_id}. Skipping insert.")
+            db.close()
+            return {
+                "message": "File already exists in the database",
+                "instance_id": instance_id,
+                "study_uid": study_uid
+            }
 
         # Save to DB
         db = SessionLocal()
@@ -64,14 +77,17 @@ async def upload_dicom(file: UploadFile = File(...)):
         #     logger.warning(f"Failed to delete temporary file {file_location}: {str(e)}")
 
         # Return success response
+        series_id = get_series_id_from_instance(instance_id)
         return {
             "message": "Upload successful",
             "filename": file.filename,
             "instance_id": instance_id,
+            "study_uid": study_uid,
+            "series_id": series_id,
         }
-    
+
     except Exception as e:
         logger.error(f"Upload failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to save file: {str(e)}")
-    
-    
+
+

@@ -1,0 +1,17 @@
+version: "3.8"
+
+services:
+  orthanc:
+    image: jodogne/orthanc-plugins
+    container_name: orthanc
+    ports:
+      - "8042:8042"     # HTTP (Explorer + viewers)
+      - "4242:4242"     # DICOM C-STORE etc.
+    environment:
+      - ORTHANC__REGISTERED_USERS=orthanc:orthanc
+      - ORTHANC__HTTP_SERVER__ENABLE_CORS=true
+      - ORTHANC__DICOMWEB__ENABLE=true
+      - ORTHANC__WEB_VIEWER__Enable=true
+      - ORTHANC__STONE_WEB_VIEWER__Enable=true
+    restart: unless-stopped
+

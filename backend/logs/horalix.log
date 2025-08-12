@@ -31,3 +31,42 @@
 2025-07-27 18:59:25,523 - INFO - api.upload - Retrieved tags from Orthanc for instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
 2025-07-27 18:59:25,525 - INFO - api.upload - Extracted Patient ID: 0, Study Date: Unknown
 2025-07-27 18:59:25,540 - INFO - api.upload - Study saved to database. Instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-09 18:19:28,384 - INFO - api.upload - File saved locally at uploads/20250809181928_image-00000.dcm
+2025-08-09 18:19:28,385 - INFO - services.orthanc_client - Sending DICOM file to Orthanc: uploads/20250809181928_image-00000.dcm
+2025-08-09 18:19:28,515 - INFO - services.orthanc_client - Orthanc returned instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-09 18:19:28,516 - INFO - api.upload - File uploaded to Orthanc. Instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-09 18:19:28,516 - INFO - services.orthanc_client - Fetching tags for instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-09 18:19:28,524 - INFO - services.orthanc_client - Fetched tags for instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4 from Orthanc
+2025-08-09 18:19:28,524 - INFO - api.upload - Retrieved tags from Orthanc for instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-09 18:19:28,524 - INFO - api.upload - Extracted Patient ID: 0, Study Date: ['Unknown']
+2025-08-09 18:19:28,561 - ERROR - api.upload - Upload failed: (sqlite3.OperationalError) no such column: studies.study_uid
+[SQL: SELECT studies.id AS studies_id, studies.instance_id AS studies_instance_id, studies.patient_id AS studies_patient_id, studies.study_uid AS studies_study_uid, studies.study_date AS studies_study_date, studies.file_path AS studies_file_path, studies.uploaded_at AS studies_uploaded_at 
+FROM studies 
+WHERE studies.instance_id = ?
+ LIMIT ? OFFSET ?]
+[parameters: ('6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4', 1, 0)]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-08-09 18:28:13,450 - INFO - api.upload - File saved locally at uploads/20250809182813_0020.DCM
+2025-08-09 18:28:13,461 - INFO - services.orthanc_client - Sending DICOM file to Orthanc: uploads/20250809182813_0020.DCM
+2025-08-09 18:28:13,502 - INFO - services.orthanc_client - Orthanc returned instance ID: 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-09 18:28:13,503 - INFO - api.upload - File uploaded to Orthanc. Instance ID: 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-09 18:28:13,503 - INFO - services.orthanc_client - Fetching tags for instance ID: 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-09 18:28:13,512 - INFO - services.orthanc_client - Fetched tags for instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d from Orthanc
+2025-08-09 18:28:13,512 - INFO - api.upload - Retrieved tags from Orthanc for instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-09 18:28:13,513 - INFO - api.upload - Extracted Patient ID: 123-45-6789, Study Date: 19940323
+2025-08-09 18:28:13,542 - ERROR - api.upload - Upload failed: (sqlite3.OperationalError) no such column: studies.study_uid
+[SQL: SELECT studies.id AS studies_id, studies.instance_id AS studies_instance_id, studies.patient_id AS studies_patient_id, studies.study_uid AS studies_study_uid, studies.study_date AS studies_study_date, studies.file_path AS studies_file_path, studies.uploaded_at AS studies_uploaded_at 
+FROM studies 
+WHERE studies.instance_id = ?
+ LIMIT ? OFFSET ?]
+[parameters: ('1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d', 1, 0)]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-08-09 18:47:05,130 - INFO - api.upload - File saved locally at uploads/20250809184705_0020.DCM
+2025-08-09 18:47:05,137 - INFO - services.orthanc_client - Sending DICOM file to Orthanc: uploads/20250809184705_0020.DCM
+2025-08-09 18:47:05,208 - INFO - services.orthanc_client - Orthanc returned instance ID: 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-09 18:47:05,208 - INFO - api.upload - File uploaded to Orthanc. Instance ID: 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-09 18:47:05,209 - INFO - services.orthanc_client - Fetching tags for instance ID: 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-09 18:47:05,218 - INFO - services.orthanc_client - Fetched tags for instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d from Orthanc
+2025-08-09 18:47:05,218 - INFO - api.upload - Retrieved tags from Orthanc for instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-09 18:47:05,218 - INFO - api.upload - Extracted Patient ID: 123-45-6789, Study Date: 19940323
+2025-08-09 18:47:05,239 - INFO - api.upload - Study saved to database. Instance ID: 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
