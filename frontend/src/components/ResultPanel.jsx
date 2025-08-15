@@ -77,11 +77,6 @@ export default function ResultPanel({ ef, isBusy }) {
             Copy result
           </button>
         </div>
-
-        {/* <div className="note">
-          This panel mirrors the single-file demo’s gauge/card layout you liked
-          (but React-ified). :contentReference[oaicite:7]{(index = 7)}
-        </div> */}
       </div>
     </div>
   );

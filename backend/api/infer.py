@@ -1,4 +1,3 @@
-# backend/api/infer.py
 import io
 import math
 import os
