@@ -60,6 +60,7 @@ async def upload_dicom(file: UploadFile = File(...)):
         study = Study(
             instance_id=instance_id,
             patient_id=patient_id,
+            study_uid=study_uid,
             study_date=study_date,
             file_path=file_location
         )
