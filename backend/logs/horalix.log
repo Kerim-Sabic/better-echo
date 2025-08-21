@@ -419,3 +419,135 @@ requests.exceptions.HTTPError: 404 Client Error: Not Found for url: http://local
 2025-08-15 21:59:29,475 - INFO - api.infer - [EF] Tensor shape: (1, 3, 16, 224, 224) dtype=torch.float32
 2025-08-15 21:59:29,476 - INFO - api.infer - [EF] Running inference on device=cpu with input dtype=torch.float32
 2025-08-15 21:59:34,747 - INFO - api.infer - [EF] EF prediction: 58.0305290222168
+2025-08-21 22:52:30,539 - INFO - api.upload - File saved locally at uploads/20250821225230_image-00000.dcm
+2025-08-21 22:52:30,542 - INFO - services.orthanc_client - Sending DICOM file to Orthanc: uploads/20250821225230_image-00000.dcm
+2025-08-21 22:52:30,791 - INFO - services.orthanc_client - Orthanc returned instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-21 22:52:30,791 - INFO - api.upload - File uploaded to Orthanc. Instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-21 22:52:30,791 - INFO - services.orthanc_client - Fetching tags for instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-21 22:52:30,810 - INFO - services.orthanc_client - Fetched tags for instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4 from Orthanc
+2025-08-21 22:52:30,810 - INFO - api.upload - Retrieved tags from Orthanc for instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-21 22:52:30,810 - INFO - api.upload - Extracted Patient ID: 0, Study Date: ['Unknown']
+2025-08-21 22:52:30,876 - ERROR - api.upload - Upload failed: (sqlite3.ProgrammingError) Error binding parameter 4: type 'list' is not supported
+[SQL: INSERT INTO studies (instance_id, patient_id, study_uid, study_date, file_path, uploaded_at) VALUES (?, ?, ?, ?, ?, ?)]
+[parameters: ('6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4', '0', '1.2.826.0.1.3680043.8.1055.1.20111103112244831.40200514.30965937', ['Unknown'], 'uploads/20250821225230_image-00000.dcm', '2025-08-21 20:52:30.874977')]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-08-21 22:53:18,597 - INFO - api.upload - File saved locally at uploads/20250821225318_image-00000.dcm
+2025-08-21 22:53:18,598 - INFO - services.orthanc_client - Sending DICOM file to Orthanc: uploads/20250821225318_image-00000.dcm
+2025-08-21 22:53:18,638 - INFO - services.orthanc_client - Orthanc returned instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-21 22:53:18,638 - INFO - api.upload - File uploaded to Orthanc. Instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-21 22:53:18,638 - INFO - services.orthanc_client - Fetching tags for instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-21 22:53:18,644 - INFO - services.orthanc_client - Fetched tags for instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4 from Orthanc
+2025-08-21 22:53:18,644 - INFO - api.upload - Retrieved tags from Orthanc for instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-21 22:53:18,644 - INFO - api.upload - Extracted Patient ID: 0, Study Date: ['Unknown']
+2025-08-21 22:53:18,651 - ERROR - api.upload - Upload failed: (sqlite3.ProgrammingError) Error binding parameter 4: type 'list' is not supported
+[SQL: INSERT INTO studies (instance_id, patient_id, study_uid, study_date, file_path, uploaded_at) VALUES (?, ?, ?, ?, ?, ?)]
+[parameters: ('6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4', '0', '1.2.826.0.1.3680043.8.1055.1.20111103112244831.40200514.30965937', ['Unknown'], 'uploads/20250821225318_image-00000.dcm', '2025-08-21 20:53:18.650704')]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-08-21 22:53:28,259 - INFO - api.upload - File saved locally at uploads/20250821225328_image-00000.dcm
+2025-08-21 22:53:28,259 - INFO - services.orthanc_client - Sending DICOM file to Orthanc: uploads/20250821225328_image-00000.dcm
+2025-08-21 22:53:28,283 - INFO - services.orthanc_client - Orthanc returned instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-21 22:53:28,284 - INFO - api.upload - File uploaded to Orthanc. Instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-21 22:53:28,285 - INFO - services.orthanc_client - Fetching tags for instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-21 22:53:28,293 - INFO - services.orthanc_client - Fetched tags for instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4 from Orthanc
+2025-08-21 22:53:28,294 - INFO - api.upload - Retrieved tags from Orthanc for instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-21 22:53:28,294 - INFO - api.upload - Extracted Patient ID: 0, Study Date: ['Unknown']
+2025-08-21 22:53:28,297 - ERROR - api.upload - Upload failed: (sqlite3.ProgrammingError) Error binding parameter 4: type 'list' is not supported
+[SQL: INSERT INTO studies (instance_id, patient_id, study_uid, study_date, file_path, uploaded_at) VALUES (?, ?, ?, ?, ?, ?)]
+[parameters: ('6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4', '0', '1.2.826.0.1.3680043.8.1055.1.20111103112244831.40200514.30965937', ['Unknown'], 'uploads/20250821225328_image-00000.dcm', '2025-08-21 20:53:28.297541')]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-08-21 22:55:47,257 - INFO - api.upload - File saved locally at uploads/20250821225547_image-00000.dcm
+2025-08-21 22:55:47,258 - INFO - services.orthanc_client - Sending DICOM file to Orthanc: uploads/20250821225547_image-00000.dcm
+2025-08-21 22:55:47,289 - INFO - services.orthanc_client - Orthanc returned instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-21 22:55:47,289 - INFO - api.upload - File uploaded to Orthanc. Instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-21 22:55:47,290 - INFO - services.orthanc_client - Fetching tags for instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-21 22:55:47,300 - INFO - services.orthanc_client - Fetched tags for instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4 from Orthanc
+2025-08-21 22:55:47,300 - INFO - api.upload - Retrieved tags from Orthanc for instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-21 22:55:47,300 - INFO - api.upload - Extracted Patient ID: 0, Study Date: ['Unknown']
+2025-08-21 22:55:47,318 - ERROR - api.upload - Upload failed: (sqlite3.ProgrammingError) Error binding parameter 4: type 'list' is not supported
+[SQL: INSERT INTO studies (instance_id, patient_id, study_uid, study_date, file_path, uploaded_at) VALUES (?, ?, ?, ?, ?, ?)]
+[parameters: ('6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4', '0', '1.2.826.0.1.3680043.8.1055.1.20111103112244831.40200514.30965937', ['Unknown'], 'uploads/20250821225547_image-00000.dcm', '2025-08-21 20:55:47.317023')]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-08-21 23:08:52,170 - INFO - api.upload - File saved locally at uploads/20250821230852_image-00000.dcm
+2025-08-21 23:08:52,172 - INFO - services.orthanc_client - Sending DICOM file to Orthanc: uploads/20250821230852_image-00000.dcm
+2025-08-21 23:08:52,249 - INFO - services.orthanc_client - Orthanc returned instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-21 23:08:52,249 - INFO - api.upload - File uploaded to Orthanc. Instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-21 23:08:52,249 - INFO - services.orthanc_client - Fetching tags for instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-21 23:08:52,259 - INFO - services.orthanc_client - Fetched tags for instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4 from Orthanc
+2025-08-21 23:08:52,259 - INFO - api.upload - Retrieved tags from Orthanc for instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-21 23:08:52,260 - INFO - api.upload - Extracted Patient ID: 0, Study Date: ['Unknown']
+2025-08-21 23:08:52,271 - ERROR - api.upload - Upload failed: (sqlite3.ProgrammingError) Error binding parameter 4: type 'list' is not supported
+[SQL: INSERT INTO studies (instance_id, patient_id, study_uid, study_date, file_path, uploaded_at) VALUES (?, ?, ?, ?, ?, ?)]
+[parameters: ('6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4', '0', '1.2.826.0.1.3680043.8.1055.1.20111103112244831.40200514.30965937', ['Unknown'], 'uploads/20250821230852_image-00000.dcm', '2025-08-21 21:08:52.271225')]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-08-21 23:09:16,951 - INFO - api.upload - File saved locally at uploads/20250821230916_image-00000.dcm
+2025-08-21 23:09:16,951 - INFO - services.orthanc_client - Sending DICOM file to Orthanc: uploads/20250821230916_image-00000.dcm
+2025-08-21 23:09:16,970 - INFO - services.orthanc_client - Orthanc returned instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-21 23:09:16,971 - INFO - api.upload - File uploaded to Orthanc. Instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-21 23:09:16,972 - INFO - services.orthanc_client - Fetching tags for instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-21 23:09:16,981 - INFO - services.orthanc_client - Fetched tags for instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4 from Orthanc
+2025-08-21 23:09:16,982 - INFO - api.upload - Retrieved tags from Orthanc for instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-21 23:09:16,982 - INFO - api.upload - Extracted Patient ID: 0, Study Date: ['Unknown']
+2025-08-21 23:09:16,984 - ERROR - api.upload - Upload failed: (sqlite3.ProgrammingError) Error binding parameter 4: type 'list' is not supported
+[SQL: INSERT INTO studies (instance_id, patient_id, study_uid, study_date, file_path, uploaded_at) VALUES (?, ?, ?, ?, ?, ?)]
+[parameters: ('6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4', '0', '1.2.826.0.1.3680043.8.1055.1.20111103112244831.40200514.30965937', ['Unknown'], 'uploads/20250821230916_image-00000.dcm', '2025-08-21 21:09:16.984451')]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-08-21 23:09:37,756 - INFO - api.upload - File saved locally at uploads/20250821230937_image-00000.dcm
+2025-08-21 23:09:37,757 - INFO - services.orthanc_client - Sending DICOM file to Orthanc: uploads/20250821230937_image-00000.dcm
+2025-08-21 23:09:37,792 - INFO - services.orthanc_client - Orthanc returned instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-21 23:09:37,792 - INFO - api.upload - File uploaded to Orthanc. Instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-21 23:09:37,792 - INFO - services.orthanc_client - Fetching tags for instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-21 23:09:37,802 - INFO - services.orthanc_client - Fetched tags for instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4 from Orthanc
+2025-08-21 23:09:37,803 - INFO - api.upload - Retrieved tags from Orthanc for instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-21 23:09:37,803 - INFO - api.upload - Extracted Patient ID: 0, Study Date: ['Unknown']
+2025-08-21 23:09:37,808 - ERROR - api.upload - Upload failed: (sqlite3.ProgrammingError) Error binding parameter 4: type 'list' is not supported
+[SQL: INSERT INTO studies (instance_id, patient_id, study_uid, study_date, file_path, uploaded_at) VALUES (?, ?, ?, ?, ?, ?)]
+[parameters: ('6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4', '0', '1.2.826.0.1.3680043.8.1055.1.20111103112244831.40200514.30965937', ['Unknown'], 'uploads/20250821230937_image-00000.dcm', '2025-08-21 21:09:37.808164')]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-08-21 23:09:38,698 - INFO - api.upload - File saved locally at uploads/20250821230938_image-00000.dcm
+2025-08-21 23:09:38,699 - INFO - services.orthanc_client - Sending DICOM file to Orthanc: uploads/20250821230938_image-00000.dcm
+2025-08-21 23:09:38,721 - INFO - services.orthanc_client - Orthanc returned instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-21 23:09:38,721 - INFO - api.upload - File uploaded to Orthanc. Instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-21 23:09:38,722 - INFO - services.orthanc_client - Fetching tags for instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-21 23:09:38,728 - INFO - services.orthanc_client - Fetched tags for instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4 from Orthanc
+2025-08-21 23:09:38,728 - INFO - api.upload - Retrieved tags from Orthanc for instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-21 23:09:38,728 - INFO - api.upload - Extracted Patient ID: 0, Study Date: ['Unknown']
+2025-08-21 23:09:38,731 - ERROR - api.upload - Upload failed: (sqlite3.ProgrammingError) Error binding parameter 4: type 'list' is not supported
+[SQL: INSERT INTO studies (instance_id, patient_id, study_uid, study_date, file_path, uploaded_at) VALUES (?, ?, ?, ?, ?, ?)]
+[parameters: ('6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4', '0', '1.2.826.0.1.3680043.8.1055.1.20111103112244831.40200514.30965937', ['Unknown'], 'uploads/20250821230938_image-00000.dcm', '2025-08-21 21:09:38.731246')]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-08-21 23:09:39,908 - INFO - api.upload - File saved locally at uploads/20250821230939_image-00000.dcm
+2025-08-21 23:09:39,908 - INFO - services.orthanc_client - Sending DICOM file to Orthanc: uploads/20250821230939_image-00000.dcm
+2025-08-21 23:09:39,933 - INFO - services.orthanc_client - Orthanc returned instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-21 23:09:39,933 - INFO - api.upload - File uploaded to Orthanc. Instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-21 23:09:39,933 - INFO - services.orthanc_client - Fetching tags for instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-21 23:09:39,942 - INFO - services.orthanc_client - Fetched tags for instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4 from Orthanc
+2025-08-21 23:09:39,942 - INFO - api.upload - Retrieved tags from Orthanc for instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-21 23:09:39,943 - INFO - api.upload - Extracted Patient ID: 0, Study Date: ['Unknown']
+2025-08-21 23:09:39,946 - ERROR - api.upload - Upload failed: (sqlite3.ProgrammingError) Error binding parameter 4: type 'list' is not supported
+[SQL: INSERT INTO studies (instance_id, patient_id, study_uid, study_date, file_path, uploaded_at) VALUES (?, ?, ?, ?, ?, ?)]
+[parameters: ('6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4', '0', '1.2.826.0.1.3680043.8.1055.1.20111103112244831.40200514.30965937', ['Unknown'], 'uploads/20250821230939_image-00000.dcm', '2025-08-21 21:09:39.945764')]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-08-21 23:20:31,214 - INFO - api.upload - File saved locally at uploads/20250821232031_image-00000.dcm
+2025-08-21 23:20:31,216 - INFO - services.orthanc_client - Sending DICOM file to Orthanc: uploads/20250821232031_image-00000.dcm
+2025-08-21 23:20:31,263 - INFO - services.orthanc_client - Orthanc returned instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-21 23:20:31,264 - INFO - api.upload - File uploaded to Orthanc. Instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-21 23:20:31,264 - INFO - services.orthanc_client - Fetching tags for instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-21 23:20:31,285 - INFO - services.orthanc_client - Fetched tags for instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4 from Orthanc
+2025-08-21 23:20:31,286 - INFO - api.upload - Retrieved tags from Orthanc for instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-21 23:20:31,287 - INFO - api.upload - Extracted Patient ID: 0, Study Date: ['Unknown']
+2025-08-21 23:20:31,315 - ERROR - api.upload - Upload failed: (sqlite3.ProgrammingError) Error binding parameter 4: type 'list' is not supported
+[SQL: INSERT INTO studies (instance_id, patient_id, study_uid, study_date, file_path, uploaded_at) VALUES (?, ?, ?, ?, ?, ?)]
+[parameters: ('6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4', '0', '1.2.826.0.1.3680043.8.1055.1.20111103112244831.40200514.30965937', ['Unknown'], 'uploads/20250821232031_image-00000.dcm', '2025-08-21 21:20:31.314234')]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-08-21 23:20:38,508 - INFO - api.upload - File saved locally at uploads/20250821232038_image-00000.dcm
+2025-08-21 23:20:38,519 - INFO - services.orthanc_client - Sending DICOM file to Orthanc: uploads/20250821232038_image-00000.dcm
+2025-08-21 23:20:38,591 - INFO - services.orthanc_client - Orthanc returned instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-21 23:20:38,591 - INFO - api.upload - File uploaded to Orthanc. Instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-21 23:20:38,591 - INFO - services.orthanc_client - Fetching tags for instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-21 23:20:38,609 - INFO - services.orthanc_client - Fetched tags for instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4 from Orthanc
+2025-08-21 23:20:38,609 - INFO - api.upload - Retrieved tags from Orthanc for instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-21 23:20:38,609 - INFO - api.upload - Extracted Patient ID: 0, Study Date: ['Unknown']
+2025-08-21 23:20:38,612 - ERROR - api.upload - Upload failed: (sqlite3.ProgrammingError) Error binding parameter 4: type 'list' is not supported
+[SQL: INSERT INTO studies (instance_id, patient_id, study_uid, study_date, file_path, uploaded_at) VALUES (?, ?, ?, ?, ?, ?)]
+[parameters: ('6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4', '0', '1.2.826.0.1.3680043.8.1055.1.20111103112244831.40200514.30965937', ['Unknown'], 'uploads/20250821232038_image-00000.dcm', '2025-08-21 21:20:38.611956')]
+(Background on this error at: https://sqlalche.me/e/20/f405)
