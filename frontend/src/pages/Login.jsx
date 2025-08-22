@@ -1,277 +1,172 @@
-// src/pages/LoginPage.jsx
-import React, { useState } from "react";
-// Optional icons (run: npm i lucide-react)
+import { useState } from "react";
 import { Eye, EyeOff, Shield, Info } from "lucide-react";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "../components/ui/dialog";
+import { useNavigate } from "react-router-dom";
 
-// If the image is in /public, use: const logo = "/horalix_logo.png";
-import logo from "../assets/horalix_logo.png"; // or move file to /public and use "/horalix_logo.png"
+export default function Login() {
+  const navigate = useNavigate();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-// If your SplashScreen is at src/components/SplashScreen.jsx:
-import SplashScreen from "../components/SplashScreen"; // adjust path if different
+  const onLogin = () => navigate("/dashboard"); // adjust to your route plan
 
-const cardStyle = {
-    background: "white",
-    borderRadius: 12,
-    boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
-    padding: 24,
-};
-const headerStyle = { textAlign: "center", marginBottom: 16 };
-const inputStyle = {
-    width: "100%",
-    height: 48,
-    borderRadius: 8,
-    border: "1px solid #e5e7eb",
-    padding: "0 12px",
-    fontSize: 16,
-};
-const buttonStyle = {
-    width: "100%",
-    height: 48,
-    borderRadius: 10,
-    background: "#2563eb",
-    color: "white",
-    border: "none",
-    fontSize: 16,
-    fontWeight: 600,
-    cursor: "pointer",
-};
-const outlineButtonStyle = {
-    ...buttonStyle,
-    background: "transparent",
-    color: "#111827",
-    border: "1px solid #e5e7eb",
-};
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setTimeout(() => {
+      setIsLoading(false);
+      onLogin();
+    }, 1500);
+  };
 
-const LoginPage = ({ onLogin = () => {} }) => {
-    // ⬇️ useState must be inside the component
-    const [showSplash, setShowSplash] = useState(true);
-
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [showPassword, setShowPassword] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
-    const [showAbout, setShowAbout] = useState(false);
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setIsLoading(true);
-        // TODO: replace with real auth
-        setTimeout(() => {
-            setIsLoading(false);
-            onLogin();
-        }, 1500);
-    };
-
-    // Show splash first
-    if (showSplash) {
-        return <SplashScreen onComplete={() => setShowSplash(false)} />;
-    }
-
-    return (
-        <div
-            style={{
-                minHeight: "100vh",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                padding: 16,
-                background:
-                    "linear-gradient(135deg, rgba(240,247,255,1) 0%, rgba(255,255,255,1) 100%)",
-            }}
-        >
-            <div style={{ width: "100%", maxWidth: 420 }}>
-                {/* Header */}
-                <div style={{ textAlign: "center", marginBottom: 24 }}>
-                    <div
-                        style={{
-                            display: "flex",
-                            justifyContent: "center",
-                            alignItems: "center",
-                            gap: 12,
-                            marginBottom: 8,
-                        }}
-                    >
-                        <img
-                            src={logo}
-                            alt="Horalix Logo"
-                            style={{ height: 48, width: 48 }}
-                            onError={(e) => (e.currentTarget.style.display = "none")}
-                        />
-                        <div>
-                            <h1 style={{ margin: 0, fontSize: 28, fontWeight: 800, color: "#1d4ed8" }}>
-                                Horalix Echo
-                            </h1>
-                            <p style={{ margin: 0, fontSize: 12, color: "#6b7280" }}>
-                                AI-Powered Cardiac Insights
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Login Card */}
-                <div style={cardStyle}>
-                    <div style={headerStyle}>
-                        <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>Welcome Back</h2>
-                        <p style={{ margin: "8px 0 0", color: "#6b7280" }}>
-                            Sign in to access your cardiac analysis platform
-                        </p>
-                    </div>
-
-                    <form onSubmit={handleSubmit} style={{ display: "grid", gap: 12 }}>
-                        <div>
-                            <label htmlFor="email" style={{ display: "block", marginBottom: 6, fontSize: 14 }}>
-                                Email Address
-                            </label>
-                            <input
-                                id="email"
-                                type="email"
-                                placeholder="cardiologist@hospital.com"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                required
-                                style={inputStyle}
-                            />
-                        </div>
-
-                        <div>
-                            <label htmlFor="password" style={{ display: "block", marginBottom: 6, fontSize: 14 }}>
-                                Password
-                            </label>
-                            <div style={{ position: "relative" }}>
-                                <input
-                                    id="password"
-                                    type={showPassword ? "text" : "password"}
-                                    placeholder="Enter your password"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    required
-                                    style={{ ...inputStyle, paddingRight: 44 }}
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPassword((v) => !v)}
-                                    style={{
-                                        position: "absolute",
-                                        right: 10,
-                                        top: "50%",
-                                        transform: "translateY(-50%)",
-                                        background: "transparent",
-                                        border: "none",
-                                        cursor: "pointer",
-                                        color: "#6b7280",
-                                    }}
-                                    aria-label={showPassword ? "Hide password" : "Show password"}
-                                >
-                                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                                </button>
-                            </div>
-                        </div>
-
-                        <button type="submit" style={buttonStyle} disabled={isLoading}>
-                            {isLoading ? "Signing In..." : "Sign In"}
-                        </button>
-
-                        <div style={{ textAlign: "center" }}>
-                            <a href="#" style={{ fontSize: 14, color: "#2563eb", textDecoration: "none" }}>
-                                Forgot your password?
-                            </a>
-                        </div>
-                    </form>
-
-                    {/* SSO Option */}
-                    <div style={{ marginTop: 20, paddingTop: 16, borderTop: "1px solid #e5e7eb" }}>
-                        <button style={outlineButtonStyle} type="button">
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 8, justifyContent: "center" }}>
-                <Shield size={20} /> Sign in with Hospital SSO
-              </span>
-                        </button>
-                    </div>
-                </div>
-
-                {/* About Modal Trigger */}
-                <div style={{ textAlign: "center", marginTop: 16 }}>
-                    <button
-                        onClick={() => setShowAbout(true)}
-                        style={{
-                            background: "transparent",
-                            border: "none",
-                            color: "#6b7280",
-                            cursor: "pointer",
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: 6,
-                        }}
-                    >
-                        <Info size={16} />
-                        About Horalix Echo
-                    </button>
-                </div>
-
-                {/* Simple modal */}
-                {showAbout && (
-                    <div
-                        onClick={() => setShowAbout(false)}
-                        style={{
-                            position: "fixed",
-                            inset: 0,
-                            background: "rgba(0,0,0,0.35)",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            padding: 16,
-                            zIndex: 50,
-                        }}
-                    >
-                        <div
-                            onClick={(e) => e.stopPropagation()}
-                            style={{
-                                background: "white",
-                                borderRadius: 12,
-                                maxWidth: 520,
-                                width: "100%",
-                                padding: 20,
-                            }}
-                        >
-                            <div style={{ display: "flex", alignItems: "center", marginBottom: 8 }}>
-                                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>About Horalix Echo</h3>
-                                <button
-                                    onClick={() => setShowAbout(false)}
-                                    style={{
-                                        marginLeft: "auto",
-                                        background: "transparent",
-                                        border: "none",
-                                        fontSize: 20,
-                                        lineHeight: 1,
-                                        cursor: "pointer",
-                                    }}
-                                    aria-label="Close"
-                                >
-                                    ×
-                                </button>
-                            </div>
-                            <div style={{ color: "#374151", fontSize: 14, lineHeight: 1.6 }}>
-                                <p>
-                                    Horalix Echo is a hospital-grade AI echocardiography platform that provides
-                                    real-time analysis for cardiologists and sonographers.
-                                </p>
-                                <p><strong>Key Features:</strong></p>
-                                <ul style={{ paddingLeft: 18 }}>
-                                    <li>Real-time AI segmentation and measurements</li>
-                                    <li>Automated ejection fraction calculation</li>
-                                    <li>Valve assessment and severity grading</li>
-                                    <li>Clinical-grade reporting</li>
-                                    <li>DICOM integration</li>
-                                </ul>
-                                <p style={{ fontSize: 12, color: "#6b7280", marginTop: 8 }}>
-                                    Powered by PanEcho &amp; EchoPrime AI
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                )}
+  return (
+    <div className="min-h-screen bg-gradient-clinical flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <div className="text-center mb-8">
+          <div className="flex items-center justify-center mb-4">
+            <img
+              src="/lovable-uploads/9d9bcdf0-8a16-4777-8dc3-85ea7af6f600.png"
+              alt="Horalix Logo"
+              className="h-12 w-12 mr-3"
+            />
+            <div>
+              <h1 className="text-3xl font-bold text-primary">Horalix Echo</h1>
+              <p className="text-sm text-muted-foreground">
+                AI-Powered Cardiac Insights
+              </p>
             </div>
+          </div>
         </div>
-    );
-};
 
-export default LoginPage;
+        <Card className="card-clinical">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl font-semibold">
+              Welcome Back
+            </CardTitle>
+            <CardDescription>
+              Sign in to access your cardiac analysis platform
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email Address</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="cardiologist@hospital.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="h-12"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    className="h-12 pr-12"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((s) => !s)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-5 w-5" />
+                    ) : (
+                      <Eye className="h-5 w-5" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <Button
+                type="submit"
+                className="w-full h-12 btn-clinical text-lg font-medium"
+                disabled={isLoading}
+              >
+                {isLoading ? "Signing In..." : "Sign In"}
+              </Button>
+
+              <div className="text-center">
+                <a href="#" className="text-sm text-primary hover:underline">
+                  Forgot your password?
+                </a>
+              </div>
+            </form>
+
+            <div className="mt-6 pt-6 border-t border-border">
+              <Button variant="outline" className="w-full h-12 mb-3">
+                <Shield className="mr-2 h-5 w-5" />
+                Sign in with Hospital SSO
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="text-center mt-6">
+          <Dialog>
+            <DialogTrigger asChild>
+              <button className="text-sm text-muted-foreground hover:text-primary transition-colors inline-flex items-center">
+                <Info className="mr-1 h-4 w-4" />
+                About Horalix Echo
+              </button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>About Horalix Echo</DialogTitle>
+                <DialogDescription className="text-left space-y-3">
+                  <p>
+                    Horalix Echo is a hospital-grade AI echocardiography
+                    platform that provides real-time analysis for cardiologists
+                    and sonographers.
+                  </p>
+                  <p>
+                    <strong>Key Features:</strong>
+                  </p>
+                  <ul className="list-disc list-inside space-y-1 text-sm">
+                    <li>Real-time AI segmentation and measurements</li>
+                    <li>Automated ejection fraction calculation</li>
+                    <li>Valve assessment and severity grading</li>
+                    <li>Clinical-grade reporting</li>
+                    <li>DICOM integration</li>
+                  </ul>
+                  <p className="text-xs text-muted-foreground pt-2">
+                    Powered by PanEcho & EchoPrime AI
+                  </p>
+                </DialogDescription>
+              </DialogHeader>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
+    </div>
+  );
+}

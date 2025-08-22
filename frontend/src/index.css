@@ -1,13 +1,162 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
+    "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+  font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
     monospace;
+}
+
+:root {
+  --primary: #2dd4bf; /* medical teal */
+  --primary-foreground: #fff;
+  --muted-foreground: #64748b;
+  --border: #e2e8f0;
+}
+
+/* Token-ish utility shims */
+.text-primary {
+  color: var(--primary);
+}
+.text-primary\/80 {
+  color: rgba(45, 212, 191, 0.8);
+}
+.text-muted-foreground {
+  color: var(--muted-foreground);
+}
+.bg-border {
+  background-color: var(--border);
+}
+
+/* “Clinical” background gradient name used in Splash */
+.bg-gradient-clinical {
+  background: linear-gradient(#ffffff, #ffffff);
+}
+.bg-gradient-primary {
+  background: linear-gradient(135deg, #2dd4bf, #5eead4);
+}
+.heartbeat {
+  animation: heartbeat 2s ease-in-out infinite;
+}
+@keyframes heartbeat {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.9;
+  }
+}
+
+:root {
+  /* neutrals / backgrounds */
+  --background: #ffffff;
+  --foreground: #0f172a;
+
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
+
+  --primary: #2dd4bf;
+  --primary-foreground: #ffffff;
+
+  --secondary: #f1f5f9;
+  --secondary-foreground: #0f172a;
+
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+
+  --accent: #e0f2fe;
+  --accent-glow: #7dd3fc;
+  --accent-foreground: #0f172a;
+
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: #93c5fd;
+
+  --radius: 0.5rem;
+}
+
+/* map token-ish classnames used by components */
+.bg-background {
+  background-color: var(--background);
+}
+.text-foreground {
+  color: var(--foreground);
+}
+.bg-card {
+  background-color: var(--card);
+}
+.text-card-foreground {
+  color: var(--card-foreground);
+}
+.border-border {
+  border-color: var(--border);
+}
+.border-input {
+  border-color: var(--input);
+}
+.bg-accent {
+  background-color: var(--accent);
+}
+.text-accent-foreground {
+  color: var(--accent-foreground);
+}
+.bg-primary {
+  background-color: var(--primary);
+}
+.text-primary {
+  color: var(--primary);
+}
+.text-primary-foreground {
+  color: var(--primary-foreground);
+}
+
+/* existing splash helpers from earlier message */
+.bg-gradient-clinical {
+  background: linear-gradient(#ffffff, #ffffff);
+}
+.bg-gradient-primary {
+  background: linear-gradient(135deg, #2dd4bf, #5eead4);
+}
+
+/* text colors used by icons */
+.text-success {
+  color: #10b981;
+} /* emerald-500 */
+.text-warning {
+  color: #f59e0b;
+} /* amber-500 */
+
+/* status badge backgrounds */
+.status-normal {
+  background-color: #ecfdf5; /* emerald-50 */
+  color: #065f46; /* emerald-800 */
+  border-color: #a7f3d0; /* emerald-200 */
+}
+.status-warning {
+  background-color: #fffbeb; /* amber-50 */
+  color: #92400e; /* amber-800 */
+  border-color: #fde68a; /* amber-300 */
+}
+.status-critical {
+  background-color: #fef2f2; /* red-50 */
+  color: #991b1b; /* red-800 */
+  border-color: #fecaca; /* red-300 */
 }
