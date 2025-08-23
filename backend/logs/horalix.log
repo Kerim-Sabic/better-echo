@@ -551,3 +551,1139 @@ requests.exceptions.HTTPError: 404 Client Error: Not Found for url: http://local
 [SQL: INSERT INTO studies (instance_id, patient_id, study_uid, study_date, file_path, uploaded_at) VALUES (?, ?, ?, ?, ?, ?)]
 [parameters: ('6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4', '0', '1.2.826.0.1.3680043.8.1055.1.20111103112244831.40200514.30965937', ['Unknown'], 'uploads/20250821232038_image-00000.dcm', '2025-08-21 21:20:38.611956')]
 (Background on this error at: https://sqlalche.me/e/20/f405)
+2025-08-23 09:33:17,762 - INFO - api.upload - File saved locally at uploads/20250823093317_image-00000.dcm
+2025-08-23 09:33:17,766 - INFO - services.orthanc_client - Sending DICOM file to Orthanc: uploads/20250823093317_image-00000.dcm
+2025-08-23 09:33:18,054 - INFO - services.orthanc_client - Orthanc returned instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-23 09:33:18,055 - INFO - api.upload - File uploaded to Orthanc. Instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-23 09:33:18,055 - INFO - services.orthanc_client - Fetching tags for instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-23 09:33:18,084 - INFO - services.orthanc_client - Fetched tags for instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4 from Orthanc
+2025-08-23 09:33:18,084 - INFO - api.upload - Retrieved tags from Orthanc for instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-23 09:33:18,085 - INFO - api.upload - Extracted Patient ID: 0, Study Date: ['Unknown']
+2025-08-23 09:33:18,166 - ERROR - api.upload - Upload failed: (sqlite3.ProgrammingError) Error binding parameter 4: type 'list' is not supported
+[SQL: INSERT INTO studies (instance_id, patient_id, study_uid, study_date, file_path, uploaded_at) VALUES (?, ?, ?, ?, ?, ?)]
+[parameters: ('6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4', '0', '1.2.826.0.1.3680043.8.1055.1.20111103112244831.40200514.30965937', ['Unknown'], 'uploads/20250823093317_image-00000.dcm', '2025-08-23 07:33:18.163900')]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-08-23 09:47:24,771 - INFO - main - Health check endpoint hit.
+2025-08-23 09:47:30,085 - INFO - main - Health check endpoint hit.
+2025-08-23 09:50:12,521 - INFO - api.upload - File saved locally at uploads/20250823095012_image-00000.dcm
+2025-08-23 09:50:12,523 - INFO - services.orthanc_client - Sending DICOM file to Orthanc: uploads/20250823095012_image-00000.dcm
+2025-08-23 09:50:12,633 - INFO - services.orthanc_client - Orthanc returned instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-23 09:50:12,634 - INFO - api.upload - File uploaded to Orthanc. Instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-23 09:50:12,634 - INFO - services.orthanc_client - Fetching tags for instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-23 09:50:12,656 - INFO - services.orthanc_client - Fetched tags for instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4 from Orthanc
+2025-08-23 09:50:12,657 - INFO - api.upload - Retrieved tags from Orthanc for instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-23 09:50:12,657 - INFO - api.upload - Extracted Patient ID: 0, Study Date: ['Unknown']
+2025-08-23 09:50:12,739 - ERROR - api.upload - Upload failed: (sqlite3.ProgrammingError) Error binding parameter 4: type 'list' is not supported
+[SQL: INSERT INTO studies (instance_id, patient_id, study_uid, study_date, file_path, uploaded_at) VALUES (?, ?, ?, ?, ?, ?)]
+[parameters: ('6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4', '0', '1.2.826.0.1.3680043.8.1055.1.20111103112244831.40200514.30965937', ['Unknown'], 'uploads/20250823095012_image-00000.dcm', '2025-08-23 07:50:12.738263')]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-08-23 09:50:24,726 - INFO - api.upload - File saved locally at uploads/20250823095024_image-00000.dcm
+2025-08-23 09:50:24,726 - INFO - services.orthanc_client - Sending DICOM file to Orthanc: uploads/20250823095024_image-00000.dcm
+2025-08-23 09:50:24,774 - INFO - services.orthanc_client - Orthanc returned instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-23 09:50:24,774 - INFO - api.upload - File uploaded to Orthanc. Instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-23 09:50:24,774 - INFO - services.orthanc_client - Fetching tags for instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-23 09:50:24,790 - INFO - services.orthanc_client - Fetched tags for instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4 from Orthanc
+2025-08-23 09:50:24,790 - INFO - api.upload - Retrieved tags from Orthanc for instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-23 09:50:24,790 - INFO - api.upload - Extracted Patient ID: 0, Study Date: ['Unknown']
+2025-08-23 09:50:24,793 - ERROR - api.upload - Upload failed: (sqlite3.ProgrammingError) Error binding parameter 4: type 'list' is not supported
+[SQL: INSERT INTO studies (instance_id, patient_id, study_uid, study_date, file_path, uploaded_at) VALUES (?, ?, ?, ?, ?, ?)]
+[parameters: ('6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4', '0', '1.2.826.0.1.3680043.8.1055.1.20111103112244831.40200514.30965937', ['Unknown'], 'uploads/20250823095024_image-00000.dcm', '2025-08-23 07:50:24.792999')]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-08-23 09:50:26,344 - INFO - api.upload - File saved locally at uploads/20250823095026_image-00000.dcm
+2025-08-23 09:50:26,344 - INFO - services.orthanc_client - Sending DICOM file to Orthanc: uploads/20250823095026_image-00000.dcm
+2025-08-23 09:50:26,415 - INFO - services.orthanc_client - Orthanc returned instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-23 09:50:26,416 - INFO - api.upload - File uploaded to Orthanc. Instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-23 09:50:26,416 - INFO - services.orthanc_client - Fetching tags for instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-23 09:50:26,435 - INFO - services.orthanc_client - Fetched tags for instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4 from Orthanc
+2025-08-23 09:50:26,435 - INFO - api.upload - Retrieved tags from Orthanc for instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-23 09:50:26,435 - INFO - api.upload - Extracted Patient ID: 0, Study Date: ['Unknown']
+2025-08-23 09:50:26,438 - ERROR - api.upload - Upload failed: (sqlite3.ProgrammingError) Error binding parameter 4: type 'list' is not supported
+[SQL: INSERT INTO studies (instance_id, patient_id, study_uid, study_date, file_path, uploaded_at) VALUES (?, ?, ?, ?, ?, ?)]
+[parameters: ('6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4', '0', '1.2.826.0.1.3680043.8.1055.1.20111103112244831.40200514.30965937', ['Unknown'], 'uploads/20250823095026_image-00000.dcm', '2025-08-23 07:50:26.438351')]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-08-23 09:50:27,182 - INFO - api.upload - File saved locally at uploads/20250823095027_image-00000.dcm
+2025-08-23 09:50:27,183 - INFO - services.orthanc_client - Sending DICOM file to Orthanc: uploads/20250823095027_image-00000.dcm
+2025-08-23 09:50:27,231 - INFO - services.orthanc_client - Orthanc returned instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-23 09:50:27,231 - INFO - api.upload - File uploaded to Orthanc. Instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-23 09:50:27,231 - INFO - services.orthanc_client - Fetching tags for instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-23 09:50:27,246 - INFO - services.orthanc_client - Fetched tags for instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4 from Orthanc
+2025-08-23 09:50:27,247 - INFO - api.upload - Retrieved tags from Orthanc for instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-23 09:50:27,247 - INFO - api.upload - Extracted Patient ID: 0, Study Date: ['Unknown']
+2025-08-23 09:50:27,251 - ERROR - api.upload - Upload failed: (sqlite3.ProgrammingError) Error binding parameter 4: type 'list' is not supported
+[SQL: INSERT INTO studies (instance_id, patient_id, study_uid, study_date, file_path, uploaded_at) VALUES (?, ?, ?, ?, ?, ?)]
+[parameters: ('6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4', '0', '1.2.826.0.1.3680043.8.1055.1.20111103112244831.40200514.30965937', ['Unknown'], 'uploads/20250823095027_image-00000.dcm', '2025-08-23 07:50:27.250654')]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-08-23 09:50:27,814 - INFO - api.upload - File saved locally at uploads/20250823095027_image-00000.dcm
+2025-08-23 09:50:27,814 - INFO - services.orthanc_client - Sending DICOM file to Orthanc: uploads/20250823095027_image-00000.dcm
+2025-08-23 09:50:27,850 - INFO - services.orthanc_client - Orthanc returned instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-23 09:50:27,850 - INFO - api.upload - File uploaded to Orthanc. Instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-23 09:50:27,851 - INFO - services.orthanc_client - Fetching tags for instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-23 09:50:27,860 - INFO - services.orthanc_client - Fetched tags for instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4 from Orthanc
+2025-08-23 09:50:27,860 - INFO - api.upload - Retrieved tags from Orthanc for instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-23 09:50:27,860 - INFO - api.upload - Extracted Patient ID: 0, Study Date: ['Unknown']
+2025-08-23 09:50:27,862 - ERROR - api.upload - Upload failed: (sqlite3.ProgrammingError) Error binding parameter 4: type 'list' is not supported
+[SQL: INSERT INTO studies (instance_id, patient_id, study_uid, study_date, file_path, uploaded_at) VALUES (?, ?, ?, ?, ?, ?)]
+[parameters: ('6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4', '0', '1.2.826.0.1.3680043.8.1055.1.20111103112244831.40200514.30965937', ['Unknown'], 'uploads/20250823095027_image-00000.dcm', '2025-08-23 07:50:27.862351')]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-08-23 10:21:18,537 - INFO - main - Health check endpoint hit.
+2025-08-23 10:22:26,435 - INFO - api.upload - File saved locally at uploads/20250823102226_image-00000.dcm
+2025-08-23 10:22:26,443 - INFO - services.orthanc_client - Sending DICOM file to Orthanc: uploads/20250823102226_image-00000.dcm
+2025-08-23 10:22:26,610 - INFO - services.orthanc_client - Orthanc returned instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-23 10:22:26,611 - INFO - api.upload - File uploaded to Orthanc. Instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-23 10:22:26,611 - INFO - services.orthanc_client - Fetching tags for instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-23 10:22:26,627 - INFO - services.orthanc_client - Fetched tags for instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4 from Orthanc
+2025-08-23 10:22:26,627 - INFO - api.upload - Retrieved tags from Orthanc for instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-23 10:22:26,628 - INFO - api.upload - Extracted Patient ID: 0, Study Date: ['Unknown']
+2025-08-23 10:22:26,840 - ERROR - api.upload - Upload failed: (sqlite3.ProgrammingError) Error binding parameter 4: type 'list' is not supported
+[SQL: INSERT INTO studies (instance_id, patient_id, study_uid, study_date, file_path, uploaded_at) VALUES (?, ?, ?, ?, ?, ?)]
+[parameters: ('6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4', '0', '1.2.826.0.1.3680043.8.1055.1.20111103112244831.40200514.30965937', ['Unknown'], 'uploads/20250823102226_image-00000.dcm', '2025-08-23 08:22:26.837772')]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-08-23 10:22:45,514 - INFO - api.upload - File saved locally at uploads/20250823102245_image-00000.dcm
+2025-08-23 10:22:45,514 - INFO - services.orthanc_client - Sending DICOM file to Orthanc: uploads/20250823102245_image-00000.dcm
+2025-08-23 10:22:45,534 - INFO - services.orthanc_client - Orthanc returned instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-23 10:22:45,534 - INFO - api.upload - File uploaded to Orthanc. Instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-23 10:22:45,534 - INFO - services.orthanc_client - Fetching tags for instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-23 10:22:45,542 - INFO - services.orthanc_client - Fetched tags for instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4 from Orthanc
+2025-08-23 10:22:45,543 - INFO - api.upload - Retrieved tags from Orthanc for instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-23 10:22:45,543 - INFO - api.upload - Extracted Patient ID: 0, Study Date: ['Unknown']
+2025-08-23 10:22:45,547 - ERROR - api.upload - Upload failed: (sqlite3.ProgrammingError) Error binding parameter 4: type 'list' is not supported
+[SQL: INSERT INTO studies (instance_id, patient_id, study_uid, study_date, file_path, uploaded_at) VALUES (?, ?, ?, ?, ?, ?)]
+[parameters: ('6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4', '0', '1.2.826.0.1.3680043.8.1055.1.20111103112244831.40200514.30965937', ['Unknown'], 'uploads/20250823102245_image-00000.dcm', '2025-08-23 08:22:45.547235')]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+2025-08-23 10:43:27,754 - INFO - main - Health check endpoint hit.
+2025-08-23 10:43:48,665 - INFO - api.upload - File saved locally at uploads/20250823104348_image-00000.dcm
+2025-08-23 10:43:48,666 - INFO - services.orthanc_client - Sending DICOM file to Orthanc: uploads/20250823104348_image-00000.dcm
+2025-08-23 10:43:48,751 - INFO - services.orthanc_client - Orthanc returned instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-23 10:43:48,752 - INFO - api.upload - File uploaded to Orthanc. Instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-23 10:43:48,752 - INFO - services.orthanc_client - Fetching tags for instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-23 10:43:48,764 - INFO - services.orthanc_client - Fetched tags for instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4 from Orthanc
+2025-08-23 10:43:48,764 - INFO - api.upload - Retrieved tags from Orthanc for instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-23 10:43:48,764 - INFO - api.upload - Extracted Patient ID: 0, Study Date: , Study UID: 1.2.826.0.1.3680043.8.1055.1.20111103112244831.40200514.30965937
+2025-08-23 10:43:48,820 - INFO - api.upload - Study saved to database. Instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-23 10:44:02,225 - INFO - api.infer - [EF] infer_ef called with instance_id=None study_uid=1.2.826.0.1.3680043.8.1055.1.20111103112244831.40200514.30965937
+2025-08-23 10:44:02,225 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=1.2.826.0.1.3680043.8.1055.1.20111103112244831.40200514.30965937
+2025-08-23 10:44:02,295 - INFO - api.infer - [EF] Found 1 instance(s) in the study
+2025-08-23 10:44:02,295 - INFO - api.infer - [EF] Using instance_id=6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4 from study
+2025-08-23 10:44:02,296 - INFO - api.infer - [EF] Picking frames from instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-23 10:44:02,304 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-23 10:44:02,497 - ERROR - api.infer - [EF] EF inference failed: HTTPError: 404 Client Error: Not Found for url: http://localhost:8042/instances/6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4/frames/1/rendered
+Traceback (most recent call last):
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 118, in infer_ef
+    frames = pick_frames_from_instance(instance_id, 16)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 57, in pick_frames_from_instance
+    resp.raise_for_status()
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/requests/models.py", line 1026, in raise_for_status
+    raise HTTPError(http_error_msg, response=self)
+requests.exceptions.HTTPError: 404 Client Error: Not Found for url: http://localhost:8042/instances/6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4/frames/1/rendered
+2025-08-23 11:42:20,769 - INFO - api.upload - File saved locally at uploads/20250823114220_image-00000.dcm
+2025-08-23 11:42:20,772 - INFO - services.orthanc_client - Sending DICOM file to Orthanc: uploads/20250823114220_image-00000.dcm
+2025-08-23 11:42:21,018 - INFO - services.orthanc_client - Orthanc returned instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-23 11:42:21,018 - INFO - api.upload - File uploaded to Orthanc. Instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-23 11:42:21,019 - INFO - services.orthanc_client - Fetching tags for instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-23 11:42:21,033 - INFO - services.orthanc_client - Fetched tags for instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4 from Orthanc
+2025-08-23 11:42:21,033 - INFO - api.upload - Retrieved tags from Orthanc for instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-23 11:42:21,033 - INFO - api.upload - Extracted Patient ID: 0, Study Date: , Study UID: 1.2.826.0.1.3680043.8.1055.1.20111103112244831.40200514.30965937
+2025-08-23 11:42:21,129 - WARNING - api.upload - Duplicate instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4. Skipping insert.
+2025-08-23 11:42:25,217 - INFO - api.infer - [EF] infer_ef called with instance_id=None study_uid=1.2.826.0.1.3680043.8.1055.1.20111103112244831.40200514.30965937
+2025-08-23 11:42:25,217 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=1.2.826.0.1.3680043.8.1055.1.20111103112244831.40200514.30965937
+2025-08-23 11:42:25,270 - INFO - api.infer - [EF] Found 1 instance(s) in the study
+2025-08-23 11:42:25,270 - INFO - api.infer - [EF] Using instance_id=6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4 from study
+2025-08-23 11:42:25,270 - INFO - api.infer - [EF] Picking frames from instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-23 11:42:25,286 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-23 11:42:25,305 - ERROR - api.infer - [EF] EF inference failed: HTTPError: 404 Client Error: Not Found for url: http://localhost:8042/instances/6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4/frames/1/rendered
+Traceback (most recent call last):
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 118, in infer_ef
+    frames = pick_frames_from_instance(instance_id, 16)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 57, in pick_frames_from_instance
+    resp.raise_for_status()
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/requests/models.py", line 1026, in raise_for_status
+    raise HTTPError(http_error_msg, response=self)
+requests.exceptions.HTTPError: 404 Client Error: Not Found for url: http://localhost:8042/instances/6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4/frames/1/rendered
+2025-08-23 12:37:16,966 - INFO - api.upload - File saved locally at uploads/20250823123716_image-00000.dcm
+2025-08-23 12:37:16,968 - INFO - services.orthanc_client - Sending DICOM file to Orthanc: uploads/20250823123716_image-00000.dcm
+2025-08-23 12:37:17,068 - INFO - services.orthanc_client - Orthanc returned instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-23 12:37:17,069 - INFO - api.upload - File uploaded to Orthanc. Instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-23 12:37:17,069 - INFO - services.orthanc_client - Fetching tags for instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-23 12:37:17,082 - INFO - services.orthanc_client - Fetched tags for instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4 from Orthanc
+2025-08-23 12:37:17,082 - INFO - api.upload - Retrieved tags from Orthanc for instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-23 12:37:17,083 - INFO - api.upload - Extracted Patient ID: 0, Study Date: , Study UID: 1.2.826.0.1.3680043.8.1055.1.20111103112244831.40200514.30965937
+2025-08-23 12:37:17,114 - WARNING - api.upload - Duplicate instance ID: 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4. Skipping insert.
+2025-08-23 12:37:20,831 - INFO - api.infer - [EF] infer_ef called with instance_id=None study_uid=1.2.826.0.1.3680043.8.1055.1.20111103112244831.40200514.30965937
+2025-08-23 12:37:20,831 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=1.2.826.0.1.3680043.8.1055.1.20111103112244831.40200514.30965937
+2025-08-23 12:37:20,868 - INFO - api.infer - [EF] Found 1 instance(s) in the study
+2025-08-23 12:37:20,868 - INFO - api.infer - [EF] Using instance_id=6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4 from study
+2025-08-23 12:37:20,868 - INFO - api.infer - [EF] Picking frames from instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-23 12:37:20,876 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-23 12:37:20,934 - ERROR - api.infer - [EF] EF inference failed: HTTPError: 404 Client Error: Not Found for url: http://localhost:8042/instances/6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4/frames/1/rendered
+Traceback (most recent call last):
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 118, in infer_ef
+    frames = pick_frames_from_instance(instance_id, 16)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 57, in pick_frames_from_instance
+    resp.raise_for_status()
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/requests/models.py", line 1026, in raise_for_status
+    raise HTTPError(http_error_msg, response=self)
+requests.exceptions.HTTPError: 404 Client Error: Not Found for url: http://localhost:8042/instances/6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4/frames/1/rendered
+2025-08-23 12:37:20,982 - INFO - api.infer - [EF] infer_ef called with instance_id=None study_uid=1.2.826.0.1.3680043.8.1055.1.20111103112244831.40200514.30965937
+2025-08-23 12:37:20,982 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=1.2.826.0.1.3680043.8.1055.1.20111103112244831.40200514.30965937
+2025-08-23 12:37:21,028 - INFO - api.infer - [EF] Found 1 instance(s) in the study
+2025-08-23 12:37:21,028 - INFO - api.infer - [EF] Using instance_id=6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4 from study
+2025-08-23 12:37:21,028 - INFO - api.infer - [EF] Picking frames from instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-23 12:37:21,037 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-23 12:37:21,046 - ERROR - api.infer - [EF] EF inference failed: HTTPError: 404 Client Error: Not Found for url: http://localhost:8042/instances/6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4/frames/1/rendered
+Traceback (most recent call last):
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 118, in infer_ef
+    frames = pick_frames_from_instance(instance_id, 16)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 57, in pick_frames_from_instance
+    resp.raise_for_status()
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/requests/models.py", line 1026, in raise_for_status
+    raise HTTPError(http_error_msg, response=self)
+requests.exceptions.HTTPError: 404 Client Error: Not Found for url: http://localhost:8042/instances/6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4/frames/1/rendered
+2025-08-23 12:37:21,051 - INFO - api.infer - [EF] infer_ef called with instance_id=None study_uid=1.2.826.0.1.3680043.8.1055.1.20111103112244831.40200514.30965937
+2025-08-23 12:37:21,051 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=1.2.826.0.1.3680043.8.1055.1.20111103112244831.40200514.30965937
+2025-08-23 12:37:21,082 - INFO - api.infer - [EF] Found 1 instance(s) in the study
+2025-08-23 12:37:21,082 - INFO - api.infer - [EF] Using instance_id=6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4 from study
+2025-08-23 12:37:21,082 - INFO - api.infer - [EF] Picking frames from instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-23 12:37:21,103 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-23 12:37:21,251 - ERROR - api.infer - [EF] EF inference failed: HTTPError: 404 Client Error: Not Found for url: http://localhost:8042/instances/6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4/frames/1/rendered
+Traceback (most recent call last):
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 118, in infer_ef
+    frames = pick_frames_from_instance(instance_id, 16)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 57, in pick_frames_from_instance
+    resp.raise_for_status()
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/requests/models.py", line 1026, in raise_for_status
+    raise HTTPError(http_error_msg, response=self)
+requests.exceptions.HTTPError: 404 Client Error: Not Found for url: http://localhost:8042/instances/6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4/frames/1/rendered
+2025-08-23 13:02:42,361 - INFO - api.infer - [EF] infer_ef called with instance_id=None study_uid=1.2.826.0.1.3680043.8.1055.1.20111103112244831.40200514.30965937
+2025-08-23 13:02:42,363 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=1.2.826.0.1.3680043.8.1055.1.20111103112244831.40200514.30965937
+2025-08-23 13:02:42,528 - INFO - api.infer - [EF] Found 1 instance(s) in the study
+2025-08-23 13:02:42,528 - INFO - api.infer - [EF] Using instance_id=6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4 from study
+2025-08-23 13:02:42,528 - INFO - api.infer - [EF] Picking frames from instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-23 13:02:42,575 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-23 13:02:42,592 - ERROR - api.infer - [EF] EF inference failed: HTTPError: 404 Client Error: Not Found for url: http://localhost:8042/instances/6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4/frames/1/rendered
+Traceback (most recent call last):
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 118, in infer_ef
+    frames = pick_frames_from_instance(instance_id, 16)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 57, in pick_frames_from_instance
+    resp.raise_for_status()
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/requests/models.py", line 1026, in raise_for_status
+    raise HTTPError(http_error_msg, response=self)
+requests.exceptions.HTTPError: 404 Client Error: Not Found for url: http://localhost:8042/instances/6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4/frames/1/rendered
+2025-08-23 13:02:42,609 - INFO - api.infer - [EF] infer_ef called with instance_id=None study_uid=1.2.826.0.1.3680043.8.1055.1.20111103112244831.40200514.30965937
+2025-08-23 13:02:42,609 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=1.2.826.0.1.3680043.8.1055.1.20111103112244831.40200514.30965937
+2025-08-23 13:02:42,654 - INFO - api.infer - [EF] Found 1 instance(s) in the study
+2025-08-23 13:02:42,655 - INFO - api.infer - [EF] Using instance_id=6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4 from study
+2025-08-23 13:02:42,656 - INFO - api.infer - [EF] Picking frames from instance 6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4
+2025-08-23 13:02:42,667 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-23 13:02:42,682 - ERROR - api.infer - [EF] EF inference failed: HTTPError: 404 Client Error: Not Found for url: http://localhost:8042/instances/6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4/frames/1/rendered
+Traceback (most recent call last):
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 118, in infer_ef
+    frames = pick_frames_from_instance(instance_id, 16)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 57, in pick_frames_from_instance
+    resp.raise_for_status()
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/requests/models.py", line 1026, in raise_for_status
+    raise HTTPError(http_error_msg, response=self)
+requests.exceptions.HTTPError: 404 Client Error: Not Found for url: http://localhost:8042/instances/6e812090-6c95fbbe-c82f3b75-da2fff30-bff9f8f4/frames/1/rendered
+2025-08-23 13:03:42,510 - INFO - api.upload - File saved locally at uploads/20250823130342_0020.DCM
+2025-08-23 13:03:42,512 - INFO - services.orthanc_client - Sending DICOM file to Orthanc: uploads/20250823130342_0020.DCM
+2025-08-23 13:03:42,550 - INFO - services.orthanc_client - Orthanc returned instance ID: 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-23 13:03:42,551 - INFO - api.upload - File uploaded to Orthanc. Instance ID: 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-23 13:03:42,551 - INFO - services.orthanc_client - Fetching tags for instance ID: 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-23 13:03:42,562 - INFO - services.orthanc_client - Fetched tags for instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d from Orthanc
+2025-08-23 13:03:42,562 - INFO - api.upload - Retrieved tags from Orthanc for instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-23 13:03:42,563 - INFO - api.upload - Extracted Patient ID: 123-45-6789, Study Date: 19940323, Study UID: 999.999.3859744
+2025-08-23 13:03:42,582 - WARNING - api.upload - Duplicate instance ID: 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d. Skipping insert.
+2025-08-23 13:03:48,409 - INFO - api.infer - [EF] infer_ef called with instance_id=None study_uid=999.999.3859744
+2025-08-23 13:03:48,409 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=999.999.3859744
+2025-08-23 13:03:48,433 - INFO - api.infer - [EF] Found 1 instance(s) in the study
+2025-08-23 13:03:48,433 - INFO - api.infer - [EF] Using instance_id=1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d from study
+2025-08-23 13:03:48,433 - INFO - api.infer - [EF] Picking frames from instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-23 13:03:48,441 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-23 13:03:49,830 - INFO - api.infer - [EF] Collected 16 frame(s)
+2025-08-23 13:03:49,830 - INFO - api.infer - [EF] Stacking frames into tensor and ImageNet-normalizing
+2025-08-23 13:03:50,154 - INFO - api.infer - [EF] Tensor shape: (1, 3, 16, 224, 224) dtype=torch.float32
+2025-08-23 13:03:50,157 - INFO - api.infer - [EF] Loading PanEcho model on device: cpu
+2025-08-23 13:03:54,070 - ERROR - api.infer - [EF] Failed to load PanEcho via torch.hub: No module named 'pandas'
+2025-08-23 13:03:54,070 - ERROR - api.infer - [EF] EF inference failed: ModuleNotFoundError: No module named 'pandas'
+Traceback (most recent call last):
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 120, in infer_ef
+    model, device = get_model_and_device()
+                    ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 89, in get_model_and_device
+    _model = torch.hub.load(
+             ^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 566, in load
+    model = _load_local(repo_or_dir, model, *args, **kwargs)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 592, in _load_local
+    hub_module = _import_module(MODULE_HUBCONF, hubconf_path)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 106, in _import_module
+    spec.loader.exec_module(module)
+  File "<frozen importlib._bootstrap_external>", line 940, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/Users/mohamedkhatib/.cache/torch/hub/CarDS-Yale_PanEcho_main/hubconf.py", line 4, in <module>
+    import pandas as pd
+ModuleNotFoundError: No module named 'pandas'
+2025-08-23 13:03:54,125 - INFO - api.infer - [EF] infer_ef called with instance_id=None study_uid=999.999.3859744
+2025-08-23 13:03:54,144 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=999.999.3859744
+2025-08-23 13:03:54,323 - INFO - api.infer - [EF] Found 1 instance(s) in the study
+2025-08-23 13:03:55,670 - INFO - api.infer - [EF] Using instance_id=1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d from study
+2025-08-23 13:03:55,670 - INFO - api.infer - [EF] Picking frames from instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-23 13:03:55,676 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-23 13:03:56,277 - INFO - api.infer - [EF] Collected 16 frame(s)
+2025-08-23 13:03:56,278 - INFO - api.infer - [EF] Stacking frames into tensor and ImageNet-normalizing
+2025-08-23 13:03:56,332 - INFO - api.infer - [EF] Tensor shape: (1, 3, 16, 224, 224) dtype=torch.float32
+2025-08-23 13:03:56,333 - INFO - api.infer - [EF] Loading PanEcho model on device: cpu
+2025-08-23 13:03:56,622 - ERROR - api.infer - [EF] Failed to load PanEcho via torch.hub: No module named 'pandas'
+2025-08-23 13:03:56,624 - ERROR - api.infer - [EF] EF inference failed: ModuleNotFoundError: No module named 'pandas'
+Traceback (most recent call last):
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 120, in infer_ef
+    model, device = get_model_and_device()
+                    ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 89, in get_model_and_device
+    _model = torch.hub.load(
+             ^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 566, in load
+    model = _load_local(repo_or_dir, model, *args, **kwargs)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 592, in _load_local
+    hub_module = _import_module(MODULE_HUBCONF, hubconf_path)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 106, in _import_module
+    spec.loader.exec_module(module)
+  File "<frozen importlib._bootstrap_external>", line 940, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/Users/mohamedkhatib/.cache/torch/hub/CarDS-Yale_PanEcho_main/hubconf.py", line 4, in <module>
+    import pandas as pd
+ModuleNotFoundError: No module named 'pandas'
+2025-08-23 13:03:56,726 - INFO - api.infer - [EF] infer_ef called with instance_id=None study_uid=999.999.3859744
+2025-08-23 13:03:56,774 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=999.999.3859744
+2025-08-23 13:03:56,795 - INFO - api.infer - [EF] Found 1 instance(s) in the study
+2025-08-23 13:03:56,797 - INFO - api.infer - [EF] Using instance_id=1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d from study
+2025-08-23 13:03:56,797 - INFO - api.infer - [EF] Picking frames from instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-23 13:03:56,804 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-23 13:03:57,433 - INFO - api.infer - [EF] Collected 16 frame(s)
+2025-08-23 13:03:57,434 - INFO - api.infer - [EF] Stacking frames into tensor and ImageNet-normalizing
+2025-08-23 13:03:57,483 - INFO - api.infer - [EF] Tensor shape: (1, 3, 16, 224, 224) dtype=torch.float32
+2025-08-23 13:03:57,483 - INFO - api.infer - [EF] Loading PanEcho model on device: cpu
+2025-08-23 13:03:57,680 - ERROR - api.infer - [EF] Failed to load PanEcho via torch.hub: No module named 'pandas'
+2025-08-23 13:03:57,680 - ERROR - api.infer - [EF] EF inference failed: ModuleNotFoundError: No module named 'pandas'
+Traceback (most recent call last):
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 120, in infer_ef
+    model, device = get_model_and_device()
+                    ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 89, in get_model_and_device
+    _model = torch.hub.load(
+             ^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 566, in load
+    model = _load_local(repo_or_dir, model, *args, **kwargs)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 592, in _load_local
+    hub_module = _import_module(MODULE_HUBCONF, hubconf_path)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 106, in _import_module
+    spec.loader.exec_module(module)
+  File "<frozen importlib._bootstrap_external>", line 940, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/Users/mohamedkhatib/.cache/torch/hub/CarDS-Yale_PanEcho_main/hubconf.py", line 4, in <module>
+    import pandas as pd
+ModuleNotFoundError: No module named 'pandas'
+2025-08-23 13:05:39,367 - INFO - api.infer - [EF] infer_ef called with instance_id=None study_uid=999.999.3859744
+2025-08-23 13:05:39,380 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=999.999.3859744
+2025-08-23 13:05:39,575 - INFO - api.infer - [EF] Found 1 instance(s) in the study
+2025-08-23 13:05:39,575 - INFO - api.infer - [EF] Using instance_id=1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d from study
+2025-08-23 13:05:39,576 - INFO - api.infer - [EF] Picking frames from instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-23 13:05:39,584 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-23 13:05:40,973 - INFO - api.infer - [EF] Collected 16 frame(s)
+2025-08-23 13:05:40,973 - INFO - api.infer - [EF] Stacking frames into tensor and ImageNet-normalizing
+2025-08-23 13:05:41,027 - INFO - api.infer - [EF] Tensor shape: (1, 3, 16, 224, 224) dtype=torch.float32
+2025-08-23 13:05:41,028 - INFO - api.infer - [EF] Loading PanEcho model on device: cpu
+2025-08-23 13:05:44,373 - ERROR - api.infer - [EF] Failed to load PanEcho via torch.hub: No module named 'pandas'
+2025-08-23 13:05:44,374 - ERROR - api.infer - [EF] EF inference failed: ModuleNotFoundError: No module named 'pandas'
+Traceback (most recent call last):
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 120, in infer_ef
+    model, device = get_model_and_device()
+                    ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 89, in get_model_and_device
+    _model = torch.hub.load(
+             ^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 566, in load
+    model = _load_local(repo_or_dir, model, *args, **kwargs)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 592, in _load_local
+    hub_module = _import_module(MODULE_HUBCONF, hubconf_path)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 106, in _import_module
+    spec.loader.exec_module(module)
+  File "<frozen importlib._bootstrap_external>", line 940, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/Users/mohamedkhatib/.cache/torch/hub/CarDS-Yale_PanEcho_main/hubconf.py", line 4, in <module>
+    import pandas as pd
+ModuleNotFoundError: No module named 'pandas'
+2025-08-23 13:05:44,415 - INFO - api.infer - [EF] infer_ef called with instance_id=None study_uid=999.999.3859744
+2025-08-23 13:05:44,415 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=999.999.3859744
+2025-08-23 13:05:44,488 - INFO - api.infer - [EF] Found 1 instance(s) in the study
+2025-08-23 13:05:44,488 - INFO - api.infer - [EF] Using instance_id=1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d from study
+2025-08-23 13:05:44,488 - INFO - api.infer - [EF] Picking frames from instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-23 13:05:44,494 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-23 13:05:45,018 - INFO - api.infer - [EF] Collected 16 frame(s)
+2025-08-23 13:05:45,019 - INFO - api.infer - [EF] Stacking frames into tensor and ImageNet-normalizing
+2025-08-23 13:05:45,059 - INFO - api.infer - [EF] Tensor shape: (1, 3, 16, 224, 224) dtype=torch.float32
+2025-08-23 13:05:45,060 - INFO - api.infer - [EF] Loading PanEcho model on device: cpu
+2025-08-23 13:05:45,280 - ERROR - api.infer - [EF] Failed to load PanEcho via torch.hub: No module named 'pandas'
+2025-08-23 13:05:45,280 - ERROR - api.infer - [EF] EF inference failed: ModuleNotFoundError: No module named 'pandas'
+Traceback (most recent call last):
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 120, in infer_ef
+    model, device = get_model_and_device()
+                    ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 89, in get_model_and_device
+    _model = torch.hub.load(
+             ^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 566, in load
+    model = _load_local(repo_or_dir, model, *args, **kwargs)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 592, in _load_local
+    hub_module = _import_module(MODULE_HUBCONF, hubconf_path)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 106, in _import_module
+    spec.loader.exec_module(module)
+  File "<frozen importlib._bootstrap_external>", line 940, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/Users/mohamedkhatib/.cache/torch/hub/CarDS-Yale_PanEcho_main/hubconf.py", line 4, in <module>
+    import pandas as pd
+ModuleNotFoundError: No module named 'pandas'
+2025-08-23 13:06:06,424 - INFO - api.infer - [EF] infer_ef called with instance_id=None study_uid=999.999.3859744
+2025-08-23 13:06:06,462 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=999.999.3859744
+2025-08-23 13:06:06,519 - INFO - api.infer - [EF] Found 1 instance(s) in the study
+2025-08-23 13:06:06,520 - INFO - api.infer - [EF] Using instance_id=1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d from study
+2025-08-23 13:06:06,520 - INFO - api.infer - [EF] Picking frames from instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-23 13:06:06,527 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-23 13:06:07,655 - INFO - api.infer - [EF] Collected 16 frame(s)
+2025-08-23 13:06:07,656 - INFO - api.infer - [EF] Stacking frames into tensor and ImageNet-normalizing
+2025-08-23 13:06:07,698 - INFO - api.infer - [EF] Tensor shape: (1, 3, 16, 224, 224) dtype=torch.float32
+2025-08-23 13:06:07,699 - INFO - api.infer - [EF] Loading PanEcho model on device: cpu
+2025-08-23 13:06:09,741 - ERROR - api.infer - [EF] Failed to load PanEcho via torch.hub: No module named 'pandas'
+2025-08-23 13:06:09,741 - ERROR - api.infer - [EF] EF inference failed: ModuleNotFoundError: No module named 'pandas'
+Traceback (most recent call last):
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 120, in infer_ef
+    model, device = get_model_and_device()
+                    ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 89, in get_model_and_device
+    _model = torch.hub.load(
+             ^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 566, in load
+    model = _load_local(repo_or_dir, model, *args, **kwargs)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 592, in _load_local
+    hub_module = _import_module(MODULE_HUBCONF, hubconf_path)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 106, in _import_module
+    spec.loader.exec_module(module)
+  File "<frozen importlib._bootstrap_external>", line 940, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/Users/mohamedkhatib/.cache/torch/hub/CarDS-Yale_PanEcho_main/hubconf.py", line 4, in <module>
+    import pandas as pd
+ModuleNotFoundError: No module named 'pandas'
+2025-08-23 13:06:09,750 - INFO - api.infer - [EF] infer_ef called with instance_id=None study_uid=999.999.3859744
+2025-08-23 13:06:09,750 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=999.999.3859744
+2025-08-23 13:06:09,777 - INFO - api.infer - [EF] Found 1 instance(s) in the study
+2025-08-23 13:06:09,777 - INFO - api.infer - [EF] Using instance_id=1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d from study
+2025-08-23 13:06:09,777 - INFO - api.infer - [EF] Picking frames from instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-23 13:06:09,783 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-23 13:06:10,333 - INFO - api.infer - [EF] Collected 16 frame(s)
+2025-08-23 13:06:10,333 - INFO - api.infer - [EF] Stacking frames into tensor and ImageNet-normalizing
+2025-08-23 13:06:10,375 - INFO - api.infer - [EF] Tensor shape: (1, 3, 16, 224, 224) dtype=torch.float32
+2025-08-23 13:06:10,375 - INFO - api.infer - [EF] Loading PanEcho model on device: cpu
+2025-08-23 13:06:11,080 - ERROR - api.infer - [EF] Failed to load PanEcho via torch.hub: No module named 'pandas'
+2025-08-23 13:06:11,080 - ERROR - api.infer - [EF] EF inference failed: ModuleNotFoundError: No module named 'pandas'
+Traceback (most recent call last):
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 120, in infer_ef
+    model, device = get_model_and_device()
+                    ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 89, in get_model_and_device
+    _model = torch.hub.load(
+             ^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 566, in load
+    model = _load_local(repo_or_dir, model, *args, **kwargs)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 592, in _load_local
+    hub_module = _import_module(MODULE_HUBCONF, hubconf_path)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 106, in _import_module
+    spec.loader.exec_module(module)
+  File "<frozen importlib._bootstrap_external>", line 940, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/Users/mohamedkhatib/.cache/torch/hub/CarDS-Yale_PanEcho_main/hubconf.py", line 4, in <module>
+    import pandas as pd
+ModuleNotFoundError: No module named 'pandas'
+2025-08-23 13:30:51,843 - INFO - api.infer - [EF] infer_ef called with instance_id=None study_uid=999.999.3859744
+2025-08-23 13:30:51,849 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=999.999.3859744
+2025-08-23 13:30:51,933 - INFO - api.infer - [EF] Found 1 instance(s) in the study
+2025-08-23 13:30:51,934 - INFO - api.infer - [EF] Using instance_id=1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d from study
+2025-08-23 13:30:51,934 - INFO - api.infer - [EF] Picking frames from instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-23 13:30:51,977 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-23 13:30:53,478 - INFO - api.infer - [EF] Collected 16 frame(s)
+2025-08-23 13:30:53,479 - INFO - api.infer - [EF] Stacking frames into tensor and ImageNet-normalizing
+2025-08-23 13:30:53,544 - INFO - api.infer - [EF] Tensor shape: (1, 3, 16, 224, 224) dtype=torch.float32
+2025-08-23 13:30:53,545 - INFO - api.infer - [EF] Loading PanEcho model on device: cpu
+2025-08-23 13:30:54,460 - ERROR - api.infer - [EF] Failed to load PanEcho via torch.hub: No module named 'pandas'
+2025-08-23 13:30:54,460 - ERROR - api.infer - [EF] EF inference failed: ModuleNotFoundError: No module named 'pandas'
+Traceback (most recent call last):
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 120, in infer_ef
+    model, device = get_model_and_device()
+                    ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 89, in get_model_and_device
+    _model = torch.hub.load(
+             ^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 566, in load
+    model = _load_local(repo_or_dir, model, *args, **kwargs)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 592, in _load_local
+    hub_module = _import_module(MODULE_HUBCONF, hubconf_path)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 106, in _import_module
+    spec.loader.exec_module(module)
+  File "<frozen importlib._bootstrap_external>", line 940, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/Users/mohamedkhatib/.cache/torch/hub/CarDS-Yale_PanEcho_main/hubconf.py", line 4, in <module>
+    import pandas as pd
+ModuleNotFoundError: No module named 'pandas'
+2025-08-23 13:30:54,477 - INFO - api.infer - [EF] infer_ef called with instance_id=None study_uid=999.999.3859744
+2025-08-23 13:30:54,477 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=999.999.3859744
+2025-08-23 13:30:54,507 - INFO - api.infer - [EF] Found 1 instance(s) in the study
+2025-08-23 13:30:54,508 - INFO - api.infer - [EF] Using instance_id=1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d from study
+2025-08-23 13:30:54,509 - INFO - api.infer - [EF] Picking frames from instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-23 13:30:54,517 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-23 13:30:55,458 - INFO - api.infer - [EF] Collected 16 frame(s)
+2025-08-23 13:30:55,458 - INFO - api.infer - [EF] Stacking frames into tensor and ImageNet-normalizing
+2025-08-23 13:30:55,518 - INFO - api.infer - [EF] Tensor shape: (1, 3, 16, 224, 224) dtype=torch.float32
+2025-08-23 13:30:55,518 - INFO - api.infer - [EF] Loading PanEcho model on device: cpu
+2025-08-23 13:30:55,741 - ERROR - api.infer - [EF] Failed to load PanEcho via torch.hub: No module named 'pandas'
+2025-08-23 13:30:55,741 - ERROR - api.infer - [EF] EF inference failed: ModuleNotFoundError: No module named 'pandas'
+Traceback (most recent call last):
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 120, in infer_ef
+    model, device = get_model_and_device()
+                    ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 89, in get_model_and_device
+    _model = torch.hub.load(
+             ^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 566, in load
+    model = _load_local(repo_or_dir, model, *args, **kwargs)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 592, in _load_local
+    hub_module = _import_module(MODULE_HUBCONF, hubconf_path)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 106, in _import_module
+    spec.loader.exec_module(module)
+  File "<frozen importlib._bootstrap_external>", line 940, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/Users/mohamedkhatib/.cache/torch/hub/CarDS-Yale_PanEcho_main/hubconf.py", line 4, in <module>
+    import pandas as pd
+ModuleNotFoundError: No module named 'pandas'
+2025-08-23 13:33:24,480 - INFO - api.upload - File saved locally at uploads/20250823133324_0020.DCM
+2025-08-23 13:33:24,482 - INFO - services.orthanc_client - Sending DICOM file to Orthanc: uploads/20250823133324_0020.DCM
+2025-08-23 13:33:24,523 - INFO - services.orthanc_client - Orthanc returned instance ID: 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-23 13:33:24,523 - INFO - api.upload - File uploaded to Orthanc. Instance ID: 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-23 13:33:24,524 - INFO - services.orthanc_client - Fetching tags for instance ID: 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-23 13:33:24,533 - INFO - services.orthanc_client - Fetched tags for instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d from Orthanc
+2025-08-23 13:33:24,534 - INFO - api.upload - Retrieved tags from Orthanc for instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-23 13:33:24,534 - INFO - api.upload - Extracted Patient ID: 123-45-6789, Study Date: 19940323, Study UID: 999.999.3859744
+2025-08-23 13:33:24,571 - WARNING - api.upload - Duplicate instance ID: 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d. Skipping insert.
+2025-08-23 13:33:27,157 - INFO - api.infer - [EF] infer_ef called with instance_id=None study_uid=999.999.3859744
+2025-08-23 13:33:27,158 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=999.999.3859744
+2025-08-23 13:33:27,207 - INFO - api.infer - [EF] Found 1 instance(s) in the study
+2025-08-23 13:33:27,208 - INFO - api.infer - [EF] Using instance_id=1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d from study
+2025-08-23 13:33:27,208 - INFO - api.infer - [EF] Picking frames from instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-23 13:33:27,223 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-23 13:33:28,049 - INFO - api.infer - [EF] Collected 16 frame(s)
+2025-08-23 13:33:28,049 - INFO - api.infer - [EF] Stacking frames into tensor and ImageNet-normalizing
+2025-08-23 13:33:28,094 - INFO - api.infer - [EF] Tensor shape: (1, 3, 16, 224, 224) dtype=torch.float32
+2025-08-23 13:33:28,095 - INFO - api.infer - [EF] Loading PanEcho model on device: cpu
+2025-08-23 13:33:28,789 - ERROR - api.infer - [EF] Failed to load PanEcho via torch.hub: No module named 'pandas'
+2025-08-23 13:33:28,789 - ERROR - api.infer - [EF] EF inference failed: ModuleNotFoundError: No module named 'pandas'
+Traceback (most recent call last):
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 120, in infer_ef
+    model, device = get_model_and_device()
+                    ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 89, in get_model_and_device
+    _model = torch.hub.load(
+             ^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 566, in load
+    model = _load_local(repo_or_dir, model, *args, **kwargs)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 592, in _load_local
+    hub_module = _import_module(MODULE_HUBCONF, hubconf_path)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 106, in _import_module
+    spec.loader.exec_module(module)
+  File "<frozen importlib._bootstrap_external>", line 940, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/Users/mohamedkhatib/.cache/torch/hub/CarDS-Yale_PanEcho_main/hubconf.py", line 4, in <module>
+    import pandas as pd
+ModuleNotFoundError: No module named 'pandas'
+2025-08-23 13:33:28,890 - INFO - api.infer - [EF] infer_ef called with instance_id=None study_uid=999.999.3859744
+2025-08-23 13:33:28,891 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=999.999.3859744
+2025-08-23 13:33:28,914 - INFO - api.infer - [EF] Found 1 instance(s) in the study
+2025-08-23 13:33:28,914 - INFO - api.infer - [EF] Using instance_id=1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d from study
+2025-08-23 13:33:28,914 - INFO - api.infer - [EF] Picking frames from instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-23 13:33:28,927 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-23 13:33:29,973 - INFO - api.infer - [EF] Collected 16 frame(s)
+2025-08-23 13:33:29,974 - INFO - api.infer - [EF] Stacking frames into tensor and ImageNet-normalizing
+2025-08-23 13:33:30,079 - INFO - api.infer - [EF] Tensor shape: (1, 3, 16, 224, 224) dtype=torch.float32
+2025-08-23 13:33:30,079 - INFO - api.infer - [EF] Loading PanEcho model on device: cpu
+2025-08-23 13:33:30,371 - ERROR - api.infer - [EF] Failed to load PanEcho via torch.hub: No module named 'pandas'
+2025-08-23 13:33:30,371 - ERROR - api.infer - [EF] EF inference failed: ModuleNotFoundError: No module named 'pandas'
+Traceback (most recent call last):
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 120, in infer_ef
+    model, device = get_model_and_device()
+                    ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 89, in get_model_and_device
+    _model = torch.hub.load(
+             ^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 566, in load
+    model = _load_local(repo_or_dir, model, *args, **kwargs)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 592, in _load_local
+    hub_module = _import_module(MODULE_HUBCONF, hubconf_path)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 106, in _import_module
+    spec.loader.exec_module(module)
+  File "<frozen importlib._bootstrap_external>", line 940, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/Users/mohamedkhatib/.cache/torch/hub/CarDS-Yale_PanEcho_main/hubconf.py", line 4, in <module>
+    import pandas as pd
+ModuleNotFoundError: No module named 'pandas'
+2025-08-23 13:36:45,100 - INFO - api.infer - [EF] infer_ef called with instance_id=None study_uid=999.999.3859744
+2025-08-23 13:36:45,103 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=999.999.3859744
+2025-08-23 13:36:45,134 - INFO - api.infer - [EF] Found 1 instance(s) in the study
+2025-08-23 13:36:45,134 - INFO - api.infer - [EF] Using instance_id=1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d from study
+2025-08-23 13:36:45,135 - INFO - api.infer - [EF] Picking frames from instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-23 13:36:45,146 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-23 13:36:47,009 - INFO - api.infer - [EF] Collected 16 frame(s)
+2025-08-23 13:36:47,010 - INFO - api.infer - [EF] Stacking frames into tensor and ImageNet-normalizing
+2025-08-23 13:36:47,212 - INFO - api.infer - [EF] Tensor shape: (1, 3, 16, 224, 224) dtype=torch.float32
+2025-08-23 13:36:47,212 - INFO - api.infer - [EF] Loading PanEcho model on device: cpu
+2025-08-23 13:36:48,046 - INFO - api.infer - [EF] infer_ef called with instance_id=None study_uid=999.999.3859744
+2025-08-23 13:36:48,046 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=999.999.3859744
+2025-08-23 13:36:48,110 - INFO - api.infer - [EF] Found 1 instance(s) in the study
+2025-08-23 13:36:48,110 - INFO - api.infer - [EF] Using instance_id=1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d from study
+2025-08-23 13:36:48,111 - INFO - api.infer - [EF] Picking frames from instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-23 13:36:48,132 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-23 13:36:49,061 - ERROR - api.infer - [EF] Failed to load PanEcho via torch.hub: No module named 'pandas'
+2025-08-23 13:36:49,063 - ERROR - api.infer - [EF] EF inference failed: ModuleNotFoundError: No module named 'pandas'
+Traceback (most recent call last):
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 120, in infer_ef
+    model, device = get_model_and_device()
+                    ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 89, in get_model_and_device
+    _model = torch.hub.load(
+             ^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 566, in load
+    model = _load_local(repo_or_dir, model, *args, **kwargs)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 592, in _load_local
+    hub_module = _import_module(MODULE_HUBCONF, hubconf_path)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 106, in _import_module
+    spec.loader.exec_module(module)
+  File "<frozen importlib._bootstrap_external>", line 940, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/Users/mohamedkhatib/.cache/torch/hub/CarDS-Yale_PanEcho_main/hubconf.py", line 4, in <module>
+    import pandas as pd
+ModuleNotFoundError: No module named 'pandas'
+2025-08-23 13:36:49,067 - INFO - api.infer - [EF] Collected 16 frame(s)
+2025-08-23 13:36:49,071 - INFO - api.infer - [EF] Stacking frames into tensor and ImageNet-normalizing
+2025-08-23 13:36:49,260 - INFO - api.infer - [EF] Tensor shape: (1, 3, 16, 224, 224) dtype=torch.float32
+2025-08-23 13:36:49,262 - INFO - api.infer - [EF] Loading PanEcho model on device: cpu
+2025-08-23 13:36:49,624 - ERROR - api.infer - [EF] Failed to load PanEcho via torch.hub: No module named 'pandas'
+2025-08-23 13:36:49,625 - ERROR - api.infer - [EF] EF inference failed: ModuleNotFoundError: No module named 'pandas'
+Traceback (most recent call last):
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 120, in infer_ef
+    model, device = get_model_and_device()
+                    ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 89, in get_model_and_device
+    _model = torch.hub.load(
+             ^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 566, in load
+    model = _load_local(repo_or_dir, model, *args, **kwargs)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 592, in _load_local
+    hub_module = _import_module(MODULE_HUBCONF, hubconf_path)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 106, in _import_module
+    spec.loader.exec_module(module)
+  File "<frozen importlib._bootstrap_external>", line 940, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/Users/mohamedkhatib/.cache/torch/hub/CarDS-Yale_PanEcho_main/hubconf.py", line 4, in <module>
+    import pandas as pd
+ModuleNotFoundError: No module named 'pandas'
+2025-08-23 13:55:25,479 - INFO - api.infer - [EF] infer_ef called with instance_id=None study_uid=999.999.3859744
+2025-08-23 13:55:25,480 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=999.999.3859744
+2025-08-23 13:55:25,527 - INFO - api.infer - [EF] Found 1 instance(s) in the study
+2025-08-23 13:55:25,528 - INFO - api.infer - [EF] Using instance_id=1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d from study
+2025-08-23 13:55:25,528 - INFO - api.infer - [EF] Picking frames from instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-23 13:55:25,538 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-23 13:55:26,682 - INFO - api.infer - [EF] Collected 16 frame(s)
+2025-08-23 13:55:26,682 - INFO - api.infer - [EF] Stacking frames into tensor and ImageNet-normalizing
+2025-08-23 13:55:26,831 - INFO - api.infer - [EF] Tensor shape: (1, 3, 16, 224, 224) dtype=torch.float32
+2025-08-23 13:55:26,831 - INFO - api.infer - [EF] Loading PanEcho model on device: cpu
+2025-08-23 13:55:47,264 - INFO - api.infer - [EF] infer_ef called with instance_id=None study_uid=999.999.3859744
+2025-08-23 13:55:48,288 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=999.999.3859744
+2025-08-23 13:55:52,380 - INFO - api.infer - [EF] Found 1 instance(s) in the study
+2025-08-23 13:55:52,383 - INFO - api.infer - [EF] Using instance_id=1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d from study
+2025-08-23 13:55:52,400 - INFO - api.infer - [EF] Picking frames from instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-23 13:55:52,409 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-23 13:56:10,559 - INFO - api.infer - [EF] Collected 16 frame(s)
+2025-08-23 13:56:10,591 - INFO - api.infer - [EF] Stacking frames into tensor and ImageNet-normalizing
+2025-08-23 13:56:11,497 - INFO - api.infer - [EF] Tensor shape: (1, 3, 16, 224, 224) dtype=torch.float32
+2025-08-23 13:56:11,497 - INFO - api.infer - [EF] Loading PanEcho model on device: cpu
+2025-08-23 13:56:14,758 - ERROR - api.infer - [EF] Failed to load PanEcho via torch.hub: No module named 'timm'
+2025-08-23 13:56:14,759 - ERROR - api.infer - [EF] EF inference failed: ModuleNotFoundError: No module named 'timm'
+Traceback (most recent call last):
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 120, in infer_ef
+    model, device = get_model_and_device()
+                    ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 89, in get_model_and_device
+    _model = torch.hub.load(
+             ^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 566, in load
+    model = _load_local(repo_or_dir, model, *args, **kwargs)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 592, in _load_local
+    hub_module = _import_module(MODULE_HUBCONF, hubconf_path)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 106, in _import_module
+    spec.loader.exec_module(module)
+  File "<frozen importlib._bootstrap_external>", line 940, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/Users/mohamedkhatib/.cache/torch/hub/CarDS-Yale_PanEcho_main/hubconf.py", line 7, in <module>
+    from src.models import FrameTransformer, MultiTaskModel
+  File "/Users/mohamedkhatib/.cache/torch/hub/CarDS-Yale_PanEcho_main/src/models.py", line 3, in <module>
+    import timm
+ModuleNotFoundError: No module named 'timm'
+2025-08-23 13:56:14,760 - ERROR - api.infer - [EF] Failed to load PanEcho via torch.hub: No module named 'timm'
+2025-08-23 13:56:14,767 - ERROR - api.infer - [EF] EF inference failed: ModuleNotFoundError: No module named 'timm'
+Traceback (most recent call last):
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 120, in infer_ef
+    model, device = get_model_and_device()
+                    ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 89, in get_model_and_device
+    _model = torch.hub.load(
+             ^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 566, in load
+    model = _load_local(repo_or_dir, model, *args, **kwargs)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 592, in _load_local
+    hub_module = _import_module(MODULE_HUBCONF, hubconf_path)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 106, in _import_module
+    spec.loader.exec_module(module)
+  File "<frozen importlib._bootstrap_external>", line 940, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/Users/mohamedkhatib/.cache/torch/hub/CarDS-Yale_PanEcho_main/hubconf.py", line 7, in <module>
+    from src.models import FrameTransformer, MultiTaskModel
+  File "/Users/mohamedkhatib/.cache/torch/hub/CarDS-Yale_PanEcho_main/src/models.py", line 3, in <module>
+    import timm
+ModuleNotFoundError: No module named 'timm'
+2025-08-23 14:05:58,909 - INFO - api.infer - [EF] infer_ef called with instance_id=None study_uid=999.999.3859744
+2025-08-23 14:05:58,910 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=999.999.3859744
+2025-08-23 14:05:58,963 - INFO - api.infer - [EF] Found 1 instance(s) in the study
+2025-08-23 14:05:58,963 - INFO - api.infer - [EF] Using instance_id=1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d from study
+2025-08-23 14:05:58,964 - INFO - api.infer - [EF] Picking frames from instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-23 14:05:58,973 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-23 14:05:59,790 - INFO - api.infer - [EF] Collected 16 frame(s)
+2025-08-23 14:05:59,790 - INFO - api.infer - [EF] Stacking frames into tensor and ImageNet-normalizing
+2025-08-23 14:05:59,887 - INFO - api.infer - [EF] Tensor shape: (1, 3, 16, 224, 224) dtype=torch.float32
+2025-08-23 14:05:59,887 - INFO - api.infer - [EF] Loading PanEcho model on device: cpu
+2025-08-23 14:06:06,427 - INFO - api.infer - [EF] infer_ef called with instance_id=None study_uid=999.999.3859744
+2025-08-23 14:06:06,429 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=999.999.3859744
+2025-08-23 14:06:06,456 - INFO - api.infer - [EF] Found 1 instance(s) in the study
+2025-08-23 14:06:06,457 - INFO - api.infer - [EF] Using instance_id=1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d from study
+2025-08-23 14:06:06,457 - INFO - api.infer - [EF] Picking frames from instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-23 14:06:06,463 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-23 14:06:19,011 - INFO - api.infer - [EF] Collected 16 frame(s)
+2025-08-23 14:06:19,012 - INFO - api.infer - [EF] Stacking frames into tensor and ImageNet-normalizing
+2025-08-23 14:06:19,077 - INFO - api.infer - [EF] Tensor shape: (1, 3, 16, 224, 224) dtype=torch.float32
+2025-08-23 14:06:19,078 - INFO - api.infer - [EF] Loading PanEcho model on device: cpu
+2025-08-23 14:12:01,061 - INFO - api.infer - [EF] infer_ef called with instance_id=None study_uid=999.999.3859744
+2025-08-23 14:12:01,104 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=999.999.3859744
+2025-08-23 14:12:01,500 - INFO - api.infer - [EF] Found 1 instance(s) in the study
+2025-08-23 14:12:01,501 - INFO - api.infer - [EF] Using instance_id=1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d from study
+2025-08-23 14:12:01,501 - INFO - api.infer - [EF] Picking frames from instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-23 14:12:01,541 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-23 14:12:03,243 - INFO - api.infer - [EF] Collected 16 frame(s)
+2025-08-23 14:12:03,244 - INFO - api.infer - [EF] Stacking frames into tensor and ImageNet-normalizing
+2025-08-23 14:12:03,339 - INFO - api.infer - [EF] Tensor shape: (1, 3, 16, 224, 224) dtype=torch.float32
+2025-08-23 14:12:03,341 - INFO - api.infer - [EF] Loading PanEcho model on device: cpu
+2025-08-23 14:12:20,932 - INFO - api.infer - [EF] infer_ef called with instance_id=None study_uid=999.999.3859744
+2025-08-23 14:12:20,933 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=999.999.3859744
+2025-08-23 14:12:20,959 - INFO - api.infer - [EF] Found 1 instance(s) in the study
+2025-08-23 14:12:20,959 - INFO - api.infer - [EF] Using instance_id=1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d from study
+2025-08-23 14:12:20,960 - INFO - api.infer - [EF] Picking frames from instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-23 14:12:20,975 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-23 14:12:21,679 - INFO - api.infer - [EF] Collected 16 frame(s)
+2025-08-23 14:12:21,679 - INFO - api.infer - [EF] Stacking frames into tensor and ImageNet-normalizing
+2025-08-23 14:12:21,752 - INFO - api.infer - [EF] Tensor shape: (1, 3, 16, 224, 224) dtype=torch.float32
+2025-08-23 14:12:21,753 - INFO - api.infer - [EF] Loading PanEcho model on device: cpu
+2025-08-23 14:13:09,716 - ERROR - api.infer - [EF] Failed to load PanEcho via torch.hub: PytorchStreamReader failed reading zip archive: failed finding central directory
+2025-08-23 14:13:09,718 - ERROR - api.infer - [EF] EF inference failed: RuntimeError: PytorchStreamReader failed reading zip archive: failed finding central directory
+Traceback (most recent call last):
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 120, in infer_ef
+    model, device = get_model_and_device()
+                    ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 89, in get_model_and_device
+    _model = torch.hub.load(
+             ^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 566, in load
+    model = _load_local(repo_or_dir, model, *args, **kwargs)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 595, in _load_local
+    model = entry(*args, **kwargs)
+            ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/.cache/torch/hub/CarDS-Yale_PanEcho_main/hubconf.py", line 42, in PanEcho
+    weights = torch.hub.load_state_dict_from_url('https://github.com/CarDS-Yale/PanEcho/releases/download/v1.0/panecho.pt', map_location='cpu', progress=False)['weights']
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 770, in load_state_dict_from_url
+    return torch.load(cached_file, map_location=map_location, weights_only=weights_only)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/serialization.py", line 1005, in load
+    with _open_zipfile_reader(opened_file) as opened_zipfile:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/serialization.py", line 457, in __init__
+    super().__init__(torch._C.PyTorchFileReader(name_or_buffer))
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: PytorchStreamReader failed reading zip archive: failed finding central directory
+2025-08-23 14:14:57,896 - INFO - api.upload - File saved locally at uploads/20250823141457_0020.DCM
+2025-08-23 14:14:57,901 - INFO - services.orthanc_client - Sending DICOM file to Orthanc: uploads/20250823141457_0020.DCM
+2025-08-23 14:14:57,985 - INFO - services.orthanc_client - Orthanc returned instance ID: 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-23 14:14:57,985 - INFO - api.upload - File uploaded to Orthanc. Instance ID: 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-23 14:14:57,985 - INFO - services.orthanc_client - Fetching tags for instance ID: 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-23 14:14:57,992 - INFO - services.orthanc_client - Fetched tags for instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d from Orthanc
+2025-08-23 14:14:57,992 - INFO - api.upload - Retrieved tags from Orthanc for instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-23 14:14:57,992 - INFO - api.upload - Extracted Patient ID: 123-45-6789, Study Date: 19940323, Study UID: 999.999.3859744
+2025-08-23 14:14:58,039 - WARNING - api.upload - Duplicate instance ID: 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d. Skipping insert.
+2025-08-23 14:15:04,804 - INFO - api.infer - [EF] infer_ef called with instance_id=None study_uid=999.999.3859744
+2025-08-23 14:15:04,805 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=999.999.3859744
+2025-08-23 14:15:04,822 - INFO - api.infer - [EF] Found 1 instance(s) in the study
+2025-08-23 14:15:04,822 - INFO - api.infer - [EF] Using instance_id=1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d from study
+2025-08-23 14:15:04,822 - INFO - api.infer - [EF] Picking frames from instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-23 14:15:04,828 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-23 14:15:05,612 - INFO - api.infer - [EF] Collected 16 frame(s)
+2025-08-23 14:15:05,613 - INFO - api.infer - [EF] Stacking frames into tensor and ImageNet-normalizing
+2025-08-23 14:15:05,717 - INFO - api.infer - [EF] Tensor shape: (1, 3, 16, 224, 224) dtype=torch.float32
+2025-08-23 14:15:05,718 - INFO - api.infer - [EF] Loading PanEcho model on device: cpu
+2025-08-23 14:15:16,554 - ERROR - api.infer - [EF] Failed to load PanEcho via torch.hub: PytorchStreamReader failed reading zip archive: failed finding central directory
+2025-08-23 14:15:16,554 - ERROR - api.infer - [EF] EF inference failed: RuntimeError: PytorchStreamReader failed reading zip archive: failed finding central directory
+Traceback (most recent call last):
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 120, in infer_ef
+    model, device = get_model_and_device()
+                    ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 89, in get_model_and_device
+    _model = torch.hub.load(
+             ^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 566, in load
+    model = _load_local(repo_or_dir, model, *args, **kwargs)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 595, in _load_local
+    model = entry(*args, **kwargs)
+            ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/.cache/torch/hub/CarDS-Yale_PanEcho_main/hubconf.py", line 42, in PanEcho
+    weights = torch.hub.load_state_dict_from_url('https://github.com/CarDS-Yale/PanEcho/releases/download/v1.0/panecho.pt', map_location='cpu', progress=False)['weights']
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 770, in load_state_dict_from_url
+    return torch.load(cached_file, map_location=map_location, weights_only=weights_only)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/serialization.py", line 1005, in load
+    with _open_zipfile_reader(opened_file) as opened_zipfile:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/serialization.py", line 457, in __init__
+    super().__init__(torch._C.PyTorchFileReader(name_or_buffer))
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: PytorchStreamReader failed reading zip archive: failed finding central directory
+2025-08-23 14:15:16,645 - INFO - api.infer - [EF] infer_ef called with instance_id=None study_uid=999.999.3859744
+2025-08-23 14:15:16,645 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=999.999.3859744
+2025-08-23 14:15:16,921 - INFO - api.infer - [EF] Found 1 instance(s) in the study
+2025-08-23 14:15:16,923 - INFO - api.infer - [EF] Using instance_id=1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d from study
+2025-08-23 14:15:16,923 - INFO - api.infer - [EF] Picking frames from instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-23 14:15:16,942 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-23 14:15:18,257 - INFO - api.infer - [EF] Collected 16 frame(s)
+2025-08-23 14:15:18,257 - INFO - api.infer - [EF] Stacking frames into tensor and ImageNet-normalizing
+2025-08-23 14:15:18,327 - INFO - api.infer - [EF] Tensor shape: (1, 3, 16, 224, 224) dtype=torch.float32
+2025-08-23 14:15:18,327 - INFO - api.infer - [EF] Loading PanEcho model on device: cpu
+2025-08-23 14:15:22,444 - ERROR - api.infer - [EF] Failed to load PanEcho via torch.hub: PytorchStreamReader failed reading zip archive: failed finding central directory
+2025-08-23 14:15:22,445 - ERROR - api.infer - [EF] EF inference failed: RuntimeError: PytorchStreamReader failed reading zip archive: failed finding central directory
+Traceback (most recent call last):
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 120, in infer_ef
+    model, device = get_model_and_device()
+                    ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 89, in get_model_and_device
+    _model = torch.hub.load(
+             ^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 566, in load
+    model = _load_local(repo_or_dir, model, *args, **kwargs)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 595, in _load_local
+    model = entry(*args, **kwargs)
+            ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/.cache/torch/hub/CarDS-Yale_PanEcho_main/hubconf.py", line 42, in PanEcho
+    weights = torch.hub.load_state_dict_from_url('https://github.com/CarDS-Yale/PanEcho/releases/download/v1.0/panecho.pt', map_location='cpu', progress=False)['weights']
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 770, in load_state_dict_from_url
+    return torch.load(cached_file, map_location=map_location, weights_only=weights_only)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/serialization.py", line 1005, in load
+    with _open_zipfile_reader(opened_file) as opened_zipfile:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/serialization.py", line 457, in __init__
+    super().__init__(torch._C.PyTorchFileReader(name_or_buffer))
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: PytorchStreamReader failed reading zip archive: failed finding central directory
+2025-08-23 14:15:22,457 - INFO - api.infer - [EF] infer_ef called with instance_id=None study_uid=999.999.3859744
+2025-08-23 14:15:22,458 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=999.999.3859744
+2025-08-23 14:15:22,475 - INFO - api.infer - [EF] Found 1 instance(s) in the study
+2025-08-23 14:15:22,476 - INFO - api.infer - [EF] Using instance_id=1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d from study
+2025-08-23 14:15:22,494 - INFO - api.infer - [EF] Picking frames from instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-23 14:15:22,501 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-23 14:15:23,529 - INFO - api.infer - [EF] Collected 16 frame(s)
+2025-08-23 14:15:23,530 - INFO - api.infer - [EF] Stacking frames into tensor and ImageNet-normalizing
+2025-08-23 14:15:23,693 - INFO - api.infer - [EF] Tensor shape: (1, 3, 16, 224, 224) dtype=torch.float32
+2025-08-23 14:15:23,693 - INFO - api.infer - [EF] Loading PanEcho model on device: cpu
+2025-08-23 14:15:28,880 - ERROR - api.infer - [EF] Failed to load PanEcho via torch.hub: PytorchStreamReader failed reading zip archive: failed finding central directory
+2025-08-23 14:15:28,880 - ERROR - api.infer - [EF] EF inference failed: RuntimeError: PytorchStreamReader failed reading zip archive: failed finding central directory
+Traceback (most recent call last):
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 120, in infer_ef
+    model, device = get_model_and_device()
+                    ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 89, in get_model_and_device
+    _model = torch.hub.load(
+             ^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 566, in load
+    model = _load_local(repo_or_dir, model, *args, **kwargs)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 595, in _load_local
+    model = entry(*args, **kwargs)
+            ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/.cache/torch/hub/CarDS-Yale_PanEcho_main/hubconf.py", line 42, in PanEcho
+    weights = torch.hub.load_state_dict_from_url('https://github.com/CarDS-Yale/PanEcho/releases/download/v1.0/panecho.pt', map_location='cpu', progress=False)['weights']
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 770, in load_state_dict_from_url
+    return torch.load(cached_file, map_location=map_location, weights_only=weights_only)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/serialization.py", line 1005, in load
+    with _open_zipfile_reader(opened_file) as opened_zipfile:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/serialization.py", line 457, in __init__
+    super().__init__(torch._C.PyTorchFileReader(name_or_buffer))
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: PytorchStreamReader failed reading zip archive: failed finding central directory
+2025-08-23 14:19:19,664 - INFO - api.infer - [EF] infer_ef called with instance_id=None study_uid=999.999.3859744
+2025-08-23 14:19:19,665 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=999.999.3859744
+2025-08-23 14:19:19,722 - INFO - api.infer - [EF] Found 1 instance(s) in the study
+2025-08-23 14:19:19,723 - INFO - api.infer - [EF] Using instance_id=1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d from study
+2025-08-23 14:19:19,723 - INFO - api.infer - [EF] Picking frames from instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-23 14:19:19,735 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-23 14:19:21,975 - INFO - api.infer - [EF] Collected 16 frame(s)
+2025-08-23 14:19:21,975 - INFO - api.infer - [EF] Stacking frames into tensor and ImageNet-normalizing
+2025-08-23 14:19:22,204 - INFO - api.infer - [EF] Tensor shape: (1, 3, 16, 224, 224) dtype=torch.float32
+2025-08-23 14:19:22,204 - INFO - api.infer - [EF] Loading PanEcho model on device: cpu
+2025-08-23 14:19:39,722 - INFO - api.infer - [EF] infer_ef called with instance_id=None study_uid=999.999.3859744
+2025-08-23 14:19:39,723 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=999.999.3859744
+2025-08-23 14:19:39,776 - INFO - api.infer - [EF] Found 1 instance(s) in the study
+2025-08-23 14:19:39,777 - INFO - api.infer - [EF] Using instance_id=1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d from study
+2025-08-23 14:19:39,778 - INFO - api.infer - [EF] Picking frames from instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-23 14:19:39,786 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-23 14:19:41,566 - INFO - api.infer - [EF] Collected 16 frame(s)
+2025-08-23 14:19:41,567 - INFO - api.infer - [EF] Stacking frames into tensor and ImageNet-normalizing
+2025-08-23 14:19:42,060 - INFO - api.infer - [EF] Tensor shape: (1, 3, 16, 224, 224) dtype=torch.float32
+2025-08-23 14:19:42,061 - INFO - api.infer - [EF] Loading PanEcho model on device: cpu
+2025-08-23 14:55:05,201 - INFO - api.infer - [EF] infer_ef called with instance_id=None study_uid=999.999.3859744
+2025-08-23 14:55:05,202 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=999.999.3859744
+2025-08-23 14:55:05,332 - INFO - api.infer - [EF] Found 1 instance(s) in the study
+2025-08-23 14:55:05,332 - INFO - api.infer - [EF] Using instance_id=1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d from study
+2025-08-23 14:55:05,333 - INFO - api.infer - [EF] Picking frames from instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-23 14:55:05,383 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-23 14:55:07,117 - INFO - api.infer - [EF] Collected 16 frame(s)
+2025-08-23 14:55:07,118 - INFO - api.infer - [EF] Stacking frames into tensor and ImageNet-normalizing
+2025-08-23 14:55:07,454 - INFO - api.infer - [EF] Tensor shape: (1, 3, 16, 224, 224) dtype=torch.float32
+2025-08-23 14:55:07,455 - INFO - api.infer - [EF] Loading PanEcho model on device: cpu
+2025-08-23 14:55:25,018 - INFO - api.infer - [EF] infer_ef called with instance_id=None study_uid=999.999.3859744
+2025-08-23 14:55:25,018 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=999.999.3859744
+2025-08-23 14:55:25,039 - INFO - api.infer - [EF] Found 1 instance(s) in the study
+2025-08-23 14:55:25,039 - INFO - api.infer - [EF] Using instance_id=1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d from study
+2025-08-23 14:55:25,039 - INFO - api.infer - [EF] Picking frames from instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-23 14:55:25,048 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-23 14:55:25,623 - INFO - api.infer - [EF] Collected 16 frame(s)
+2025-08-23 14:55:25,624 - INFO - api.infer - [EF] Stacking frames into tensor and ImageNet-normalizing
+2025-08-23 14:55:25,676 - INFO - api.infer - [EF] Tensor shape: (1, 3, 16, 224, 224) dtype=torch.float32
+2025-08-23 14:55:25,676 - INFO - api.infer - [EF] Loading PanEcho model on device: cpu
+2025-08-23 15:00:30,609 - ERROR - api.infer - [EF] Failed to load PanEcho via torch.hub: PytorchStreamReader failed reading zip archive: failed finding central directory
+2025-08-23 15:00:30,636 - ERROR - api.infer - [EF] EF inference failed: RuntimeError: PytorchStreamReader failed reading zip archive: failed finding central directory
+Traceback (most recent call last):
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 120, in infer_ef
+    model, device = get_model_and_device()
+                    ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 89, in get_model_and_device
+    _model = torch.hub.load(
+             ^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 566, in load
+    model = _load_local(repo_or_dir, model, *args, **kwargs)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 595, in _load_local
+    model = entry(*args, **kwargs)
+            ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/.cache/torch/hub/CarDS-Yale_PanEcho_main/hubconf.py", line 42, in PanEcho
+    weights = torch.hub.load_state_dict_from_url('https://github.com/CarDS-Yale/PanEcho/releases/download/v1.0/panecho.pt', map_location='cpu', progress=False)['weights']
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 770, in load_state_dict_from_url
+    return torch.load(cached_file, map_location=map_location, weights_only=weights_only)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/serialization.py", line 1005, in load
+    with _open_zipfile_reader(opened_file) as opened_zipfile:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/serialization.py", line 457, in __init__
+    super().__init__(torch._C.PyTorchFileReader(name_or_buffer))
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: PytorchStreamReader failed reading zip archive: failed finding central directory
+2025-08-23 15:00:30,836 - ERROR - api.infer - [EF] Failed to load PanEcho via torch.hub: PytorchStreamReader failed reading zip archive: failed finding central directory
+2025-08-23 15:00:30,836 - ERROR - api.infer - [EF] EF inference failed: RuntimeError: PytorchStreamReader failed reading zip archive: failed finding central directory
+Traceback (most recent call last):
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 120, in infer_ef
+    model, device = get_model_and_device()
+                    ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/api/infer.py", line 89, in get_model_and_device
+    _model = torch.hub.load(
+             ^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 566, in load
+    model = _load_local(repo_or_dir, model, *args, **kwargs)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 595, in _load_local
+    model = entry(*args, **kwargs)
+            ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/.cache/torch/hub/CarDS-Yale_PanEcho_main/hubconf.py", line 42, in PanEcho
+    weights = torch.hub.load_state_dict_from_url('https://github.com/CarDS-Yale/PanEcho/releases/download/v1.0/panecho.pt', map_location='cpu', progress=False)['weights']
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/hub.py", line 770, in load_state_dict_from_url
+    return torch.load(cached_file, map_location=map_location, weights_only=weights_only)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/serialization.py", line 1005, in load
+    with _open_zipfile_reader(opened_file) as opened_zipfile:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mohamedkhatib/Downloads/projectDino/Echocardiology_App/backend/venv/lib/python3.11/site-packages/torch/serialization.py", line 457, in __init__
+    super().__init__(torch._C.PyTorchFileReader(name_or_buffer))
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: PytorchStreamReader failed reading zip archive: failed finding central directory
+2025-08-23 15:10:08,804 - INFO - api.infer - [EF] infer_ef called with instance_id=None study_uid=999.999.3859744
+2025-08-23 15:10:08,805 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=999.999.3859744
+2025-08-23 15:10:08,903 - INFO - api.infer - [EF] Found 1 instance(s) in the study
+2025-08-23 15:10:08,905 - INFO - api.infer - [EF] Using instance_id=1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d from study
+2025-08-23 15:10:08,978 - INFO - api.infer - [EF] Picking frames from instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-23 15:10:08,995 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-23 15:10:09,836 - INFO - api.infer - [EF] Collected 16 frame(s)
+2025-08-23 15:10:09,836 - INFO - api.infer - [EF] Stacking frames into tensor and ImageNet-normalizing
+2025-08-23 15:10:10,002 - INFO - api.infer - [EF] Tensor shape: (1, 3, 16, 224, 224) dtype=torch.float32
+2025-08-23 15:10:10,002 - INFO - api.infer - [EF] Loading PanEcho model on device: cpu
+2025-08-23 15:10:22,745 - INFO - api.infer - [EF] PanEcho model loaded successfully
+2025-08-23 15:10:22,746 - INFO - api.infer - [EF] Running inference on device=cpu with input dtype=torch.float32
+2025-08-23 15:10:25,266 - INFO - api.infer - [EF] infer_ef called with instance_id=None study_uid=999.999.3859744
+2025-08-23 15:10:25,267 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=999.999.3859744
+2025-08-23 15:10:25,292 - INFO - api.infer - [EF] EF prediction: 58.03052520751953
+2025-08-23 15:10:25,331 - INFO - api.infer - [EF] Found 1 instance(s) in the study
+2025-08-23 15:10:25,331 - INFO - api.infer - [EF] Using instance_id=1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d from study
+2025-08-23 15:10:25,331 - INFO - api.infer - [EF] Picking frames from instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-23 15:10:25,362 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-23 15:10:25,999 - INFO - api.infer - [EF] Collected 16 frame(s)
+2025-08-23 15:10:25,999 - INFO - api.infer - [EF] Stacking frames into tensor and ImageNet-normalizing
+2025-08-23 15:10:26,050 - INFO - api.infer - [EF] Tensor shape: (1, 3, 16, 224, 224) dtype=torch.float32
+2025-08-23 15:10:26,050 - INFO - api.infer - [EF] Running inference on device=cpu with input dtype=torch.float32
+2025-08-23 15:10:28,657 - INFO - api.infer - [EF] EF prediction: 58.03052520751953
+2025-08-23 15:12:12,112 - INFO - api.upload - File saved locally at uploads/20250823151212_0020.DCM
+2025-08-23 15:12:12,117 - INFO - services.orthanc_client - Sending DICOM file to Orthanc: uploads/20250823151212_0020.DCM
+2025-08-23 15:12:12,158 - INFO - services.orthanc_client - Orthanc returned instance ID: 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-23 15:12:12,159 - INFO - api.upload - File uploaded to Orthanc. Instance ID: 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-23 15:12:12,159 - INFO - services.orthanc_client - Fetching tags for instance ID: 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-23 15:12:12,171 - INFO - services.orthanc_client - Fetched tags for instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d from Orthanc
+2025-08-23 15:12:12,171 - INFO - api.upload - Retrieved tags from Orthanc for instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-23 15:12:12,171 - INFO - api.upload - Extracted Patient ID: 123-45-6789, Study Date: 19940323, Study UID: 999.999.3859744
+2025-08-23 15:12:12,219 - WARNING - api.upload - Duplicate instance ID: 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d. Skipping insert.
+2025-08-23 15:12:14,854 - INFO - api.infer - [EF] infer_ef called with instance_id=None study_uid=999.999.3859744
+2025-08-23 15:12:14,854 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=999.999.3859744
+2025-08-23 15:12:14,877 - INFO - api.infer - [EF] Found 1 instance(s) in the study
+2025-08-23 15:12:14,878 - INFO - api.infer - [EF] Using instance_id=1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d from study
+2025-08-23 15:12:14,878 - INFO - api.infer - [EF] Picking frames from instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-23 15:12:14,887 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-23 15:12:15,458 - INFO - api.infer - [EF] Collected 16 frame(s)
+2025-08-23 15:12:15,458 - INFO - api.infer - [EF] Stacking frames into tensor and ImageNet-normalizing
+2025-08-23 15:12:15,503 - INFO - api.infer - [EF] Tensor shape: (1, 3, 16, 224, 224) dtype=torch.float32
+2025-08-23 15:12:15,503 - INFO - api.infer - [EF] Running inference on device=cpu with input dtype=torch.float32
+2025-08-23 15:12:18,081 - INFO - api.infer - [EF] EF prediction: 58.03052520751953
+2025-08-23 15:12:18,122 - INFO - api.infer - [EF] infer_ef called with instance_id=None study_uid=999.999.3859744
+2025-08-23 15:12:18,124 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=999.999.3859744
+2025-08-23 15:12:18,335 - INFO - api.infer - [EF] Found 1 instance(s) in the study
+2025-08-23 15:12:18,336 - INFO - api.infer - [EF] Using instance_id=1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d from study
+2025-08-23 15:12:18,336 - INFO - api.infer - [EF] Picking frames from instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-23 15:12:18,346 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-23 15:12:19,513 - INFO - api.infer - [EF] Collected 16 frame(s)
+2025-08-23 15:12:19,517 - INFO - api.infer - [EF] Stacking frames into tensor and ImageNet-normalizing
+2025-08-23 15:12:19,609 - INFO - api.infer - [EF] Tensor shape: (1, 3, 16, 224, 224) dtype=torch.float32
+2025-08-23 15:12:19,610 - INFO - api.infer - [EF] Running inference on device=cpu with input dtype=torch.float32
+2025-08-23 15:12:22,645 - INFO - api.infer - [EF] EF prediction: 58.03052520751953
+2025-08-23 15:12:22,661 - INFO - api.infer - [EF] infer_ef called with instance_id=None study_uid=999.999.3859744
+2025-08-23 15:12:22,661 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=999.999.3859744
+2025-08-23 15:12:22,690 - INFO - api.infer - [EF] Found 1 instance(s) in the study
+2025-08-23 15:12:22,691 - INFO - api.infer - [EF] Using instance_id=1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d from study
+2025-08-23 15:12:22,691 - INFO - api.infer - [EF] Picking frames from instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-23 15:12:22,699 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-23 15:12:23,196 - INFO - api.infer - [EF] Collected 16 frame(s)
+2025-08-23 15:12:23,197 - INFO - api.infer - [EF] Stacking frames into tensor and ImageNet-normalizing
+2025-08-23 15:12:23,243 - INFO - api.infer - [EF] Tensor shape: (1, 3, 16, 224, 224) dtype=torch.float32
+2025-08-23 15:12:23,244 - INFO - api.infer - [EF] Running inference on device=cpu with input dtype=torch.float32
+2025-08-23 15:12:25,528 - INFO - api.infer - [EF] EF prediction: 58.03052520751953
+2025-08-23 15:12:25,542 - INFO - api.infer - [EF] infer_ef called with instance_id=None study_uid=999.999.3859744
+2025-08-23 15:12:25,543 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=999.999.3859744
+2025-08-23 15:12:25,577 - INFO - api.infer - [EF] Found 1 instance(s) in the study
+2025-08-23 15:12:25,577 - INFO - api.infer - [EF] Using instance_id=1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d from study
+2025-08-23 15:12:25,578 - INFO - api.infer - [EF] Picking frames from instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-23 15:12:25,589 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-23 15:12:26,079 - INFO - api.infer - [EF] Collected 16 frame(s)
+2025-08-23 15:12:26,079 - INFO - api.infer - [EF] Stacking frames into tensor and ImageNet-normalizing
+2025-08-23 15:12:26,119 - INFO - api.infer - [EF] Tensor shape: (1, 3, 16, 224, 224) dtype=torch.float32
+2025-08-23 15:12:26,119 - INFO - api.infer - [EF] Running inference on device=cpu with input dtype=torch.float32
+2025-08-23 15:12:29,912 - INFO - api.infer - [EF] EF prediction: 58.03052520751953
+2025-08-23 15:15:12,853 - INFO - api.upload - File saved locally at uploads/20250823151512_0020.DCM
+2025-08-23 15:15:12,859 - INFO - services.orthanc_client - Sending DICOM file to Orthanc: uploads/20250823151512_0020.DCM
+2025-08-23 15:15:12,900 - INFO - services.orthanc_client - Orthanc returned instance ID: 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-23 15:15:12,901 - INFO - api.upload - File uploaded to Orthanc. Instance ID: 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-23 15:15:12,901 - INFO - services.orthanc_client - Fetching tags for instance ID: 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-23 15:15:12,908 - INFO - services.orthanc_client - Fetched tags for instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d from Orthanc
+2025-08-23 15:15:12,908 - INFO - api.upload - Retrieved tags from Orthanc for instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-23 15:15:12,909 - INFO - api.upload - Extracted Patient ID: 123-45-6789, Study Date: 19940323, Study UID: 999.999.3859744
+2025-08-23 15:15:14,105 - WARNING - api.upload - Duplicate instance ID: 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d. Skipping insert.
+2025-08-23 15:15:19,089 - INFO - api.infer - [EF] infer_ef called with instance_id=None study_uid=999.999.3859744
+2025-08-23 15:15:19,090 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=999.999.3859744
+2025-08-23 15:15:19,111 - INFO - api.infer - [EF] Found 1 instance(s) in the study
+2025-08-23 15:15:19,111 - INFO - api.infer - [EF] Using instance_id=1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d from study
+2025-08-23 15:15:19,111 - INFO - api.infer - [EF] Picking frames from instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-23 15:15:19,120 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-23 15:15:19,723 - INFO - api.infer - [EF] Collected 16 frame(s)
+2025-08-23 15:15:19,723 - INFO - api.infer - [EF] Stacking frames into tensor and ImageNet-normalizing
+2025-08-23 15:15:19,767 - INFO - api.infer - [EF] Tensor shape: (1, 3, 16, 224, 224) dtype=torch.float32
+2025-08-23 15:15:19,767 - INFO - api.infer - [EF] Running inference on device=cpu with input dtype=torch.float32
+2025-08-23 15:15:22,524 - INFO - api.infer - [EF] EF prediction: 58.03052520751953
+2025-08-23 15:15:22,610 - INFO - api.infer - [EF] infer_ef called with instance_id=None study_uid=999.999.3859744
+2025-08-23 15:15:22,611 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=999.999.3859744
+2025-08-23 15:15:22,635 - INFO - api.infer - [EF] Found 1 instance(s) in the study
+2025-08-23 15:15:22,636 - INFO - api.infer - [EF] Using instance_id=1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d from study
+2025-08-23 15:15:22,636 - INFO - api.infer - [EF] Picking frames from instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-23 15:15:22,653 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-23 15:15:23,719 - INFO - api.infer - [EF] Collected 16 frame(s)
+2025-08-23 15:15:23,720 - INFO - api.infer - [EF] Stacking frames into tensor and ImageNet-normalizing
+2025-08-23 15:15:23,797 - INFO - api.infer - [EF] Tensor shape: (1, 3, 16, 224, 224) dtype=torch.float32
+2025-08-23 15:15:23,797 - INFO - api.infer - [EF] Running inference on device=cpu with input dtype=torch.float32
+2025-08-23 15:15:27,472 - INFO - api.infer - [EF] EF prediction: 58.03052520751953

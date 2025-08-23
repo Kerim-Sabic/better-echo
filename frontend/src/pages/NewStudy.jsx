@@ -35,6 +35,20 @@ function pickTags(meta) {
   };
 }
 
+function upsertStudyToLocalStorage(study) {
+  try {
+    const raw = localStorage.getItem("studies");
+    const list = raw ? JSON.parse(raw) : [];
+    const idx = list.findIndex((s) => s.id === study.id);
+    if (idx >= 0) list[idx] = { ...list[idx], ...study };
+    else list.unshift(study);
+    localStorage.setItem("studies", JSON.stringify(list));
+  } catch {
+    // ignore storage errors
+  }
+}
+
+
 function MetadataRow({ label, value }) {
   return (
     <div className="flex justify-between gap-3 text-sm">
@@ -157,48 +171,55 @@ export default function NewStudy() {
 
     setStatus("Creating study…");
     try {
-      // Optional: create (or attach) a patient + study on backend
-      // If you don't have these routes yet, you can skip to EF inference below.
-      // Example payload; adjust to your API when ready:
-      /*
-      const payload = {
-        study_uid: studyUID,
-        instance_id: instanceId,
-        tags,
-        manual_override: showManual ? {
-          patient_name: form.patientName,
-          patient_id: form.patientId,
-          dob: form.dateOfBirth,
-          referring_physician: form.referringPhysician,
-          clinical_indication: form.clinicalIndication,
-          notes: form.notes,
-        } : null,
-      };
-      const createRes = await axios.post("http://localhost:8000/studies", payload);
-      const studyId = createRes.data?.id || studyUID;
-      */
+      const studyId = studyUID; // use StudyInstanceUID as route id for now
 
-      const studyId = studyUID; // temporary: use StudyInstanceUID as route id
+      // (optional) persist a minimal record so Dashboard/refresh can find it later
+      const studyForStorage = {
+        id: studyId,
+        study_uid: studyUID,
+        instance_id: instanceId || null,
+        patientName: (tags?.PatientName || form.patientName || "Unknown").toString(),
+        patientId: (tags?.PatientID || form.patientId || "—").toString(),
+        dateOfBirth: (tags?.PatientBirthDate || form.dateOfBirth || "—").toString(),
+        studyDate: (tags?.StudyDate || new Date().toISOString().slice(0, 10)).toString(),
+        studyTime: (tags?.StudyTime || new Date().toTimeString().slice(0, 5)).toString(),
+        status: "processing",
+        findings: "Awaiting analysis",
+        createdAt: new Date().toISOString(),
+      };
+      try {
+        const list = JSON.parse(localStorage.getItem("studies") || "[]");
+        const idx = list.findIndex(s => s.id === studyForStorage.id);
+        if (idx >= 0) list[idx] = { ...list[idx], ...studyForStorage };
+        else list.unshift(studyForStorage);
+        localStorage.setItem("studies", JSON.stringify(list));
+      } catch {}
 
       setStatus("Running EF…");
+      // fire-and-forget; Results will also fetch EF if needed
       try {
         await axios.get("http://localhost:8000/infer/ef", {
-          params: studyUID
-            ? { study_uid: studyUID }
-            : { instance_id: instanceId },
+          params: studyUID ? { study_uid: studyUID } : { instance_id: instanceId },
         });
       } catch (e) {
-        // EF can still be viewed/run from the results page even if this call fails
-        console.warn("EF inference error (continuing to results):", e);
+        console.warn("EF inference error (continuing):", e);
       }
 
-      // Navigate to results page for this study
-      navigate(`/studies/${encodeURIComponent(studyId)}`);
+      // ✅ pass identifiers via navigation state
+      navigate(`/studies/${encodeURIComponent(studyId)}`, {
+        state: {
+          study: studyForStorage,
+          study_uid: studyUID,
+          instance_id: instanceId || null,
+        },
+      });
     } catch (e) {
       console.error(e);
       setStatus("Failed to create study.");
     }
   };
+
+
 
   return (
     <div className="min-h-screen bg-background">

@@ -14,5 +14,6 @@ export default function Viewer({ studyUID }) {
         className="viewer-frame"
       />
     </div>
+
   );
 }

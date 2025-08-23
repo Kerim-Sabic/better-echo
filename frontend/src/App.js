@@ -6,12 +6,13 @@ import SplashScreen from "./components/SplashScreen";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import NewStudy from "./pages/NewStudy";
+import StudyResults from "./pages/StudyResults";
 
 // Temporary placeholders — replace with your real pages when ready
 // const NewStudy = () => (
 //   <div className="p-8">New Study (upload workflow here)</div>
 // );
-const StudyResults = () => <div className="p-8">Study Results page</div>;
+//const StudyResults = () => <div className="p-8">Study Results page</div>;
 const NotFound = () => <div className="p-8">404 — Not Found</div>;
 
 function SplashRoute() {
