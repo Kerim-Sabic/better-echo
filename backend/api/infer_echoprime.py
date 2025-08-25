@@ -1,0 +1,99 @@
+from typing import Optional, Dict, Any, List
+import os
+import tempfile
+import shutil
+
+from fastapi import APIRouter, Query, HTTPException
+import logging
+import requests
+
+from AI_models.EchoPrime.echo_prime import EchoPrime
+from api.infer import fetch_instance_ids_from_study
+from core.config import settings
+from schemas.infer_echoprime_schemas import EchoPrimeResponse
+
+orthanc_url = settings.ORTHANC_URL
+orthanc_user = settings.ORTHANC_USER
+orthanc_pass = settings.ORTHANC_PASS
+
+logger = logging.getLogger(__name__)
+router = APIRouter()
+
+# Lazy loading the EchoPrime model
+_ep: Optional[EchoPrime] = None
+
+def get_ep() -> EchoPrime:
+    global _ep
+    if _ep is None:
+        try:
+            _ep = EchoPrime()
+        except Exception as e:
+            logging.error(f"Failed to initialize EchoPrime: {e}")
+            raise HTTPException(status_code=500, detail=f"EchoPrime initialization failed: {e}")
+    return _ep
+
+
+def download_dicoms_for_study(instance_ids: List[str]) -> str:
+    """
+    Download all DICOMs for a study into a temporary folder.
+    Returns the folder path.
+    """
+    tmp_dir = tempfile.mkdtemp(prefix="echoprime_study_")
+    for iid in instance_ids:
+        r = requests.get(
+            f"{orthanc_url}/instances/{iid}/file",
+            auth = (orthanc_user, orthanc_pass),
+            stream=True
+        )
+        r.raise_for_status()
+        filepath = os.path.join(tmp_dir, f"{iid}.dcm")
+        with open(filepath, "wb") as f:
+            for chunk in r.iter_content(chunk_size=8192):
+                f.write(chunk)
+    return tmp_dir
+
+
+@router.get("/infer/echoprime", response_model=EchoPrimeResponse)
+def infer_echoprime(study_uid: str = Query(..., description="Study UID for EchoPrime inference")) -> Dict[str, Any]:
+    """
+    Run EchoPrime inference for a study (multi-video DICOM input).
+    Requires at least 2 DICOMs in the study.
+    """
+    logger.info(f"[EchoPrime] infer_echoprime called with study_uid={study_uid}")
+
+    ep = get_ep() # model is loaded on first request
+
+    # --- Step 1: fetch instances from Orthanc ---
+    instance_ids = fetch_instance_ids_from_study(study_uid)
+    if len(instance_ids) < 2:
+        raise HTTPException(status_code=400, detail="EchoPrime requires at least 2 DICOM files for a study")
+    
+    # --- Step 2: download dicoms ---
+    study_dir = download_dicoms_for_study(instance_ids)
+
+    try:
+        # --- Step 3: run model pipeline ---
+        stack_of_videos = ep.process_dicoms(study_dir)
+        encoded_study = ep.encode_study(stack_of_videos, visualize=False)
+
+        predictions = ep.predict_metrics(encoded_study) # dict of predictions
+        report_text = ep.generate_report(encoded_study) # report
+
+        logger.info(f"[EchoPrime] Inference completed for study_uid={study_uid}")
+        return {
+            "study_uid": study_uid,
+            "num_instances": len(instance_ids),
+            "predictions": predictions,
+            "report": report_text
+        }
+    
+    except Exception as e:
+        logger.exception(f"[EchoPrime] Inference failed: {type(e).__name__}: {e}")
+        raise HTTPException(status_code=500, detail=f"EchoPrime inference failed: {type(e).__name__}: {e}")
+    
+    finally:
+         #--- Step 4: cleanup temp files ---
+        try:
+            shutil.rmtree(study_dir)
+        except Exception:
+            pass

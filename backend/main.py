@@ -8,6 +8,9 @@ import uvicorn
 from api.upload import router as upload_router
 from api.infer import router as infer_router
 from api.studies import router as studies_router
+from api.infer_all_panecho import router as infer_all_panecho_router
+from api.infer_echoprime import router as infer_echoprime_router
+
 from core.config import settings
 
 os.makedirs("logs", exist_ok=True)
@@ -34,15 +37,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Routes
 app.include_router(upload_router, prefix="/api", tags=["Upload dicom"])
 app.include_router(infer_router,  prefix="/api", tags=["Inference"])
 app.include_router(studies_router, prefix="/api", tags=["Studies"])
+app.include_router(infer_all_panecho_router, prefix="/api", tags=["Inference"])
+app.include_router(infer_echoprime_router, prefix="/api", tags=["Inference"])
 
-@app.get("/")
-def root():
-    logger.info("Health check endpoint hit.")
-    return {"message":"Horalix is running"}
 
 if __name__ == "__main__":
     logger.info("Starting FastAPI server on 0.0.0.0:8000")
-    uvicorn.run(app, host = "0.0.0.0", port=8000)
+    uvicorn.run("main:app", host = "0.0.0.0", port=8000, reload=True)

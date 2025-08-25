@@ -15,7 +15,7 @@ from models.study import Study
 from models.derived_result import DerivedResult
 
 from core.config import settings
-from schemas.inference_schemas import EFResponse
+from schemas.infer_panecho_schemas import EFPanEchoResponse
 
 logger = logging.getLogger(__name__)
 
@@ -96,8 +96,7 @@ def get_model_and_device():
             _model = torch.hub.load(
                 'CarDS-Yale/PanEcho',
                 'PanEcho',
-                force_reload=False,
-                tasks=['EF']
+                force_reload=False
             )
             _model.to(_device).eval()
             logger.info("[EF] PanEcho model loaded successfully")
@@ -106,7 +105,7 @@ def get_model_and_device():
             raise
     return _model, _device
 
-@router.get("/infer/ef", response_model=EFResponse)
+@router.get("/infer/ef", response_model=EFPanEchoResponse)
 def infer_ef(instance_id: Optional[str] = Query(None), study_uid: Optional[str] = Query(None)):
     logger.info(f"[EF] infer_ef called with instance_id={instance_id} study_uid={study_uid}")
     if not instance_id and not study_uid:
