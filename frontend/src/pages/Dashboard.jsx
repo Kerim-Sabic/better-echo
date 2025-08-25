@@ -94,52 +94,6 @@ export default function Dashboard() {
     setStudies((prev) => prev.filter((s) => s.id !== row.id));
   };
 
-  // Mock data (replace with API later)
-  // const studies = [
-  //   {
-  //     id: "ECH-2024-001",
-  //     patientName: "Sarah Johnson",
-  //     patientId: "MRN-789123",
-  //     dateOfBirth: "1965-03-15",
-  //     studyDate: "2024-01-15",
-  //     studyTime: "14:30",
-  //     status: "completed",
-  //     ejectionFraction: 58,
-  //     findings: "Normal LV function, no significant abnormalities",
-  //   },
-  //   {
-  //     id: "ECH-2024-002",
-  //     patientName: "Michael Chen",
-  //     patientId: "MRN-456789",
-  //     dateOfBirth: "1958-11-22",
-  //     studyDate: "2024-01-15",
-  //     studyTime: "15:45",
-  //     status: "processing",
-  //     findings: "AI analysis in progress",
-  //   },
-  //   {
-  //     id: "ECH-2024-003",
-  //     patientName: "Emily Rodriguez",
-  //     patientId: "MRN-234567",
-  //     dateOfBirth: "1972-07-08",
-  //     studyDate: "2024-01-14",
-  //     studyTime: "11:20",
-  //     status: "completed",
-  //     ejectionFraction: 42,
-  //     findings: "Mild LV dysfunction, recommend follow-up",
-  //   },
-  //   {
-  //     id: "ECH-2024-004",
-  //     patientName: "Robert Thompson",
-  //     patientId: "MRN-345678",
-  //     dateOfBirth: "1960-12-03",
-  //     studyDate: "2024-01-14",
-  //     studyTime: "09:15",
-  //     status: "pending",
-  //     findings: "Awaiting analysis",
-  //   },
-  // ];
-
   // Format EF nicely (e.g., "53.4" instead of "53.3999972345")
   const formatEf = (ef) => {
     if (typeof ef !== "number" || !isFinite(ef)) return "—";
@@ -268,10 +222,10 @@ export default function Dashboard() {
                   className="card-clinical cursor-pointer hover:scale-[1.01] transition-transform"
                   onClick={() => onSelectStudy(study)}
                 >
-                  <CardContent className="p-6 flex flex-col min-h-[160px]">
-                    {/* MAIN ROW: flex-1 so it takes remaining height; items centered vertically */}
-                    <div className="flex-1 flex items-center justify-between">
-                      {/* LEFT: avatar + patient/study info */}
+                  <CardContent className="p-6">
+                    {/* 2 columns on md+: left info | right (status+EF top, actions bottom) */}
+                    <div className="grid grid-cols-1 md:grid-cols-[1fr,auto] gap-4 min-h-[160px]">
+                      {/* LEFT: avatar + patient/study info, vertically centered */}
                       <div className="flex items-center space-x-4">
                         <div className="flex items-center justify-center w-12 h-12 rounded-full bg-primary/10">
                           <User className="h-6 w-6 text-primary" />
@@ -295,46 +249,49 @@ export default function Dashboard() {
                         </div>
                       </div>
 
-                      {/* RIGHT: status + EF */}
-                      <div className="flex flex-col items-end justify-center gap-2">
-                        <div className="flex items-center justify-end space-x-2">
-                          {getStatusIcon(study.status)}
-                          {getStatusBadge(study.status, study.ef)}
+                      {/* RIGHT: two rows — top (status+EF), bottom (actions) */}
+                      <div className="flex flex-col justify-between items-end">
+                        {/* TOP: status + EF */}
+                        <div className="flex flex-col items-end gap-2">
+                          <div className="flex items-center justify-end space-x-2">
+                            {getStatusIcon(study.status)}
+                            {getStatusBadge(study.status, study.ef)}
+                          </div>
+
+                          {typeof study.ef === "number" && (
+                            <div className="text-right">
+                              <p className="text-sm text-muted-foreground">Ejection Fraction</p>
+                              <p className="text-2xl font-bold text-primary">{formatEf(study.ef)}%</p>
+                            </div>
+                          )}
+
+                          {study.status === "processing" && (
+                            <p className="text-sm text-muted-foreground max-w-xs">Analysis is running…</p>
+                          )}
                         </div>
 
-                        {typeof study.ef === "number" && (
-                          <div className="text-right">
-                            <p className="text-sm text-muted-foreground">Ejection Fraction</p>
-                            <p className="text-2xl font-bold text-primary">{formatEf(study.ef)}%</p>
-                          </div>
-                        )}
-
-                        {study.status === "processing" && (
-                          <p className="text-sm text-muted-foreground max-w-xs">Analysis is running…</p>
-                        )}
+                        {/* BOTTOM: actions */}
+                        <div className="flex gap-2 pt-2">
+                          <Button
+                            variant="outline"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openEdit(study);
+                            }}
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDelete(study);
+                            }}
+                          >
+                            Delete
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-
-                    {/* FOOTER: actions pinned to bottom via flex column */}
-                    <div className="pt-4 flex gap-2 justify-end">
-                      <Button
-                        variant="outline"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openEdit(study);
-                        }}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onDelete(study);
-                        }}
-                      >
-                        Delete
-                      </Button>
                     </div>
                   </CardContent>
                 </Card>
