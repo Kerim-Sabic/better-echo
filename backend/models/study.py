@@ -1,8 +1,6 @@
-from sqlalchemy import Column, Integer, String, DateTime
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import Column, Integer, String, DateTime, Float
 from datetime import datetime
-
-Base = declarative_base()
+from .base import Base
 
 class Study(Base):
     __tablename__ = "studies"
@@ -14,3 +12,5 @@ class Study(Base):
     study_date = Column(String)
     file_path = Column(String)
     uploaded_at = Column(DateTime, default=datetime.utcnow)
+    status = Column(String, default="processing")
+    ef_value = Column(Float, nullable=True)

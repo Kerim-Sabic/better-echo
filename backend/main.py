@@ -2,10 +2,13 @@ import logging
 import os
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from api.upload import router as upload_router
 from pydantic import BaseModel
 import uvicorn
+
+from api.upload import router as upload_router
 from api.infer import router as infer_router
+from api.studies import router as studies_router
+from core.config import settings
 
 os.makedirs("logs", exist_ok=True)
 
@@ -25,14 +28,15 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],  # your frontend origin(s)
+    allow_origins=settings.CORS_ORIGIN,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-app.include_router(upload_router)
-app.include_router(infer_router)
+app.include_router(upload_router, prefix="/api", tags=["Upload dicom"])
+app.include_router(infer_router,  prefix="/api", tags=["Inference"])
+app.include_router(studies_router, prefix="/api", tags=["Studies"])
 
 @app.get("/")
 def root():

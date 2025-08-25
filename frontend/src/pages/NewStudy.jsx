@@ -1,6 +1,6 @@
 import { useState } from "react";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { uploadDicomApi } from "../api/UploadDicomApi";
 import {
   Upload,
   FileCheck2,
@@ -124,13 +124,7 @@ export default function NewStudy() {
     setStatus("Uploading DICOM…");
 
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      // Your existing FastAPI endpoint
-      const { data } = await axios.post(
-        "http://localhost:8000/upload-dicom",
-        fd
-      );
+      const data = await uploadDicomApi(file);
       const { study_uid, instance_id, tags: dicomTags } = data || {};
       if (!study_uid) {
         setStatus("Upload OK, but StudyInstanceUID missing.");
@@ -151,6 +145,7 @@ export default function NewStudy() {
     }
   };
 
+
   const validateManual = () => {
     if (!showManual) return true; // nothing required unless toggled on
     // Minimal checks when manual mode is enabled
@@ -164,62 +159,10 @@ export default function NewStudy() {
       setStatus("Please upload a DICOM first.");
       return;
     }
-    if (!validateManual()) {
-      setStatus("Please complete required patient info.");
-      return;
-    }
-
-    setStatus("Creating study…");
-    try {
-      const studyId = studyUID; // use StudyInstanceUID as route id for now
-
-      // (optional) persist a minimal record so Dashboard/refresh can find it later
-      const studyForStorage = {
-        id: studyId,
-        study_uid: studyUID,
-        instance_id: instanceId || null,
-        patientName: (tags?.PatientName || form.patientName || "Unknown").toString(),
-        patientId: (tags?.PatientID || form.patientId || "—").toString(),
-        dateOfBirth: (tags?.PatientBirthDate || form.dateOfBirth || "—").toString(),
-        studyDate: (tags?.StudyDate || new Date().toISOString().slice(0, 10)).toString(),
-        studyTime: (tags?.StudyTime || new Date().toTimeString().slice(0, 5)).toString(),
-        status: "processing",
-        findings: "Awaiting analysis",
-        createdAt: new Date().toISOString(),
-      };
-      try {
-        const list = JSON.parse(localStorage.getItem("studies") || "[]");
-        const idx = list.findIndex(s => s.id === studyForStorage.id);
-        if (idx >= 0) list[idx] = { ...list[idx], ...studyForStorage };
-        else list.unshift(studyForStorage);
-        localStorage.setItem("studies", JSON.stringify(list));
-      } catch {}
-
-      setStatus("Running EF…");
-      // fire-and-forget; Results will also fetch EF if needed
-      try {
-        await axios.get("http://localhost:8000/infer/ef", {
-          params: studyUID ? { study_uid: studyUID } : { instance_id: instanceId },
-        });
-      } catch (e) {
-        console.warn("EF inference error (continuing):", e);
-      }
-
-      // ✅ pass identifiers via navigation state
-      navigate(`/studies/${encodeURIComponent(studyId)}`, {
-        state: {
-          study: studyForStorage,
-          study_uid: studyUID,
-          instance_id: instanceId || null,
-        },
-      });
-    } catch (e) {
-      console.error(e);
-      setStatus("Failed to create study.");
-    }
+    navigate(`/studies/${encodeURIComponent(studyUID)}`, {
+      state: { study_uid: studyUID, instance_id: instanceId }
+    });
   };
-
-
 
   return (
     <div className="min-h-screen bg-background">
@@ -310,6 +253,11 @@ export default function NewStudy() {
 
         {/* Metadata Preview (after upload) */}
         {studyUID && <MetadataPreview tags={tags} />}
+        {studyUID && (
+          <p className="text-sm text-muted-foreground">
+            Tip: Click <span className="font-medium">Continue to Results</span> to view the study while EF analysis runs.
+          </p>
+        )}
 
         {/* Optional manual section */}
         <Card>
@@ -426,7 +374,7 @@ export default function NewStudy() {
             onClick={createStudyAndAnalyze}
             disabled={!studyUID}
           >
-            Create Study & Analyze
+            Continue to Results
           </Button>
         </div>
       </main>

@@ -2,9 +2,8 @@ import React from "react";
 
 export default function Viewer({ studyUID }) {
   if (!studyUID) return null;
-  const src = `http://localhost:8042/stone-webviewer/index.html?study=${encodeURIComponent(
-    studyUID
-  )}`;
+  const VIEWER_URL = process.env.REACT_APP_VIEWER_URL || "http://localhost:8042/stone-webviewer/index.html";
+  const src = `${VIEWER_URL}?study=${encodeURIComponent(studyUID)}`;
   return (
     <div className="viewer-shell">
       <iframe
@@ -14,6 +13,5 @@ export default function Viewer({ studyUID }) {
         className="viewer-frame"
       />
     </div>
-
   );
 }

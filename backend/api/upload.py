@@ -12,7 +12,10 @@ from services.orthanc_client import (
 from db import SessionLocal
 from models.study import Study
 
+from schemas.upload_schemas import UploadDicomResponse
+
 logger = logging.getLogger(__name__)
+
 router = APIRouter()
 
 UPLOAD_DIR = "uploads"
@@ -46,7 +49,7 @@ def _clean_for_ui(tags: dict) -> dict:
         "StudyInstanceUID": _tag(tags, "0020,000d", ""),
     }
 
-@router.post("/upload-dicom")
+@router.post("/upload-dicom", response_model=UploadDicomResponse)
 async def upload_dicom(file: UploadFile = File(...)):
     os.makedirs(UPLOAD_DIR, exist_ok=True)
 
@@ -98,6 +101,7 @@ async def upload_dicom(file: UploadFile = File(...)):
                 study_uid=study_uid,
                 study_date=study_date,
                 file_path=file_location,
+                status="processing",
             )
             db.add(study)
             db.commit()
@@ -108,6 +112,8 @@ async def upload_dicom(file: UploadFile = File(...)):
 
         # 7) Include series_id for local viewer integration if needed
         series_id = get_series_id_from_instance(instance_id) or ""
+        clean = _clean_for_ui(tags)
+        logger.info(f"Cleaned tags for UI: {clean}")
 
         # 8) Return success with cleaned tags for the UI
         return {
@@ -116,9 +122,10 @@ async def upload_dicom(file: UploadFile = File(...)):
             "instance_id": instance_id,
             "study_uid": study_uid,
             "series_id": series_id,
+            "tags": clean,
             # optionally echo patient info so UI can show it immediately
-            "patient_id": patient_id,
-            "study_date": study_date.isoformat() if study_date else None,
+            "patient_id": clean.get("PatientID") or "Unknown",
+            "study_date": clean.get("StudyDate") or None,
         }
 
     except Exception as e:

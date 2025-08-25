@@ -10,11 +10,18 @@ from PIL import Image
 import numpy as np
 import torch
 
+from db import SessionLocal
+from models.study import Study
+from models.derived_result import DerivedResult
+
+from core.config import settings
+from schemas.inference_schemas import EFResponse
+
 logger = logging.getLogger(__name__)
 
-ORTHANC_URL = os.getenv("ORTHANC_URL", "http://localhost:8042")
-ORTHANC_USER = os.getenv("ORTHANC_USER", "orthanc")
-ORTHANC_PASS = os.getenv("ORTHANC_PASS", "orthanc")
+orthanc_url = settings.ORTHANC_URL
+orthanc_user = settings.ORTHANC_USER
+orthanc_pass = settings.ORTHANC_PASS
 
 router = APIRouter()
 
@@ -22,12 +29,12 @@ def fetch_instance_ids_from_study(study_uid: str) -> List[str]:
     # Find Orthanc study by DICOM StudyInstanceUID, then list its instances
     # 1) Query studies by UID
     logger.info(f"[EF] Resolving Orthanc study for StudyInstanceUID={study_uid}")
-    r = requests.get(f"{ORTHANC_URL}/studies", auth=(ORTHANC_USER, ORTHANC_PASS))
+    r = requests.get(f"{orthanc_url}/studies", auth=(orthanc_user, orthanc_pass))
     r.raise_for_status()
     studies = r.json()
     match = None
     for sid in studies:
-        info = requests.get(f"{ORTHANC_URL}/studies/{sid}", auth=(ORTHANC_USER, ORTHANC_PASS)).json()
+        info = requests.get(f"{orthanc_url}/studies/{sid}", auth=(orthanc_user, orthanc_pass)).json()
         if info.get("MainDicomTags", {}).get("StudyInstanceUID") == study_uid:
             match = sid
             break
@@ -35,7 +42,7 @@ def fetch_instance_ids_from_study(study_uid: str) -> List[str]:
         logger.warning(f"[EF] No Orthanc study matches StudyInstanceUID={study_uid}")
         return []
     # 2) Get all instances in that study
-    insts = requests.get(f"{ORTHANC_URL}/studies/{match}/instances", auth=(ORTHANC_USER, ORTHANC_PASS)).json()
+    insts = requests.get(f"{orthanc_url}/studies/{match}/instances", auth=(orthanc_user, orthanc_pass)).json()
     ids = [i["ID"] for i in insts]
     logger.info(f"[EF] Found {len(ids)} instance(s) in the study")
     return ids
@@ -43,7 +50,7 @@ def fetch_instance_ids_from_study(study_uid: str) -> List[str]:
 def pick_frames_from_instance(instance_id: str, num_frames: int = 16) -> List[Image.Image]:
     # Get instance metadata to know number of frames
     logger.info(f"[EF] Picking frames from instance {instance_id}")
-    meta = requests.get(f"{ORTHANC_URL}/instances/{instance_id}", auth=(ORTHANC_USER, ORTHANC_PASS)).json()
+    meta = requests.get(f"{orthanc_url}/instances/{instance_id}", auth=(orthanc_user, orthanc_pass)).json()
     frames = meta.get("Frames", 1)  # multi-frame cine or 1
     logger.info(f"[EF] Instance has {frames} frame(s)")
     # Pick 16 approximately evenly spaced frame indices (1-based in Orthanc HTTP)
@@ -52,8 +59,8 @@ def pick_frames_from_instance(instance_id: str, num_frames: int = 16) -> List[Im
     for idx in indices:
         # rendered PNG/JPEG of that frame
         # /instances/{id}/frames/{frame}/rendered  (Orthanc returns image bytes)
-        resp = requests.get(f"{ORTHANC_URL}/instances/{instance_id}/frames/{idx}/rendered",
-                            auth=(ORTHANC_USER, ORTHANC_PASS))
+        resp = requests.get(f"{orthanc_url}/instances/{instance_id}/frames/{idx}/rendered",
+                            auth=(orthanc_user, orthanc_pass))
         resp.raise_for_status()
         img = Image.open(io.BytesIO(resp.content)).convert("RGB")
         img = img.resize((224, 224), Image.BILINEAR)
@@ -99,7 +106,7 @@ def get_model_and_device():
             raise
     return _model, _device
 
-@router.get("/infer/ef")
+@router.get("/infer/ef", response_model=EFResponse)
 def infer_ef(instance_id: Optional[str] = Query(None), study_uid: Optional[str] = Query(None)):
     logger.info(f"[EF] infer_ef called with instance_id={instance_id} study_uid={study_uid}")
     if not instance_id and not study_uid:
@@ -133,8 +140,39 @@ def infer_ef(instance_id: Optional[str] = Query(None), study_uid: Optional[str] 
             ef = float(ef)
 
         logger.info(f"[EF] EF prediction: {ef}")
+
+        db = SessionLocal()
+        try:
+            q = db.query(Study)
+            if instance_id:
+                q = q.filter(Study.instance_id == instance_id)
+            elif study_uid:
+                q = q.filter(Study.study_uid == study_uid)
+            study = q.first()
+            if study:
+                # Optional cached EF on the study row (add this column, see Section 3)
+                if hasattr(study, "ef_value"):
+                    study.ef_value = float(ef)
+                # Flip status to 'ready' if the column exists (see Section 3)
+                if hasattr(study, "status"):
+                    study.status = "ready"
+                # Record a derived result row (see model in Section 3)
+                dr = DerivedResult(
+                    study_id=study.id,
+                    type="EF",
+                    value_numeric=float(ef),
+                    units="%",
+                    model_name="PanEcho",
+                    model_version="v1"
+                )
+                db.add(dr)
+                db.commit()
+        finally:
+            db.close()
+        
         return {"instance_id": instance_id, "ef": ef}
     
     except Exception as e:
         logger.exception(f"[EF] EF inference failed: {type(e).__name__}: {e}")
         raise HTTPException(status_code=500, detail=f"EF inference failed: {type(e).__name__}: {e}")
+

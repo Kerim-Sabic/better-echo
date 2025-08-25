@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Plus,
@@ -10,65 +10,146 @@ import {
   Clock,
   Activity,
 } from "lucide-react";
+import {
+  listStudiesApi,
+  patchStudyApi,
+  deleteStudyApi,
+} from "../api/StudiesApi";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Card, CardContent } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "../components/ui/dialog";
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedFilter, setSelectedFilter] = useState("all");
+  const [studies, setStudies] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [editForm, setEditForm] = useState({ patient_id: "", study_date: "" });
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let cancel = false;
+    (async () => {
+      try {
+        const data = await listStudiesApi();
+        if (!cancel) setStudies(data);
+      } finally {
+        if (!cancel) setLoading(false);
+      }
+    })();
+    return () => {
+      cancel = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const t = setInterval(async () => {
+      try {
+        const data = await listStudiesApi();
+        setStudies(data);
+      } catch {}
+    }, 10000);
+    return () => clearInterval(t);
+  }, []);
+
+  const openEdit = (row) => {
+    setEditing(row);
+    setEditForm({
+      patient_id: row.patient_id || "",
+      study_date: row.study_date || "",
+    });
+    setEditOpen(true);
+  };
+
+  const saveEdit = async () => {
+    // very light guard: accept YYYYMMDD or empty
+    if (editForm.study_date && !/^\d{8}$/.test(editForm.study_date)) {
+      alert("Study Date must be YYYYMMDD (e.g., 20250131) or left blank.");
+      return;
+    }
+    setSaving(true);
+    try {
+      await patchStudyApi(editing.id, editForm);
+      const data = await listStudiesApi();
+      setStudies(data);
+      setEditOpen(false);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const onDelete = async (row) => {
+    if (!window.confirm("Delete this study? This cannot be undone.")) return;
+    await deleteStudyApi(row.id);
+    setStudies((prev) => prev.filter((s) => s.id !== row.id));
+  };
 
   // Mock data (replace with API later)
-  const studies = [
-    {
-      id: "ECH-2024-001",
-      patientName: "Sarah Johnson",
-      patientId: "MRN-789123",
-      dateOfBirth: "1965-03-15",
-      studyDate: "2024-01-15",
-      studyTime: "14:30",
-      status: "completed",
-      ejectionFraction: 58,
-      findings: "Normal LV function, no significant abnormalities",
-    },
-    {
-      id: "ECH-2024-002",
-      patientName: "Michael Chen",
-      patientId: "MRN-456789",
-      dateOfBirth: "1958-11-22",
-      studyDate: "2024-01-15",
-      studyTime: "15:45",
-      status: "processing",
-      findings: "AI analysis in progress",
-    },
-    {
-      id: "ECH-2024-003",
-      patientName: "Emily Rodriguez",
-      patientId: "MRN-234567",
-      dateOfBirth: "1972-07-08",
-      studyDate: "2024-01-14",
-      studyTime: "11:20",
-      status: "completed",
-      ejectionFraction: 42,
-      findings: "Mild LV dysfunction, recommend follow-up",
-    },
-    {
-      id: "ECH-2024-004",
-      patientName: "Robert Thompson",
-      patientId: "MRN-345678",
-      dateOfBirth: "1960-12-03",
-      studyDate: "2024-01-14",
-      studyTime: "09:15",
-      status: "pending",
-      findings: "Awaiting analysis",
-    },
-  ];
+  // const studies = [
+  //   {
+  //     id: "ECH-2024-001",
+  //     patientName: "Sarah Johnson",
+  //     patientId: "MRN-789123",
+  //     dateOfBirth: "1965-03-15",
+  //     studyDate: "2024-01-15",
+  //     studyTime: "14:30",
+  //     status: "completed",
+  //     ejectionFraction: 58,
+  //     findings: "Normal LV function, no significant abnormalities",
+  //   },
+  //   {
+  //     id: "ECH-2024-002",
+  //     patientName: "Michael Chen",
+  //     patientId: "MRN-456789",
+  //     dateOfBirth: "1958-11-22",
+  //     studyDate: "2024-01-15",
+  //     studyTime: "15:45",
+  //     status: "processing",
+  //     findings: "AI analysis in progress",
+  //   },
+  //   {
+  //     id: "ECH-2024-003",
+  //     patientName: "Emily Rodriguez",
+  //     patientId: "MRN-234567",
+  //     dateOfBirth: "1972-07-08",
+  //     studyDate: "2024-01-14",
+  //     studyTime: "11:20",
+  //     status: "completed",
+  //     ejectionFraction: 42,
+  //     findings: "Mild LV dysfunction, recommend follow-up",
+  //   },
+  //   {
+  //     id: "ECH-2024-004",
+  //     patientName: "Robert Thompson",
+  //     patientId: "MRN-345678",
+  //     dateOfBirth: "1960-12-03",
+  //     studyDate: "2024-01-14",
+  //     studyTime: "09:15",
+  //     status: "pending",
+  //     findings: "Awaiting analysis",
+  //   },
+  // ];
+
+  // Format EF nicely (e.g., "53.4" instead of "53.3999972345")
+  const formatEf = (ef) => {
+    if (typeof ef !== "number" || !isFinite(ef)) return "—";
+    return (Math.round(ef * 10) / 10).toFixed(1); // 1 decimal
+  };
 
   const getStatusIcon = (status) => {
     switch (status) {
-      case "completed":
+      case "ready": // backend "done"
+      case "completed": // legacy
         return <CheckCircle className="h-4 w-4 text-success" />;
       case "processing":
         return <Clock className="h-4 w-4 text-warning animate-pulse" />;
@@ -80,28 +161,30 @@ export default function Dashboard() {
   };
 
   const getStatusBadge = (status, ef) => {
-    if (status === "completed" && typeof ef === "number") {
+    const isDone = status === "ready" || status === "completed";
+    if (isDone && typeof ef === "number") {
       if (ef >= 55) return <Badge className="status-normal">Normal</Badge>;
       if (ef >= 40) return <Badge className="status-warning">Mild</Badge>;
       return <Badge className="status-critical">Severe</Badge>;
     }
     switch (status) {
+      case "ready":
       case "completed":
-        return <Badge className="status-normal">Completed</Badge>;
+        return <Badge className="status-normal">Ready</Badge>;
       case "processing":
         return <Badge className="status-warning">Processing</Badge>;
       case "error":
         return <Badge className="status-critical">Error</Badge>;
       default:
-        return <Badge variant="outline">Pending</Badge>;
+        return <Badge variant="outline">{status || "Pending"}</Badge>;
     }
   };
 
   const filteredStudies = studies.filter((s) => {
     const q = searchTerm.toLowerCase();
-    const matchesSearch =
-      s.patientName.toLowerCase().includes(q) ||
-      s.patientId.toLowerCase().includes(q);
+    const pid = (s.patient_id || "").toLowerCase();
+    const suid = (s.study_uid || "").toLowerCase();
+    const matchesSearch = pid.includes(q) || suid.includes(q);
     const matchesFilter =
       selectedFilter === "all" || s.status === selectedFilter;
     return matchesSearch && matchesFilter;
@@ -109,7 +192,7 @@ export default function Dashboard() {
 
   const onNewStudy = () => navigate("/studies/new");
   const onSelectStudy = (study) =>
-    navigate(`/studies/${encodeURIComponent(study.id)}`);
+    navigate(`/studies/${encodeURIComponent(study.study_uid || study.id)}`);
 
   return (
     <div className="min-h-screen bg-background">
@@ -143,103 +226,185 @@ export default function Dashboard() {
 
       {/* Content */}
       <main className="container mx-auto px-6 py-6">
-        {/* Search and Filters */}
-        <div className="flex flex-col lg:flex-row gap-4 mb-6">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-            <Input
-              placeholder="Search by patient name or ID..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 h-12"
-            />
+        {loading && (
+          <div className="text-center py-12">
+            <Activity className="h-16 w-16 text-muted-foreground mx-auto mb-4 animate-pulse" />
+            <p className="text-muted-foreground">Loading studies…</p>
           </div>
+        )}
+        {!loading && (
+          <div className="grid gap-4">
+            {/* Search and Filters */}
+            <div className="flex flex-col lg:flex-row gap-4 mb-6">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <Input
+                  placeholder="Search by Patient ID or Study UID…"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 h-12"
+                />
+              </div>
 
-          <div className="flex gap-2">
-            {["all", "completed", "processing", "pending"].map((filter) => (
-              <Button
-                key={filter}
-                variant={selectedFilter === filter ? "default" : "outline"}
-                onClick={() => setSelectedFilter(filter)}
-                className="capitalize"
-              >
-                {filter}
-              </Button>
-            ))}
-          </div>
-        </div>
+              <div className="flex gap-2">
+                {["all", "ready", "processing"].map((filter) => (
+                  <Button
+                    key={filter}
+                    variant={selectedFilter === filter ? "default" : "outline"}
+                    onClick={() => setSelectedFilter(filter)}
+                    className="capitalize"
+                  >
+                    {filter}
+                  </Button>
+                ))}
+              </div>
+            </div>
 
-        {/* Studies Grid */}
-        <div className="grid gap-4">
-          {filteredStudies.map((study) => (
-            <Card
-              key={study.id}
-              className="card-clinical cursor-pointer hover:scale-[1.01] transition-transform"
-              onClick={() => onSelectStudy(study)}
-            >
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <div className="flex items-center justify-center w-12 h-12 rounded-full bg-primary/10">
-                      <User className="h-6 w-6 text-primary" />
-                    </div>
+            {/* Studies Grid */}
+            <div className="grid gap-4">
+              {filteredStudies.map((study) => (
+                <Card
+                  key={study.id}
+                  className="card-clinical cursor-pointer hover:scale-[1.01] transition-transform"
+                  onClick={() => onSelectStudy(study)}
+                >
+                  <CardContent className="p-6 flex flex-col min-h-[160px]">
+                    {/* MAIN ROW: flex-1 so it takes remaining height; items centered vertically */}
+                    <div className="flex-1 flex items-center justify-between">
+                      {/* LEFT: avatar + patient/study info */}
+                      <div className="flex items-center space-x-4">
+                        <div className="flex items-center justify-center w-12 h-12 rounded-full bg-primary/10">
+                          <User className="h-6 w-6 text-primary" />
+                        </div>
 
-                    <div className="space-y-1">
-                      <h3 className="font-semibold text-lg">
-                        {study.patientName}
-                      </h3>
-                      <p className="text-sm text-muted-foreground">
-                        {study.patientId} • Born{" "}
-                        {new Date(study.dateOfBirth).toLocaleDateString()}
-                      </p>
-                      <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                        <Calendar className="h-4 w-4" />
-                        <span>
-                          {new Date(study.studyDate).toLocaleDateString()} at{" "}
-                          {study.studyTime}
-                        </span>
+                        <div className="space-y-1">
+                          <h3 className="font-semibold text-lg">
+                            {study.patient_id || "Unknown patient"}
+                          </h3>
+                          <p className="text-sm text-muted-foreground truncate" title={study.study_uid || "—"}>
+                            Study UID: {study.study_uid || "—"}
+                          </p>
+                          <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                            <Calendar className="h-4 w-4" />
+                            <span>
+                              {study.study_date
+                                ? `${study.study_date.slice(0, 4)}-${study.study_date.slice(4, 6)}-${study.study_date.slice(6, 8)}`
+                                : "Date unknown"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* RIGHT: status + EF */}
+                      <div className="flex flex-col items-end justify-center gap-2">
+                        <div className="flex items-center justify-end space-x-2">
+                          {getStatusIcon(study.status)}
+                          {getStatusBadge(study.status, study.ef)}
+                        </div>
+
+                        {typeof study.ef === "number" && (
+                          <div className="text-right">
+                            <p className="text-sm text-muted-foreground">Ejection Fraction</p>
+                            <p className="text-2xl font-bold text-primary">{formatEf(study.ef)}%</p>
+                          </div>
+                        )}
+
+                        {study.status === "processing" && (
+                          <p className="text-sm text-muted-foreground max-w-xs">Analysis is running…</p>
+                        )}
                       </div>
                     </div>
+
+                    {/* FOOTER: actions pinned to bottom via flex column */}
+                    <div className="pt-4 flex gap-2 justify-end">
+                      <Button
+                        variant="outline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openEdit(study);
+                        }}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDelete(study);
+                        }}
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            <Dialog open={editOpen} onOpenChange={setEditOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Edit study</DialogTitle>
+                </DialogHeader>
+
+                <div className="grid gap-3">
+                  <div className="space-y-1">
+                    <div className="text-sm text-muted-foreground">
+                      Patient ID / MRN
+                    </div>
+                    <Input
+                      value={editForm.patient_id}
+                      onChange={(e) =>
+                        setEditForm((f) => ({
+                          ...f,
+                          patient_id: e.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <div className="text-sm text-muted-foreground">
+                      Study Date (YYYYMMDD)
+                    </div>
+                    <Input
+                      value={editForm.study_date}
+                      onChange={(e) =>
+                        setEditForm((f) => ({
+                          ...f,
+                          study_date: e.target.value,
+                        }))
+                      }
+                    />
                   </div>
 
-                  <div className="text-right space-y-2">
-                    <div className="flex items-center justify-end space-x-2">
-                      {getStatusIcon(study.status)}
-                      {getStatusBadge(study.status, study.ejectionFraction)}
-                    </div>
-
-                    {typeof study.ejectionFraction === "number" && (
-                      <div className="text-right">
-                        <p className="text-sm text-muted-foreground">
-                          Ejection Fraction
-                        </p>
-                        <p className="text-2xl font-bold text-primary">
-                          {study.ejectionFraction}%
-                        </p>
-                      </div>
-                    )}
-
-                    <p className="text-sm text-muted-foreground max-w-xs">
-                      {study.findings}
-                    </p>
+                  <div className="flex justify-end gap-2 pt-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => setEditOpen(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button onClick={saveEdit} disabled={saving}>
+                      {saving ? "Saving…" : "Save"}
+                    </Button>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+              </DialogContent>
+            </Dialog>
 
-        {filteredStudies.length === 0 && (
-          <div className="text-center py-12">
-            <Activity className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-foreground mb-2">
-              No studies found
-            </h3>
-            <p className="text-muted-foreground">
-              {searchTerm
-                ? "Try adjusting your search terms"
-                : "Create your first study to get started"}
-            </p>
+            {filteredStudies.length === 0 && (
+              <div className="text-center py-12">
+                <Activity className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-foreground mb-2">
+                  No studies found
+                </h3>
+                <p className="text-muted-foreground">
+                  {searchTerm
+                    ? "Try adjusting your search terms"
+                    : "Create your first study to get started"}
+                </p>
+              </div>
+            )}
           </div>
         )}
       </main>

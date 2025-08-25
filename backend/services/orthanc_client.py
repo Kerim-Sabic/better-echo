@@ -2,15 +2,14 @@ from dotenv import load_dotenv
 import requests
 import os
 import logging
+from core.config import settings
 
 logger = logging.getLogger(__name__)
 
-load_dotenv()
-
-ORTHANC_URL = os.getenv("ORTHANC_URL", "http://localhost:8042")
-ORTHANC_USERNAME = os.getenv("ORTHANC_USERNAME", "orthanc")
-ORTHANC_PASSWORD = os.getenv("ORTHANC_PASSWORD", "orthanc")
-AUTH = (ORTHANC_USERNAME, ORTHANC_PASSWORD)
+orthanc_url = settings.ORTHANC_URL
+orthanc_username = settings.ORTHANC_USER
+orthanc_password = settings.ORTHANC_PASS
+AUTH = (orthanc_username, orthanc_password)
 
 # Uploads a DICOM file to Orthanc and returns the instance ID.
 def send_dicom_to_orthanc(filepath: str) -> str:
@@ -18,8 +17,8 @@ def send_dicom_to_orthanc(filepath: str) -> str:
     with open(filepath, "rb") as f:
         try:
             response = requests.post(
-                f"{ORTHANC_URL}/instances",
-                auth=(ORTHANC_USERNAME, ORTHANC_PASSWORD),
+                f"{orthanc_url}/instances",
+                auth=(orthanc_username, orthanc_password),
                 data=f,
                 headers={"Content-Type": "application/dicom"}
             )
@@ -41,8 +40,8 @@ def get_instance_tags(instance_id: str) -> dict:
     logger.info(f"Fetching tags for instance ID: {instance_id}")
     try:
         response = requests.get(
-            f"{ORTHANC_URL}/instances/{instance_id}/tags",
-            auth=(ORTHANC_USERNAME, ORTHANC_PASSWORD)
+            f"{orthanc_url}/instances/{instance_id}/tags",
+            auth=(orthanc_username, orthanc_password)
         )
         response.raise_for_status()
         logger.info(f"Fetched tags for instance {instance_id} from Orthanc")
@@ -53,7 +52,7 @@ def get_instance_tags(instance_id: str) -> dict:
 
 def get_series_id_from_instance(instance_id: str) -> str:
     # GET /instances/{id}
-    r = requests.get(f"{ORTHANC_URL}/instances/{instance_id}", auth=AUTH, timeout=30)
+    r = requests.get(f"{orthanc_url}/instances/{instance_id}", auth=AUTH, timeout=30)
     r.raise_for_status()
     data = r.json()
     return data.get("ParentSeries")  # <- Orthanc series internal ID (UUID-like)

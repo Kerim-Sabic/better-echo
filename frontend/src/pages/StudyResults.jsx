@@ -1,27 +1,11 @@
-// src/pages/StudyResults.jsx
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import axios from "axios";
-import { ArrowLeft, FileDown, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, FileDown, Eye, EyeOff, RefreshCcw, Activity } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import Viewer from "../components/Viewer";
-
-function getStoredStudies() {
-    try {
-        const raw = localStorage.getItem("studies");
-        return raw ? JSON.parse(raw) : [];
-    } catch {
-        return [];
-    }
-}
-function upsertStudy(updated) {
-    const list = getStoredStudies();
-    const idx = list.findIndex((s) => s.id === updated.id);
-    if (idx >= 0) list[idx] = { ...list[idx], ...updated };
-    else list.unshift(updated);
-    localStorage.setItem("studies", JSON.stringify(list));
-}
+import { listStudiesApi } from "../api/StudiesApi";
+import { inferEfApi } from "../api/InferenceApi";
 
 export default function StudyResults() {
     const navigate = useNavigate();
@@ -29,75 +13,145 @@ export default function StudyResults() {
     const location = useLocation();
 
     const initialStudyFromState = location.state?.study;
-    const [study, setStudy] = useState(() => {
-        if (initialStudyFromState) return initialStudyFromState;
-        const s = getStoredStudies().find((x) => x.id === id);
-        return (
-            s || {
-                id,
-                patientName: "Unknown",
-                patientId: "—",
-                dateOfBirth: "—",
-                studyDate: new Date().toISOString().slice(0, 10),
-                studyTime: new Date().toTimeString().slice(0, 5),
-                status: "processing",
-                findings: "—",
-            }
-        );
-    });
+    const [study, setStudy] = useState(initialStudyFromState || null);
+    const [loading, setLoading] = useState(!initialStudyFromState);
+    const [polling, setPolling] = useState(false);
+    const startedRef = useRef(false); // ensures EF is triggered once
 
-    const instanceId = location.state?.instance_id || study.instance_id || null;
-    const studyUID  = location.state?.study_uid  || study.study_uid  || null;
+
+    const instanceId = location.state?.instance_id || study?.instance_id || null;
+    const studyUID  = location.state?.study_uid  || study?.study_uid  || null;
 
     const [showSeg, setShowSeg] = useState(true);
-    const [ef, setEf] = useState(
-        typeof study.ejectionFraction === "number" ? study.ejectionFraction : null
-    );
     const [loadingEf, setLoadingEf] = useState(false);
     const [errorEf, setErrorEf] = useState("");
+    const ef = typeof study?.ef === "number" ? study.ef : null;
 
     const headerDate = useMemo(() => {
-        try {
-            return new Date(
-                `${study.studyDate || ""}T${(study.studyTime || "00:00") + ":00"}`
-            ).toLocaleDateString();
-        } catch {
-            return study.studyDate || "";
+        if (!study) return "—";
+        // Prefer DICOM string YYYYMMDD from backend, fallback to old fields if present
+        if (study.study_date && study.study_date.length === 8) {
+            const d = study.study_date;
+            return `${d.slice(0,4)}-${d.slice(4,6)}-${d.slice(6,8)}`;
         }
-    }, [study.studyDate, study.studyTime]);
+        // Legacy fallback (optional chaining to avoid crash)
+        try {
+            const date = `${study?.studyDate || ""}T${(study?.studyTime || "00:00") + ":00"}`;
+            return new Date(date).toLocaleDateString();
+        } catch {
+            return "—";
+        }
+    }, [study]);
+
+    // Load a single study by :id (study_uid first, then database id)
+    const fetchStudy = async () => {
+    const list = await listStudiesApi();
+    let found =
+        list.find((s) => s.study_uid === id) ||
+        list.find((s) => String(s.id) === String(id));
+    // If still not found but there’s exactly one, use it (dev convenience)
+    if (!found && list.length === 1) found = list[0];
+    setStudy(found || null);
+    setLoading(false);
+    return found;
+    };
 
     useEffect(() => {
-        if (ef != null) return;
-        if (!instanceId && !studyUID) return;
+        let timer;
+
+        const fetchStudy = async () => {
+            try {
+            const list = await listStudiesApi();
+            let found =
+                list.find((s) => s.study_uid === id) ||
+                list.find((s) => String(s.id) === String(id));
+            // If nothing in DB yet but the navigator passed state, keep showing the page
+            if (!found && location.state?.study_uid === id) {
+                setStudy({
+                study_uid: id,
+                instance_id: location.state?.instance_id || null,
+                status: "processing",
+                ef: null,
+                patient_id: location.state?.patient_id || "",
+                study_date: location.state?.study_date || "",
+                });
+                setLoading(false);
+                return null;
+            }
+            setStudy(found || null);
+            setLoading(false);
+            return found;
+            } catch {
+            setLoading(false);
+            return null;
+            }
+        };
 
         (async () => {
-            setLoadingEf(true);
-            setErrorEf("");
+            const current = await fetchStudy();
+
+            // Kick EF once if not ready (use either the DB row or the state)
+            const suid = (current?.study_uid || location.state?.study_uid);
+            const inst = (current?.instance_id || location.state?.instance_id);
+            const notReady = !current || current.status !== "ready";
+
+            if (suid && notReady && !startedRef.current) {
+            startedRef.current = true;
             try {
-                const params = studyUID ? { study_uid: studyUID } : { instance_id: instanceId };
-                const res = await axios.get("http://localhost:8000/infer/ef", { params });
-                const value = res?.data?.ef;
-                if (typeof value === "number" && !Number.isNaN(value)) {
-                    setEf(value);
-                    const updated = { ...study, ejectionFraction: Math.round(value) };
-                    setStudy(updated);
-                    upsertStudy(updated);
-                } else {
-                    setErrorEf("EF not available");
+                await inferEfApi({ study_uid: suid, instance_id: inst });
+            } catch {
+                // Non-fatal: we’ll still poll
+            }
+            }
+
+            // Poll until ready (only if we have a study_uid)
+            if (suid) {
+            timer = setInterval(async () => {
+                const updated = await fetchStudy();
+                if (updated && updated.status === "ready") {
+                clearInterval(timer);
                 }
-            } catch (e) {
-                console.error(e);
-                setErrorEf("EF inference failed");
-            } finally {
-                setLoadingEf(false);
+            }, 3000);
             }
         })();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [instanceId, studyUID]);
+
+        return () => { if (timer) clearInterval(timer); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [id]);
+
+    const refreshNow = async () => {
+        setLoading(true);
+        await fetchStudy();
+    };
 
     const handleGenerateReport = () => {
         window.print(); // quick “Save as PDF”. Swap to jsPDF/html2canvas later if you want a custom layout.
     };
+
+    if (loading && !study) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+            <div className="text-center">
+                <Activity className="h-10 w-10 text-muted-foreground mx-auto mb-4 animate-pulse" />
+                <p className="text-muted-foreground">Loading study…</p>
+            </div>
+            </div>
+        );
+    }
+    if (!study) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+            <div className="text-center space-y-4">
+                <p className="text-lg font-semibold">Study not found</p>
+                <p className="text-muted-foreground">Check the URL or return to the dashboard.</p>
+                <Button onClick={() => navigate("/dashboard")}>
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Dashboard
+                </Button>
+            </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-background">
@@ -110,20 +164,27 @@ export default function StudyResults() {
                             Back to Dashboard
                         </Button>
 
-                        <div className="flex-1">
-                            <h1 className="text-xl font-semibold text-foreground">
-                                {study.patientName} <span className="text-muted-foreground">·</span>{" "}
-                                <span className="text-muted-foreground">{study.patientId}</span>
-                            </h1>
-                            <p className="text-sm text-muted-foreground">
-                                Study #{study.id} · {headerDate}
-                            </p>
+                        <h1 className="text-xl font-semibold text-foreground">
+                            {study.patient_id || "Unknown"}{" "}
+                            <span className="text-muted-foreground">·</span>{" "}
+                            <span className="text-muted-foreground">
+                                UID: {study.study_uid || "—"}
+                            </span>
+                        </h1>
+                        <p className="text-sm text-muted-foreground">
+                            Date: {study.study_date ? `${study.study_date.slice(0,4)}-${study.study_date.slice(4,6)}-${study.study_date.slice(6,8)}` : headerDate}
+                        </p>
+                        
+                        <div className="flex items-center gap-2">
+                            <Button variant="outline" onClick={refreshNow}>
+                                <RefreshCcw className={`mr-2 h-4 w-4 ${polling ? "animate-spin" : ""}`} />
+                                Refresh
+                            </Button>
+                            <Button className="btn-clinical" onClick={handleGenerateReport}>
+                                <FileDown className="mr-2 h-4 w-4" />
+                                Generate Report
+                            </Button>
                         </div>
-
-                        <Button className="btn-clinical" onClick={handleGenerateReport}>
-                            <FileDown className="mr-2 h-4 w-4" />
-                            Generate Report
-                        </Button>
                     </div>
                 </div>
             </header>
