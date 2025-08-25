@@ -5,6 +5,10 @@ __pycache__/
 backend/venv/
 backend/.env/
 
+# Ignores all the files in uploads except .gitkeep
+backend/uploads/*
+!backend/uploads/.gitkeep
+
 # Frontend
 node_modules/
 build/
