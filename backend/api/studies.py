@@ -36,6 +36,7 @@ def list_studies():
     finally:
         db.close()
 
+
 @router.patch("/studies/{study_id}")
 def update_study(study_id: int, payload: dict):
     db = SessionLocal()
@@ -54,6 +55,7 @@ def update_study(study_id: int, payload: dict):
     finally:
         db.close()
 
+
 @router.delete("/studies/{study_id}")
 def delete_study(study_id: int):
     db = SessionLocal()
@@ -64,5 +66,37 @@ def delete_study(study_id: int):
         db.delete(s)     # will cascade to derived_results if FK is set
         db.commit()
         return {"ok": True}
+    finally:
+        db.close()
+
+
+@router.get("/studies/{study_uid}/derived-results")
+def list_derived_results(study_uid: str):
+    """
+    Lists the derived results of the study from the database
+    """
+    db = SessionLocal()
+    try:
+        s = db.query(Study).filter(Study.study_uid == study_uid).first()
+        if not s:
+            raise HTTPException(status_code=404, detail="Study not found")
+        
+        results = (
+            db.query(DerivedResult)
+            .filter(DerivedResult.study_id == s.id)
+            .order_by(DerivedResult.created_at.desc())
+            .all()
+        )
+
+        return [
+            {
+                "id": r.id,
+                "type": r.type,
+                "value_numeric": r.value_numeric,
+                "value_json": r.value_json,
+                "created_at": r.created_at,
+            }
+            for r in results
+        ]
     finally:
         db.close()

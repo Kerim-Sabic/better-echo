@@ -22,3 +22,10 @@ export const deleteStudyApi = async (id) => {
   });
   return data;
 };
+
+export const listDerivedResultsApi = async (study_uid) => {
+  const { data } = await axios.get(`${API_URL}/studies/${study_uid}/derived-results`, {
+    withCredentials: true,
+  });
+  return data;
+}

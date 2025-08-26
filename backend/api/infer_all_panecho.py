@@ -1,4 +1,5 @@
 from typing import Optional, Dict, Any
+import json
 
 from fastapi import APIRouter, Query, HTTPException
 import torch
@@ -10,16 +11,21 @@ from api.infer import (fetch_instance_ids_from_study,
                         get_model_and_device)
 from schemas.infer_panecho_schemas import AllTasksPanEchoResponse
 
+from db import SessionLocal
+from models.study import Study
+from models.derived_result import DerivedResult
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-@router.get("/infer/all", response_model=AllTasksPanEchoResponse)
-def infer_all(instance_id: Optional[str] = Query(None), 
+@router.get("/infer/panecho", response_model=AllTasksPanEchoResponse)
+def infer_panecho(instance_id: Optional[str] = Query(None), 
               study_uid: Optional[str] = Query(None)) -> Dict[str, Any]:
     """
     Run PanEcho inference for all 39 reporting tasks.
     Returns predictions as a dictionary {task_name: prediction}.
+    Also records results in DerivedResult table.
     """
 
     logger.info(f"[ALL] infer_all called with instance_id={instance_id} study_uid={study_uid}")
@@ -66,6 +72,37 @@ def infer_all(instance_id: Optional[str] = Query(None),
                     results[task] = float(val)
                 except Exception:
                     results[task] = val # leave it as is if not numeric
+
+        # ---- Persist to DB ----
+        db = SessionLocal()
+        try:
+            q = db.query(Study)
+            if instance_id:
+                q = q.filter(Study.instance_id == instance_id)
+            elif study_uid:
+                q = q.filter(Study.study_uid == study_uid)
+            study = q.first()
+
+            if study:
+                # Mark study status ready if column exists
+                if hasattr(study, "status"):
+                    study.status = "ready"
+                
+                # Store all predictions in one row as JSON
+                dr = DerivedResult(
+                    study_id = study.id,
+                    type="PanEcho_AllTasks",
+                    value_numeric=None,
+                    value_json=json.dumps(results), # store entire dict
+                    units="%",
+                    model_name="PanEcho",
+                    model_version="v1"
+                )
+
+                db.add(dr)
+                db.commit()
+        finally:
+            db.close()
 
         logger.info(f"[ALL] Prediction keys: {list(results.keys())}")
         return {"instance_id": instance_id, "predictions": results}
