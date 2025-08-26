@@ -96,6 +96,23 @@ def infer_echoprime(study_uid: str = Query(..., description="Study UID for EchoP
 
         predictions = ep.predict_metrics(encoded_study) # dict of predictions
         report_text = ep.generate_report(encoded_study) # report
+        
+        #This code is for testing, right now the report_text and predictions give different EF values
+        """
+        import re
+        pred_ef = predictions.get("ejection_fraction") or predictions.get("EF")
+        if pred_ef is not None:
+            report_fixed = re.sub(
+                r"(?:LV\s+)?Ejection Fraction\s*(?:is|:)\s*[0-9]+(?:\.[0-9]+)?\s*%",
+                f"LV Ejection Fraction is {pred_ef:.1f} %",
+                report_text,
+                flags=re.I
+            )
+        else:
+            report_fixed = report_text
+        
+        report_text = report_fixed
+        """
 
         # --- Step 4: persist results to DB ---
 

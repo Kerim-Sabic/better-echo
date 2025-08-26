@@ -3554,3 +3554,161 @@ RuntimeError: stack expects a non-empty TensorList
 2025-08-26 13:54:13,030 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=999.999.3859744
 2025-08-26 13:54:13,184 - INFO - api.infer - [EF] Found 1 instance(s) in the study
 2025-08-26 13:56:04,828 - INFO - __main__ - Starting FastAPI server on 0.0.0.0:8000
+2025-08-26 13:56:31,343 - INFO - api.upload - File saved locally at uploads\20250826135631_3.3.333.3.3.1055112289779488504693956663974912675108387297291434.dcm
+2025-08-26 13:56:31,343 - INFO - services.orthanc_client - Sending DICOM file to Orthanc: uploads\20250826135631_3.3.333.3.3.1055112289779488504693956663974912675108387297291434.dcm
+2025-08-26 13:56:31,929 - INFO - services.orthanc_client - Orthanc returned instance ID: e8f7c5e5-3355b6ef-f4027d62-b490815c-de0f9ed5
+2025-08-26 13:56:31,929 - INFO - api.upload - File uploaded to Orthanc. Instance ID: e8f7c5e5-3355b6ef-f4027d62-b490815c-de0f9ed5
+2025-08-26 13:56:31,929 - INFO - services.orthanc_client - Fetching tags for instance ID: e8f7c5e5-3355b6ef-f4027d62-b490815c-de0f9ed5
+2025-08-26 13:56:31,941 - INFO - services.orthanc_client - Fetched tags for instance e8f7c5e5-3355b6ef-f4027d62-b490815c-de0f9ed5 from Orthanc
+2025-08-26 13:56:31,943 - INFO - api.upload - Retrieved tags from Orthanc for instance e8f7c5e5-3355b6ef-f4027d62-b490815c-de0f9ed5
+2025-08-26 13:56:31,943 - INFO - api.upload - Extracted Patient ID: 67740ceb1b075f5345130ee81d6bfce0db7c5b1333bd86e0c8a27040c75826c1, Study Date: 20180720, Study UID: 3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 13:56:31,958 - INFO - api.upload - Study saved to database. Instance ID: e8f7c5e5-3355b6ef-f4027d62-b490815c-de0f9ed5
+2025-08-26 13:56:31,974 - INFO - api.upload - Cleaned tags for UI: {'PatientName': 'fe0000be5dd85f6239a5eaf16e0056b6a4c8de360e7fc0e0ac0cd23395df835a', 'PatientID': '67740ceb1b075f5345130ee81d6bfce0db7c5b1333bd86e0c8a27040c75826c1', 'PatientBirthDate': '', 'StudyDate': '20180720', 'StudyTime': '141620', 'AccessionNumber': '', 'ReferringPhysicianName': '', 'StudyInstanceUID': '3.3.333.3.3.4080808610983280439517444199864990438446541187622018'}
+2025-08-26 13:56:33,694 - INFO - api.infer_all_panecho - [ALL] infer_all called with instance_id=None study_uid=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 13:56:33,695 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 13:56:33,701 - INFO - api.infer - [EF] infer_ef called with instance_id=None study_uid=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 13:56:33,702 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 13:56:33,756 - INFO - api.infer - [EF] Found 3 instance(s) in the study
+2025-08-26 13:56:33,757 - INFO - api.infer_all_panecho - [ALL] Using instance_id=91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1 from study
+2025-08-26 13:56:33,758 - INFO - api.infer - [EF] Picking frames from instance 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1
+2025-08-26 13:56:33,760 - INFO - api.infer - [EF] Found 3 instance(s) in the study
+2025-08-26 13:56:33,762 - INFO - api.infer - [EF] Using instance_id=91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1 from study
+2025-08-26 13:56:33,762 - INFO - api.infer - [EF] Picking frames from instance 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1
+2025-08-26 13:56:33,766 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-26 13:56:33,773 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-26 13:56:34,001 - INFO - api.infer_echoprime - [EchoPrime] infer_echoprime called with study_uid=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 13:56:36,795 - INFO - api.infer - [EF] Collected 16 frame(s)
+2025-08-26 13:56:36,795 - INFO - api.infer - [EF] Stacking frames into tensor and ImageNet-normalizing
+2025-08-26 13:56:36,836 - INFO - api.infer - [EF] Tensor shape: (1, 3, 16, 224, 224) dtype=torch.float32
+2025-08-26 13:56:36,838 - INFO - api.infer - [EF] Loading PanEcho model on device: cpu
+2025-08-26 13:56:37,045 - INFO - api.infer - [EF] Collected 16 frame(s)
+2025-08-26 13:56:37,046 - INFO - api.infer - [EF] Stacking frames into tensor and ImageNet-normalizing
+2025-08-26 13:56:37,076 - INFO - api.infer - [EF] Tensor shape: (1, 3, 16, 224, 224) dtype=torch.float32
+2025-08-26 13:56:37,076 - INFO - api.infer - [EF] Loading PanEcho model on device: cpu
+2025-08-26 13:56:42,733 - INFO - api.infer - [EF] PanEcho model loaded successfully
+2025-08-26 13:56:42,733 - INFO - api.infer_all_panecho - [ALL] Running inference on device=cpu with input dtype=torch.float32
+2025-08-26 13:56:42,741 - INFO - api.infer - [EF] PanEcho model loaded successfully
+2025-08-26 13:56:42,741 - INFO - api.infer - [EF] Running inference on device=cpu with input dtype=torch.float32
+2025-08-26 13:56:53,888 - INFO - api.infer - [EF] EF prediction: 47.6457633972168
+2025-08-26 13:56:55,645 - INFO - api.infer_all_panecho - [ALL] Prediction keys: ['pericardial-effusion', 'EF', 'GLS', 'LVEDV', 'LVESV', 'LVSV', 'LVSize', 'LVWallThickness-increased-any', 'LVWallThickness-increased-modsev', 'LVSystolicFunction', 'LVWallMotionAbnormalities', 'IVSd', 'LVPWd', 'LVIDs', 'LVIDd', 'LVOTDiam', 'LVDiastolicFunction', 'E|EAvg', 'RVSP', 'RVSize', 'RVSystolicFunction', 'RVIDd', 'TAPSE', 'RVSVel', 'LASize', 'LAIDs2D', 'LAVol', 'RASize', 'RADimensionM-L(cm)', 'AVStructure', 'AVStenosis', 'AVPkVel(m|s)', 'AVRegurg', 'LVOT20mmHg', 'MVStenosis', 'MVRegurgitation', 'TVRegurgitation', 'TVPkGrad', 'RAP-8-or-higher', 'AORoot']
+2025-08-26 13:58:11,878 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 13:58:11,946 - INFO - api.infer - [EF] Found 3 instance(s) in the study
+2025-08-26 13:58:42,128 - INFO - api.infer_echoprime - [EchoPrime] Inference completed for study_uid=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 13:58:42,576 - INFO - api.infer_echoprime - [EchoPrime] Model unloaded and memory cleared
+2025-08-26 13:59:26,502 - INFO - api.infer - [EF] infer_ef called with instance_id=None study_uid=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 13:59:26,503 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 13:59:26,655 - INFO - api.infer - [EF] Found 3 instance(s) in the study
+2025-08-26 13:59:26,656 - INFO - api.infer - [EF] Using instance_id=91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1 from study
+2025-08-26 13:59:26,656 - INFO - api.infer - [EF] Picking frames from instance 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1
+2025-08-26 13:59:26,667 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-26 13:59:26,813 - INFO - api.infer_all_panecho - [ALL] infer_all called with instance_id=None study_uid=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 13:59:26,814 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 13:59:26,861 - INFO - api.infer - [EF] Found 3 instance(s) in the study
+2025-08-26 13:59:26,862 - INFO - api.infer_all_panecho - [ALL] Using instance_id=91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1 from study
+2025-08-26 13:59:26,862 - INFO - api.infer - [EF] Picking frames from instance 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1
+2025-08-26 13:59:26,878 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-26 13:59:29,464 - INFO - api.infer - [EF] Collected 16 frame(s)
+2025-08-26 13:59:29,464 - INFO - api.infer - [EF] Stacking frames into tensor and ImageNet-normalizing
+2025-08-26 13:59:29,506 - INFO - api.infer - [EF] Tensor shape: (1, 3, 16, 224, 224) dtype=torch.float32
+2025-08-26 13:59:29,507 - INFO - api.infer - [EF] Running inference on device=cpu with input dtype=torch.float32
+2025-08-26 13:59:29,690 - INFO - api.infer - [EF] Collected 16 frame(s)
+2025-08-26 13:59:29,691 - INFO - api.infer - [EF] Stacking frames into tensor and ImageNet-normalizing
+2025-08-26 13:59:29,725 - INFO - api.infer - [EF] Tensor shape: (1, 3, 16, 224, 224) dtype=torch.float32
+2025-08-26 13:59:29,726 - INFO - api.infer_all_panecho - [ALL] Running inference on device=cpu with input dtype=torch.float32
+2025-08-26 13:59:32,389 - INFO - api.infer - [EF] EF prediction: 47.6457633972168
+2025-08-26 13:59:32,427 - INFO - api.infer_all_panecho - [ALL] Prediction keys: ['pericardial-effusion', 'EF', 'GLS', 'LVEDV', 'LVESV', 'LVSV', 'LVSize', 'LVWallThickness-increased-any', 'LVWallThickness-increased-modsev', 'LVSystolicFunction', 'LVWallMotionAbnormalities', 'IVSd', 'LVPWd', 'LVIDs', 'LVIDd', 'LVOTDiam', 'LVDiastolicFunction', 'E|EAvg', 'RVSP', 'RVSize', 'RVSystolicFunction', 'RVIDd', 'TAPSE', 'RVSVel', 'LASize', 'LAIDs2D', 'LAVol', 'RASize', 'RADimensionM-L(cm)', 'AVStructure', 'AVStenosis', 'AVPkVel(m|s)', 'AVRegurg', 'LVOT20mmHg', 'MVStenosis', 'MVRegurgitation', 'TVRegurgitation', 'TVPkGrad', 'RAP-8-or-higher', 'AORoot']
+2025-08-26 14:00:00,160 - INFO - api.infer - [EF] infer_ef called with instance_id=None study_uid=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 14:00:00,161 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 14:00:00,212 - INFO - api.infer - [EF] Found 3 instance(s) in the study
+2025-08-26 14:00:00,213 - INFO - api.infer - [EF] Using instance_id=91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1 from study
+2025-08-26 14:00:00,214 - INFO - api.infer - [EF] Picking frames from instance 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1
+2025-08-26 14:00:00,224 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-26 14:00:00,467 - INFO - api.infer_all_panecho - [ALL] infer_all called with instance_id=None study_uid=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 14:00:00,468 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 14:00:00,505 - INFO - api.infer - [EF] Found 3 instance(s) in the study
+2025-08-26 14:00:00,506 - INFO - api.infer_all_panecho - [ALL] Using instance_id=91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1 from study
+2025-08-26 14:00:00,507 - INFO - api.infer - [EF] Picking frames from instance 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1
+2025-08-26 14:00:00,529 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-26 14:00:03,580 - INFO - api.infer - [EF] Collected 16 frame(s)
+2025-08-26 14:00:03,581 - INFO - api.infer - [EF] Stacking frames into tensor and ImageNet-normalizing
+2025-08-26 14:00:03,609 - INFO - api.infer - [EF] Tensor shape: (1, 3, 16, 224, 224) dtype=torch.float32
+2025-08-26 14:00:03,609 - INFO - api.infer - [EF] Running inference on device=cpu with input dtype=torch.float32
+2025-08-26 14:00:03,696 - INFO - api.infer - [EF] Collected 16 frame(s)
+2025-08-26 14:00:03,697 - INFO - api.infer - [EF] Stacking frames into tensor and ImageNet-normalizing
+2025-08-26 14:00:03,733 - INFO - api.infer - [EF] Tensor shape: (1, 3, 16, 224, 224) dtype=torch.float32
+2025-08-26 14:00:03,734 - INFO - api.infer_all_panecho - [ALL] Running inference on device=cpu with input dtype=torch.float32
+2025-08-26 14:00:05,692 - INFO - api.infer - [EF] EF prediction: 47.6457633972168
+2025-08-26 14:00:05,849 - INFO - api.infer_all_panecho - [ALL] Prediction keys: ['pericardial-effusion', 'EF', 'GLS', 'LVEDV', 'LVESV', 'LVSV', 'LVSize', 'LVWallThickness-increased-any', 'LVWallThickness-increased-modsev', 'LVSystolicFunction', 'LVWallMotionAbnormalities', 'IVSd', 'LVPWd', 'LVIDs', 'LVIDd', 'LVOTDiam', 'LVDiastolicFunction', 'E|EAvg', 'RVSP', 'RVSize', 'RVSystolicFunction', 'RVIDd', 'TAPSE', 'RVSVel', 'LASize', 'LAIDs2D', 'LAVol', 'RASize', 'RADimensionM-L(cm)', 'AVStructure', 'AVStenosis', 'AVPkVel(m|s)', 'AVRegurg', 'LVOT20mmHg', 'MVStenosis', 'MVRegurgitation', 'TVRegurgitation', 'TVPkGrad', 'RAP-8-or-higher', 'AORoot']
+2025-08-26 14:00:53,665 - INFO - api.upload - File saved locally at uploads\20250826140053_3.3.333.3.3.1014110341873399832132015341692728292412245558524126.dcm
+2025-08-26 14:00:53,665 - INFO - services.orthanc_client - Sending DICOM file to Orthanc: uploads\20250826140053_3.3.333.3.3.1014110341873399832132015341692728292412245558524126.dcm
+2025-08-26 14:00:53,835 - INFO - services.orthanc_client - Orthanc returned instance ID: 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1
+2025-08-26 14:00:53,836 - INFO - api.upload - File uploaded to Orthanc. Instance ID: 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1
+2025-08-26 14:00:53,836 - INFO - services.orthanc_client - Fetching tags for instance ID: 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1
+2025-08-26 14:00:53,843 - INFO - services.orthanc_client - Fetched tags for instance 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1 from Orthanc
+2025-08-26 14:00:53,844 - INFO - api.upload - Retrieved tags from Orthanc for instance 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1
+2025-08-26 14:00:53,844 - INFO - api.upload - Extracted Patient ID: 67740ceb1b075f5345130ee81d6bfce0db7c5b1333bd86e0c8a27040c75826c1, Study Date: 20180720, Study UID: 3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 14:00:53,852 - INFO - api.upload - Study saved to database. Instance ID: 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1
+2025-08-26 14:00:53,874 - INFO - api.upload - Cleaned tags for UI: {'PatientName': 'fe0000be5dd85f6239a5eaf16e0056b6a4c8de360e7fc0e0ac0cd23395df835a', 'PatientID': '67740ceb1b075f5345130ee81d6bfce0db7c5b1333bd86e0c8a27040c75826c1', 'PatientBirthDate': '', 'StudyDate': '20180720', 'StudyTime': '141620', 'AccessionNumber': '', 'ReferringPhysicianName': '', 'StudyInstanceUID': '3.3.333.3.3.4080808610983280439517444199864990438446541187622018'}
+2025-08-26 14:01:00,349 - INFO - api.infer - [EF] infer_ef called with instance_id=None study_uid=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 14:01:00,350 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 14:01:00,377 - INFO - api.infer - [EF] Found 3 instance(s) in the study
+2025-08-26 14:01:00,378 - INFO - api.infer - [EF] Using instance_id=91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1 from study
+2025-08-26 14:01:00,379 - INFO - api.infer - [EF] Picking frames from instance 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1
+2025-08-26 14:01:00,389 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-26 14:01:00,655 - INFO - api.infer_all_panecho - [ALL] infer_all called with instance_id=None study_uid=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 14:01:00,655 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 14:01:00,658 - INFO - api.infer_echoprime - [EchoPrime] infer_echoprime called with study_uid=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 14:01:00,689 - INFO - api.infer - [EF] Found 3 instance(s) in the study
+2025-08-26 14:01:00,692 - INFO - api.infer_all_panecho - [ALL] Using instance_id=91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1 from study
+2025-08-26 14:01:00,694 - INFO - api.infer - [EF] Picking frames from instance 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1
+2025-08-26 14:01:00,703 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-26 14:01:03,316 - INFO - api.infer - [EF] Collected 16 frame(s)
+2025-08-26 14:01:03,316 - INFO - api.infer - [EF] Stacking frames into tensor and ImageNet-normalizing
+2025-08-26 14:01:03,347 - INFO - api.infer - [EF] Tensor shape: (1, 3, 16, 224, 224) dtype=torch.float32
+2025-08-26 14:01:03,348 - INFO - api.infer - [EF] Running inference on device=cpu with input dtype=torch.float32
+2025-08-26 14:01:03,562 - INFO - api.infer - [EF] Collected 16 frame(s)
+2025-08-26 14:01:03,563 - INFO - api.infer - [EF] Stacking frames into tensor and ImageNet-normalizing
+2025-08-26 14:01:03,609 - INFO - api.infer - [EF] Tensor shape: (1, 3, 16, 224, 224) dtype=torch.float32
+2025-08-26 14:01:03,610 - INFO - api.infer_all_panecho - [ALL] Running inference on device=cpu with input dtype=torch.float32
+2025-08-26 14:01:05,949 - INFO - api.infer - [EF] EF prediction: 47.6457633972168
+2025-08-26 14:01:06,310 - INFO - api.infer_all_panecho - [ALL] Prediction keys: ['pericardial-effusion', 'EF', 'GLS', 'LVEDV', 'LVESV', 'LVSV', 'LVSize', 'LVWallThickness-increased-any', 'LVWallThickness-increased-modsev', 'LVSystolicFunction', 'LVWallMotionAbnormalities', 'IVSd', 'LVPWd', 'LVIDs', 'LVIDd', 'LVOTDiam', 'LVDiastolicFunction', 'E|EAvg', 'RVSP', 'RVSize', 'RVSystolicFunction', 'RVIDd', 'TAPSE', 'RVSVel', 'LASize', 'LAIDs2D', 'LAVol', 'RASize', 'RADimensionM-L(cm)', 'AVStructure', 'AVStenosis', 'AVPkVel(m|s)', 'AVRegurg', 'LVOT20mmHg', 'MVStenosis', 'MVRegurgitation', 'TVRegurgitation', 'TVPkGrad', 'RAP-8-or-higher', 'AORoot']
+2025-08-26 14:02:34,628 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 14:02:34,960 - INFO - api.infer - [EF] Found 3 instance(s) in the study
+2025-08-26 14:03:01,473 - INFO - api.infer_echoprime - [EchoPrime] Inference completed for study_uid=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 14:03:01,974 - INFO - api.infer_echoprime - [EchoPrime] Model unloaded and memory cleared
+2025-08-26 14:18:57,481 - INFO - api.infer_all_panecho - [ALL] infer_all called with instance_id=None study_uid=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 14:18:57,482 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 14:18:57,507 - INFO - api.infer - [EF] Found 3 instance(s) in the study
+2025-08-26 14:18:57,508 - INFO - api.infer_all_panecho - [ALL] Using instance_id=91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1 from study
+2025-08-26 14:18:57,508 - INFO - api.infer - [EF] Picking frames from instance 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1
+2025-08-26 14:18:57,517 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-26 14:18:58,987 - INFO - api.infer - [EF] Collected 16 frame(s)
+2025-08-26 14:18:58,988 - INFO - api.infer - [EF] Stacking frames into tensor and ImageNet-normalizing
+2025-08-26 14:18:59,020 - INFO - api.infer - [EF] Tensor shape: (1, 3, 16, 224, 224) dtype=torch.float32
+2025-08-26 14:18:59,021 - INFO - api.infer_all_panecho - [ALL] Running inference on device=cpu with input dtype=torch.float32
+2025-08-26 14:19:01,106 - INFO - api.infer_all_panecho - [ALL] Prediction keys: ['pericardial-effusion', 'EF', 'GLS', 'LVEDV', 'LVESV', 'LVSV', 'LVSize', 'LVWallThickness-increased-any', 'LVWallThickness-increased-modsev', 'LVSystolicFunction', 'LVWallMotionAbnormalities', 'IVSd', 'LVPWd', 'LVIDs', 'LVIDd', 'LVOTDiam', 'LVDiastolicFunction', 'E|EAvg', 'RVSP', 'RVSize', 'RVSystolicFunction', 'RVIDd', 'TAPSE', 'RVSVel', 'LASize', 'LAIDs2D', 'LAVol', 'RASize', 'RADimensionM-L(cm)', 'AVStructure', 'AVStenosis', 'AVPkVel(m|s)', 'AVRegurg', 'LVOT20mmHg', 'MVStenosis', 'MVRegurgitation', 'TVRegurgitation', 'TVPkGrad', 'RAP-8-or-higher', 'AORoot']
+2025-08-26 18:56:48,588 - INFO - __main__ - Starting FastAPI server on 0.0.0.0:8000
+2025-08-26 19:53:29,658 - INFO - api.infer_all_panecho - [ALL] infer_all called with instance_id=None study_uid=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 19:53:29,663 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 19:53:29,724 - INFO - api.infer - [EF] Found 3 instance(s) in the study
+2025-08-26 19:53:29,725 - INFO - api.infer_all_panecho - [ALL] Using instance_id=91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1 from study
+2025-08-26 19:53:29,725 - INFO - api.infer - [EF] Picking frames from instance 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1
+2025-08-26 19:53:29,735 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-26 19:53:31,441 - INFO - api.infer - [EF] Collected 16 frame(s)
+2025-08-26 19:53:31,442 - INFO - api.infer - [EF] Stacking frames into tensor and ImageNet-normalizing
+2025-08-26 19:53:31,492 - INFO - api.infer - [EF] Tensor shape: (1, 3, 16, 224, 224) dtype=torch.float32
+2025-08-26 19:53:31,493 - INFO - api.infer - [EF] Loading PanEcho model on device: cpu
+2025-08-26 19:53:37,115 - INFO - api.infer - [EF] PanEcho model loaded successfully
+2025-08-26 19:53:37,115 - INFO - api.infer_all_panecho - [ALL] Running inference on device=cpu with input dtype=torch.float32
+2025-08-26 19:53:38,667 - INFO - api.infer_all_panecho - [ALL] Prediction keys: ['pericardial-effusion', 'EF', 'GLS', 'LVEDV', 'LVESV', 'LVSV', 'LVSize', 'LVWallThickness-increased-any', 'LVWallThickness-increased-modsev', 'LVSystolicFunction', 'LVWallMotionAbnormalities', 'IVSd', 'LVPWd', 'LVIDs', 'LVIDd', 'LVOTDiam', 'LVDiastolicFunction', 'E|EAvg', 'RVSP', 'RVSize', 'RVSystolicFunction', 'RVIDd', 'TAPSE', 'RVSVel', 'LASize', 'LAIDs2D', 'LAVol', 'RASize', 'RADimensionM-L(cm)', 'AVStructure', 'AVStenosis', 'AVPkVel(m|s)', 'AVRegurg', 'LVOT20mmHg', 'MVStenosis', 'MVRegurgitation', 'TVRegurgitation', 'TVPkGrad', 'RAP-8-or-higher', 'AORoot']
+2025-08-26 20:06:22,033 - INFO - api.infer_echoprime - [EchoPrime] infer_echoprime called with study_uid=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 20:08:22,171 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 20:08:22,299 - INFO - api.infer - [EF] Found 3 instance(s) in the study
+2025-08-26 20:08:52,471 - INFO - api.infer_echoprime - [EchoPrime] Inference completed for study_uid=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 20:08:59,803 - INFO - api.infer_echoprime - [EchoPrime] Model unloaded and memory cleared
+2025-08-26 20:46:33,799 - INFO - api.infer_echoprime - [EchoPrime] infer_echoprime called with study_uid=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 20:48:12,225 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 20:48:12,990 - INFO - api.infer - [EF] Found 3 instance(s) in the study
+2025-08-26 20:48:50,631 - INFO - api.infer_echoprime - [EchoPrime] Inference completed for study_uid=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 20:48:57,999 - INFO - api.infer_echoprime - [EchoPrime] Model unloaded and memory cleared
+2025-08-26 20:52:25,030 - INFO - __main__ - Starting FastAPI server on 0.0.0.0:8000
