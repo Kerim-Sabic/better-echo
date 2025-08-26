@@ -2,15 +2,21 @@ from typing import Optional, Dict, Any, List
 import os
 import tempfile
 import shutil
+import json
 
 from fastapi import APIRouter, Query, HTTPException
 import logging
 import requests
+import torch
 
 from AI_models.EchoPrime.echo_prime import EchoPrime
 from api.infer import fetch_instance_ids_from_study
 from core.config import settings
 from schemas.infer_echoprime_schemas import EchoPrimeResponse
+
+from db import SessionLocal
+from models.study import Study
+from models.derived_result import DerivedResult
 
 orthanc_url = settings.ORTHANC_URL
 orthanc_user = settings.ORTHANC_USER
@@ -31,6 +37,18 @@ def get_ep() -> EchoPrime:
             logging.error(f"Failed to initialize EchoPrime: {e}")
             raise HTTPException(status_code=500, detail=f"EchoPrime initialization failed: {e}")
     return _ep
+
+def unload_ep():
+    """Unload the EchoPrime model and free memory"""
+    global _ep
+    if _ep is not None:
+        del _ep
+        _ep = None
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        import gc
+        gc.collect()
+        logger.info("[EchoPrime] Model unloaded and memory cleared")
 
 
 def download_dicoms_for_study(instance_ids: List[str]) -> str:
@@ -79,6 +97,27 @@ def infer_echoprime(study_uid: str = Query(..., description="Study UID for EchoP
         predictions = ep.predict_metrics(encoded_study) # dict of predictions
         report_text = ep.generate_report(encoded_study) # report
 
+        # --- Step 4: persist results to DB ---
+
+        db = SessionLocal()
+        try:
+            study = db.query(Study).filter(Study.study_uid == study_uid).first()
+            if study:
+                # Store generated report as JSON
+                dr_report = DerivedResult(
+                    study_id = study.id,
+                    type="EchoPrime_Report",
+                    value_numeric=None,
+                    value_json=json.dumps({"report": report_text}),
+                    units="%",
+                    model_name="EchoPrime",
+                    model_version="v1"
+                )
+                db.add(dr_report)
+                db.commit()
+        finally:
+            db.close()
+
         logger.info(f"[EchoPrime] Inference completed for study_uid={study_uid}")
         return {
             "study_uid": study_uid,
@@ -92,8 +131,10 @@ def infer_echoprime(study_uid: str = Query(..., description="Study UID for EchoP
         raise HTTPException(status_code=500, detail=f"EchoPrime inference failed: {type(e).__name__}: {e}")
     
     finally:
-         #--- Step 4: cleanup temp files ---
+         # --- Step 5: cleanup temp files ---
         try:
             shutil.rmtree(study_dir)
         except Exception:
             pass
+        # --- Step 6: unload model to free memory ---
+        unload_ep()

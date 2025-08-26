@@ -3335,3 +3335,222 @@ RuntimeError: stack expects a non-empty TensorList
 [parameters: ('91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1', '67740ceb1b075f5345130ee81d6bfce0db7c5b1333bd86e0c8a27040c75826c1', '3.3.333.3.3.4080808610983280439517444199864990438446541187622018', '20180720', 'uploads\\20250826123044_3.3.333.3.3.1014110341873399832132015341692728292412245558524126.dcm', '2025-08-26 10:30:44.469595', 'processing', None)]
 (Background on this error at: https://sqlalche.me/e/20/e3q8)
 2025-08-26 12:31:17,744 - INFO - __main__ - Starting FastAPI server on 0.0.0.0:8000
+2025-08-26 12:31:37,981 - INFO - api.upload - File saved locally at uploads\20250826123137_3.3.333.3.3.1014110341873399832132015341692728292412245558524126.dcm
+2025-08-26 12:31:37,982 - INFO - services.orthanc_client - Sending DICOM file to Orthanc: uploads\20250826123137_3.3.333.3.3.1014110341873399832132015341692728292412245558524126.dcm
+2025-08-26 12:31:38,138 - INFO - services.orthanc_client - Orthanc returned instance ID: 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1
+2025-08-26 12:31:38,138 - INFO - api.upload - File uploaded to Orthanc. Instance ID: 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1
+2025-08-26 12:31:38,138 - INFO - services.orthanc_client - Fetching tags for instance ID: 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1
+2025-08-26 12:31:38,146 - INFO - services.orthanc_client - Fetched tags for instance 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1 from Orthanc
+2025-08-26 12:31:38,147 - INFO - api.upload - Retrieved tags from Orthanc for instance 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1
+2025-08-26 12:31:38,147 - INFO - api.upload - Extracted Patient ID: 67740ceb1b075f5345130ee81d6bfce0db7c5b1333bd86e0c8a27040c75826c1, Study Date: 20180720, Study UID: 3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 12:31:43,645 - ERROR - api.upload - Upload failed: (sqlite3.OperationalError) database is locked
+[SQL: INSERT INTO studies (instance_id, patient_id, study_uid, study_date, file_path, uploaded_at, status, ef_value) VALUES (?, ?, ?, ?, ?, ?, ?, ?)]
+[parameters: ('91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1', '67740ceb1b075f5345130ee81d6bfce0db7c5b1333bd86e0c8a27040c75826c1', '3.3.333.3.3.4080808610983280439517444199864990438446541187622018', '20180720', 'uploads\\20250826123137_3.3.333.3.3.1014110341873399832132015341692728292412245558524126.dcm', '2025-08-26 10:31:38.150817', 'processing', None)]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-08-26 12:32:01,173 - INFO - api.upload - File saved locally at uploads\20250826123201_3.3.333.3.3.1014110341873399832132015341692728292412245558524126.dcm
+2025-08-26 12:32:01,174 - INFO - services.orthanc_client - Sending DICOM file to Orthanc: uploads\20250826123201_3.3.333.3.3.1014110341873399832132015341692728292412245558524126.dcm
+2025-08-26 12:32:01,292 - INFO - services.orthanc_client - Orthanc returned instance ID: 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1
+2025-08-26 12:32:01,292 - INFO - api.upload - File uploaded to Orthanc. Instance ID: 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1
+2025-08-26 12:32:01,293 - INFO - services.orthanc_client - Fetching tags for instance ID: 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1
+2025-08-26 12:32:01,301 - INFO - services.orthanc_client - Fetched tags for instance 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1 from Orthanc
+2025-08-26 12:32:01,302 - INFO - api.upload - Retrieved tags from Orthanc for instance 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1
+2025-08-26 12:32:01,302 - INFO - api.upload - Extracted Patient ID: 67740ceb1b075f5345130ee81d6bfce0db7c5b1333bd86e0c8a27040c75826c1, Study Date: 20180720, Study UID: 3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 12:32:06,797 - ERROR - api.upload - Upload failed: (sqlite3.OperationalError) database is locked
+[SQL: INSERT INTO studies (instance_id, patient_id, study_uid, study_date, file_path, uploaded_at, status, ef_value) VALUES (?, ?, ?, ?, ?, ?, ?, ?)]
+[parameters: ('91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1', '67740ceb1b075f5345130ee81d6bfce0db7c5b1333bd86e0c8a27040c75826c1', '3.3.333.3.3.4080808610983280439517444199864990438446541187622018', '20180720', 'uploads\\20250826123201_3.3.333.3.3.1014110341873399832132015341692728292412245558524126.dcm', '2025-08-26 10:32:01.304239', 'processing', None)]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-08-26 12:32:43,419 - INFO - api.upload - File saved locally at uploads\20250826123243_3.3.333.3.3.1014110341873399832132015341692728292412245558524126.dcm
+2025-08-26 12:32:43,420 - INFO - services.orthanc_client - Sending DICOM file to Orthanc: uploads\20250826123243_3.3.333.3.3.1014110341873399832132015341692728292412245558524126.dcm
+2025-08-26 12:32:43,566 - INFO - services.orthanc_client - Orthanc returned instance ID: 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1
+2025-08-26 12:32:43,566 - INFO - api.upload - File uploaded to Orthanc. Instance ID: 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1
+2025-08-26 12:32:43,567 - INFO - services.orthanc_client - Fetching tags for instance ID: 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1
+2025-08-26 12:32:43,573 - INFO - services.orthanc_client - Fetched tags for instance 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1 from Orthanc
+2025-08-26 12:32:43,574 - INFO - api.upload - Retrieved tags from Orthanc for instance 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1
+2025-08-26 12:32:43,574 - INFO - api.upload - Extracted Patient ID: 67740ceb1b075f5345130ee81d6bfce0db7c5b1333bd86e0c8a27040c75826c1, Study Date: 20180720, Study UID: 3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 12:32:49,071 - ERROR - api.upload - Upload failed: (sqlite3.OperationalError) database is locked
+[SQL: INSERT INTO studies (instance_id, patient_id, study_uid, study_date, file_path, uploaded_at, status, ef_value) VALUES (?, ?, ?, ?, ?, ?, ?, ?)]
+[parameters: ('91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1', '67740ceb1b075f5345130ee81d6bfce0db7c5b1333bd86e0c8a27040c75826c1', '3.3.333.3.3.4080808610983280439517444199864990438446541187622018', '20180720', 'uploads\\20250826123243_3.3.333.3.3.1014110341873399832132015341692728292412245558524126.dcm', '2025-08-26 10:32:43.576743', 'processing', None)]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-08-26 12:33:50,038 - INFO - api.upload - File saved locally at uploads\20250826123350_3.3.333.3.3.1014110341873399832132015341692728292412245558524126.dcm
+2025-08-26 12:33:50,039 - INFO - services.orthanc_client - Sending DICOM file to Orthanc: uploads\20250826123350_3.3.333.3.3.1014110341873399832132015341692728292412245558524126.dcm
+2025-08-26 12:33:50,145 - INFO - services.orthanc_client - Orthanc returned instance ID: 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1
+2025-08-26 12:33:50,146 - INFO - api.upload - File uploaded to Orthanc. Instance ID: 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1
+2025-08-26 12:33:50,146 - INFO - services.orthanc_client - Fetching tags for instance ID: 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1
+2025-08-26 12:33:50,154 - INFO - services.orthanc_client - Fetched tags for instance 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1 from Orthanc
+2025-08-26 12:33:50,155 - INFO - api.upload - Retrieved tags from Orthanc for instance 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1
+2025-08-26 12:33:50,155 - INFO - api.upload - Extracted Patient ID: 67740ceb1b075f5345130ee81d6bfce0db7c5b1333bd86e0c8a27040c75826c1, Study Date: 20180720, Study UID: 3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 12:33:55,650 - ERROR - api.upload - Upload failed: (sqlite3.OperationalError) database is locked
+[SQL: INSERT INTO studies (instance_id, patient_id, study_uid, study_date, file_path, uploaded_at, status, ef_value) VALUES (?, ?, ?, ?, ?, ?, ?, ?)]
+[parameters: ('91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1', '67740ceb1b075f5345130ee81d6bfce0db7c5b1333bd86e0c8a27040c75826c1', '3.3.333.3.3.4080808610983280439517444199864990438446541187622018', '20180720', 'uploads\\20250826123350_3.3.333.3.3.1014110341873399832132015341692728292412245558524126.dcm', '2025-08-26 10:33:50.157954', 'processing', None)]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2025-08-26 12:34:25,622 - INFO - api.upload - File saved locally at uploads\20250826123425_3.3.333.3.3.1014110341873399832132015341692728292412245558524126.dcm
+2025-08-26 12:34:25,623 - INFO - services.orthanc_client - Sending DICOM file to Orthanc: uploads\20250826123425_3.3.333.3.3.1014110341873399832132015341692728292412245558524126.dcm
+2025-08-26 12:34:25,761 - INFO - services.orthanc_client - Orthanc returned instance ID: 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1
+2025-08-26 12:34:25,761 - INFO - api.upload - File uploaded to Orthanc. Instance ID: 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1
+2025-08-26 12:34:25,762 - INFO - services.orthanc_client - Fetching tags for instance ID: 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1
+2025-08-26 12:34:25,769 - INFO - services.orthanc_client - Fetched tags for instance 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1 from Orthanc
+2025-08-26 12:34:25,769 - INFO - api.upload - Retrieved tags from Orthanc for instance 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1
+2025-08-26 12:34:25,770 - INFO - api.upload - Extracted Patient ID: 67740ceb1b075f5345130ee81d6bfce0db7c5b1333bd86e0c8a27040c75826c1, Study Date: 20180720, Study UID: 3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 12:34:25,782 - INFO - api.upload - Study saved to database. Instance ID: 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1
+2025-08-26 12:34:25,788 - INFO - api.upload - Cleaned tags for UI: {'PatientName': 'fe0000be5dd85f6239a5eaf16e0056b6a4c8de360e7fc0e0ac0cd23395df835a', 'PatientID': '67740ceb1b075f5345130ee81d6bfce0db7c5b1333bd86e0c8a27040c75826c1', 'PatientBirthDate': '', 'StudyDate': '20180720', 'StudyTime': '141620', 'AccessionNumber': '', 'ReferringPhysicianName': '', 'StudyInstanceUID': '3.3.333.3.3.4080808610983280439517444199864990438446541187622018'}
+2025-08-26 12:34:28,441 - INFO - api.infer - [EF] infer_ef called with instance_id=None study_uid=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 12:34:28,442 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 12:34:28,482 - INFO - api.infer - [EF] Found 3 instance(s) in the study
+2025-08-26 12:34:28,483 - INFO - api.infer - [EF] Using instance_id=91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1 from study
+2025-08-26 12:34:28,484 - INFO - api.infer - [EF] Picking frames from instance 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1
+2025-08-26 12:34:28,492 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-26 12:34:28,754 - INFO - api.infer_all_panecho - [ALL] infer_all called with instance_id=None study_uid=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 12:34:28,754 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 12:34:28,790 - INFO - api.infer - [EF] Found 3 instance(s) in the study
+2025-08-26 12:34:28,791 - INFO - api.infer_all_panecho - [ALL] Using instance_id=91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1 from study
+2025-08-26 12:34:28,792 - INFO - api.infer - [EF] Picking frames from instance 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1
+2025-08-26 12:34:28,799 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-26 12:34:30,916 - INFO - api.infer - [EF] Collected 16 frame(s)
+2025-08-26 12:34:30,916 - INFO - api.infer - [EF] Stacking frames into tensor and ImageNet-normalizing
+2025-08-26 12:34:30,951 - INFO - api.infer - [EF] Tensor shape: (1, 3, 16, 224, 224) dtype=torch.float32
+2025-08-26 12:34:30,952 - INFO - api.infer - [EF] Loading PanEcho model on device: cpu
+2025-08-26 12:34:31,309 - INFO - api.infer - [EF] Collected 16 frame(s)
+2025-08-26 12:34:31,310 - INFO - api.infer - [EF] Stacking frames into tensor and ImageNet-normalizing
+2025-08-26 12:34:31,339 - INFO - api.infer - [EF] Tensor shape: (1, 3, 16, 224, 224) dtype=torch.float32
+2025-08-26 12:34:31,340 - INFO - api.infer - [EF] Loading PanEcho model on device: cpu
+2025-08-26 12:34:34,977 - INFO - api.infer - [EF] PanEcho model loaded successfully
+2025-08-26 12:34:34,978 - INFO - api.infer_all_panecho - [ALL] Running inference on device=cpu with input dtype=torch.float32
+2025-08-26 12:34:35,001 - INFO - api.infer - [EF] PanEcho model loaded successfully
+2025-08-26 12:34:35,002 - INFO - api.infer - [EF] Running inference on device=cpu with input dtype=torch.float32
+2025-08-26 12:34:37,511 - INFO - api.infer - [EF] EF prediction: 47.6457633972168
+2025-08-26 12:34:37,516 - INFO - api.infer_all_panecho - [ALL] Prediction keys: ['pericardial-effusion', 'EF', 'GLS', 'LVEDV', 'LVESV', 'LVSV', 'LVSize', 'LVWallThickness-increased-any', 'LVWallThickness-increased-modsev', 'LVSystolicFunction', 'LVWallMotionAbnormalities', 'IVSd', 'LVPWd', 'LVIDs', 'LVIDd', 'LVOTDiam', 'LVDiastolicFunction', 'E|EAvg', 'RVSP', 'RVSize', 'RVSystolicFunction', 'RVIDd', 'TAPSE', 'RVSVel', 'LASize', 'LAIDs2D', 'LAVol', 'RASize', 'RADimensionM-L(cm)', 'AVStructure', 'AVStenosis', 'AVPkVel(m|s)', 'AVRegurg', 'LVOT20mmHg', 'MVStenosis', 'MVRegurgitation', 'TVRegurgitation', 'TVPkGrad', 'RAP-8-or-higher', 'AORoot']
+2025-08-26 13:07:43,622 - INFO - api.infer_echoprime - [EchoPrime] infer_echoprime called with study_uid=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 13:09:26,289 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 13:09:26,594 - INFO - api.infer - [EF] Found 3 instance(s) in the study
+2025-08-26 13:09:54,494 - INFO - api.infer_echoprime - [EchoPrime] Inference completed for study_uid=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 13:26:40,586 - INFO - __main__ - Starting FastAPI server on 0.0.0.0:8000
+2025-08-26 13:27:11,413 - INFO - api.upload - File saved locally at uploads\20250826132711_3.3.333.3.3.1014110341873399832132015341692728292412245558524126.dcm
+2025-08-26 13:27:11,414 - INFO - services.orthanc_client - Sending DICOM file to Orthanc: uploads\20250826132711_3.3.333.3.3.1014110341873399832132015341692728292412245558524126.dcm
+2025-08-26 13:27:11,971 - INFO - services.orthanc_client - Orthanc returned instance ID: 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1
+2025-08-26 13:27:11,971 - INFO - api.upload - File uploaded to Orthanc. Instance ID: 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1
+2025-08-26 13:27:11,972 - INFO - services.orthanc_client - Fetching tags for instance ID: 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1
+2025-08-26 13:27:12,016 - INFO - services.orthanc_client - Fetched tags for instance 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1 from Orthanc
+2025-08-26 13:27:12,016 - INFO - api.upload - Retrieved tags from Orthanc for instance 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1
+2025-08-26 13:27:12,016 - INFO - api.upload - Extracted Patient ID: 67740ceb1b075f5345130ee81d6bfce0db7c5b1333bd86e0c8a27040c75826c1, Study Date: 20180720, Study UID: 3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 13:27:12,030 - INFO - api.upload - Study saved to database. Instance ID: 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1
+2025-08-26 13:27:12,041 - INFO - api.upload - Cleaned tags for UI: {'PatientName': 'fe0000be5dd85f6239a5eaf16e0056b6a4c8de360e7fc0e0ac0cd23395df835a', 'PatientID': '67740ceb1b075f5345130ee81d6bfce0db7c5b1333bd86e0c8a27040c75826c1', 'PatientBirthDate': '', 'StudyDate': '20180720', 'StudyTime': '141620', 'AccessionNumber': '', 'ReferringPhysicianName': '', 'StudyInstanceUID': '3.3.333.3.3.4080808610983280439517444199864990438446541187622018'}
+2025-08-26 13:27:14,709 - INFO - api.infer - [EF] infer_ef called with instance_id=None study_uid=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 13:27:14,709 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 13:27:14,798 - INFO - api.infer - [EF] Found 3 instance(s) in the study
+2025-08-26 13:27:14,800 - INFO - api.infer - [EF] Using instance_id=91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1 from study
+2025-08-26 13:27:14,800 - INFO - api.infer - [EF] Picking frames from instance 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1
+2025-08-26 13:27:14,809 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-26 13:27:15,005 - INFO - api.infer_all_panecho - [ALL] infer_all called with instance_id=None study_uid=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 13:27:15,005 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 13:27:15,024 - INFO - api.infer_echoprime - [EchoPrime] infer_echoprime called with study_uid=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 13:27:15,056 - INFO - api.infer - [EF] Found 3 instance(s) in the study
+2025-08-26 13:27:15,057 - INFO - api.infer_all_panecho - [ALL] Using instance_id=91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1 from study
+2025-08-26 13:27:15,058 - INFO - api.infer - [EF] Picking frames from instance 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1
+2025-08-26 13:27:15,070 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-26 13:27:18,292 - INFO - api.infer - [EF] Collected 16 frame(s)
+2025-08-26 13:27:18,293 - INFO - api.infer - [EF] Stacking frames into tensor and ImageNet-normalizing
+2025-08-26 13:27:18,336 - INFO - api.infer - [EF] Tensor shape: (1, 3, 16, 224, 224) dtype=torch.float32
+2025-08-26 13:27:18,336 - INFO - api.infer - [EF] Loading PanEcho model on device: cpu
+2025-08-26 13:27:18,438 - INFO - api.infer - [EF] Collected 16 frame(s)
+2025-08-26 13:27:18,439 - INFO - api.infer - [EF] Stacking frames into tensor and ImageNet-normalizing
+2025-08-26 13:27:18,468 - INFO - api.infer - [EF] Tensor shape: (1, 3, 16, 224, 224) dtype=torch.float32
+2025-08-26 13:27:18,469 - INFO - api.infer - [EF] Loading PanEcho model on device: cpu
+2025-08-26 13:27:41,880 - INFO - api.infer - [EF] PanEcho model loaded successfully
+2025-08-26 13:27:41,888 - INFO - api.infer_all_panecho - [ALL] Running inference on device=cpu with input dtype=torch.float32
+2025-08-26 13:27:41,975 - INFO - api.infer - [EF] PanEcho model loaded successfully
+2025-08-26 13:27:41,979 - INFO - api.infer - [EF] Running inference on device=cpu with input dtype=torch.float32
+2025-08-26 13:27:54,175 - INFO - api.infer - [EF] EF prediction: 47.6457633972168
+2025-08-26 13:28:01,376 - INFO - api.infer_all_panecho - [ALL] Prediction keys: ['pericardial-effusion', 'EF', 'GLS', 'LVEDV', 'LVESV', 'LVSV', 'LVSize', 'LVWallThickness-increased-any', 'LVWallThickness-increased-modsev', 'LVSystolicFunction', 'LVWallMotionAbnormalities', 'IVSd', 'LVPWd', 'LVIDs', 'LVIDd', 'LVOTDiam', 'LVDiastolicFunction', 'E|EAvg', 'RVSP', 'RVSize', 'RVSystolicFunction', 'RVIDd', 'TAPSE', 'RVSVel', 'LASize', 'LAIDs2D', 'LAVol', 'RASize', 'RADimensionM-L(cm)', 'AVStructure', 'AVStenosis', 'AVPkVel(m|s)', 'AVRegurg', 'LVOT20mmHg', 'MVStenosis', 'MVRegurgitation', 'TVRegurgitation', 'TVPkGrad', 'RAP-8-or-higher', 'AORoot']
+2025-08-26 13:28:55,521 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 13:28:55,802 - INFO - api.infer - [EF] Found 3 instance(s) in the study
+2025-08-26 13:29:25,862 - INFO - api.infer_echoprime - [EchoPrime] Inference completed for study_uid=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 13:29:42,591 - INFO - api.infer_echoprime - [EchoPrime] infer_echoprime called with study_uid=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 13:29:42,594 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 13:29:42,764 - INFO - api.infer - [EF] Found 3 instance(s) in the study
+2025-08-26 13:30:01,322 - INFO - api.infer_echoprime - [EchoPrime] Inference completed for study_uid=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 13:30:03,233 - INFO - api.infer_echoprime - [EchoPrime] infer_echoprime called with study_uid=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 13:30:03,234 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 13:30:03,282 - INFO - api.infer - [EF] Found 3 instance(s) in the study
+2025-08-26 13:30:20,364 - INFO - api.infer_echoprime - [EchoPrime] Inference completed for study_uid=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 13:36:14,619 - INFO - __main__ - Starting FastAPI server on 0.0.0.0:8000
+2025-08-26 13:37:38,171 - INFO - api.upload - File saved locally at uploads\20250826133738_3.3.333.3.3.1014110341873399832132015341692728292412245558524126.dcm
+2025-08-26 13:37:38,172 - INFO - services.orthanc_client - Sending DICOM file to Orthanc: uploads\20250826133738_3.3.333.3.3.1014110341873399832132015341692728292412245558524126.dcm
+2025-08-26 13:37:38,336 - INFO - services.orthanc_client - Orthanc returned instance ID: 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1
+2025-08-26 13:37:38,337 - INFO - api.upload - File uploaded to Orthanc. Instance ID: 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1
+2025-08-26 13:37:38,337 - INFO - services.orthanc_client - Fetching tags for instance ID: 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1
+2025-08-26 13:37:38,347 - INFO - services.orthanc_client - Fetched tags for instance 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1 from Orthanc
+2025-08-26 13:37:38,347 - INFO - api.upload - Retrieved tags from Orthanc for instance 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1
+2025-08-26 13:37:38,348 - INFO - api.upload - Extracted Patient ID: 67740ceb1b075f5345130ee81d6bfce0db7c5b1333bd86e0c8a27040c75826c1, Study Date: 20180720, Study UID: 3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 13:37:38,359 - INFO - api.upload - Study saved to database. Instance ID: 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1
+2025-08-26 13:37:38,367 - INFO - api.upload - Cleaned tags for UI: {'PatientName': 'fe0000be5dd85f6239a5eaf16e0056b6a4c8de360e7fc0e0ac0cd23395df835a', 'PatientID': '67740ceb1b075f5345130ee81d6bfce0db7c5b1333bd86e0c8a27040c75826c1', 'PatientBirthDate': '', 'StudyDate': '20180720', 'StudyTime': '141620', 'AccessionNumber': '', 'ReferringPhysicianName': '', 'StudyInstanceUID': '3.3.333.3.3.4080808610983280439517444199864990438446541187622018'}
+2025-08-26 13:37:40,578 - INFO - api.infer - [EF] infer_ef called with instance_id=None study_uid=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 13:37:40,578 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 13:37:40,619 - INFO - api.infer - [EF] Found 3 instance(s) in the study
+2025-08-26 13:37:40,620 - INFO - api.infer - [EF] Using instance_id=91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1 from study
+2025-08-26 13:37:40,621 - INFO - api.infer - [EF] Picking frames from instance 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1
+2025-08-26 13:37:40,629 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-26 13:37:40,865 - INFO - api.infer_all_panecho - [ALL] infer_all called with instance_id=None study_uid=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 13:37:40,866 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 13:37:40,868 - INFO - api.infer_echoprime - [EchoPrime] infer_echoprime called with study_uid=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 13:37:40,903 - INFO - api.infer - [EF] Found 3 instance(s) in the study
+2025-08-26 13:37:40,904 - INFO - api.infer_all_panecho - [ALL] Using instance_id=91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1 from study
+2025-08-26 13:37:40,908 - INFO - api.infer - [EF] Picking frames from instance 91763c66-70b93fb2-fcfe4341-421fffd0-2be24cb1
+2025-08-26 13:37:40,921 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-26 13:37:43,847 - INFO - api.infer - [EF] Collected 16 frame(s)
+2025-08-26 13:37:43,848 - INFO - api.infer - [EF] Stacking frames into tensor and ImageNet-normalizing
+2025-08-26 13:37:43,889 - INFO - api.infer - [EF] Tensor shape: (1, 3, 16, 224, 224) dtype=torch.float32
+2025-08-26 13:37:43,889 - INFO - api.infer - [EF] Loading PanEcho model on device: cpu
+2025-08-26 13:37:44,258 - INFO - api.infer - [EF] Collected 16 frame(s)
+2025-08-26 13:37:44,259 - INFO - api.infer - [EF] Stacking frames into tensor and ImageNet-normalizing
+2025-08-26 13:37:44,291 - INFO - api.infer - [EF] Tensor shape: (1, 3, 16, 224, 224) dtype=torch.float32
+2025-08-26 13:37:44,291 - INFO - api.infer - [EF] Loading PanEcho model on device: cpu
+2025-08-26 13:37:49,432 - INFO - api.infer - [EF] PanEcho model loaded successfully
+2025-08-26 13:37:49,433 - INFO - api.infer - [EF] Running inference on device=cpu with input dtype=torch.float32
+2025-08-26 13:37:49,442 - INFO - api.infer - [EF] PanEcho model loaded successfully
+2025-08-26 13:37:49,443 - INFO - api.infer_all_panecho - [ALL] Running inference on device=cpu with input dtype=torch.float32
+2025-08-26 13:37:57,642 - INFO - api.infer - [EF] EF prediction: 47.6457633972168
+2025-08-26 13:37:59,311 - INFO - api.infer_all_panecho - [ALL] Prediction keys: ['pericardial-effusion', 'EF', 'GLS', 'LVEDV', 'LVESV', 'LVSV', 'LVSize', 'LVWallThickness-increased-any', 'LVWallThickness-increased-modsev', 'LVSystolicFunction', 'LVWallMotionAbnormalities', 'IVSd', 'LVPWd', 'LVIDs', 'LVIDd', 'LVOTDiam', 'LVDiastolicFunction', 'E|EAvg', 'RVSP', 'RVSize', 'RVSystolicFunction', 'RVIDd', 'TAPSE', 'RVSVel', 'LASize', 'LAIDs2D', 'LAVol', 'RASize', 'RADimensionM-L(cm)', 'AVStructure', 'AVStenosis', 'AVPkVel(m|s)', 'AVRegurg', 'LVOT20mmHg', 'MVStenosis', 'MVRegurgitation', 'TVRegurgitation', 'TVPkGrad', 'RAP-8-or-higher', 'AORoot']
+2025-08-26 13:39:07,508 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 13:39:07,709 - INFO - api.infer - [EF] Found 3 instance(s) in the study
+2025-08-26 13:39:33,508 - INFO - api.infer_echoprime - [EchoPrime] Inference completed for study_uid=3.3.333.3.3.4080808610983280439517444199864990438446541187622018
+2025-08-26 13:51:40,822 - INFO - __main__ - Starting FastAPI server on 0.0.0.0:8000
+2025-08-26 13:52:17,108 - INFO - api.upload - File saved locally at uploads\20250826135217_0020.DCM
+2025-08-26 13:52:17,109 - INFO - services.orthanc_client - Sending DICOM file to Orthanc: uploads\20250826135217_0020.DCM
+2025-08-26 13:52:17,155 - INFO - services.orthanc_client - Orthanc returned instance ID: 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-26 13:52:17,155 - INFO - api.upload - File uploaded to Orthanc. Instance ID: 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-26 13:52:17,156 - INFO - services.orthanc_client - Fetching tags for instance ID: 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-26 13:52:17,168 - INFO - services.orthanc_client - Fetched tags for instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d from Orthanc
+2025-08-26 13:52:17,168 - INFO - api.upload - Retrieved tags from Orthanc for instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-26 13:52:17,169 - INFO - api.upload - Extracted Patient ID: 123-45-6789, Study Date: 19940323, Study UID: 999.999.3859744
+2025-08-26 13:52:17,180 - INFO - api.upload - Study saved to database. Instance ID: 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-26 13:52:17,187 - INFO - api.upload - Cleaned tags for UI: {'PatientName': 'Rubo DEMO', 'PatientID': '123-45-6789', 'PatientBirthDate': '19231016', 'StudyDate': '19940323', 'StudyTime': '115104.0', 'AccessionNumber': '', 'ReferringPhysicianName': '------------------', 'StudyInstanceUID': '999.999.3859744'}
+2025-08-26 13:52:20,439 - INFO - api.infer - [EF] infer_ef called with instance_id=None study_uid=999.999.3859744
+2025-08-26 13:52:20,440 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=999.999.3859744
+2025-08-26 13:52:20,488 - INFO - api.infer - [EF] Found 1 instance(s) in the study
+2025-08-26 13:52:20,488 - INFO - api.infer - [EF] Using instance_id=1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d from study
+2025-08-26 13:52:20,489 - INFO - api.infer - [EF] Picking frames from instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-26 13:52:20,496 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-26 13:52:20,744 - INFO - api.infer_all_panecho - [ALL] infer_all called with instance_id=None study_uid=999.999.3859744
+2025-08-26 13:52:20,745 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=999.999.3859744
+2025-08-26 13:52:20,745 - INFO - api.infer_echoprime - [EchoPrime] infer_echoprime called with study_uid=999.999.3859744
+2025-08-26 13:52:20,805 - INFO - api.infer - [EF] Found 1 instance(s) in the study
+2025-08-26 13:52:20,808 - INFO - api.infer_all_panecho - [ALL] Using instance_id=1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d from study
+2025-08-26 13:52:20,811 - INFO - api.infer - [EF] Picking frames from instance 1a430a89-16db2731-8ef19e46-c238c4d3-709cb35d
+2025-08-26 13:52:20,821 - INFO - api.infer - [EF] Instance has 1 frame(s)
+2025-08-26 13:52:21,249 - INFO - api.infer - [EF] Collected 16 frame(s)
+2025-08-26 13:52:21,250 - INFO - api.infer - [EF] Stacking frames into tensor and ImageNet-normalizing
+2025-08-26 13:52:21,325 - INFO - api.infer - [EF] Tensor shape: (1, 3, 16, 224, 224) dtype=torch.float32
+2025-08-26 13:52:21,335 - INFO - api.infer - [EF] Loading PanEcho model on device: cpu
+2025-08-26 13:52:21,540 - INFO - api.infer - [EF] Collected 16 frame(s)
+2025-08-26 13:52:21,541 - INFO - api.infer - [EF] Stacking frames into tensor and ImageNet-normalizing
+2025-08-26 13:52:21,574 - INFO - api.infer - [EF] Tensor shape: (1, 3, 16, 224, 224) dtype=torch.float32
+2025-08-26 13:52:21,575 - INFO - api.infer - [EF] Loading PanEcho model on device: cpu
+2025-08-26 13:52:30,391 - INFO - api.infer - [EF] PanEcho model loaded successfully
+2025-08-26 13:52:30,391 - INFO - api.infer - [EF] Running inference on device=cpu with input dtype=torch.float32
+2025-08-26 13:52:30,400 - INFO - api.infer - [EF] PanEcho model loaded successfully
+2025-08-26 13:52:30,401 - INFO - api.infer_all_panecho - [ALL] Running inference on device=cpu with input dtype=torch.float32
+2025-08-26 13:52:44,671 - INFO - api.infer - [EF] EF prediction: 58.0305290222168
+2025-08-26 13:52:48,544 - INFO - api.infer_all_panecho - [ALL] Prediction keys: ['pericardial-effusion', 'EF', 'GLS', 'LVEDV', 'LVESV', 'LVSV', 'LVSize', 'LVWallThickness-increased-any', 'LVWallThickness-increased-modsev', 'LVSystolicFunction', 'LVWallMotionAbnormalities', 'IVSd', 'LVPWd', 'LVIDs', 'LVIDd', 'LVOTDiam', 'LVDiastolicFunction', 'E|EAvg', 'RVSP', 'RVSize', 'RVSystolicFunction', 'RVIDd', 'TAPSE', 'RVSVel', 'LASize', 'LAIDs2D', 'LAVol', 'RASize', 'RADimensionM-L(cm)', 'AVStructure', 'AVStenosis', 'AVPkVel(m|s)', 'AVRegurg', 'LVOT20mmHg', 'MVStenosis', 'MVRegurgitation', 'TVRegurgitation', 'TVPkGrad', 'RAP-8-or-higher', 'AORoot']
+2025-08-26 13:54:13,030 - INFO - api.infer - [EF] Resolving Orthanc study for StudyInstanceUID=999.999.3859744
+2025-08-26 13:54:13,184 - INFO - api.infer - [EF] Found 1 instance(s) in the study
+2025-08-26 13:56:04,828 - INFO - __main__ - Starting FastAPI server on 0.0.0.0:8000

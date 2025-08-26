@@ -7,6 +7,7 @@ import Viewer from "../components/Viewer";
 import { listStudiesApi } from "../api/StudiesApi";
 import Measurements from "../features/StudyResults/Measurements";
 import EFMeasurement from "../features/StudyResults/EFMeasurment";
+import Report from "../features/StudyResults/Report";
 
 export default function StudyResults() {
   const navigate = useNavigate();
@@ -177,6 +178,9 @@ export default function StudyResults() {
 
         {/* Measurements */}
         <Measurements studyUID={studyUID} />
+
+        {/* Report */}
+        <Report studyUID={studyUID}/>
       </main>
     </div>
   );
