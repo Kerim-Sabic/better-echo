@@ -5,15 +5,15 @@ from fastapi import APIRouter, Query, HTTPException
 import torch
 import logging
 
-from api.infer import (fetch_instance_ids_from_study,
+from app.api.infer import (fetch_instance_ids_from_study,
                         pick_frames_from_instance,
                         stack_to_tensor,
                         get_model_and_device)
-from schemas.infer_panecho_schemas import AllTasksPanEchoResponse
+from app.schemas.infer_panecho_schemas import AllTasksPanEchoResponse
 
-from db import SessionLocal
-from models.study import Study
-from models.derived_result import DerivedResult
+from app.database.db import SessionLocal
+from app.models.study import Study
+from app.models.derived_result import DerivedResult
 
 logger = logging.getLogger(__name__)
 

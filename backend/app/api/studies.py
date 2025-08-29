@@ -1,7 +1,8 @@
 from fastapi import APIRouter, HTTPException
-from db import SessionLocal
-from models.study import Study
-from models.derived_result import DerivedResult
+
+from app.database.db import SessionLocal
+from app.models.study import Study
+from app.models.derived_result import DerivedResult
 
 router = APIRouter()
 

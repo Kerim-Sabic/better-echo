@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime, Float
 from datetime import datetime
-from .base import Base
+from app.database.db import Base
 
 class Study(Base):
     __tablename__ = "studies"
