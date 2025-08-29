@@ -10,7 +10,7 @@ import requests
 import torch
 
 from app.AI_models.EchoPrime.echo_prime import EchoPrime
-from app.api.infer import fetch_instance_ids_from_study
+from app.helpers.inference import fetch_instance_ids_from_study
 from app.core.config import settings
 from app.schemas.infer_echoprime_schemas import EchoPrimeResponse
 

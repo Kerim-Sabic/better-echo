@@ -6,7 +6,7 @@ import uvicorn
 
 from app.api.upload import router as upload_router
 from app.api.studies import router as studies_router
-from app.api.infer_all_panecho import router as infer_all_panecho_router
+from app.api.infer_panecho import router as infer_all_panecho_router
 from app.api.infer_echoprime import router as infer_echoprime_router
 
 from app.core.config import settings

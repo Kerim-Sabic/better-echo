@@ -5,7 +5,7 @@ from fastapi import APIRouter, Query, HTTPException
 import torch
 import logging
 
-from app.api.infer import (fetch_instance_ids_from_study,
+from app.helpers.inference import (fetch_instance_ids_from_study,
                         pick_frames_from_instance,
                         stack_to_tensor,
                         get_model_and_device)
