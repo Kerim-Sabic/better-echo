@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card";
-import { inferEfApi } from "../../api/InferenceApi";
+//import { inferEfApi } from "../../api/InferenceApi";
 import { listDerivedResultsApi } from "../../api/StudiesApi";
 import { Loader2, AlertCircle } from "lucide-react";
 
@@ -80,7 +80,7 @@ const EFMeasurement = ({ studyUID, instanceId }) => {
         if (!startedRef.current) {
           startedRef.current = true;
           try {
-            await inferEfApi({ study_uid: studyUID, instance_id: instanceId });
+            //await inferEfApi({ study_uid: studyUID, instance_id: instanceId });
           } catch (err) {
             console.error("[EFMeasurement] EF inference failed:", err);
           }
