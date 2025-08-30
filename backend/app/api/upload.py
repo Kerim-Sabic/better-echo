@@ -3,14 +3,15 @@ from datetime import datetime
 
 import aiofiles
 import logging
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
+from sqlalchemy.orm import Session
 
 from app.services.orthanc_client import (
     send_dicom_to_orthanc,
     get_instance_tags,
     get_series_id_from_instance,
 )
-from app.database.db import SessionLocal
+from app.database.db import get_db
 from app.models.study import Study
 
 from app.schemas.upload_schemas import UploadDicomResponse
@@ -51,7 +52,7 @@ def _clean_for_ui(tags: dict) -> dict:
     }
 
 @router.post("/upload-dicom", response_model=UploadDicomResponse)
-async def upload_dicom(file: UploadFile = File(...)):
+async def upload_dicom(file: UploadFile = File(...), db: Session = Depends(get_db)):
     os.makedirs(UPLOAD_DIR, exist_ok=True)
 
     ts = datetime.now().strftime("%Y%m%d%H%M%S")
@@ -79,37 +80,33 @@ async def upload_dicom(file: UploadFile = File(...)):
         logger.info(f"Extracted Patient ID: {patient_id}, Study Date: {study_date}, Study UID: {study_uid}")
 
         # 5) Avoid duplicates
-        db = SessionLocal()
-        try:
-            existing = db.query(Study).filter_by(instance_id=instance_id).first()
-            if existing:
-                logger.warning(f"Duplicate instance ID: {instance_id}. Skipping insert.")
-                # Still return UI-friendly tags so the frontend can proceed
-                series_id = get_series_id_from_instance(instance_id) or ""
-                return {
-                    "message": "File already exists in the database",
-                    "filename": file.filename,
-                    "instance_id": instance_id,
-                    "study_uid": study_uid,
-                    "series_id": series_id,
-                    "tags": _clean_for_ui(tags),
-                }
+        existing = db.query(Study).filter_by(instance_id=instance_id).first()
+        if existing:
+            logger.warning(f"Duplicate instance ID: {instance_id}. Skipping insert.")
+            # Still return UI-friendly tags so the frontend can proceed
+            series_id = get_series_id_from_instance(instance_id) or ""
+            return {
+                "message": "File already exists in the database",
+                "filename": file.filename,
+                "instance_id": instance_id,
+                "study_uid": study_uid,
+                "series_id": series_id,
+                "tags": _clean_for_ui(tags),
+            }
 
-            # 6) Save to DB
-            study = Study(
-                instance_id=instance_id,
-                patient_id=patient_id,
-                study_uid=study_uid,
-                study_date=study_date,
-                file_path=file_location,
-                status="processing",
-            )
-            db.add(study)
-            db.commit()
-            db.refresh(study)
-            logger.info(f"Study saved to database. Instance ID: {instance_id}")
-        finally:
-            db.close()
+        # 6) Save to DB
+        study = Study(
+            instance_id=instance_id,
+            patient_id=patient_id,
+            study_uid=study_uid,
+            study_date=study_date,
+            file_path=file_location,
+            status="processing",
+        )
+        db.add(study)
+        db.commit()
+        db.refresh(study)
+        logger.info(f"Study saved to database. Instance ID: {instance_id}")
 
         # 7) Include series_id for local viewer integration if needed
         series_id = get_series_id_from_instance(instance_id) or ""

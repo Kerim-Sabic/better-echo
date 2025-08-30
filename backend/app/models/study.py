@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, DateTime, Float
+from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.database.db import Base
 
@@ -14,3 +15,10 @@ class Study(Base):
     uploaded_at = Column(DateTime, default=datetime.utcnow)
     status = Column(String, default="processing")
     ef_value = Column(Float, nullable=True)
+
+    derived_results = relationship( #relationship to DerivedResults
+        "DerivedResult",
+        back_populates="study",
+        cascade="all, delete-orphan",
+        passive_deletes=True
+    )
