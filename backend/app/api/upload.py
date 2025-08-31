@@ -1,24 +1,25 @@
 import os
+from datetime import datetime
+
 import aiofiles
 import logging
-from datetime import datetime
 from fastapi import APIRouter, UploadFile, File, HTTPException
 
-from services.orthanc_client import (
+from app.services.orthanc_client import (
     send_dicom_to_orthanc,
     get_instance_tags,
     get_series_id_from_instance,
 )
-from db import SessionLocal
-from models.study import Study
+from app.database.db import SessionLocal
+from app.models.study import Study
 
-from schemas.upload_schemas import UploadDicomResponse
+from app.schemas.upload_schemas import UploadDicomResponse
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-UPLOAD_DIR = "uploads"
+UPLOAD_DIR = "app/uploads"
 
 def _first(val, default=""):
     """

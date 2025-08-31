@@ -1,13 +1,13 @@
 """
 Initialize the database schema.
 
-- Uses the shared Base from models/base.py
+- Uses the shared Base from app/database/db.py
 - Imports models so their tables are registered on Base.metadata
 - Creates all tables on the configured engine
 """
 
-from db import engine
-from models.base import Base
+from app.database.db import engine
+from app.database.db import Base
 
 # IMPORTANT: DO NOT REMOVE!! import models so they register with Base.metadata
 import models.study          # noqa: F401

@@ -2,7 +2,7 @@ from dotenv import load_dotenv
 import requests
 import os
 import logging
-from core.config import settings
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +56,3 @@ def get_series_id_from_instance(instance_id: str) -> str:
     r.raise_for_status()
     data = r.json()
     return data.get("ParentSeries")  # <- Orthanc series internal ID (UUID-like)
-
-
-

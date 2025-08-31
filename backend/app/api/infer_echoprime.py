@@ -9,14 +9,14 @@ import logging
 import requests
 import torch
 
-from AI_models.EchoPrime.echo_prime import EchoPrime
-from api.infer import fetch_instance_ids_from_study
-from core.config import settings
-from schemas.infer_echoprime_schemas import EchoPrimeResponse
+from app.AI_models.EchoPrime.echo_prime import EchoPrime
+from app.helpers.inference import fetch_instance_ids_from_study
+from app.core.config import settings
+from app.schemas.infer_echoprime_schemas import EchoPrimeResponse
 
-from db import SessionLocal
-from models.study import Study
-from models.derived_result import DerivedResult
+from app.database.db import SessionLocal
+from app.models.study import Study
+from app.models.derived_result import DerivedResult
 
 orthanc_url = settings.ORTHANC_URL
 orthanc_user = settings.ORTHANC_USER

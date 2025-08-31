@@ -1,7 +1,5 @@
 import io
 import math
-import os
-import traceback
 import logging
 from typing import List, Optional
 import requests
@@ -10,12 +8,16 @@ from PIL import Image
 import numpy as np
 import torch
 
-from db import SessionLocal
-from models.study import Study
-from models.derived_result import DerivedResult
+from app.database.db import SessionLocal
+from app.models.study import Study
+from app.models.derived_result import DerivedResult
 
-from core.config import settings
-from schemas.infer_panecho_schemas import EFPanEchoResponse
+from app.core.config import settings
+from app.schemas.infer_panecho_schemas import EFPanEchoResponse
+
+"""
+THIS FILE PROVIDES FUNCTIONS FOR INFERENCE TASKS
+"""
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +25,6 @@ orthanc_url = settings.ORTHANC_URL
 orthanc_user = settings.ORTHANC_USER
 orthanc_pass = settings.ORTHANC_PASS
 
-router = APIRouter()
 
 def fetch_instance_ids_from_study(study_uid: str) -> List[str]:
     # Find Orthanc study by DICOM StudyInstanceUID, then list its instances
@@ -104,74 +105,3 @@ def get_model_and_device():
             logger.error(f"[EF] Failed to load PanEcho via torch.hub: {e}")
             raise
     return _model, _device
-
-@router.get("/infer/ef", response_model=EFPanEchoResponse)
-def infer_ef(instance_id: Optional[str] = Query(None), study_uid: Optional[str] = Query(None)):
-    logger.info(f"[EF] infer_ef called with instance_id={instance_id} study_uid={study_uid}")
-    if not instance_id and not study_uid:
-        raise HTTPException(status_code=400, detail="Provide instance_id or study_uid")
-
-    ids: List[str] = []
-    if study_uid:
-        ids = fetch_instance_ids_from_study(study_uid)
-        if not ids:
-            raise HTTPException(status_code=404, detail=f"No instances for study_uid={study_uid}")
-        # crude: just use the first cine instance
-        instance_id = ids[0] # TODO: consider aggregating across all cine instances
-        logger.info(f"[EF] Using instance_id={instance_id} from study")
-
-    try:
-        frames = pick_frames_from_instance(instance_id, 16)
-        x = stack_to_tensor(frames)
-        model, device = get_model_and_device()
-        logger.info(f"[EF] Running inference on device={device} with input dtype={x.dtype}")
-        with torch.no_grad():
-            preds = model(x.to(device))  # (1, 1) for EF
-        # PanEcho returns dict of tasks; EF as a regression scalar
-        ef = preds.get('EF') if isinstance(preds, dict) else None
-        if ef is None:
-            raise RuntimeError("Model returned no 'EF' key")
-        if torch.is_tensor(ef):
-            ef = ef.detach().cpu().flatten().tolist()[0] if ef.numel() > 0 else None
-        elif isinstance(ef, (list, tuple)) and len(ef) > 0:
-            ef = float(ef[0])
-        else:
-            ef = float(ef)
-
-        logger.info(f"[EF] EF prediction: {ef}")
-
-        db = SessionLocal()
-        try:
-            q = db.query(Study)
-            if instance_id:
-                q = q.filter(Study.instance_id == instance_id)
-            elif study_uid:
-                q = q.filter(Study.study_uid == study_uid)
-            study = q.first()
-            if study:
-                # Optional cached EF on the study row (add this column, see Section 3)
-                if hasattr(study, "ef_value"):
-                    study.ef_value = float(ef)
-                # Flip status to 'ready' if the column exists (see Section 3)
-                if hasattr(study, "status"):
-                    study.status = "ready"
-                # Record a derived result row (see model in Section 3)
-                dr = DerivedResult(
-                    study_id=study.id,
-                    type="EF",
-                    value_numeric=float(ef),
-                    units="%",
-                    model_name="PanEcho",
-                    model_version="v1"
-                )
-                db.add(dr)
-                db.commit()
-        finally:
-            db.close()
-        
-        return {"instance_id": instance_id, "ef": ef}
-    
-    except Exception as e:
-        logger.exception(f"[EF] EF inference failed: {type(e).__name__}: {e}")
-        raise HTTPException(status_code=500, detail=f"EF inference failed: {type(e).__name__}: {e}")
-

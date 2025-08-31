@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, func
-from .base import Base
+from app.database.db import Base
 
 class DerivedResult(Base):
     __tablename__ = "derived_results"

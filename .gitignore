@@ -4,10 +4,11 @@ __pycache__/
 *.pyc
 backend/venv/
 backend/.env/
+backend/app/logs
 
 # Ignores all the files in uploads except .gitkeep
-backend/uploads/*
-!backend/uploads/.gitkeep
+backend/app/uploads/*
+!backend/app/uploads/.gitkeep
 
 # Frontend
 node_modules/
