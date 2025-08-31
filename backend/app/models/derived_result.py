@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, func
+from sqlalchemy.orm import relationship
 from app.database.db import Base
 
 class DerivedResult(Base):
@@ -13,3 +14,5 @@ class DerivedResult(Base):
     model_name = Column(String, nullable=False)
     model_version = Column(String)
     created_at = Column(DateTime, server_default=func.now())
+
+    study = relationship("Study", back_populates="derived_results")

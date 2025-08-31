@@ -4,7 +4,8 @@ import tempfile
 import shutil
 import json
 
-from fastapi import APIRouter, Query, HTTPException
+from fastapi import APIRouter, Query, HTTPException, Depends
+from sqlalchemy.orm import Session
 import logging
 import requests
 import torch
@@ -14,7 +15,7 @@ from app.helpers.inference import fetch_instance_ids_from_study
 from app.core.config import settings
 from app.schemas.infer_echoprime_schemas import EchoPrimeResponse
 
-from app.database.db import SessionLocal
+from app.database.db import get_db
 from app.models.study import Study
 from app.models.derived_result import DerivedResult
 
@@ -72,7 +73,10 @@ def download_dicoms_for_study(instance_ids: List[str]) -> str:
 
 
 @router.get("/infer/echoprime", response_model=EchoPrimeResponse)
-def infer_echoprime(study_uid: str = Query(..., description="Study UID for EchoPrime inference")) -> Dict[str, Any]:
+def infer_echoprime(
+    study_uid: str = Query(..., description="Study UID for EchoPrime inference"),
+    db: Session = Depends(get_db)
+    ) -> Dict[str, Any]:
     """
     Run EchoPrime inference for a study (multi-video DICOM input).
     Requires at least 2 DICOMs in the study.
@@ -116,24 +120,20 @@ def infer_echoprime(study_uid: str = Query(..., description="Study UID for EchoP
 
         # --- Step 4: persist results to DB ---
 
-        db = SessionLocal()
-        try:
-            study = db.query(Study).filter(Study.study_uid == study_uid).first()
-            if study:
-                # Store generated report as JSON
-                dr_report = DerivedResult(
-                    study_id = study.id,
-                    type="EchoPrime_Report",
-                    value_numeric=None,
-                    value_json=json.dumps({"report": report_text}),
-                    units="%",
-                    model_name="EchoPrime",
-                    model_version="v1"
-                )
-                db.add(dr_report)
-                db.commit()
-        finally:
-            db.close()
+        study = db.query(Study).filter(Study.study_uid == study_uid).first()
+        if study:
+            # Store generated report as JSON
+            dr_report = DerivedResult(
+                study_id = study.id,
+                type="EchoPrime_Report",
+                value_numeric=None,
+                value_json=json.dumps({"report": report_text}),
+                units="%",
+                model_name="EchoPrime",
+                model_version="v1"
+            )
+            db.add(dr_report)
+            db.commit()
 
         logger.info(f"[EchoPrime] Inference completed for study_uid={study_uid}")
         return {

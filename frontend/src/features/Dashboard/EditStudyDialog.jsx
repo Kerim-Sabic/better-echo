@@ -1,0 +1,60 @@
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "../../components/ui/dialog";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
+
+export default function EditStudyDialog({
+  open,
+  setOpen,
+  editForm,
+  setEditForm,
+  onSave,
+  saving,
+}) {
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit study</DialogTitle>
+        </DialogHeader>
+
+        <div className="grid gap-3">
+          <div className="space-y-1">
+            <div className="text-sm text-muted-foreground">Patient ID / MRN</div>
+            <Input
+              value={editForm.patient_id}
+              onChange={(e) =>
+                setEditForm((f) => ({ ...f, patient_id: e.target.value }))
+              }
+            />
+          </div>
+
+          <div className="space-y-1">
+            <div className="text-sm text-muted-foreground">
+              Study Date (YYYYMMDD)
+            </div>
+            <Input
+              value={editForm.study_date}
+              onChange={(e) =>
+                setEditForm((f) => ({ ...f, study_date: e.target.value }))
+              }
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={onSave} disabled={saving}>
+              {saving ? "Saving…" : "Save"}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}

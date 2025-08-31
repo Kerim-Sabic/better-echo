@@ -8,12 +8,7 @@ from PIL import Image
 import numpy as np
 import torch
 
-from app.database.db import SessionLocal
-from app.models.study import Study
-from app.models.derived_result import DerivedResult
-
 from app.core.config import settings
-from app.schemas.infer_panecho_schemas import EFPanEchoResponse
 
 """
 THIS FILE PROVIDES FUNCTIONS FOR INFERENCE TASKS

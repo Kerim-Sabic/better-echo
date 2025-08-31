@@ -1,6 +1,4 @@
-from dotenv import load_dotenv
 import requests
-import os
 import logging
 from app.core.config import settings
 
