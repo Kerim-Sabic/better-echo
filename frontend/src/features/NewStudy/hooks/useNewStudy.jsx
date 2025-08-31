@@ -79,22 +79,22 @@ export function useNewStudy() {
 
   return {
     // state
-    file,
-    setFile,
-    isUploading,
-    status,
-    studyUID,
-    instanceId,
-    tags,
-    showManual,
-    setShowManual,
-    form,
-    setForm,
+    file, // The selected DICOM file (before uploading)
+    setFile, // Function to update 'file' when user picks a new DICOM
+    isUploading, // Boolean: whether the upload is currently in progress
+    status, // String: upload progress or error message for the UI
+    studyUID, // The unique StudyInstanceUID returned from Orthanc after upload
+    instanceId, // The unique InstanceID of the uploaded DICOM (optional, Orthanc-generated)
+    tags, // Extracted & cleaned DICOM metadata (PatientName, PatientID, etc.)
+    showManual, // Boolean: whether to show the manual form for metadata input
+    setShowManual, // Function to toggle 'showManual' (show/hide the manual entry form)
+    form, // Object holding form values (patientName, patientId, notes, etc.)
+    setForm, // Function to update form fields
 
     // actions
-    handleUpload,
-    createStudyAndAnalyze,
-    prefillFromTags,
-    setTags,
+    handleUpload,          // Uploads the selected DICOM file, parses metadata, updates state
+    createStudyAndAnalyze, // Navigates to the study page (using studyUID) for further analysis
+    prefillFromTags,       // Populates the manual form fields with values from DICOM tags
+    setTags,               // Allows manual overriding of extracted DICOM tags
   };
 }

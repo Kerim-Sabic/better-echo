@@ -84,21 +84,21 @@ export function useDashboard() {
   });
 
   return {
-    searchTerm,
-    setSearchTerm,
-    selectedFilter,
-    setSelectedFilter,
-    studies,
-    filteredStudies,
-    loading,
-    editOpen,
-    setEditOpen,
-    editing,
-    editForm,
-    setEditForm,
-    saving,
-    openEdit,
-    saveEdit,
-    onDelete,
+    searchTerm,        // Current text entered in the search bar
+    setSearchTerm,     // Function to update the search term
+    selectedFilter,    // Current filter option (e.g., "all", "pending", etc.)
+    setSelectedFilter, // Function to update the selected filter
+    studies,           // Raw list of studies fetched from API
+    filteredStudies,   // Studies after applying search & filter
+    loading,           // Boolean: true while studies are being loaded
+    editOpen,          // Boolean: whether the edit modal is open
+    setEditOpen,       // Function to toggle edit modal
+    editing,           // The study currently being edited
+    editForm,          // Form data for the study being edited
+    setEditForm,       // Function to update edit form values
+    saving,            // Boolean: true while saving changes
+    openEdit,          // Function to open modal and set current study
+    saveEdit,          // Function to save changes to a study
+    onDelete,          // Function to delete a study
   };
 }
