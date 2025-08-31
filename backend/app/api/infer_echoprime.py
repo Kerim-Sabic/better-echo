@@ -16,8 +16,8 @@ from app.core.config import settings
 from app.schemas.infer_echoprime_schemas import EchoPrimeResponse
 
 from app.database.db import get_db
-from app.models.study import Study
-from app.models.derived_result import DerivedResult
+from app.models.studies import Study
+from app.models.derived_results import DerivedResult
 
 orthanc_url = settings.ORTHANC_URL
 orthanc_user = settings.ORTHANC_USER

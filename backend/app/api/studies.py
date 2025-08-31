@@ -1,9 +1,14 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
+import logging
 
 from app.database.db import get_db
-from app.models.study import Study
-from app.models.derived_result import DerivedResult
+from app.models.studies import Study
+from app.models.derived_results import DerivedResult
+from app.services.orthanc_client import delete_study_from_orthanc
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -52,12 +57,33 @@ def update_study(study_id: int, payload: dict, db: Session = Depends(get_db)):
 
 @router.delete("/studies/{study_id}")
 def delete_study(study_id: int, db: Session = Depends(get_db)):
-    s = db.query(Study).get(study_id)
-    if not s:
-        return {"ok": True}
-    db.delete(s)     # will cascade to derived_results if FK is set
-    db.commit()
-    return {"ok": True}
+    study = db.query(Study).get(study_id)
+    if not study:
+        raise HTTPException(status_code=404, detail="Study not found")
+    
+    # Delete from orthanc firsy using StudyInstanceUID
+    if study.study_uid:
+        deleted = delete_study_from_orthanc(study.study_uid)
+        if not deleted:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to delete study {study_id} from Orthanc. Database not modified."
+            )
+    
+    # Delete from Database
+    try:
+        db.delete(study)
+        db.commit()
+        logger.info(f"Study {study_id} deleted from database and Orthanc")
+    except SQLAlchemyError as err:
+        db.rollback()
+        logger.error(f"Failed to delete study {study_id} from database: {str(err)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to delete study {study_id} from database after Orthanc deletion"
+        )
+    
+    return {"ok": True, "message": "Study deleted from DB an Orthanc"}
 
 
 @router.get("/studies/{study_uid}/derived-results")
