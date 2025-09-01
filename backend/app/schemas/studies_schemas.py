@@ -13,7 +13,6 @@ class PatientSchema(BaseModel):
     class Config:
         from_attributes = True
 
-
 class StudySchema(BaseModel):
     id: int
     study_uid: str
@@ -33,3 +32,14 @@ class StudyListResponse(RootModel[List[StudySchema]]):
 class StudyDeleteResponse(BaseModel):
     ok: bool
     message: str
+
+
+class DerivedResultResponse(BaseModel):
+    id: int
+    type: str
+    value_numeric: Optional[float] = None
+    value_json: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True

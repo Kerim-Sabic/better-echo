@@ -27,7 +27,7 @@ const StudyHeader = ({ study, loading, polling, onBack, onRefresh, onGenerateRep
           </Button>
 
           <h1 className="text-xl font-semibold text-foreground">
-            {study?.patient_id || "Unknown"}{" "}
+            {study?.patient.patient_name || "Unknown"}{" "}
             <span className="text-muted-foreground">·</span>{" "}
             <span className="text-muted-foreground">
               UID: {study?.study_uid || "—"}

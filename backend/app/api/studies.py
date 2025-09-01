@@ -1,4 +1,5 @@
 import os
+from typing import List
 
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
@@ -10,7 +11,7 @@ from app.models.studies import Study
 from app.models.patients import Patient
 from app.models.derived_results import DerivedResult
 from app.services.orthanc_client import delete_study_from_orthanc
-from app.schemas.studies_schemas import StudyListResponse, StudyDeleteResponse
+from app.schemas.studies_schemas import StudyListResponse, StudyDeleteResponse, DerivedResultResponse
 
 logger = logging.getLogger(__name__)
 
@@ -108,20 +109,20 @@ def delete_study(study_id: int, db: Session = Depends(get_db)):
 
 @router.patch("/studies/{study_id}")
 def update_study(study_id: int, payload: dict, db: Session = Depends(get_db)):
-    s = db.query(Study).get(study_id)
-    if not s:
+    study = db.query(Study).get(study_id)
+    if not study:
         raise HTTPException(status_code=404, detail="Study not found")
     # allow light edits
     for key in ["patient_id", "study_date"]:
         if key in payload:
-            setattr(s, key, payload[key])
-    if "notes" in payload and hasattr(s, "notes"):
-        s.notes = payload["notes"]
+            setattr(study, key, payload[key])
+    if "notes" in payload and hasattr(study, "notes"):
+        study.notes = payload["notes"]
     db.commit()
     return {"ok": True}
 
 
-@router.get("/studies/{study_uid}/derived-results")
+@router.get("/studies/{study_uid}/derived-results", response_model=List[DerivedResultResponse])
 def list_derived_results(study_uid: str, db: Session = Depends(get_db)):
     """
     Lists the derived results of the study from the database
