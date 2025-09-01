@@ -8,8 +8,8 @@ import NewStudyHeader from "../features/NewStudy/NewStudyHeader";
 
 export default function NewStudy() {
   const {
-    file,
-    setFile,
+    files,
+    setFiles,
     isUploading,
     status,
     studyUID,
@@ -31,8 +31,8 @@ export default function NewStudy() {
       {/* Content */}
       <main className="container grid gap-6 px-6 py-6 mx-auto">
         <UploadDicomCard
-          file={file}
-          setFile={setFile}
+          files={files}
+          setFiles={setFiles}
           studyUID={studyUID}
           isUploading={isUploading}
           onUpload={handleUpload}

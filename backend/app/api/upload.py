@@ -76,6 +76,12 @@ async def upload_dicom(file: UploadFile = File(...), db: Session = Depends(get_d
         # Reject duplicates
         if upload_response.get("Status") == "AlreadyStored":
             logger.warning("Duplicate upload attempt: DICOM already stored in Orthanc")
+            
+            # Delete the local file to avoid incosistencies
+            if os.path.exists(file_location):
+                os.remove(file_location)
+                logger.info(f"Deleted local duplicate file at {file_location}")
+
             raise HTTPException(
                 status_code=400,
                 detail="This DICOM file has already been uploaded and is stored in Orthanc."
@@ -173,5 +179,8 @@ async def upload_dicom(file: UploadFile = File(...), db: Session = Depends(get_d
         raise
     except Exception as err:
         db.rollback()
+        if os.path.exists(file_location):
+            os.remove(file_location)
+            logger.info(f"Deleted local file due to error ar {file_location}")
         logger.error(f"Upload failed: {str(err)}")
         raise HTTPException(status_code=500, detail=f"Failed to save file: {str(err)}")

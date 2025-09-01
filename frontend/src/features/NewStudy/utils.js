@@ -1,3 +1,5 @@
+import dicomParser from "dicom-parser";
+
 // Safely pick DICOM tags
 export function pickTags(meta) {
   const t = meta || {};
@@ -23,4 +25,24 @@ export function upsertStudyToLocalStorage(study) {
   } catch {
     // ignore storage errors
   }
+}
+
+
+// Function to retrieve StudyUID from a dicom instance file
+export function getStudyUID(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const arrayBuffer = reader.result;
+        const dataSet = dicomParser.parseDicom(new Uint8Array(arrayBuffer));
+        const studyUID = dataSet.string("x0020000d"); // StudyUID tag
+        resolve(studyUID)
+      } catch (err) {
+        reject(err);
+      }
+    };
+    reader.onerror = reject;
+    reader.readAsArrayBuffer(file);
+  });
 }

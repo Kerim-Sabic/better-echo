@@ -3,7 +3,7 @@ import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card";
 import { cn } from "../../lib/utils";
 
-export default function UploadDicomCard({ file, setFile, studyUID, isUploading, onUpload, onReparse }) {
+export default function UploadDicomCard({ files, setFiles, studyUID, isUploading, onUpload, onReparse }) {
   return (
     <Card>
       <CardHeader>
@@ -23,7 +23,8 @@ export default function UploadDicomCard({ file, setFile, studyUID, isUploading, 
             type="file"
             accept=".dcm,application/dicom"
             hidden
-            onChange={(e) => setFile(e.target.files?.[0] || null)}
+            multiple
+            onChange={(e) => setFiles(Array.from(e.target.files) || [])}
           />
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-md bg-primary/10">
@@ -31,7 +32,9 @@ export default function UploadDicomCard({ file, setFile, studyUID, isUploading, 
             </div>
             <div className="text-left">
               <div className="font-medium">
-                {file ? file.name : "Drop a DICOM here or click to browse"}
+                {files && files.length
+                  ? files.map((f) => f.name).join(", ")
+                  : "Drop DICOM files here or click to browse"}
               </div>
               <div className="text-sm text-muted-foreground">
                 .dcm only • PHI-safe handling recommended
@@ -43,7 +46,7 @@ export default function UploadDicomCard({ file, setFile, studyUID, isUploading, 
         <div className="flex gap-2">
           <Button
             onClick={onUpload}
-            disabled={!file || isUploading}
+            disabled={!files || isUploading}
             className="h-11"
           >
             {isUploading ? "Uploading…" : "Upload & Parse Tags"}
