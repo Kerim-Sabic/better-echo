@@ -11,7 +11,7 @@ import requests
 import torch
 
 from app.AI_models.EchoPrime.echo_prime import EchoPrime
-from app.helpers.inference import fetch_instance_ids_from_study
+from app.helpers.inference import fetch_orthanc_instance_ids_from_study
 from app.core.config import settings
 from app.schemas.infer_echoprime_schemas import EchoPrimeResponse
 
@@ -86,12 +86,12 @@ def infer_echoprime(
     ep = get_ep() # model is loaded on first request
 
     # --- Step 1: fetch instances from Orthanc ---
-    instance_ids = fetch_instance_ids_from_study(study_uid)
-    if len(instance_ids) < 2:
+    instance_orthanc_ids = fetch_orthanc_instance_ids_from_study(study_uid)
+    if len(instance_orthanc_ids) < 2:
         raise HTTPException(status_code=400, detail="EchoPrime requires at least 2 DICOM files for a study")
     
     # --- Step 2: download dicoms ---
-    study_dir = download_dicoms_for_study(instance_ids)
+    study_dir = download_dicoms_for_study(instance_orthanc_ids)
 
     try:
         # --- Step 3: run model pipeline ---
@@ -138,7 +138,7 @@ def infer_echoprime(
         logger.info(f"[EchoPrime] Inference completed for study_uid={study_uid}")
         return {
             "study_uid": study_uid,
-            "num_instances": len(instance_ids),
+            "num_instances": len(instance_orthanc_ids),
             "predictions": predictions,
             "report": report_text
         }
