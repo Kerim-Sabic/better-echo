@@ -1,3 +1,5 @@
+import os
+
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
@@ -13,6 +15,7 @@ from app.schemas.studies_schemas import StudyListResponse, StudyDeleteResponse
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+UPLOAD_DIR = "app/uploads"
 
 @router.get("/studies", response_model=StudyListResponse)
 def list_studies(db: Session = Depends(get_db)):
@@ -46,6 +49,7 @@ def list_studies(db: Session = Depends(get_db)):
 def delete_study(study_id: int, db: Session = Depends(get_db)):
     """
     Deletes the study from both the database and the orthanc server.
+    Deletes all instances for that study from the app/uploads folder.
     Deletes the patient related to that study from the database, if that
     patient has no more studies in the database (this mimics the orthanc
     server behavior and keeps orthanc server and database consistent).
@@ -65,6 +69,19 @@ def delete_study(study_id: int, db: Session = Depends(get_db)):
                 detail=f"Failed to delete study {study_id} from Orthanc. Database not modified."
             )
     
+    # Delete all instance files for the study from app/uploads folder
+    for series in study.series:
+        for instance in series.instances:
+            if instance.file_path and os.path.exists(instance.file_path):
+                try:
+                    os.remove(instance.file_path)
+                    logger.info(f"Deleted file {instance.file_path}")
+                except Exception as err:
+                    logger.error(f"Failed to delte file {instance.file_path}: {str(err)}")
+            else:
+                logger.warning(f"File {instance.file_path} not found")
+
+
     # Delete from Database
     try:
         db.delete(study)
