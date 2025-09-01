@@ -5,40 +5,42 @@ import logging
 
 from app.database.db import get_db
 from app.models.studies import Study
+from app.models.patients import Patient
 from app.models.derived_results import DerivedResult
 from app.services.orthanc_client import delete_study_from_orthanc
+from app.schemas.studies_schemas import StudyListResponse
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-@router.get("/studies")
+@router.get("/studies", response_model=StudyListResponse)
 def list_studies(db: Session = Depends(get_db)):
-    # Pull simple fields directly; EF from cached column (fallback to latest result)
-    rows = db.query(Study).order_by(Study.uploaded_at.desc()).limit(200).all()
+    """
+    Retrieves all studies with patient info
+    """
+    rows = db.query(Study).order_by(Study.uploaded_at.desc()).all()
     data = []
-    for s in rows:
-        ef = getattr(s, "ef_value", None)
-        if ef is None:
-            # Fallback look-up (if you didn’t backfill ef_value yet)
-            dr = (
-                db.query(DerivedResult)
-                .filter(DerivedResult.study_id == s.id, DerivedResult.type == "EF")
-                .order_by(DerivedResult.created_at.desc())
-                .first()
-            )
-            ef = dr.value_numeric if dr else None
-        data.append({
-            "id": s.id,
-            "instance_id": s.instance_id,
-            "patient_id": s.patient_id,
-            "study_uid": s.study_uid,
-            "study_date": s.study_date,
-            "status": getattr(s, "status", None) or "ready",
-            "ef": ef,
-        })
-    return data
 
+    for study in rows:
+        study_dict = {
+            "id": study.id,
+            "study_uid": study.study_uid,
+            "study_date": study.study_date,
+            "description": study.description,
+            "status": study.status,
+            "uploaded_at": study.uploaded_at,
+            "patient": {
+                "id": study.patient.id,
+                "patient_id": study.patient.patient_id,
+                "patient_name": study.patient.patient_name,
+                "patient_sex": study.patient.patient_sex,
+                "patient_birth_date": study.patient.patient_birth_date,
+            }
+        }
+        data.append(study_dict)
+
+    return data
 
 @router.patch("/studies/{study_id}")
 def update_study(study_id: int, payload: dict, db: Session = Depends(get_db)):

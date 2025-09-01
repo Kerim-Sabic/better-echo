@@ -16,7 +16,7 @@ from app.models.patients import Patient
 from app.models.studies import Study
 from app.models.series import Series
 from app.models.instances import Instance
-from app.schemas.upload_schemas import UploadDicomResponse
+from app.schemas.upload_schemas import UploadDicomResponseSchema
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +57,7 @@ def _clean_for_ui(tags: dict) -> dict:
         "Modality": _tag(tags, "0008,0060", ""),
     }
 
-@router.post("/upload-dicom")
+@router.post("/upload-dicom", response_model=UploadDicomResponseSchema)
 async def upload_dicom(file: UploadFile = File(...), db: Session = Depends(get_db)):
     os.makedirs(UPLOAD_DIR, exist_ok=True)
     ts = datetime.now().strftime("%Y%m%d%H%M%S")
@@ -82,20 +82,20 @@ async def upload_dicom(file: UploadFile = File(...), db: Session = Depends(get_d
             )
         logger.info(f"File uploaded to Orthanc. Upload response: {upload_response}")
 
-        instance_id = upload_response["ID"]
+        instance_orthanc_id = upload_response["ID"]
 
         # 3) Fetch tags
-        instance_tags = get_instance_tags(instance_id)
+        instance_tags = get_instance_tags(instance_orthanc_id)
         clean_instance_tags = _clean_for_ui(instance_tags)
-        logger.info(f"Retrieved tags from Orthanc for instance {instance_id}")
+        logger.info(f"Retrieved tags from Orthanc for instance {instance_orthanc_id}")
 
         # Extract identifiers
         patient_id_tag = clean_instance_tags["PatientID"] or "Unknown"
         study_uid = clean_instance_tags["StudyInstanceUID"]
         series_uid = clean_instance_tags["SeriesInstanceUID"]
-        sop_uid = clean_instance_tags["SOPInstanceUID"] # Dicom Instance UID
+        sop_instance_uid = clean_instance_tags["SOPInstanceUID"] # Dicom Instance UID
 
-        logger.info(f"Extracted Patient ID tag: {patient_id_tag}, Study UID: {study_uid}, Series UID: {series_uid}, Dicom Instance UID: {sop_uid}")
+        logger.info(f"Extracted Patient ID tag: {patient_id_tag}, Study UID: {study_uid}, Series UID: {series_uid}, Dicom Instance UID: {sop_instance_uid}")
 
         # 4) Insert/Fetch Patient
         patient = db.query(Patient).filter_by(patient_id=patient_id_tag).first()
@@ -105,6 +105,7 @@ async def upload_dicom(file: UploadFile = File(...), db: Session = Depends(get_d
                 patient_name = clean_instance_tags["PatientName"],
                 patient_sex = clean_instance_tags["PatientSex"],
                 patient_birth_date = clean_instance_tags["PatientBirthDate"],
+                patient_orthanc_id = upload_response["ParentPatient"]
             )
             db.add(patient)
             db.flush()
@@ -117,6 +118,7 @@ async def upload_dicom(file: UploadFile = File(...), db: Session = Depends(get_d
                 study_date = clean_instance_tags["StudyDate"],
                 description=None,
                 patient=patient,
+                study_orthanc_id = upload_response["ParentStudy"]
             )
             db.add(study)
             db.flush()
@@ -129,35 +131,42 @@ async def upload_dicom(file: UploadFile = File(...), db: Session = Depends(get_d
                 modality=clean_instance_tags["Modality"],
                 description=None,
                 study=study,
+                series_orthanc_id = upload_response["ParentSeries"]
             )
             db.add(series)
             db.flush()
 
         # 7) Insert Instance
-        existing_instance = db.query(Instance).filter_by(sop_instance_uid=sop_uid).first()
+        existing_instance = db.query(Instance).filter_by(sop_instance_uid=sop_instance_uid).first()
         if existing_instance:
             raise HTTPException(status_code=400, detail="This DICOM instance already exists in the database")
 
         instance = Instance(
-            sop_instance_uid=sop_uid,
+            sop_instance_uid=sop_instance_uid,
             file_path=file_location,
-            orthanc_id=instance_id,
+            instance_orthanc_id=instance_orthanc_id,
             series=series,
         )
         db.add(instance)
         db.commit()
 
-        logger.info(f"Successfully stored Patient={patient_id_tag}, Study={study_uid}, Series={series_uid}, Instance={sop_uid}")
+        logger.info(f"Successfully stored Patient={patient_id_tag}, Study={study_uid}, Series={series_uid}, Instance={sop_instance_uid}")
 
         return {
             "message": "Upload successful",
             "filename": file.filename,
-            "instance_id": instance_id,
+            "patient_id": patient_id_tag,
             "study_uid": study_uid,
             "series_uid": series_uid,
+            "sop_instance_uid": sop_instance_uid,
             "tags": clean_instance_tags,
-            "patient_id": patient_id_tag,
             "study_date": clean_instance_tags["StudyDate"],
+            "upload_response": {
+                "patient_orthanc_id": upload_response["ParentPatient"],
+                "study_orthanc_id": upload_response["ParentStudy"],
+                "series_orthanc_id": upload_response["ParentSeries"],
+                "instance_orthanc_id": instance_orthanc_id
+            }
         }
     
     except HTTPException:

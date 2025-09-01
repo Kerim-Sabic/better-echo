@@ -10,6 +10,7 @@ class Study(Base):
     study_uid = Column(String, unique=True, nullable=False)   # DICOM tag (0020,000D)
     study_date = Column(String, nullable=True)                # DICOM tag (0008,0020)
     description = Column(String, nullable=True)               # DICOM tag (0008,1030)
+    study_orthanc_id = Column(String, unique=True, nullable=False)
     status = Column(String, default="processing")
     uploaded_at = Column(DateTime, default=datetime.utcnow)
 

@@ -10,6 +10,7 @@ class Patient(Base):
     patient_name = Column(String, nullable=True)              # DICOM tag (0010,0010)
     patient_sex = Column(String, nullable=True)               # DICOM tag (0010,0040)
     patient_birth_date = Column(String, nullable=True)        # DICOM tag (0010,0030)
+    patient_orthanc_id = Column(String, unique=True, nullable=False)
 
     studies = relationship(
         "Study",
