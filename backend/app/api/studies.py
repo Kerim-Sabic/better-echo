@@ -8,7 +8,7 @@ from app.models.studies import Study
 from app.models.patients import Patient
 from app.models.derived_results import DerivedResult
 from app.services.orthanc_client import delete_study_from_orthanc
-from app.schemas.studies_schemas import StudyListResponse
+from app.schemas.studies_schemas import StudyListResponse, StudyDeleteResponse
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +42,53 @@ def list_studies(db: Session = Depends(get_db)):
 
     return data
 
+@router.delete("/studies/{study_id}", response_model=StudyDeleteResponse)
+def delete_study(study_id: int, db: Session = Depends(get_db)):
+    """
+    Deletes the study from both the database and the orthanc server.
+    Deletes the patient related to that study from the database, if that
+    patient has no more studies in the database (this mimics the orthanc
+    server behavior and keeps orthanc server and database consistent).
+    """
+    study = db.query(Study).get(study_id)
+    if not study:
+        raise HTTPException(status_code=404, detail="Study not found")
+    
+    patient = study.patient # get related patient
+    
+    # Delete from Orthanc first using orthanc_id
+    if study.study_orthanc_id:
+        deleted = delete_study_from_orthanc(study.study_orthanc_id)
+        if not deleted:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to delete study {study_id} from Orthanc. Database not modified."
+            )
+    
+    # Delete from Database
+    try:
+        db.delete(study)
+        db.commit()
+
+        # Now check if patient has other studies
+        remaining_studies = db.query(Study).filter(Study.patient_id == patient.id).count()
+        if remaining_studies == 0:
+            db.delete(patient)
+            db.commit()
+            logger.info(f"Patient {patient.id} deleted because they had no more studies")
+
+        logger.info(f"Study {study_id} deleted from database and Orthanc")
+    except SQLAlchemyError as err:
+        db.rollback()
+        logger.error(f"Failed to delete study {study_id} from database: {str(err)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to delete study {study_id} from database after Orthanc deletion"
+        )
+    
+    return {"ok": True, "message": "Study deleted from DB and Orthanc"}
+
+
 @router.patch("/studies/{study_id}")
 def update_study(study_id: int, payload: dict, db: Session = Depends(get_db)):
     s = db.query(Study).get(study_id)
@@ -55,37 +102,6 @@ def update_study(study_id: int, payload: dict, db: Session = Depends(get_db)):
         s.notes = payload["notes"]
     db.commit()
     return {"ok": True}
-
-
-@router.delete("/studies/{study_id}")
-def delete_study(study_id: int, db: Session = Depends(get_db)):
-    study = db.query(Study).get(study_id)
-    if not study:
-        raise HTTPException(status_code=404, detail="Study not found")
-    
-    # Delete from orthanc firsy using StudyInstanceUID
-    if study.study_uid:
-        deleted = delete_study_from_orthanc(study.study_uid)
-        if not deleted:
-            raise HTTPException(
-                status_code=500,
-                detail=f"Failed to delete study {study_id} from Orthanc. Database not modified."
-            )
-    
-    # Delete from Database
-    try:
-        db.delete(study)
-        db.commit()
-        logger.info(f"Study {study_id} deleted from database and Orthanc")
-    except SQLAlchemyError as err:
-        db.rollback()
-        logger.error(f"Failed to delete study {study_id} from database: {str(err)}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to delete study {study_id} from database after Orthanc deletion"
-        )
-    
-    return {"ok": True, "message": "Study deleted from DB an Orthanc"}
 
 
 @router.get("/studies/{study_uid}/derived-results")

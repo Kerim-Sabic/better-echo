@@ -28,3 +28,8 @@ class StudySchema(BaseModel):
 
 class StudyListResponse(RootModel[List[StudySchema]]):
     pass
+
+
+class StudyDeleteResponse(BaseModel):
+    ok: bool
+    message: str
