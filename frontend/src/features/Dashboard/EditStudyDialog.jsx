@@ -24,11 +24,11 @@ export default function EditStudyDialog({
 
         <div className="grid gap-3">
           <div className="space-y-1">
-            <div className="text-sm text-muted-foreground">Patient ID / MRN</div>
+            <div className="text-sm text-muted-foreground">Patient Name</div>
             <Input
-              value={editForm.patient_id}
+              value={editForm.patient_name}
               onChange={(e) =>
-                setEditForm((f) => ({ ...f, patient_id: e.target.value }))
+                setEditForm((f) => ({ ...f, patient_name: e.target.value }))
               }
             />
           </div>

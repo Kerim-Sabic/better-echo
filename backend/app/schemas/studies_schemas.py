@@ -33,6 +33,9 @@ class StudyDeleteResponse(BaseModel):
     ok: bool
     message: str
 
+class StudyUpdateResponse(BaseModel):
+    ok: bool
+    message: str
 
 class DerivedResultResponse(BaseModel):
     id: int

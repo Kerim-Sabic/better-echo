@@ -11,7 +11,7 @@ from app.models.studies import Study
 from app.models.patients import Patient
 from app.models.derived_results import DerivedResult
 from app.services.orthanc_client import delete_study_from_orthanc
-from app.schemas.studies_schemas import StudyListResponse, StudyDeleteResponse, DerivedResultResponse
+from app.schemas.studies_schemas import StudyListResponse, StudyDeleteResponse, StudyUpdateResponse, DerivedResultResponse
 
 logger = logging.getLogger(__name__)
 
@@ -107,19 +107,24 @@ def delete_study(study_id: int, db: Session = Depends(get_db)):
     return {"ok": True, "message": "Study deleted from DB and Orthanc"}
 
 
-@router.patch("/studies/{study_id}")
+@router.patch("/studies/{study_id}", response_model=StudyUpdateResponse)
 def update_study(study_id: int, payload: dict, db: Session = Depends(get_db)):
+    """
+    Updates the study_date and the patient_name for the related study.
+    """
     study = db.query(Study).get(study_id)
     if not study:
         raise HTTPException(status_code=404, detail="Study not found")
-    # allow light edits
-    for key in ["patient_id", "study_date"]:
-        if key in payload:
-            setattr(study, key, payload[key])
-    if "notes" in payload and hasattr(study, "notes"):
-        study.notes = payload["notes"]
+    
+    # allow updating study_date
+    if "study_date" in payload:
+        study.study_date = payload["study_date"]
+
+    # allow updating patient_name (via the related Patient model)
+    if "patient_name" in payload and study.patient:
+        study.patient.patient_name = payload["patient_name"]
     db.commit()
-    return {"ok": True}
+    return {"ok": True, "message": "Study information successfully updated"}
 
 
 @router.get("/studies/{study_uid}/derived-results", response_model=List[DerivedResultResponse])

@@ -76,7 +76,7 @@ def infer_panecho(
         study = db.query(Study).filter(Study.study_uid == study_uid).first()
         if study:
             if hasattr(study, "status"):
-                study.status = "ready"
+                study.status = "completed"
 
             dr = DerivedResult(
                 study_id=study.id,
