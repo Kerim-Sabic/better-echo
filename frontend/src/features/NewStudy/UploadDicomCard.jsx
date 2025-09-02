@@ -9,15 +9,16 @@ export default function UploadDicomCard({ files, setFiles, studyUID, isUploading
       <CardHeader>
         <CardTitle>Upload DICOM</CardTitle>
         <CardDescription>
-          Fast lane — just the file. We’ll parse tags automatically.
+          Fast lane — just the files. We’ll parse tags automatically.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <label
           className={cn(
-            "flex flex-col items-center justify-center w-full h-44 rounded-lg border border-dashed border-border bg-background cursor-pointer",
+            "flex flex-col items-center justify-center w-full rounded-lg border border-dashed border-border bg-background cursor-pointer",
             "hover:border-primary/60 hover:bg-accent/30 transition-colors"
           )}
+          style={{ minHeight: "11rem", padding: "1rem" }} // minimum height for the upload area
         >
           <input
             type="file"
@@ -26,17 +27,26 @@ export default function UploadDicomCard({ files, setFiles, studyUID, isUploading
             multiple
             onChange={(e) => setFiles(Array.from(e.target.files) || [])}
           />
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-md bg-primary/10">
+          <div className="flex items-start w-full gap-3">
+            <div className="flex-shrink-0 p-2 rounded-md bg-primary/10">
               <Upload className="w-5 h-5 text-primary" />
             </div>
-            <div className="text-left">
-              <div className="font-medium">
+            <div className="flex-1 text-left">
+              <div 
+                className="flex flex-wrap gap-1 overflow-y-auto font-medium max-h-48"
+              >
                 {files && files.length
-                  ? files.map((f) => f.name).join(", ")
+                  ? files.map((f, idx) => (
+                      <span
+                        key={idx}
+                        className="px-2 py-1 text-sm break-words rounded bg-primary/10"
+                      >
+                        {f.name}
+                      </span>
+                    ))
                   : "Drop DICOM files here or click to browse"}
               </div>
-              <div className="text-sm text-muted-foreground">
+              <div className="mt-1 text-sm text-muted-foreground">
                 .dcm only • PHI-safe handling recommended
               </div>
             </div>

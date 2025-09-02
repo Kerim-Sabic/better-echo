@@ -5,6 +5,7 @@ import ManualInfoForm from "../features/NewStudy/ManualInfoForm";
 
 import { useNewStudy } from "../features/NewStudy/hooks/useNewStudy";
 import NewStudyHeader from "../features/NewStudy/NewStudyHeader";
+import { DuplicateFilesList } from "../features/NewStudy/DuplicateFilesList";
 
 export default function NewStudy() {
   const {
@@ -21,6 +22,7 @@ export default function NewStudy() {
     handleUpload,
     createStudyAndAnalyze,
     setTags,
+    duplicatesFiles,
   } = useNewStudy();
 
   return (
@@ -39,10 +41,13 @@ export default function NewStudy() {
           onReparse={() => setTags(tags)}
         />
 
+        {/* Show duplicate file names */}
+        <DuplicateFilesList files={duplicatesFiles}/>
+
         {studyUID && <MetadataPreview tags={tags} />}
         {studyUID && (
           <p className="text-sm text-muted-foreground">
-            Tip: Click <span className="font-medium">Continue to Results</span> to view the study while EF analysis runs.
+            Click <span className="font-medium">Continue to Results</span> to view the study while AI analysis runs.
           </p>
         )}
 

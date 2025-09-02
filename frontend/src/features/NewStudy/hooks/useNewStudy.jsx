@@ -12,6 +12,7 @@ export function useNewStudy() {
   const [studyUID, setStudyUID] = useState(null);
   const [instanceIds, setInstanceIds] = useState([]);
   const [tags, setTags] = useState(null);
+  const [duplicatesFiles, setDuplicateFiles] = useState([]); // State to store duplicate file names
 
   const [showManual, setShowManual] = useState(false);
   const [form, setForm] = useState({
@@ -59,24 +60,49 @@ export function useNewStudy() {
         // 2. Now all files belong to the same study, proceed to upload
         const uploadedInstanceIds = [];
         let mergedTags = null;
+        const duplicates = []; //temporary array to track duplicates
 
         for (const file of files) {
-          const data = await uploadDicomApi(file);
-          const { study_uid, sop_instance_uid, tags: dicomTags } = data || {};
-          uploadedInstanceIds.push(sop_instance_uid);
-          if (!mergedTags) mergedTags = pickTags(dicomTags || {});
+          try {
+            const data = await uploadDicomApi(file);
+            const { study_uid, sop_instance_uid, tags: dicomTags } = data || {};
+            uploadedInstanceIds.push(sop_instance_uid);
+            if (!mergedTags) mergedTags = pickTags(dicomTags || {});
+          } catch (err) {
+            const detailMessage = err.response?.data?.detail || err.message;
+
+            // If it's the "already uploaded" message, add to duplicates
+            if (detailMessage.includes("already been uploaded")) {
+              duplicates.push(file.name);
+            } else {
+              console.error(`Failed to upload ${file.name}`, err);
+              setStatus(prev => prev + `\nUpload failed for ${file.name}: ${detailMessage}`);
+            }
+          }
         }
 
+        // update state after loop finishes
+        setDuplicateFiles(duplicates); // store duplicate file names
         setStudyUID(firstUID);
         setInstanceIds(uploadedInstanceIds);
-        setTags(mergedTags);
-        prefillFromTags(mergedTags);
+
+        if (mergedTags) {
+          setTags(mergedTags);
+          prefillFromTags(mergedTags);
+        }
 
         setStatus(`Upload complete. ${files.length} files processed.`);
 
       } catch (err) {
         console.error(err);
-        setStatus(`Upload failed: ${err.message}`);
+        // Check if backend sent a detail message
+        const detailMessage = err.response?.data?.detail;
+        if (detailMessage) {
+          setStatus(`Upload failed: ${detailMessage}`);
+        } else {
+          setStatus(`Upload failed: ${err.message}`);
+        }
+        
       } finally {
         setUploading(false);
       }
@@ -106,6 +132,7 @@ export function useNewStudy() {
     setShowManual, // Function to toggle 'showManual' (show/hide the manual entry form)
     form, // Object holding form values (patientName, patientId, notes, etc.)
     setForm, // Function to update form fields
+    duplicatesFiles, // List of duplicate files uploaded
 
     // actions
     handleUpload,          // Uploads the selected DICOM file, parses metadata, updates state
