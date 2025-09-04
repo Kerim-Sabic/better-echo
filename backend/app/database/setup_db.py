@@ -10,8 +10,11 @@ Initialize (or reset) the database schema.
 from app.database.db import engine, Base
 
 # IMPORTANT: DO NOT REMOVE!! import models so they register with Base.metadata
-import app.models.study          # noqa: F401
-import app.models.derived_result # noqa: F401
+import app.models.patients
+import app.models.studies
+import app.models.series
+import app.models.instances
+import app.models.derived_results 
 
 
 def init_db(drop: bool = True):

@@ -8,18 +8,19 @@ from sqlalchemy.orm import Session
 
 from app.services.orthanc_client import (
     send_dicom_to_orthanc,
-    get_instance_tags,
-    get_series_id_from_instance,
+    get_instance_tags
 )
-from app.database.db import get_db
-from app.models.study import Study
 
-from app.schemas.upload_schemas import UploadDicomResponse
+from app.database.db import get_db
+from app.models.patients import Patient
+from app.models.studies import Study
+from app.models.series import Series
+from app.models.instances import Instance
+from app.schemas.upload_schemas import UploadDicomResponseSchema
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-
 UPLOAD_DIR = "app/uploads"
 
 def _first(val, default=""):
@@ -38,94 +39,148 @@ def _tag(tags: dict, key: str, default=""):
     obj = tags.get(key, {})
     return _first(obj.get("Value"), default)
 
+
 def _clean_for_ui(tags: dict) -> dict:
     """Build a friendly dict the frontend can use to prefill fields."""
     return {
         "PatientName": _tag(tags, "0010,0010", ""),
         "PatientID": _tag(tags, "0010,0020", ""),
         "PatientBirthDate": _tag(tags, "0010,0030", ""),
+        "PatientSex": _tag(tags, "0010,0040", ""),
         "StudyDate": _tag(tags, "0008,0020", ""),
         "StudyTime": _tag(tags, "0008,0030", ""),
         "AccessionNumber": _tag(tags, "0008,0050", ""),
         "ReferringPhysicianName": _tag(tags, "0008,0090", ""),
         "StudyInstanceUID": _tag(tags, "0020,000d", ""),
+        "SeriesInstanceUID": _tag(tags, "0020,000e", ""),
+        "SOPInstanceUID": _tag(tags, "0008,0018", ""),
+        "Modality": _tag(tags, "0008,0060", ""),
     }
 
-@router.post("/upload-dicom", response_model=UploadDicomResponse)
+@router.post("/upload-dicom", response_model=UploadDicomResponseSchema)
 async def upload_dicom(file: UploadFile = File(...), db: Session = Depends(get_db)):
     os.makedirs(UPLOAD_DIR, exist_ok=True)
-
     ts = datetime.now().strftime("%Y%m%d%H%M%S")
     file_location = os.path.join(UPLOAD_DIR, f"{ts}_{file.filename}")
 
     try:
-        # 1) Save uploaded file
+        # 1) Save uploaded file locally
         async with aiofiles.open(file_location, "wb") as out:
             content = await file.read()
             await out.write(content)
         logger.info(f"File saved locally at {file_location}")
 
         # 2) Send to Orthanc
-        instance_id = send_dicom_to_orthanc(file_location)
-        logger.info(f"File uploaded to Orthanc. Instance ID: {instance_id}")
+        upload_response = send_dicom_to_orthanc(file_location)
 
-        # 3) Fetch tags from Orthanc
-        tags = get_instance_tags(instance_id)
-        logger.info(f"Retrieved tags from Orthanc for instance {instance_id}")
+        # Reject duplicates
+        if upload_response.get("Status") == "AlreadyStored":
+            logger.warning("Duplicate upload attempt: DICOM already stored in Orthanc")
+            
+            # Delete the local file to avoid incosistencies
+            if os.path.exists(file_location):
+                os.remove(file_location)
+                logger.info(f"Deleted local duplicate file at {file_location}")
 
-        # 4) Extract normalized fields (STRINGS only)
-        patient_id = _tag(tags, "0010,0020", "Unknown")
-        study_date = _tag(tags, "0008,0020", "")         # keep as YYYYMMDD string
-        study_uid  = _tag(tags, "0020,000d", "Unknown")
-        logger.info(f"Extracted Patient ID: {patient_id}, Study Date: {study_date}, Study UID: {study_uid}")
+            raise HTTPException(
+                status_code=400,
+                detail="This DICOM file has already been uploaded and is stored in Orthanc."
+            )
+        logger.info(f"File uploaded to Orthanc. Upload response: {upload_response}")
 
-        # 5) Avoid duplicates
-        existing = db.query(Study).filter_by(instance_id=instance_id).first()
-        if existing:
-            logger.warning(f"Duplicate instance ID: {instance_id}. Skipping insert.")
-            # Still return UI-friendly tags so the frontend can proceed
-            series_id = get_series_id_from_instance(instance_id) or ""
-            return {
-                "message": "File already exists in the database",
-                "filename": file.filename,
-                "instance_id": instance_id,
-                "study_uid": study_uid,
-                "series_id": series_id,
-                "tags": _clean_for_ui(tags),
-            }
+        instance_orthanc_id = upload_response["ID"]
 
-        # 6) Save to DB
-        study = Study(
-            instance_id=instance_id,
-            patient_id=patient_id,
-            study_uid=study_uid,
-            study_date=study_date,
+        # 3) Fetch tags
+        instance_tags = get_instance_tags(instance_orthanc_id)
+        clean_instance_tags = _clean_for_ui(instance_tags)
+        logger.info(f"Retrieved tags from Orthanc for instance {instance_orthanc_id}")
+
+        # Extract identifiers
+        patient_id_tag = clean_instance_tags["PatientID"] or "Unknown"
+        study_uid = clean_instance_tags["StudyInstanceUID"]
+        series_uid = clean_instance_tags["SeriesInstanceUID"]
+        sop_instance_uid = clean_instance_tags["SOPInstanceUID"] # Dicom Instance UID
+
+        logger.info(f"Extracted Patient ID tag: {patient_id_tag}, Study UID: {study_uid}, Series UID: {series_uid}, Dicom Instance UID: {sop_instance_uid}")
+
+        # 4) Insert/Fetch Patient
+        patient = db.query(Patient).filter_by(patient_id=patient_id_tag).first()
+        if not patient:
+            patient = Patient(
+                patient_id = patient_id_tag,
+                patient_name = clean_instance_tags["PatientName"],
+                patient_sex = clean_instance_tags["PatientSex"],
+                patient_birth_date = clean_instance_tags["PatientBirthDate"],
+                patient_orthanc_id = upload_response["ParentPatient"]
+            )
+            db.add(patient)
+            db.flush()
+        
+        # 5) Insert/Fetch Study
+        study = db.query(Study).filter_by(study_uid=study_uid).first()
+        if not study:
+            study = Study(
+                study_uid=study_uid,
+                study_date = clean_instance_tags["StudyDate"],
+                description=None,
+                patient=patient,
+                study_orthanc_id = upload_response["ParentStudy"]
+            )
+            db.add(study)
+            db.flush()
+
+        # 6) Insert/Fetch Series
+        series = db.query(Series).filter_by(series_uid=series_uid).first()
+        if not series:
+            series = Series(
+                series_uid=series_uid,
+                modality=clean_instance_tags["Modality"],
+                description=None,
+                study=study,
+                series_orthanc_id = upload_response["ParentSeries"]
+            )
+            db.add(series)
+            db.flush()
+
+        # 7) Insert Instance
+        existing_instance = db.query(Instance).filter_by(sop_instance_uid=sop_instance_uid).first()
+        if existing_instance:
+            raise HTTPException(status_code=400, detail="This DICOM instance already exists in the database")
+
+        instance = Instance(
+            sop_instance_uid=sop_instance_uid,
             file_path=file_location,
-            status="processing",
+            instance_orthanc_id=instance_orthanc_id,
+            series=series,
         )
-        db.add(study)
+        db.add(instance)
         db.commit()
-        db.refresh(study)
-        logger.info(f"Study saved to database. Instance ID: {instance_id}")
 
-        # 7) Include series_id for local viewer integration if needed
-        series_id = get_series_id_from_instance(instance_id) or ""
-        clean = _clean_for_ui(tags)
-        logger.info(f"Cleaned tags for UI: {clean}")
+        logger.info(f"Successfully stored Patient={patient_id_tag}, Study={study_uid}, Series={series_uid}, Instance={sop_instance_uid}")
 
-        # 8) Return success with cleaned tags for the UI
         return {
             "message": "Upload successful",
             "filename": file.filename,
-            "instance_id": instance_id,
+            "patient_id": patient_id_tag,
             "study_uid": study_uid,
-            "series_id": series_id,
-            "tags": clean,
-            # optionally echo patient info so UI can show it immediately
-            "patient_id": clean.get("PatientID") or "Unknown",
-            "study_date": clean.get("StudyDate") or None,
+            "series_uid": series_uid,
+            "sop_instance_uid": sop_instance_uid,
+            "tags": clean_instance_tags,
+            "study_date": clean_instance_tags["StudyDate"],
+            "upload_response": {
+                "patient_orthanc_id": upload_response["ParentPatient"],
+                "study_orthanc_id": upload_response["ParentStudy"],
+                "series_orthanc_id": upload_response["ParentSeries"],
+                "instance_orthanc_id": instance_orthanc_id
+            }
         }
-
-    except Exception as e:
-        logger.error(f"Upload failed: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to save file: {str(e)}")
+    
+    except HTTPException:
+        raise
+    except Exception as err:
+        db.rollback()
+        if os.path.exists(file_location):
+            os.remove(file_location)
+            logger.info(f"Deleted local file due to error ar {file_location}")
+        logger.error(f"Upload failed: {str(err)}")
+        raise HTTPException(status_code=500, detail=f"Failed to save file: {str(err)}")

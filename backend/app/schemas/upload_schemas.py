@@ -1,12 +1,21 @@
-from typing import Optional, Dict
+from typing import Dict
 from pydantic import BaseModel
 
-class UploadDicomResponse(BaseModel):
+from pydantic import BaseModel
+from typing import Dict
+
+
+class UploadDicomResponseSchema(BaseModel):
     message: str
-    filename: Optional[str] = None # None when file already exists in the db
-    instance_id: str
-    series_id: Optional[str] = None # None when file already exists in the db
+    filename: str
+    patient_id: str
     study_uid: str
-    patient_id: Optional[str] = None # echo patient_id for UI
-    tags: Optional[Dict[str,str]] = None # cleaned DICOM tags
-    study_date: Optional[str] = None
+    series_uid: str
+    sop_instance_uid: str
+    study_date: str | None
+    tags: Dict[str, str]
+
+    upload_response: Dict[str, str]  # contains orthanc ids
+
+    class Config:
+        from_attributes = True 

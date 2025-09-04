@@ -8,7 +8,7 @@ export function useDashboard() {
   const [loading, setLoading] = useState(true);
   const [editOpen, setEditOpen] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [editForm, setEditForm] = useState({ patient_id: "", study_date: "" });
+  const [editForm, setEditForm] = useState({ patient_name: "", study_date: "" });
   const [saving, setSaving] = useState(false);
 
   // Load studies initially
@@ -42,7 +42,7 @@ export function useDashboard() {
   const openEdit = (row) => {
     setEditing(row);
     setEditForm({
-      patient_id: row.patient_id || "",
+      patient_name: row.patient?.patient_name || "",
       study_date: row.study_date || "",
     });
     setEditOpen(true);
@@ -75,9 +75,9 @@ export function useDashboard() {
   // Filter logic
   const filteredStudies = studies.filter((s) => {
     const q = searchTerm.toLowerCase();
-    const pid = (s.patient_id || "").toLowerCase();
+    const patient_name = (s.patient.patient_name || "").toLowerCase();
     const suid = (s.study_uid || "").toLowerCase();
-    const matchesSearch = pid.includes(q) || suid.includes(q);
+    const matchesSearch = patient_name.includes(q) || suid.includes(q);
     const matchesFilter =
       selectedFilter === "all" || s.status === selectedFilter;
     return matchesSearch && matchesFilter;

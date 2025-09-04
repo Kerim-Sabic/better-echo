@@ -21,10 +21,10 @@ orthanc_user = settings.ORTHANC_USER
 orthanc_pass = settings.ORTHANC_PASS
 
 
-def fetch_instance_ids_from_study(study_uid: str) -> List[str]:
+def fetch_orthanc_instance_ids_from_study(study_uid: str) -> List[str]:
     # Find Orthanc study by DICOM StudyInstanceUID, then list its instances
     # 1) Query studies by UID
-    logger.info(f"[EF] Resolving Orthanc study for StudyInstanceUID={study_uid}")
+    logger.info(f"Resolving Orthanc study for StudyInstanceUID={study_uid}")
     r = requests.get(f"{orthanc_url}/studies", auth=(orthanc_user, orthanc_pass))
     r.raise_for_status()
     studies = r.json()
@@ -37,6 +37,7 @@ def fetch_instance_ids_from_study(study_uid: str) -> List[str]:
     if not match:
         logger.warning(f"[EF] No Orthanc study matches StudyInstanceUID={study_uid}")
         return []
+    
     # 2) Get all instances in that study
     insts = requests.get(f"{orthanc_url}/studies/{match}/instances", auth=(orthanc_user, orthanc_pass)).json()
     ids = [i["ID"] for i in insts]

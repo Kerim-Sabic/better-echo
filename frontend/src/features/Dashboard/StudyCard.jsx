@@ -18,7 +18,7 @@ export default function StudyCard({ study, onSelectStudy, onEdit, onDelete }) {
             </div>
             <div className="space-y-1">
               <h3 className="text-lg font-semibold">
-                {study.patient_id || "Unknown patient"}
+                {study.patient.patient_name || "Unknown patient"}
               </h3>
               <p
                 className="text-sm truncate text-muted-foreground"

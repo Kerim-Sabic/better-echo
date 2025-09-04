@@ -21,7 +21,7 @@ export default function SearchAndFilters({
       </div>
 
       <div className="flex gap-2">
-        {["all", "ready", "processing"].map((filter) => (
+        {["all", "completed", "processing"].map((filter) => (
           <Button
             key={filter}
             variant={selectedFilter === filter ? "default" : "outline"}

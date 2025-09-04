@@ -2,7 +2,7 @@ import React from "react";
 
 export default function Viewer({ studyUID }) {
   if (!studyUID) return null;
-  const VIEWER_URL = process.env.REACT_APP_VIEWER_URL || "http://localhost:8042/stone-webviewer/index.html";
+  const VIEWER_URL = process.env.REACT_APP_VIEWER_URL;
   const src = `${VIEWER_URL}?study=${encodeURIComponent(studyUID)}`;
   return (
     <div className="viewer-shell">
