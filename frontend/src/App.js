@@ -3,6 +3,7 @@ import React from "react";
 import { BrowserRouter, Routes, Route, useNavigate, Navigate } from "react-router-dom";
 
 import { AuthProvider } from "./contexts/AuthenticationContext";
+import ProtectedRoute from "./contexts/ProtectedRoute";
 
 import SplashScreen from "./components/SplashScreen";
 import Login from "./pages/Login";
@@ -27,10 +28,12 @@ export default function App() {
           {/* Auth */}
           <Route path="/login" element={<Login />} />
 
-          {/* App */}
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/studies/new" element={<NewStudy />} />
-          <Route path="/studies/:id" element={<StudyResults />} />
+          {/* App */}{/*Protected routes */}
+          <Route element={<ProtectedRoute />}>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/studies/new" element={<NewStudy />} />
+            <Route path="/studies/:id" element={<StudyResults />} />
+          </Route>
 
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
