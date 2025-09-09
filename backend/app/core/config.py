@@ -10,6 +10,9 @@ class Settings(BaseSettings):
     ORTHANC_USER: str
     ORTHANC_PASS: str
 
+    SECRET_KEY: str
+    TOKEN_EXPIRE_HOURS: int
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

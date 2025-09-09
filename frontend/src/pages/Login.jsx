@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useContext, useState, useTransition } from "react";
 import { Eye, EyeOff, Shield, Info } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -19,34 +19,43 @@ import {
   DialogTrigger,
 } from "../components/ui/dialog";
 import { useNavigate } from "react-router-dom";
+import { AuthContext } from "../contexts/AuthenticationContext";
 
 export default function Login() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const { login } = useContext(AuthContext)
 
-  const onLogin = () => navigate("/dashboard"); // adjust to your route plan
+ const [username, setUsername] = useState("");
+ const [password, setPassword] = useState("")
+ const [showPassword, setShowPassword] = useState(false);
+ const [isLoading, setIsLoading] = useState(false);
+ const [error, setError] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError("");
     setIsLoading(true);
-    setTimeout(() => {
+
+    try {
+      const response = await login(username, password)
+      navigate("/dashboard")
+    } catch (err) {
+      console.error("Login error:", err);
+      setError(err.reponse?.detail || "Login failed. Please try again.");
+    } finally {
       setIsLoading(false);
-      onLogin();
-    }, 1500);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-clinical flex items-center justify-center p-4">
+    <div className="flex items-center justify-center min-h-screen p-4 bg-gradient-clinical">
       <div className="w-full max-w-md">
-        <div className="text-center mb-8">
+        <div className="mb-8 text-center">
           <div className="flex items-center justify-center mb-4">
             <img
               src="/lovable-uploads/9d9bcdf0-8a16-4777-8dc3-85ea7af6f600.png"
               alt="Horalix Logo"
-              className="h-12 w-12 mr-3"
+              className="w-12 h-12 mr-3"
             />
             <div>
               <h1 className="text-3xl font-bold text-primary">Horalix Echo</h1>
@@ -69,13 +78,13 @@ export default function Login() {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
+                <Label htmlFor="username">Username</Label>
                 <Input
-                  id="email"
-                  type="email"
-                  placeholder="cardiologist@hospital.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  id="username"
+                  type="text"
+                  placeholder="Enter your username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
                   required
                   className="h-12"
                 />
@@ -96,53 +105,54 @@ export default function Login() {
                   <button
                     type="button"
                     onClick={() => setShowPassword((s) => !s)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    className="absolute transition-colors -translate-y-1/2 right-3 top-1/2 text-muted-foreground hover:text-foreground"
                   >
                     {showPassword ? (
-                      <EyeOff className="h-5 w-5" />
+                      <EyeOff className="w-5 h-5" />
                     ) : (
-                      <Eye className="h-5 w-5" />
+                      <Eye className="w-5 h-5" />
                     )}
                   </button>
                 </div>
               </div>
 
+              {error && (
+                <div className="p-3 border border-red-200 rounded-md bg-red-50">
+                  <p className="text-sm text-red-600">{error}</p>
+                </div>
+              )}
+
               <Button
                 type="submit"
-                className="w-full h-12 btn-clinical text-lg font-medium"
+                className="w-full h-12 text-lg font-medium btn-clinical"
                 disabled={isLoading}
               >
                 {isLoading ? "Signing In..." : "Sign In"}
               </Button>
 
-              <div className="text-center">
-                <a href="#" className="text-sm text-primary hover:underline">
-                  Forgot your password?
-                </a>
-              </div>
             </form>
 
-            <div className="mt-6 pt-6 border-t border-border">
+            <div className="pt-6 mt-6 border-t border-border">
               <Button variant="outline" className="w-full h-12 mb-3">
-                <Shield className="mr-2 h-5 w-5" />
+                <Shield className="w-5 h-5 mr-2" />
                 Sign in with Hospital SSO
               </Button>
             </div>
           </CardContent>
         </Card>
 
-        <div className="text-center mt-6">
+        <div className="mt-6 text-center">
           <Dialog>
             <DialogTrigger asChild>
-              <button className="text-sm text-muted-foreground hover:text-primary transition-colors inline-flex items-center">
-                <Info className="mr-1 h-4 w-4" />
+              <button className="inline-flex items-center text-sm transition-colors text-muted-foreground hover:text-primary">
+                <Info className="w-4 h-4 mr-1" />
                 About Horalix Echo
               </button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>About Horalix Echo</DialogTitle>
-                <DialogDescription className="text-left space-y-3">
+                <DialogDescription className="space-y-3 text-left">
                   <p>
                     Horalix Echo is a hospital-grade AI echocardiography
                     platform that provides real-time analysis for cardiologists
@@ -151,15 +161,15 @@ export default function Login() {
                   <p>
                     <strong>Key Features:</strong>
                   </p>
-                  <ul className="list-disc list-inside space-y-1 text-sm">
+                  <ul className="space-y-1 text-sm list-disc list-inside">
                     <li>Real-time AI segmentation and measurements</li>
                     <li>Automated ejection fraction calculation</li>
                     <li>Valve assessment and severity grading</li>
                     <li>Clinical-grade reporting</li>
                     <li>DICOM integration</li>
                   </ul>
-                  <p className="text-xs text-muted-foreground pt-2">
-                    Powered by PanEcho & EchoPrime AI
+                  <p className="pt-2 text-xs text-muted-foreground">
+                    Powered by Horalix
                   </p>
                 </DialogDescription>
               </DialogHeader>

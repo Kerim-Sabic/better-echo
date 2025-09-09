@@ -15,6 +15,7 @@ import app.models.studies
 import app.models.series
 import app.models.instances
 import app.models.derived_results 
+import app.models.users
 
 
 def init_db(drop: bool = True):

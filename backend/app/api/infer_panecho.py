@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 import torch
 import logging
 
-from app.helpers.inference import (fetch_orthanc_instance_ids_from_study,
+from app.helpers.inference_functions import (fetch_orthanc_instance_ids_from_study,
                         pick_frames_from_instance,
                         stack_to_tensor,
                         get_model_and_device)
