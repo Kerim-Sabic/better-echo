@@ -8,6 +8,7 @@ from app.api.upload import router as upload_router
 from app.api.studies import router as studies_router
 from app.api.infer_panecho import router as infer_all_panecho_router
 from app.api.infer_echoprime import router as infer_echoprime_router
+from app.api.infer_echonet_dynamic import router as infer_echonet_dynamic_router
 from app.api.authentication import router as authentication_router
 
 from app.core.config import settings
@@ -41,6 +42,7 @@ app.include_router(upload_router, prefix="/api", tags=["Upload dicom"])
 app.include_router(studies_router, prefix="/api", tags=["Studies"])
 app.include_router(infer_all_panecho_router, prefix="/api", tags=["Inference"])
 app.include_router(infer_echoprime_router, prefix="/api", tags=["Inference"])
+app.include_router(infer_echonet_dynamic_router, prefix="/api", tags=["Inference"])
 app.include_router(authentication_router, prefix="/api", tags=["Authentication"])
 
 
