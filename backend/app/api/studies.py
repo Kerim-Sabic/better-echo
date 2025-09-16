@@ -1,5 +1,6 @@
 import os
 from typing import List
+from shutil import rmtree
 
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
@@ -70,18 +71,16 @@ def delete_study(study_id: int, db: Session = Depends(get_db)):
                 detail=f"Failed to delete study {study_id} from Orthanc. Database not modified."
             )
     
-    # Delete all instance files for the study from app/uploads folder
-    for series in study.series:
-        for instance in series.instances:
-            if instance.file_path and os.path.exists(instance.file_path):
-                try:
-                    os.remove(instance.file_path)
-                    logger.info(f"Deleted file {instance.file_path}")
-                except Exception as err:
-                    logger.error(f"Failed to delte file {instance.file_path}: {str(err)}")
-            else:
-                logger.warning(f"File {instance.file_path} not found")
-
+    # Delete the entire local study folder
+    study_folder = os.path.join(UPLOAD_DIR, study.study_uid)
+    if os.path.exists(study_folder):
+        try:
+            rmtree(study_folder)
+            logger.info(f"Deleted study folder {study_folder}")
+        except Exception as err:
+            logger.error(f"Failed to delete study folder {study_folder}: {str(err)}")
+    else:
+        logger.warning(f"Study folder {study_folder} not found")
 
     # Delete from Database
     try:
