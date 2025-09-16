@@ -1,10 +1,12 @@
 import os
 from datetime import datetime
+from io import BytesIO
 
 import aiofiles
 import logging
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from sqlalchemy.orm import Session
+import pydicom
 
 from app.services.orthanc_client import (
     send_dicom_to_orthanc,
@@ -61,16 +63,30 @@ def _clean_for_ui(tags: dict) -> dict:
 async def upload_dicom(file: UploadFile = File(...), db: Session = Depends(get_db)):
     os.makedirs(UPLOAD_DIR, exist_ok=True)
     ts = datetime.now().strftime("%Y%m%d%H%M%S")
-    file_location = os.path.join(UPLOAD_DIR, f"{ts}_{file.filename}")
+    file_location = None
 
     try:
-        # 1) Save uploaded file locally
-        async with aiofiles.open(file_location, "wb") as out:
-            content = await file.read()
-            await out.write(content)
-        logger.info(f"File saved locally at {file_location}")
+        # --- Step 1: read uploaded file in memory ---
+        content = await file.read()
 
-        # 2) Send to Orthanc
+        # --- Step 2: read StudyUID from DICOM bytes ---
+        try:
+            ds = pydicom.dcmread(BytesIO(content), stop_before_pixels=True)
+            study_uid = ds.StudyInstanceUID
+        except Exception as err:
+            raise HTTPException(status_code=400, detail=f"Invalid DICOM file: {str(err)}")
+        
+        # --- Step 3: create study specific folder ---
+        study_folder = os.path.join(UPLOAD_DIR, study_uid)
+        os.makedirs(study_folder, exist_ok=True)
+
+        # --- Step 4: save file directly in study folder ---
+        file_location = os.path.join(study_folder, f"{ts}_{file.filename}")
+        async with aiofiles.open(file_location, "wb") as out:
+            await out.write(content)
+        logger.info(f"File saved at {file_location}")
+
+        # --- Step 5: send to Orthanc ---
         upload_response = send_dicom_to_orthanc(file_location)
 
         # Reject duplicates
@@ -90,7 +106,7 @@ async def upload_dicom(file: UploadFile = File(...), db: Session = Depends(get_d
 
         instance_orthanc_id = upload_response["ID"]
 
-        # 3) Fetch tags
+        # --- Step 6: Fetch tags ---
         instance_tags = get_instance_tags(instance_orthanc_id)
         clean_instance_tags = _clean_for_ui(instance_tags)
         logger.info(f"Retrieved tags from Orthanc for instance {instance_orthanc_id}")
@@ -103,7 +119,7 @@ async def upload_dicom(file: UploadFile = File(...), db: Session = Depends(get_d
 
         logger.info(f"Extracted Patient ID tag: {patient_id_tag}, Study UID: {study_uid}, Series UID: {series_uid}, Dicom Instance UID: {sop_instance_uid}")
 
-        # 4) Insert/Fetch Patient
+        # --- Step 7: Insert/Fetch Patient ---
         patient = db.query(Patient).filter_by(patient_id=patient_id_tag).first()
         if not patient:
             patient = Patient(
@@ -116,7 +132,7 @@ async def upload_dicom(file: UploadFile = File(...), db: Session = Depends(get_d
             db.add(patient)
             db.flush()
         
-        # 5) Insert/Fetch Study
+        # --- Step 8: Insert/Fetch Study ---
         study = db.query(Study).filter_by(study_uid=study_uid).first()
         if not study:
             study = Study(
@@ -129,7 +145,7 @@ async def upload_dicom(file: UploadFile = File(...), db: Session = Depends(get_d
             db.add(study)
             db.flush()
 
-        # 6) Insert/Fetch Series
+        # --- Step 9: Insert/Fetch Series ---
         series = db.query(Series).filter_by(series_uid=series_uid).first()
         if not series:
             series = Series(
@@ -142,7 +158,7 @@ async def upload_dicom(file: UploadFile = File(...), db: Session = Depends(get_d
             db.add(series)
             db.flush()
 
-        # 7) Insert Instance
+        # --- Step 10: Insert Instance ---
         existing_instance = db.query(Instance).filter_by(sop_instance_uid=sop_instance_uid).first()
         if existing_instance:
             raise HTTPException(status_code=400, detail="This DICOM instance already exists in the database")
@@ -179,7 +195,7 @@ async def upload_dicom(file: UploadFile = File(...), db: Session = Depends(get_d
         raise
     except Exception as err:
         db.rollback()
-        if os.path.exists(file_location):
+        if file_location and os.path.exists(file_location):
             os.remove(file_location)
             logger.info(f"Deleted local file due to error ar {file_location}")
         logger.error(f"Upload failed: {str(err)}")
