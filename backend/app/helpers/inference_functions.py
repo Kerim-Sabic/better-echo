@@ -20,34 +20,36 @@ orthanc_url = settings.ORTHANC_URL
 orthanc_user = settings.ORTHANC_USER
 orthanc_pass = settings.ORTHANC_PASS
 
-def check_study_exists_in_orthanc(study_uid: str) -> bool:
+   
+def check_instance_exists_in_orthanc(sop_instance_uid: str) -> bool:
     """
-    Check if a study with the given DICOM StudyInstanceUID exists in Orthanc.
+    Check if a DICOM instance (SOPInstanceUID) exists in Orthanc.
     Returns True if found, False otherwise.
     """
     try:
-        logger.info(f"Checking if study exists in Orthanc: StudyInstanceUID={study_uid}")
+        logger.info(f"Checking if instance exists in Orthanc: SOPInstanceUID={sop_instance_uid}")
         
-        # Query all studies
-        r = requests.get(f"{orthanc_url}/studies", auth=(orthanc_user, orthanc_pass))
+        # Query all instances
+        r = requests.get(f"{orthanc_url}/instances", auth=(orthanc_user, orthanc_pass))
         r.raise_for_status()
-        studies = r.json()
+        instances = r.json()  # list of instance Orthanc IDs
 
-        # Look for a study with matching UID
-        for sid in studies:
-            r_info = requests.get(f"{orthanc_url}/studies/{sid}", auth=(orthanc_user, orthanc_pass))
+        # Look for a matching SOPInstanceUID
+        for iid in instances:
+            r_info = requests.get(f"{orthanc_url}/instances/{iid}", auth=(orthanc_user, orthanc_pass))
             r_info.raise_for_status()
             info = r_info.json()
-            if info.get("MainDicomTags", {}).get("StudyInstanceUID") == study_uid:
-                logger.info(f"Study {study_uid} exists in Orthanc.")
+            if info.get("MainDicomTags", {}).get("SOPInstanceUID") == sop_instance_uid:
+                logger.info(f"Instance {sop_instance_uid} exists in Orthanc.")
                 return True
 
-        logger.warning(f"Study {study_uid} not found in Orthanc.")
+        logger.warning(f"Instance {sop_instance_uid} not found in Orthanc.")
         return False
 
     except requests.RequestException as e:
-        logger.error(f"Error checking study in Orthanc: {e}")
+        logger.error(f"Error checking instance in Orthanc: {e}")
         return False
+
 
 def fetch_orthanc_instance_ids_from_study(study_uid: str) -> List[str]:
     # Find Orthanc study by DICOM StudyInstanceUID, then list its instances

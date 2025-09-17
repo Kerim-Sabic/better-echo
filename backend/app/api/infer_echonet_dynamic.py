@@ -1,5 +1,6 @@
 import tempfile
 import os
+from pathlib import Path
 
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Query
 from sqlalchemy.orm import Session
@@ -13,10 +14,10 @@ from collections import OrderedDict
 
 from app.database.db import get_db
 from app.schemas.infer_echonet_dynamic_schemas import LVSegmentationResponse
-from app.models.studies import Study
+from app.models.instances import Instance
 from app.models.derived_results import DerivedResult
-from app.helpers.inference_functions import check_study_exists_in_orthanc
-
+from app.helpers.inference_functions import check_instance_exists_in_orthanc
+from app.helpers.DICOM_to_AVI_converter import dicom_to_avi
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -77,44 +78,61 @@ def unload_model():
 @router.post("/infer/echonet-dynamic/LV-segmentation", response_model=LVSegmentationResponse)
 async def infer_lv_segmentation(
     file: UploadFile = File(...),
-    study_uid: str = Query(...),
+    sop_instance_uid: str = Query(..., description="The DICOM SOPInstanceUID to run segmentation on"),
     db: Session = Depends(get_db)
 
 ):
     """
     Perform LV (Left Ventricle) segmentation on an uploaded .avi video
     using a DeepLabV3-ResNet50 model trained for echonet-dynamic.
+    If the uploaded file is a .dcm file it is converted to the .avi video.
     Saves the output video in the database and returns path to that video.
     """
-    # --- Step 1: check if study with given study_uid exists ---
-    if not check_study_exists_in_orthanc(study_uid):
-        raise HTTPException(status_code=400, detail=f"Study with study_uid: {study_uid} does not exist.")
+    # --- Step 1: check if instance with given sop_instance_uid exists ---
+    if not check_instance_exists_in_orthanc(sop_instance_uid):
+        raise HTTPException(status_code=400, detail=f"Instance with sop_instance_uid: {sop_instance_uid} does not exist.")
 
-    # --- Step 2: validate input ---
-    if not file.filename.endswith(".avi"):
-        raise HTTPException(status_code=400, detail="Only .avi files are supported")
-    
-    # --- Step 3: save input file to temp ---
-    input_tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".avi")
-    try:
+    # --- Step 2: save input file to temp ---
+    suffix = Path(file.filename).suffix.lower()
+    input_tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+    try: 
         contents = await file.read()
         input_tmp.write(contents)
         input_tmp.close()
+
+        # --- Step 3: Handle DICOM vs AVI ---
+        if suffix == ".dcm":
+            logger.info("[Echonet-dynamic] DICOM file uploaded, converting to AVI...")
+            dicom_output_tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".avi")
+            avi_path = dicom_to_avi(input_tmp.name, dicom_output_tmp.name)
+            if not avi_path:
+                raise HTTPException(status_code="400", detail="Failed to convert DICOM to AVI")
+            input_video_path = avi_path
+        elif suffix == ".avi":
+            input_video_path = input_tmp.name
+        else:
+            raise HTTPException(status_code=400, detail="Only .avi or .dcm files are supported")
 
         # --- Step 4: Load model (lazy load) ---
         model_instance = load_model()
         logger.info("[Echonet-dynamic] LV-segmentation model loaded")
 
         # --- Step 5: Process video ---
-        cap = cv2.VideoCapture(input_tmp.name)
+        cap = cv2.VideoCapture(input_video_path)
         if not cap.isOpened():
             raise HTTPException(status_code=400, detail="Could not open input video")
         
-        # create study-specific subfolder
+        # --- Step 6: Create study specific subfolder ---
+        instance = db.query(Instance).filter(Instance.sop_instance_uid == sop_instance_uid).first()
+        if not instance:
+            raise HTTPException(status_code=404, detail=f"No instance found with sop_instance_uid={sop_instance_uid}")
+
+        study_uid = instance.series.study.study_uid
+
         study_upload_dir = os.path.join(UPLOAD_DIR, study_uid)
         os.makedirs(study_upload_dir, exist_ok=True)
 
-        output_filename = f"segmented_{os.path.basename(file.filename)}"
+        output_filename = f"segmented_{Path(file.filename).stem}.avi"
         output_path = os.path.join(study_upload_dir, output_filename)
         
         fourcc = cv2.VideoWriter_fourcc(*"XVID")
@@ -123,7 +141,7 @@ async def infer_lv_segmentation(
             (int(cap.get(3)), int(cap.get(4)))
         )
 
-        # --- Step 6: Process each frame ---
+        # --- Step 7: Process each frame ---
         while True:
             ret, frame = cap.read()
             if not ret:
@@ -148,7 +166,7 @@ async def infer_lv_segmentation(
             # write overlay frame to output
             out.write(overlay)
         
-        # --- Step 7: Release resources ---
+        # --- Step 8: Release resources ---
         cap.release()
         out.release()
 
@@ -156,26 +174,23 @@ async def infer_lv_segmentation(
         unload_model()
         logger.info("[Echonet-dynamic] LV-segmentation model unloaded")
 
-        # --- Step 8: Save DerivedResult in database ---
-        if study_uid:
-            study = db.query(Study).filter(Study.study_uid == study_uid).first()
-            if study:
-                dr = DerivedResult(
-                    study_id=study.id,
-                    type="EchonetDynamic_LV_Segmentation",
-                    value_numeric=None,
-                    value_json=None,
-                    units="%",
-                    model_name="EchonetDynamic",
-                    model_version="v1",
-                )
-                # Save output file path in value_json for tracking
-                dr.value_json = f'{{"outputfile": "{output_path}"}}'
-                db.add(dr)
-                db.commit()
-                logger.info(f"[Echonet-dynamic] Saved DerivedResult for study_uid={study_uid}")
+        # --- Step 9: Save DerivedResult in database ---
+        if instance:
+            dr = DerivedResult(
+                study_id=instance.series.study.id,
+                instance_id=instance.id,
+                type="EchonetDynamic_LV_Segmentation",
+                value_numeric=None,
+                value_json=f'{{"outputfile": "{output_path}"}}',
+                units="%",
+                model_name="EchonetDynamic",
+                model_version="v1",
+            )
+            db.add(dr)
+            db.commit()
+            logger.info(f"[Echonet-dynamic] Saved DerivedResult for study_uid={study_uid}")
 
-        # --- Step 9: Return success response ---
+        # --- Step 10: Return success response ---
         logger.info("[Echonet-dynamic] LV-segmentation model inference completed")
         return LVSegmentationResponse(
             success=True,
