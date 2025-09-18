@@ -9,10 +9,14 @@ import logging
 
 from app.database.db import get_db
 from app.models.studies import Study
-from app.models.patients import Patient
+from app.models.instances import Instance
 from app.models.derived_results import DerivedResult
 from app.services.orthanc_client import delete_study_from_orthanc
-from app.schemas.studies_schemas import StudyListResponse, StudyDeleteResponse, StudyUpdateResponse, DerivedResultResponse
+from app.schemas.studies_schemas import (StudyListResponse, 
+                                        StudyDeleteResponse, 
+                                        StudyUpdateResponse, 
+                                        DerivedResultResponse,
+                                        InstanceResponse)
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +86,17 @@ def delete_study(study_id: int, db: Session = Depends(get_db)):
     else:
         logger.warning(f"Study folder {study_folder} not found")
 
+    # Delete the LV segmentation files folder for the study_uid being deleted.
+    lv_segmentation_folder = os.path.join(UPLOAD_DIR, "echonet_dynamic_LV-segmentation_files", study.study_uid)
+    if os.path.exists(lv_segmentation_folder):
+        try:
+            rmtree(lv_segmentation_folder)
+            logger.info(f"Deleted LV segmentation results folder {lv_segmentation_folder}")
+        except Exception as err:
+            logger.error(f"Failed to delete LV segmentation results folder {lv_segmentation_folder}: {str(err)}")
+    else:
+        logger.warning(f"LV segmentation results folder {lv_segmentation_folder} not found")
+        
     # Delete from Database
     try:
         db.delete(study)
@@ -148,7 +163,35 @@ def list_derived_results(study_uid: str, db: Session = Depends(get_db)):
             "type": r.type,
             "value_numeric": r.value_numeric,
             "value_json": r.value_json,
+            "units": r.units,
+            "model_name": r.model_name,
+            "model_version": r.model_version,
             "created_at": r.created_at,
+            "study_id": r.study_id,
+            "instance_id": r.instance_id
         }
         for r in results
     ]
+
+@router.get("/studies/{study_uid}/instances", response_model=List[InstanceResponse])
+def list_instances(
+    study_uid: str,
+    db: Session = Depends(get_db)
+):
+    """
+    List all instances for a given Study UID.
+    """
+    # --- Step 1. Find the study ---
+    study = db.query(Study).filter(Study.study_uid == study_uid).first()
+    if not study:
+        raise HTTPException(status_code=404, detail=f"Study with UID {study_uid} not found")
+
+    # --- Step 2. Collect instances from all series under this study ---
+    instances = (
+        db.query(Instance)
+        .join(Instance.series)
+        .filter(Instance.series.has(study_id=study.id))
+        .all()
+    )
+
+    return instances

@@ -7,6 +7,7 @@ import EchocardiogramViewerSection from "../features/StudyResults/Echocardiogram
 import EFMeasurement from "../features/StudyResults/EFMeasurement";
 import Measurements from "../features/StudyResults/Measurements";
 import Report from "../features/StudyResults/Report";
+import LVSegmentation from "../features/StudyResults/LVSegmentation";
 import { useStudyResults } from "../features/StudyResults/hooks/useStudyResults";
 
 export default function StudyResults() {
@@ -62,6 +63,7 @@ export default function StudyResults() {
         <EFMeasurement derivedResults={derivedResults} />
         <Measurements derivedResults={derivedResults} />
         {/*<Report studyUID={studyUID} />*/}
+        <LVSegmentation studyUID={studyUID} />
       </main>
     </div>
   );

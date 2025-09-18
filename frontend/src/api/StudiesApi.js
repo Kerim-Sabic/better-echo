@@ -29,3 +29,14 @@ export const listDerivedResultsApi = async (study_uid) => {
   });
   return data;
 }
+
+export const listInstancesApi = async (study_uid) => {
+    const response = await axios.get(
+        `${API_URL}/studies/${study_uid}/instances`,
+        {
+            withCredentials: true,
+        }
+    );
+
+    return response.data;
+};

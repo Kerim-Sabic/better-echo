@@ -42,7 +42,21 @@ class DerivedResultResponse(BaseModel):
     type: str
     value_numeric: Optional[float] = None
     value_json: Optional[str] = None
+    units: Optional[str]
+    model_name: Optional[str]
+    model_version: Optional[str]
     created_at: datetime
+    study_id: int
+    instance_id: Optional[int]
+
+    class Config:
+        from_attributes = True
+
+class InstanceResponse(BaseModel):
+    id: int
+    sop_instance_uid: str
+    series_id: int
+    file_path: str
 
     class Config:
         from_attributes = True

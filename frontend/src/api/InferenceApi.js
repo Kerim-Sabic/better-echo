@@ -25,3 +25,16 @@ export const inferEchoPrimeApi = async (study_uid) => {
     
     return response.data
 };
+
+export const inferEchonetDynamicLVSegmentationApi = async (sopInstanceUID) => {
+    const response = await axios.post(
+        `${API_URL}/infer/echonet-dynamic/LV-segmentation`,
+        {},
+        {
+            params: { sop_instance_uid: sopInstanceUID }, // goes into query string
+            withCredentials: true,
+        }
+    );
+
+    return response.data;
+};
