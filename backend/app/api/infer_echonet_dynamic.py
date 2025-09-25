@@ -110,7 +110,7 @@ async def infer_lv_segmentation(
         dicom_output_tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".avi")
         avi_path = dicom_to_avi(dicom_file_path, dicom_output_tmp.name)
         if not avi_path:
-            raise HTTPException(status_code="400", detail="Failed to convert DICOM to AVI")
+            raise HTTPException(status_code=400, detail="Failed to convert DICOM to AVI")
         input_video_path = avi_path
     elif suffix == ".avi":
         input_video_path = dicom_file_path

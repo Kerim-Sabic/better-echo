@@ -5,6 +5,7 @@ from fastapi import APIRouter, Query, HTTPException, Depends
 from sqlalchemy.orm import Session
 import torch
 import logging
+import numpy as np
 
 from app.helpers.inference_functions import (fetch_orthanc_instance_ids_from_study,
                         pick_frames_from_instance,
@@ -26,75 +27,111 @@ def infer_panecho(
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     """
-    Run PanEcho inference for all 39 reporting tasks, using study_uid only.
-    Returns predictions as a dictionary {task_name: prediction}.
-    Also records results in DerivedResult table.
+    Run PanEcho inference for all 39 reporting tasks, using study_uid.
+    Aggregates predictions across all instances in the study to produce study-level results.
     """
 
     logger.info(f"[ALL] infer_panecho called with study_uid={study_uid}")
 
-    # Resolve orthanc_instance_id from study_uid
+    # --- Part 1: Fetch all instance IDs for the study ---
     orthanc_instance_ids = fetch_orthanc_instance_ids_from_study(study_uid)
     if not orthanc_instance_ids:
         raise HTTPException(status_code=404, detail=f"No instances found for study_uid={study_uid}")
 
-    # crude choice: first cine instance
-    orthanc_instance_id = orthanc_instance_ids[0]
-    logger.info(f"[ALL] Using instance_id={orthanc_instance_id} from study")
+    logger.info(f"[ALL] found {len(orthanc_instance_ids)} instance(s) for study ")
 
     try:
-        # ---- preprocess ----
-        frames = pick_frames_from_instance(orthanc_instance_id, 16)
-        x = stack_to_tensor(frames)  # (1, 3, 16, 224, 224)
         model, device = get_model_and_device()
-        logger.info(f"[ALL] Running inference on device={device} with input dtype={x.dtype}")
 
-        # ---- run inference ----
-        with torch.no_grad():
-            preds = model(x.to(device))  # PanEcho returns dict of {task: value}
+        # --- Part 2: Collect predictions for each instance ---
+        all_preds = []
+        for orthanc_instance_id in orthanc_instance_ids:
+            try:
+                frames = pick_frames_from_instance(orthanc_instance_id, 16)
+                x = stack_to_tensor(frames) # (1, 3, 16, 224, 224)
+                logger.info(f"[ALL] Running inference on instance {orthanc_instance_id}")
 
-        if not isinstance(preds, dict):
-            raise RuntimeError("Model did not return a dict of tasks")
+                # --- Part 2.1: Run inference ---
+                with torch.no_grad():
+                    preds = model(x.to(device))  # PanEcho returns dict of {task: value}
+                if not isinstance(preds, dict):
+                    raise RuntimeError("Model did not return a dict of tasks")
 
-        # ---- normalize predictions ----
-        results: Dict[str, Any] = {}
-        for task, val in preds.items():
-            if torch.is_tensor(val):
-                if val.numel() == 1:
-                    results[task] = float(val.detach().cpu().item())
-                else:
-                    results[task] = val.detach().cpu().flatten().tolist()
-            elif isinstance(val, (list, tuple)):
-                results[task] = [float(v) for v in val]
+                # --- Part 2.2: Normalize predictions for this instance ---
+                results: Dict[str, Any] = {}
+                for task, val in preds.items():
+                    if torch.is_tensor(val):
+                        if val.numel() == 1:
+                            results[task] = float(val.detach().cpu().item())
+                        else:
+                            results[task] = val.detach().cpu().flatten().tolist()
+                    elif isinstance(val, (list, tuple)):
+                        results[task] = [float(v) for v in val]
+                    else:
+                        try:
+                            results[task] = float(val)
+                        except Exception:
+                            results[task] = val
+                
+                # --- Part 2.3: Append to results list ---
+                all_preds.append(results)
+            
+            except Exception as err:
+                logger.warning(f"[ALL] Skipping instance {orthanc_instance_id}: {err}")
+                continue
+        
+        if not all_preds:
+            raise HTTPException(status_code=500, detail="No predictions could be made for this study")
+
+        # --- Part 3: Aggregate predictions across instances ---
+        aggregated: Dict[str, Any] = {}
+        tasks = all_preds[0].keys()
+
+        for task in tasks:
+            task_values = [p[task] for p in all_preds if task in p]
+
+            # Part 3.1: case 1: scalars (regresion outputs)
+            if all(isinstance(value, (int, float)) for value in task_values):
+                aggregated[task] = float(np.mean(task_values))
+            
+            # Part 3.2: case 2: lists (classification probs or multi-value outputs)
+            elif all(isinstance(value, list) for value in task_values):
+                arr = np.array(task_values, dtype=np.float32) # shape (N, K)
+                aggregated[task] = arr.mean(axis=0).tolist()
+
+            # Part 3.3: case 3: fallback, just take the first
             else:
-                try:
-                    results[task] = float(val)
-                except Exception:
-                    results[task] = val
+                aggregated[task] = task_values[0]
 
-        # ---- Persist to DB ----
+        # --- Part 4: Save aggregated results to database ---
         study = db.query(Study).filter(Study.study_uid == study_uid).first()
         if study:
             if hasattr(study, "status"):
                 study.status = "completed"
 
-            dr = DerivedResult(
-                study_id=study.id,
+            derived_result = DerivedResult(
+                study_id = study.id,
                 type="PanEcho_AllTasks",
                 value_numeric=None,
-                value_json=json.dumps(results),
+                value_json=json.dumps(aggregated),
                 units="%",
                 model_name="PanEcho",
                 model_version="v1",
             )
-            db.add(dr)
+            db.add(derived_result)
             db.commit()
-            db.refresh(dr)
-            logger.info(f"[ALL] Saved DerivedResult id={dr.id} for study_id={study.id}")
+            db.refresh(derived_result)
+            logger.info(f"[ALL] Saved DerivedResult id={derived_result.id} for study_id={study.id}")
 
-        logger.info(f"[ALL] Prediction keys: {list(results.keys())}")
-        return {"instance_id": orthanc_instance_id, "predictions": results}
+        logger.info(f"[ALL] Aggregated prediction keys: {list(aggregated.keys())}")
 
-    except Exception as e:
-        logger.exception(f"[ALL] Inference failed: {type(e).__name__}: {e}")
-        raise HTTPException(status_code=500, detail=f"Inference failed: {type(e).__name__}: {e}")
+        # --- Part 5: Return study-level predictions
+        return {
+            "study_uid": study_uid,
+            "num_instances": len(orthanc_instance_ids),
+            "predictions": aggregated
+            }
+
+    except Exception as err:
+        logger.exception(f"[ALL] Inference failed: {type(err).__name__}: {err}")
+        raise HTTPException(status_code=500, detail=f"Inference failed: {type(err).__name__}: {err}")

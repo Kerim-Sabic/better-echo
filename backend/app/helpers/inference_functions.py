@@ -131,5 +131,3 @@ def get_model_and_device():
             logger.error(f"[EF] Failed to load PanEcho via torch.hub: {e}")
             raise
     return _model, _device
-
-
