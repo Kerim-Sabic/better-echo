@@ -11,6 +11,7 @@ from app.api.studies import router as studies_router
 from app.api.infer_panecho import router as infer_all_panecho_router
 from app.api.infer_echoprime import router as infer_echoprime_router
 from app.api.infer_echonet_dynamic import router as infer_echonet_dynamic_router
+from app.api.infer_measurements import router as infer_measurements_router
 from app.api.authentication import router as authentication_router
 
 from app.core.config import settings
@@ -41,8 +42,10 @@ app.add_middleware(
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # backend/app
 UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")         # backend/app/uploads
+ARTIFACTS_DIR = os.path.join(BASE_DIR, "artifacts")    # backend/app/artifacts
 
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
+app.mount("/artifacts", StaticFiles(directory=ARTIFACTS_DIR), name="artifacts")
 
 # Routes
 app.include_router(upload_router, prefix="/api", tags=["Upload dicom"])
@@ -50,6 +53,7 @@ app.include_router(studies_router, prefix="/api", tags=["Studies"])
 app.include_router(infer_all_panecho_router, prefix="/api", tags=["Inference"])
 app.include_router(infer_echoprime_router, prefix="/api", tags=["Inference"])
 app.include_router(infer_echonet_dynamic_router, prefix="/api", tags=["Inference"])
+app.include_router(infer_measurements_router, prefix="/api", tags=["Inference"])
 app.include_router(authentication_router, prefix="/api", tags=["Authentication"])
 
 
