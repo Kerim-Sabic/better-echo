@@ -1,6 +1,5 @@
 from __future__ import annotations
 from typing import Optional
-import logging
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from fastapi.responses import JSONResponse
@@ -12,12 +11,16 @@ from app.models.derived_results import DerivedResult
 from app.core.artifacts import COMBINED_TYPE
 from app.background_tasks.combining_panecho_echoprime import combining_panecho_echoprime
 from app.helpers.combined_results_row_to_dict import build_combined_sections_from_row
-
-logger = logging.getLogger(__name__)
+from app.schemas.combined_results_schemas import (
+    CombinedResultsResponse, CompleteResponse, PendingResponse
+)
 
 router = APIRouter()
 
-@router.get("/studies/{study_uid}/PanEcho-EchoPrime-combined-results")
+@router.get(
+        "/studies/{study_uid}/PanEcho-EchoPrime-combined-results",
+        response_model=CombinedResultsResponse
+)
 def get_combined_results(
     study_uid: str,
     background_tasks: BackgroundTasks,
@@ -41,11 +44,18 @@ def get_combined_results(
 
     if combined_results_row:
         payload = build_combined_sections_from_row(combined_results_row)
-        return {"status": "complete", "panecho_echoprime_results": payload}
+        return CompleteResponse(
+            status="complete",
+            panecho_echoprime_results=payload
+        )
     
     # --- Part 2. Not found -> trigger background task and return pending ---
     background_tasks.add_task(combining_panecho_echoprime, study_uid)
+    
+    pending = PendingResponse(status="pending", retryAfter=3)
+
     return JSONResponse(
-        {"status": "pending", "retryAfter": 3},
-        status_code=202
+        status_code=202,
+        content=pending.model_dump(),
+        headers={"Retry-After": "3"}
     )
