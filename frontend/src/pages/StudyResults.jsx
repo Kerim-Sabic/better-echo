@@ -62,7 +62,7 @@ export default function StudyResults() {
 
         <EFMeasurement derivedResults={derivedResults} />
         <Measurements derivedResults={derivedResults} />
-        {/*<Report studyUID={studyUID} />*/}
+        <Report studyUID={studyUID} />
         <LVSegmentation studyUID={studyUID} />
       </main>
     </div>

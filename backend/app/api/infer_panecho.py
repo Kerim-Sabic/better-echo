@@ -1,7 +1,7 @@
 from typing import Optional, Dict, Any
 import json
 
-from fastapi import APIRouter, Query, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 import torch
 import logging
@@ -11,7 +11,8 @@ from app.helpers.inference_functions import (fetch_orthanc_instance_ids_from_stu
                         pick_frames_from_instance,
                         stack_to_tensor,
                         get_model_and_device)
-from app.schemas.infer_panecho_schemas import AllTasksPanEchoResponse
+from app.schemas.infer_panecho_schemas import (AllTasksPanEchoResponse,
+                                            InferPanEchoRequest)
 
 from app.database.db import get_db
 from app.models.studies import Study
@@ -21,15 +22,17 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-@router.get("/infer/panecho", response_model=AllTasksPanEchoResponse)
+@router.post("/infer/panecho", response_model=AllTasksPanEchoResponse)
 def infer_panecho(
-    study_uid: str = Query(...),
+    payload: InferPanEchoRequest,
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     """
     Run PanEcho inference for all 39 reporting tasks, using study_uid.
     Aggregates predictions across all instances in the study to produce study-level results.
     """
+
+    study_uid = payload.study_uid
 
     logger.info(f"[ALL] infer_panecho called with study_uid={study_uid}")
 
@@ -112,9 +115,7 @@ def infer_panecho(
             derived_result = DerivedResult(
                 study_id = study.id,
                 type="PanEcho_AllTasks",
-                value_numeric=None,
                 value_json=json.dumps(aggregated),
-                units="%",
                 model_name="PanEcho",
                 model_version="v1",
             )

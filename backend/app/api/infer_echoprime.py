@@ -4,7 +4,7 @@ import tempfile
 import shutil
 import json
 
-from fastapi import APIRouter, Query, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 import logging
 import requests
@@ -13,7 +13,8 @@ import torch
 from app.AI_models.EchoPrime.echo_prime import EchoPrime
 from app.helpers.inference_functions import fetch_orthanc_instance_ids_from_study
 from app.core.config import settings
-from app.schemas.infer_echoprime_schemas import EchoPrimeResponse
+from app.schemas.infer_echoprime_schemas import (EchoPrimeResponse,
+                                                 InferEchoPrimeRequest)
 
 from app.database.db import get_db
 from app.models.studies import Study
@@ -72,15 +73,18 @@ def download_dicoms_for_study(instance_ids: List[str]) -> str:
     return tmp_dir
 
 
-@router.get("/infer/echoprime", response_model=EchoPrimeResponse)
+@router.post("/infer/echoprime", response_model=EchoPrimeResponse)
 def infer_echoprime(
-    study_uid: str = Query(..., description="Study UID for EchoPrime inference"),
+    payload: InferEchoPrimeRequest,
     db: Session = Depends(get_db)
     ) -> Dict[str, Any]:
     """
     Run EchoPrime inference for a study (multi-video DICOM input).
     Requires at least 2 DICOMs in the study.
     """
+
+    study_uid = payload.study_uid
+
     logger.info(f"[EchoPrime] infer_echoprime called with study_uid={study_uid}")
 
     ep = get_ep() # model is loaded on first request
@@ -100,23 +104,6 @@ def infer_echoprime(
 
         predictions = ep.predict_metrics(encoded_study) # dict of predictions
         report_text = ep.generate_report(encoded_study) # report
-        
-        #This code is for testing, right now the report_text and predictions give different EF values
-        """
-        import re
-        pred_ef = predictions.get("ejection_fraction") or predictions.get("EF")
-        if pred_ef is not None:
-            report_fixed = re.sub(
-                r"(?:LV\s+)?Ejection Fraction\s*(?:is|:)\s*[0-9]+(?:\.[0-9]+)?\s*%",
-                f"LV Ejection Fraction is {pred_ef:.1f} %",
-                report_text,
-                flags=re.I
-            )
-        else:
-            report_fixed = report_text
-        
-        report_text = report_fixed
-        """
 
         # --- Step 4: persist results to DB ---
 
@@ -125,15 +112,16 @@ def infer_echoprime(
             # Store generated report as JSON
             dr_report = DerivedResult(
                 study_id = study.id,
-                type="EchoPrime_Report",
-                value_numeric=None,
-                value_json=json.dumps({"report": report_text}),
-                units="%",
+                type="EchoPrime_AllTasks_and_Report",
+                value_json=json.dumps({
+                    "predictions": predictions,
+                    "report": report_text}),
                 model_name="EchoPrime",
                 model_version="v1"
             )
             db.add(dr_report)
             db.commit()
+            db.refresh(dr_report)
 
         logger.info(f"[EchoPrime] Inference completed for study_uid={study_uid}")
         return {
