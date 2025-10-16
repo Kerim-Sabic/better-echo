@@ -14,7 +14,7 @@ class CompleteResponse(BaseModel):
 
 class PendingResponse(BaseModel):
     status: Literal["pending"]
-    retryAfter: int = Field(..., ge=1)
+    retry_after: int = Field(..., ge=1)
 
 CombinedResultsResponse = Annotated[
     Union[CompleteResponse, PendingResponse],

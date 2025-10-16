@@ -52,10 +52,10 @@ def get_combined_results(
     # --- Part 2. Not found -> trigger background task and return pending ---
     background_tasks.add_task(combining_panecho_echoprime, study_uid)
     
-    pending = PendingResponse(status="pending", retryAfter=3)
+    pending = PendingResponse(status="pending", retry_after=3)
 
     return JSONResponse(
         status_code=202,
         content=pending.model_dump(),
-        headers={"Retry-After": "3"}
+        headers={"retry-after": "3"}
     )
