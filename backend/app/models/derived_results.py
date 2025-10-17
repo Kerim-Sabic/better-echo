@@ -1,13 +1,20 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, func
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, func, Enum
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.sqlite import JSON
+from enum import Enum as PyEnum
 from app.database.db import Base
+
+class ResultStatus(PyEnum):
+    pending = "pending"
+    complete = "complete"
+    failed = "failed"
 
 class DerivedResult(Base):
     __tablename__ = "derived_results"
 
     id = Column(Integer, primary_key=True, index=True)
-    type = Column(String, nullable=False)           
+    type = Column(String, nullable=False)
+    status = Column(Enum(ResultStatus), nullable=True)   
     value_json = Column(JSON, nullable=True)
     panecho_echoprime_overlapping_tasks = Column(JSON, nullable=True)
     panecho_only_tasks = Column(JSON, nullable=True)

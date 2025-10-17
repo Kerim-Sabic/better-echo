@@ -6,7 +6,7 @@ import json
 
 from app.database.db import SessionLocal
 from app.models.studies import Study
-from app.models.derived_results import DerivedResult
+from app.models.derived_results import DerivedResult, ResultStatus
 
 from app.api.infer_panecho import infer_panecho
 from app.schemas.infer_panecho_schemas import InferPanEchoRequest
@@ -113,13 +113,13 @@ def combining_panecho_echoprime(study_uid: str):
             .filter(DerivedResult.study_id == study.id, DerivedResult.type == COMBINED_TYPE)
             .first()
         )
+
         if combined_row:
             combined_row.panecho_echoprime_overlapping_tasks = combined_results["ranges"]
-            combined_row.panecho_only_tasks = combined_row["panecho_only"]
-            combined_row.echoprime_only_tasks= combined_row["echoprime_only"]
-            combined_row.disagreement_flags = combined_row["flags"]
-            combined_row.model_name = "PanEcho_EchoPrime_Combined"
-            combined_row.model_version = "v1"
+            combined_row.panecho_only_tasks = combined_results["panecho_only"]
+            combined_row.echoprime_only_tasks= combined_results["echoprime_only"]
+            combined_row.disagreement_flags = combined_results["flags"]
+            combined_row.status = ResultStatus.complete
         else:
             combined_row = DerivedResult(
                 study_id = study.id,
@@ -130,6 +130,7 @@ def combining_panecho_echoprime(study_uid: str):
                 disagreement_flags = combined_results["flags"],
                 model_name = "PanEcho_EchoPrime_Combined",
                 model_version = "v1",
+                status = ResultStatus.complete
             )
             db.add(combined_row)
 
@@ -138,6 +139,20 @@ def combining_panecho_echoprime(study_uid: str):
 
     except Exception as err:
         logger.exception(f"[COMBINED] Orchestration failed for {study_uid}: {err}")
+        try:
+            # Try to mark the row as failed
+            study = db.query(Study).filter(Study.study_uid == study_uid).first()
+            if study:
+                row = (
+                    db.query(DerivedResult)
+                    .filter(DerivedResult.study_id == study.id, DerivedResult.type == COMBINED_TYPE)
+                    .first()
+                )
+                if row:
+                    row.status = ResultStatus.failed
+                    db.commit()
+        except Exception:
+            db.rollback()
     finally:
         try:
             db.close()
