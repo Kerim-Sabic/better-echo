@@ -1,7 +1,7 @@
 from typing import Optional, Dict, Any
 import json
 
-from fastapi import APIRouter, Query, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 import torch
 import logging
@@ -11,7 +11,8 @@ from app.helpers.inference_functions import (fetch_orthanc_instance_ids_from_stu
                         pick_frames_from_instance,
                         stack_to_tensor,
                         get_model_and_device)
-from app.schemas.infer_panecho_schemas import AllTasksPanEchoResponse
+from app.schemas.infer_panecho_schemas import (AllTasksPanEchoResponse,
+                                            InferPanEchoRequest)
 
 from app.database.db import get_db
 from app.models.studies import Study
@@ -21,9 +22,9 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-@router.get("/infer/panecho", response_model=AllTasksPanEchoResponse)
+@router.post("/infer/panecho", response_model=AllTasksPanEchoResponse)
 def infer_panecho(
-    study_uid: str = Query(...),
+    payload: InferPanEchoRequest,
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     """
@@ -31,14 +32,16 @@ def infer_panecho(
     Aggregates predictions across all instances in the study to produce study-level results.
     """
 
-    logger.info(f"[ALL] infer_panecho called with study_uid={study_uid}")
+    study_uid = payload.study_uid
+
+    logger.info(f"[INFER_PANECHO] infer_panecho called with study_uid={study_uid}")
 
     # --- Part 1: Fetch all instance IDs for the study ---
     orthanc_instance_ids = fetch_orthanc_instance_ids_from_study(study_uid)
     if not orthanc_instance_ids:
         raise HTTPException(status_code=404, detail=f"No instances found for study_uid={study_uid}")
 
-    logger.info(f"[ALL] found {len(orthanc_instance_ids)} instance(s) for study ")
+    logger.info(f"[INFER_PANECHO] found {len(orthanc_instance_ids)} instance(s) for study ")
 
     try:
         model, device = get_model_and_device()
@@ -49,7 +52,7 @@ def infer_panecho(
             try:
                 frames = pick_frames_from_instance(orthanc_instance_id, 16)
                 x = stack_to_tensor(frames) # (1, 3, 16, 224, 224)
-                logger.info(f"[ALL] Running inference on instance {orthanc_instance_id}")
+                logger.info(f"[INFER_PANECHO] Running inference on instance {orthanc_instance_id}")
 
                 # --- Part 2.1: Run inference ---
                 with torch.no_grad():
@@ -77,7 +80,7 @@ def infer_panecho(
                 all_preds.append(results)
             
             except Exception as err:
-                logger.warning(f"[ALL] Skipping instance {orthanc_instance_id}: {err}")
+                logger.warning(f"[INFER_PANECHO] Skipping instance {orthanc_instance_id}: {err}")
                 continue
         
         if not all_preds:
@@ -112,18 +115,14 @@ def infer_panecho(
             derived_result = DerivedResult(
                 study_id = study.id,
                 type="PanEcho_AllTasks",
-                value_numeric=None,
                 value_json=json.dumps(aggregated),
-                units="%",
                 model_name="PanEcho",
                 model_version="v1",
             )
             db.add(derived_result)
             db.commit()
             db.refresh(derived_result)
-            logger.info(f"[ALL] Saved DerivedResult id={derived_result.id} for study_id={study.id}")
-
-        logger.info(f"[ALL] Aggregated prediction keys: {list(aggregated.keys())}")
+            logger.info(f"[INFER_PANECHO] Saved DerivedResult id={derived_result.id} for study_id={study.id}")
 
         # --- Part 5: Return study-level predictions
         return {
@@ -133,5 +132,5 @@ def infer_panecho(
             }
 
     except Exception as err:
-        logger.exception(f"[ALL] Inference failed: {type(err).__name__}: {err}")
+        logger.exception(f"[INFER_PANECHO] Inference failed: {type(err).__name__}: {err}")
         raise HTTPException(status_code=500, detail=f"Inference failed: {type(err).__name__}: {err}")

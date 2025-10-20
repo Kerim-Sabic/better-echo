@@ -1,0 +1,674 @@
+{
+  "study_uid": "123",
+  "timestamp": 1760533063,
+  "ranges": {
+    "EF_percent": {
+      "from_panecho": 52.53993170601981,
+      "to_echoprime": 56.26,
+      "range": "52.53993170601981 → 56.26",
+      "units": "%",
+      "flag_large_gap": false
+    },
+    "pulmonary_pressure_mmHg__RVSP_vs_PAP": {
+      "from_panecho_RVSP": 27.155738013131277,
+      "to_echoprime_PAP": 22.0,
+      "range": "27.155738013131277 → 22.0",
+      "units": "mmHg",
+      "note": "Comparing PanEcho RVSP vs EchoPrime PAP (approximate).",
+      "flag_large_gap": false
+    },
+    "pericardial_effusion_prob": {
+      "from_panecho_abnormal_prob": 0.05644833190100534,
+      "to_echoprime_prob": 0.0,
+      "range": "0.05644833190100534 -> 0.0",
+      "flag_large_gap": false
+    },
+    "la_dilation_prob": {
+      "from_panecho_abnormal_prob": 0.21572026084603046,
+      "to_echoprime_prob": 0.0,
+      "range": "0.21572026084603046 -> 0.0",
+      "flag_large_gap": false
+    },
+    "rv_dilation_prob": {
+      "from_panecho_abnormal_prob": 0.3493662961299496,
+      "to_echoprime_prob": 0.0,
+      "range": "0.3493662961299496 -> 0.0",
+      "flag_large_gap": false
+    },
+    "ra_dilation_prob": {
+      "from_panecho_abnormal_prob": 0.5296883412769863,
+      "to_echoprime_prob": 0.0,
+      "range": "0.5296883412769863 -> 0.0",
+      "flag_large_gap": true
+    },
+    "mitral_regurgitation_prob": {
+      "from_panecho_abnormal_prob": 0.4813593184542859,
+      "to_echoprime_prob": 0.0,
+      "range": "0.4813593184542859 -> 0.0",
+      "flag_large_gap": true
+    },
+    "tricuspid_regurgitation_prob": {
+      "from_panecho_abnormal_prob": 0.4851633387034634,
+      "to_echoprime_prob": 0.0,
+      "range": "0.4851633387034634 -> 0.0",
+      "flag_large_gap": true
+    },
+    "aortic_regurgitation_prob": {
+      "from_panecho_abnormal_prob": 0.11736106214941344,
+      "to_echoprime_prob": 0.0,
+      "range": "0.11736106214941344 -> 0.0",
+      "flag_large_gap": false
+    },
+    "aortic_stenosis_prob": {
+      "from_panecho_abnormal_prob": 0.10421503591297154,
+      "to_echoprime_prob": 0.0,
+      "range": "0.10421503591297154 -> 0.0",
+      "flag_large_gap": false
+    },
+    "bicuspid_aortic_valve_prob": {
+      "from_panecho_abnormal_prob": 0.042743491274969916,
+      "to_echoprime_prob": 0.0,
+      "range": "0.042743491274969916 -> 0.0",
+      "flag_large_gap": false
+    },
+    "mitral_stenosis_prob": {
+      "from_panecho_abnormal_prob": 0.00459966914994376,
+      "to_echoprime_prob": 0.0,
+      "range": "0.00459966914994376 -> 0.0",
+      "flag_large_gap": false
+    }
+  },
+  "panecho_normalized": {
+    "pericardial-effusion": {
+      "probability_present": 0.05644833190100534,
+      "positive_label": "Present",
+      "kind": "binary"
+    },
+    "EF": {
+      "value": 52.53993170601981,
+      "units": "%",
+      "kind": "regression"
+    },
+    "GLS": {
+      "value": -16.54399803706578,
+      "units": "%",
+      "kind": "regression"
+    },
+    "LVEDV": {
+      "value": 143.09954289027624,
+      "units": "cm^3",
+      "kind": "regression"
+    },
+    "LVESV": {
+      "value": 65.28866795131138,
+      "units": "cm^3",
+      "kind": "regression"
+    },
+    "LVSV": {
+      "value": 77.88545336042132,
+      "units": "cm^3",
+      "kind": "regression"
+    },
+    "LVSize": {
+      "label": "Normal",
+      "confidence": 0.7079157512821667,
+      "probs": {
+        "Mildly Increased": 0.21189983731956016,
+        "Moderately|Severely Increased": 0.0801844113982732,
+        "Normal": 0.7079157512821667
+      },
+      "classes": [
+        "Mildly Increased",
+        "Moderately|Severely Increased",
+        "Normal"
+      ],
+      "kind": "multiclass"
+    },
+    "LVWallThickness-increased-any": {
+      "probability_present": 0.45556426474026274,
+      "positive_label": "Increased",
+      "kind": "binary"
+    },
+    "LVWallThickness-increased-modsev": {
+      "probability_present": 0.12885943906647818,
+      "positive_label": "Moderately|Severely Increased",
+      "kind": "binary"
+    },
+    "LVSystolicFunction": {
+      "label": "Normal|Hyperdynamic",
+      "confidence": 0.6261787041319189,
+      "probs": {
+        "Mildly Decreased": 0.22315997045278727,
+        "Moderately|Severely Decreased": 0.15066132541529384,
+        "Normal|Hyperdynamic": 0.6261787041319189
+      },
+      "classes": [
+        "Mildly Decreased",
+        "Moderately|Severely Decreased",
+        "Normal|Hyperdynamic"
+      ],
+      "kind": "multiclass"
+    },
+    "LVWallMotionAbnormalities": {
+      "probability_present": 0.3841074247445379,
+      "positive_label": "Present",
+      "kind": "binary"
+    },
+    "IVSd": {
+      "value": 1.052229949406215,
+      "units": "cm",
+      "kind": "regression"
+    },
+    "LVPWd": {
+      "value": 1.0581070908478327,
+      "units": "cm",
+      "kind": "regression"
+    },
+    "LVIDs": {
+      "value": 3.544790046555655,
+      "units": "cm",
+      "kind": "regression"
+    },
+    "LVIDd": {
+      "value": 5.065603767122541,
+      "units": "cm",
+      "kind": "regression"
+    },
+    "LVOTDiam": {
+      "value": 2.151121973991394,
+      "units": "cm",
+      "kind": "regression"
+    },
+    "LVDiastolicFunction": {
+      "label": "Normal",
+      "confidence": 0.5080075822173984,
+      "probs": {
+        "Mild|Indeterminate": 0.44771545791837974,
+        "Moderate|Severe": 0.04427695986422181,
+        "Normal": 0.5080075822173984
+      },
+      "classes": [
+        "Mild|Indeterminate",
+        "Moderate|Severe",
+        "Normal"
+      ],
+      "kind": "multiclass"
+    },
+    "E|EAvg": {
+      "value": 9.341045413698469,
+      "units": null,
+      "kind": "regression"
+    },
+    "RVSP": {
+      "value": 27.155738013131277,
+      "units": "mmHg",
+      "kind": "regression"
+    },
+    "RVSize": {
+      "label": "Normal",
+      "confidence": 0.6506337038700504,
+      "probs": {
+        "Mildly Increased": 0.18478192502394877,
+        "Moderately|Severely Increased": 0.1645843711060009,
+        "Normal": 0.6506337038700504
+      },
+      "classes": [
+        "Mildly Increased",
+        "Moderately|Severely Increased",
+        "Normal"
+      ],
+      "kind": "multiclass"
+    },
+    "RVSystolicFunction": {
+      "probability_present": 0.30730230467660086,
+      "positive_label": "Decreased",
+      "kind": "binary"
+    },
+    "RVIDd": {
+      "value": 3.4419685772487094,
+      "units": "cm",
+      "kind": "regression"
+    },
+    "TAPSE": {
+      "value": 1.9875775149890356,
+      "units": "cm",
+      "kind": "regression"
+    },
+    "RVSVel": {
+      "value": 10.792839254651751,
+      "units": "cm/s",
+      "kind": "regression"
+    },
+    "LASize": {
+      "label": "Normal",
+      "confidence": 0.7842797391539695,
+      "probs": {
+        "Mildly Dilated": 0.15510939755034733,
+        "Moderately|Severely Dilated": 0.06061086329568311,
+        "Normal": 0.7842797391539695
+      },
+      "classes": [
+        "Mildly Dilated",
+        "Moderately|Severely Dilated",
+        "Normal"
+      ],
+      "kind": "multiclass"
+    },
+    "LAIDs2D": {
+      "value": 4.2351729699543545,
+      "units": "cm",
+      "kind": "regression"
+    },
+    "LAVol": {
+      "value": 57.133999415806365,
+      "units": "cm^3",
+      "kind": "regression"
+    },
+    "RASize": {
+      "probability_present": 0.5296883412769863,
+      "positive_label": "Dilated",
+      "kind": "binary"
+    },
+    "RADimensionM-L(cm)": {
+      "value": 4.18995155606951,
+      "units": "cm",
+      "kind": "regression"
+    },
+    "AVStructure": {
+      "probability_present": 0.042743491274969916,
+      "positive_label": "Bicuspid",
+      "kind": "binary"
+    },
+    "AVStenosis": {
+      "label": "None",
+      "confidence": 0.8957849640870285,
+      "probs": {
+        "Mild|Moderate": 0.071624218617109,
+        "None": 0.8957849640870285,
+        "Severe": 0.032590817295862544
+      },
+      "classes": [
+        "Mild|Moderate",
+        "None",
+        "Severe"
+      ],
+      "kind": "multiclass"
+    },
+    "AVPkVel(m|s)": {
+      "value": 1.5643224460738046,
+      "units": "m/s",
+      "kind": "regression"
+    },
+    "AVRegurg": {
+      "label": "None|Trace",
+      "confidence": 0.8826389378505866,
+      "probs": {
+        "Mild": 0.08945889092578657,
+        "Moderate|Severe": 0.027902171223626815,
+        "None|Trace": 0.8826389378505866
+      },
+      "classes": [
+        "Mild",
+        "Moderate|Severe",
+        "None|Trace"
+      ],
+      "kind": "multiclass"
+    },
+    "LVOT20mmHg": {
+      "probability_present": 0.0018598776659928262,
+      "positive_label": "Present",
+      "kind": "binary"
+    },
+    "MVStenosis": {
+      "probability_present": 0.00459966914994376,
+      "positive_label": "Mild|Moderate|Severe",
+      "kind": "binary"
+    },
+    "MVRegurgitation": {
+      "label": "None|Trace",
+      "confidence": 0.5186406815457141,
+      "probs": {
+        "Mild": 0.36030991791755207,
+        "Moderate|Severe": 0.12104940053673385,
+        "None|Trace": 0.5186406815457141
+      },
+      "classes": [
+        "Mild",
+        "Moderate|Severe",
+        "None|Trace"
+      ],
+      "kind": "multiclass"
+    },
+    "TVRegurgitation": {
+      "label": "None|Trace",
+      "confidence": 0.5148366612965366,
+      "probs": {
+        "Mild": 0.3266194116082875,
+        "Moderate|Severe": 0.15854392709517587,
+        "None|Trace": 0.5148366612965366
+      },
+      "classes": [
+        "Mild",
+        "Moderate|Severe",
+        "None|Trace"
+      ],
+      "kind": "multiclass"
+    },
+    "TVPkGrad": {
+      "value": 20.93582194192069,
+      "units": "mmHg",
+      "kind": "regression"
+    },
+    "RAP-8-or-higher": {
+      "probability_present": 0.35232912642615183,
+      "positive_label": "Present",
+      "kind": "binary"
+    },
+    "AORoot": {
+      "value": 3.3716974088123868,
+      "units": "cm",
+      "kind": "regression"
+    }
+  },
+  "echoprime_normalized": {
+    "impella": {
+      "probability_present": 0.0,
+      "kind": "binary_like"
+    },
+    "ejection_fraction": {
+      "value": 56.26,
+      "kind": "regression_like"
+    },
+    "pacemaker": {
+      "probability_present": 0.02,
+      "kind": "binary_like"
+    },
+    "rv_systolic_function_depressed": {
+      "probability_present": 0.0,
+      "kind": "binary_like"
+    },
+    "right_ventricle_dilation": {
+      "probability_present": 0.0,
+      "kind": "binary_like"
+    },
+    "left_atrium_dilation": {
+      "probability_present": 0.0,
+      "kind": "binary_like"
+    },
+    "right_atrium_dilation": {
+      "probability_present": 0.0,
+      "kind": "binary_like"
+    },
+    "mitraclip": {
+      "probability_present": 0.0,
+      "kind": "binary_like"
+    },
+    "mitral_annular_calcification": {
+      "probability_present": 0.0,
+      "kind": "binary_like"
+    },
+    "mitral_stenosis": {
+      "probability_present": 0.0,
+      "kind": "binary_like"
+    },
+    "mitral_regurgitation": {
+      "probability_present": 0.0,
+      "kind": "binary_like"
+    },
+    "tavr": {
+      "probability_present": 0.0,
+      "kind": "binary_like"
+    },
+    "bicuspid_aov_morphology": {
+      "probability_present": 0.0,
+      "kind": "binary_like"
+    },
+    "aortic_stenosis": {
+      "probability_present": 0.0,
+      "kind": "binary_like"
+    },
+    "aortic_regurgitation": {
+      "probability_present": 0.0,
+      "kind": "binary_like"
+    },
+    "tricuspid_stenosis": {
+      "probability_present": 0.0,
+      "kind": "binary_like"
+    },
+    "tricuspid_valve_regurgitation": {
+      "probability_present": 0.0,
+      "kind": "binary_like"
+    },
+    "pericardial_effusion": {
+      "probability_present": 0.0,
+      "kind": "binary_like"
+    },
+    "aortic_root_dilation": {
+      "probability_present": 0.02,
+      "kind": "binary_like"
+    },
+    "dilated_ivc": {
+      "probability_present": 0.02,
+      "kind": "binary_like"
+    },
+    "pulmonary_artery_pressure_continuous": {
+      "value": 22.0,
+      "kind": "regression_like"
+    }
+  },
+  "panecho_only": {
+    "GLS": {
+      "value": -16.54399803706578,
+      "units": "%",
+      "kind": "regression"
+    },
+    "LVEDV": {
+      "value": 143.09954289027624,
+      "units": "cm^3",
+      "kind": "regression"
+    },
+    "LVESV": {
+      "value": 65.28866795131138,
+      "units": "cm^3",
+      "kind": "regression"
+    },
+    "LVSV": {
+      "value": 77.88545336042132,
+      "units": "cm^3",
+      "kind": "regression"
+    },
+    "LVSize": {
+      "label": "Normal",
+      "confidence": 0.7079157512821667,
+      "probs": {
+        "Mildly Increased": 0.21189983731956016,
+        "Moderately|Severely Increased": 0.0801844113982732,
+        "Normal": 0.7079157512821667
+      },
+      "classes": [
+        "Mildly Increased",
+        "Moderately|Severely Increased",
+        "Normal"
+      ],
+      "kind": "multiclass"
+    },
+    "LVWallThickness-increased-any": {
+      "probability_present": 0.45556426474026274,
+      "positive_label": "Increased",
+      "kind": "binary"
+    },
+    "LVWallThickness-increased-modsev": {
+      "probability_present": 0.12885943906647818,
+      "positive_label": "Moderately|Severely Increased",
+      "kind": "binary"
+    },
+    "LVSystolicFunction": {
+      "label": "Normal|Hyperdynamic",
+      "confidence": 0.6261787041319189,
+      "probs": {
+        "Mildly Decreased": 0.22315997045278727,
+        "Moderately|Severely Decreased": 0.15066132541529384,
+        "Normal|Hyperdynamic": 0.6261787041319189
+      },
+      "classes": [
+        "Mildly Decreased",
+        "Moderately|Severely Decreased",
+        "Normal|Hyperdynamic"
+      ],
+      "kind": "multiclass"
+    },
+    "LVWallMotionAbnormalities": {
+      "probability_present": 0.3841074247445379,
+      "positive_label": "Present",
+      "kind": "binary"
+    },
+    "IVSd": {
+      "value": 1.052229949406215,
+      "units": "cm",
+      "kind": "regression"
+    },
+    "LVPWd": {
+      "value": 1.0581070908478327,
+      "units": "cm",
+      "kind": "regression"
+    },
+    "LVIDs": {
+      "value": 3.544790046555655,
+      "units": "cm",
+      "kind": "regression"
+    },
+    "LVIDd": {
+      "value": 5.065603767122541,
+      "units": "cm",
+      "kind": "regression"
+    },
+    "LVOTDiam": {
+      "value": 2.151121973991394,
+      "units": "cm",
+      "kind": "regression"
+    },
+    "LVDiastolicFunction": {
+      "label": "Normal",
+      "confidence": 0.5080075822173984,
+      "probs": {
+        "Mild|Indeterminate": 0.44771545791837974,
+        "Moderate|Severe": 0.04427695986422181,
+        "Normal": 0.5080075822173984
+      },
+      "classes": [
+        "Mild|Indeterminate",
+        "Moderate|Severe",
+        "Normal"
+      ],
+      "kind": "multiclass"
+    },
+    "E|EAvg": {
+      "value": 9.341045413698469,
+      "units": null,
+      "kind": "regression"
+    },
+    "RVSystolicFunction": {
+      "probability_present": 0.30730230467660086,
+      "positive_label": "Decreased",
+      "kind": "binary"
+    },
+    "RVIDd": {
+      "value": 3.4419685772487094,
+      "units": "cm",
+      "kind": "regression"
+    },
+    "TAPSE": {
+      "value": 1.9875775149890356,
+      "units": "cm",
+      "kind": "regression"
+    },
+    "RVSVel": {
+      "value": 10.792839254651751,
+      "units": "cm/s",
+      "kind": "regression"
+    },
+    "LAIDs2D": {
+      "value": 4.2351729699543545,
+      "units": "cm",
+      "kind": "regression"
+    },
+    "LAVol": {
+      "value": 57.133999415806365,
+      "units": "cm^3",
+      "kind": "regression"
+    },
+    "RADimensionM-L(cm)": {
+      "value": 4.18995155606951,
+      "units": "cm",
+      "kind": "regression"
+    },
+    "AVPkVel(m|s)": {
+      "value": 1.5643224460738046,
+      "units": "m/s",
+      "kind": "regression"
+    },
+    "LVOT20mmHg": {
+      "probability_present": 0.0018598776659928262,
+      "positive_label": "Present",
+      "kind": "binary"
+    },
+    "TVPkGrad": {
+      "value": 20.93582194192069,
+      "units": "mmHg",
+      "kind": "regression"
+    },
+    "RAP-8-or-higher": {
+      "probability_present": 0.35232912642615183,
+      "positive_label": "Present",
+      "kind": "binary"
+    },
+    "AORoot": {
+      "value": 3.3716974088123868,
+      "units": "cm",
+      "kind": "regression"
+    }
+  },
+  "echoprime_only": {
+    "impella": {
+      "probability_present": 0.0,
+      "kind": "binary_like"
+    },
+    "pacemaker": {
+      "probability_present": 0.02,
+      "kind": "binary_like"
+    },
+    "rv_systolic_function_depressed": {
+      "probability_present": 0.0,
+      "kind": "binary_like"
+    },
+    "mitraclip": {
+      "probability_present": 0.0,
+      "kind": "binary_like"
+    },
+    "mitral_annular_calcification": {
+      "probability_present": 0.0,
+      "kind": "binary_like"
+    },
+    "tavr": {
+      "probability_present": 0.0,
+      "kind": "binary_like"
+    },
+    "tricuspid_stenosis": {
+      "probability_present": 0.0,
+      "kind": "binary_like"
+    },
+    "aortic_root_dilation": {
+      "probability_present": 0.02,
+      "kind": "binary_like"
+    },
+    "dilated_ivc": {
+      "probability_present": 0.02,
+      "kind": "binary_like"
+    }
+  },
+  "flags": [
+    "mitral_regurgitation_prob_disagreement",
+    "ra_dilation_prob_disagreement",
+    "tricuspid_regurgitation_prob_disagreement"
+  ]
+}

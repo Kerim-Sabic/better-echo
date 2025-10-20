@@ -192,9 +192,7 @@ async def infer_lv_segmentation(
             study_id=instance.series.study.id,
             instance_id=instance.id,
             type="EchonetDynamic_LV_Segmentation",
-            value_numeric=None,
             value_json=f'{{"outputfile": "{relative_output_path}"}}',
-            units="%",
             model_name="EchonetDynamic",
             model_version="v1",
         )

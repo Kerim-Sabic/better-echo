@@ -2,6 +2,9 @@ from typing import Dict, Any
 
 from pydantic import BaseModel, Field
 
+class InferPanEchoRequest(BaseModel):
+    study_uid: str
+
 class AllTasksPanEchoResponse(BaseModel):
     study_uid: str = Field(..., description="Orthanc instance ID used for inference")
     num_instances: int
