@@ -32,7 +32,7 @@ export default function App() {
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/studies/new" element={<NewStudy />} />
-            <Route path="/studies/:id" element={<StudyResults />} />
+            <Route path="/studies/:studyUid" element={<StudyResults />} />
           </Route>
 
           {/* Fallback */}

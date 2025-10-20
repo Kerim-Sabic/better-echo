@@ -8,6 +8,7 @@ export default function StudyResultsPage() {
   const navigate = useNavigate();
 
   const viewModel = useStudyResults(studyUid)
+  console.log("VIEW MODEL: ", viewModel)
 
   return (
     <StudyResultsLayout

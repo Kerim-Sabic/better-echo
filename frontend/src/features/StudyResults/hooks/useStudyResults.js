@@ -1,112 +1,99 @@
-import { useEffect, useState, useRef } from "react";
-import { listStudiesApi, listDerivedResultsApi } from "../../../api/StudiesApi";
-import { inferPanEchoApi } from "../../../api/InferenceApi";
+import { useMemo } from "react";
+import { useCombinedResultsQuery } from "./useCombinedResultsQuery";
 
-// -- Hook for fetching study metadata by id logic and --
-// -- calling the inference and loading the results for the PanEcho model --
-// -- The inference and loading the results for the EchoPrime model are --
-// -- still in the Report.jsx file --
+/**
+ * @returns {{
+ *   state: "loading" | "pending" | "ready" | "not_found" | "error",
+ *   error: unknown,
+ *   studyUID: string | null,
+ *   results: any,
+ *   hasMeasurements: boolean,
+ *   isPolling: boolean,
+ *   refresh: () => void
+ * }}
+ */
+export function useStudyResults(studyUid) {
+    // Fetch PanEcho+EchoPrime combined results (polls while pending)
+    const combinedResultsQuery = useCombinedResultsQuery(studyUid, {
+        enabled: Boolean(studyUid),
+    });
 
-export function useStudyResults(id) {
-    const [study, setStudy] = useState(null);
-    const [derivedResults, setDerivedResults] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [polling, setPolling] = useState(false);
+    // Derive a page-level state from the resource query
+    const pageState = useMemo(() => {
+        if (!studyUid) return "not_found";
+        if (combinedResultsQuery.isError) return "error";
 
-    const startedRef = useRef(false);
+        const combinedResultsResponse = combinedResultsQuery.data;
 
-    const studyUID = study?.study_uid || null;
+        // First load
+        if (!combinedResultsResponse) return "loading";
 
-    // Fetch study metadata by id
-    const fetchStudy = async () => {
-        const list = await listStudiesApi();
+        // Not found
+        if (combinedResultsResponse.status === 404) return "not_found";
 
-        let found =
-            list.find((s) => s.study_uid === id) ||
-            list.find((s) => String(s.id) === String(id));
+        const isPending =
+            combinedResultsResponse?.isPending ??
+            (combinedResultsResponse.status === 202 &&
+                combinedResultsResponse.data?.status === "pending");
         
-        if (!found && list.length === 1) found = list[0];
+        const isComplete = 
+        combinedResultsResponse?.isComplete ??
+        (combinedResultsResponse.status === 200 &&
+            combinedResultsResponse.data?.status === "complete");
 
-        setStudy(found || null);
-        setLoading(false);
+        if (isPending) return "pending";
+        if (isComplete) return "ready";
 
-        return found;
-    };
+        // Fallback
+        return combinedResultsQuery.isFetching ? "loading" : "error";
+    }, [studyUid, combinedResultsQuery.isError, combinedResultsQuery.isFetching, combinedResultsQuery.data])
 
-    // Fetch derived inference results for the Panecho tasks
-    const fetchDerivedResults = async () => {
-        if (!studyUID) return;
+    // Normalize UI data once (add more sections later as you add hooks)
+    const combinedResults = useMemo(() => {
+        const combinedResultsResponse = combinedResultsQuery.data;
+        if (!combinedResultsResponse) return null;
 
-        let timer;
-        try {
-            const results = await listDerivedResultsApi(studyUID);
-            const row = results.find(r => r.type === "PanEcho_AllTasks");
+        // Convenience field from 'select'
+        if (combinedResultsResponse.results) return combinedResultsResponse.results;
 
-            if (row && row.value_json) {
-                // 1. If results already exist, save them and stop loading
-                const json = JSON.parse(row.value_json);
-                setDerivedResults(json);
-                setLoading(false);
-                return;
-            }
-
-            // 2. If no results and inference has not been started yet
-            if (!startedRef.current) {
-                startedRef.current = true;
-                try {
-                    await inferPanEchoApi({ study_uid: studyUID });
-                } catch (err) {
-                    console.error("[Report] PanEcho_AllTasks inference failed: ", err);
-                }
-            }
-
-            // 3. Start polling for results every 3 seconds
-            setPolling(true);
-            timer = setInterval(async () => {
-                const updated = await listDerivedResultsApi(studyUID);
-                const updated_row = updated.find(r => r.type === "PanEcho_AllTasks");
-                if (updated_row && updated_row.value_json) {
-                    // Stop polling once results are available
-                    clearInterval(timer);
-                    const updated_json = JSON.parse(updated_row.value_json)
-                    setDerivedResults(updated_json);
-                    setPolling(false);
-                    setLoading(false);
-                }
-            }, 3000);
-        } catch (err) {
-            console.error("[useStudyResults] Failed:", err);
-            setLoading(false);
+        // Fallback: read directly from API shape
+        if (
+            combinedResultsResponse.status === 200 &&
+            combinedResultsResponse.data?.status === "complete"
+        ) {
+            return combinedResultsResponse.data.panecho_echoprime_results ?? null;
         }
+        return null;
+    }, [combinedResultsQuery.data]);
 
-        // Cleanup: if component unmounts -> clear polling interval
-        return () => {
-            if (timer) clearInterval(timer);
-        };
-    };
+    // The UI-facing contract: one stable object the page/layout consumes
+    const viewModel = useMemo(
+    () => ({
+        state: pageState,
+        error: combinedResultsQuery.error ?? null,
 
-    useEffect(() => {
-        (async () => {
-            await fetchStudy();
-        })();
-    }, [id]);
+        // identifiers / header bits
+        studyUID: studyUid ?? null,
 
-    useEffect(() => {
-        if (studyUID) {
-            fetchDerivedResults();
-        }
-    }, [studyUID]);
+        // data buckets
+        results: combinedResults,
+        hasMeasurements: Boolean(combinedResults),
 
-    return {
-        study, // Study metadata
-        studyUID, // Unique study identifier
-        derivedResults, // Inference results for the PanEcho model
-        loading, // Loading state
-        polling, // Polling state
-        refresh: async () => { // Manual refresh function
-            setLoading(true);
-            await fetchStudy();
-            await fetchDerivedResults();
-        },
-    };
+        // controls
+        isPolling: 
+            (combinedResultsQuery.data?.isPending ??
+                (combinedResultsQuery.data?.status === 202)) || false,
+        refresh: () => combinedResultsQuery.refetch(),
+    }),
+    [
+        pageState,
+        combinedResultsQuery.error,
+        studyUid,
+        combinedResults,
+        combinedResultsQuery.data,
+        combinedResultsQuery.refetch,
+    ]
+    );
+
+    return viewModel;
 }

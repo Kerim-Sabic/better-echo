@@ -52,7 +52,7 @@ app.include_router(infer_all_panecho_router, prefix="/api", tags=["Inference"])
 app.include_router(infer_echoprime_router, prefix="/api", tags=["Inference"])
 app.include_router(infer_echonet_dynamic_router, prefix="/api", tags=["Inference"])
 app.include_router(authentication_router, prefix="/api", tags=["Authentication"])
-app.include_router(combined_results_router, prefix="/api", tags=["Combined Results"])
+app.include_router(combined_results_router, prefix="/api", tags=["Orchestration APIs"])
 
 
 if __name__ == "__main__":
