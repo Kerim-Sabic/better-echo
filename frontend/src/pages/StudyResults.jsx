@@ -8,6 +8,7 @@ import EFMeasurement from "../features/StudyResults/EFMeasurement";
 import Measurements from "../features/StudyResults/Measurements";
 import Report from "../features/StudyResults/Report";
 import LVSegmentation from "../features/StudyResults/LVSegmentation";
+import EchoNetMeasurements2D from "../features/StudyResults/EchoNetMeasurements2D";
 import { useStudyResults } from "../features/StudyResults/hooks/useStudyResults";
 
 export default function StudyResults() {
@@ -64,6 +65,7 @@ export default function StudyResults() {
         <Measurements derivedResults={derivedResults} />
         {/*<Report studyUID={studyUID} />*/}
         <LVSegmentation studyUID={studyUID} />
+        <EchoNetMeasurements2D studyUID={studyUID} />
       </main>
     </div>
   );

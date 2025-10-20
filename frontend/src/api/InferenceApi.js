@@ -38,3 +38,15 @@ export const inferEchonetDynamicLVSegmentationApi = async (sopInstanceUID) => {
 
     return response.data;
 };
+
+export const inferMeasurements2DApi = async (sopInstanceUID, modelWeights, force = false) => {
+    const response = await axios.post(
+        `${API_URL}/infer/measurements/2d`,
+        {},
+        {
+            params: { sop_instance_uid: sopInstanceUID, model_weights: modelWeights, force },
+            withCredentials: true,
+        }
+    );
+    return response.data;
+};

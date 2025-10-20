@@ -10,6 +10,9 @@ backend/app/logs
 backend/app/uploads/*
 !backend/app/uploads/.gitkeep
 
+# Ignores all the files in artifacts except .gitkeep
+backend/app/artifacts/*
+
 # Frontend
 node_modules/
 build/
