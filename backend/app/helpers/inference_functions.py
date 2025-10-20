@@ -1,9 +1,8 @@
 import io
 import math
 import logging
-from typing import List, Optional
+from typing import List
 import requests
-from fastapi import APIRouter, HTTPException, Query
 from PIL import Image
 import numpy as np
 import torch
@@ -27,7 +26,7 @@ def check_instance_exists_in_orthanc(sop_instance_uid: str) -> bool:
     Returns True if found, False otherwise.
     """
     try:
-        logger.info(f"Checking if instance exists in Orthanc: SOPInstanceUID={sop_instance_uid}")
+        logger.info(f"[INFERENCE_FUNCTIONS] Checking if instance exists in Orthanc: SOPInstanceUID={sop_instance_uid}")
         
         # Query all instances
         r = requests.get(f"{orthanc_url}/instances", auth=(orthanc_user, orthanc_pass))
@@ -40,21 +39,21 @@ def check_instance_exists_in_orthanc(sop_instance_uid: str) -> bool:
             r_info.raise_for_status()
             info = r_info.json()
             if info.get("MainDicomTags", {}).get("SOPInstanceUID") == sop_instance_uid:
-                logger.info(f"Instance {sop_instance_uid} exists in Orthanc.")
+                logger.info(f"[INFERENCE_FUNCTIONS] Instance {sop_instance_uid} exists in Orthanc.")
                 return True
 
-        logger.warning(f"Instance {sop_instance_uid} not found in Orthanc.")
+        logger.warning(f"[INFERENCE_FUNCTIONS] Instance {sop_instance_uid} not found in Orthanc.")
         return False
 
     except requests.RequestException as e:
-        logger.error(f"Error checking instance in Orthanc: {e}")
+        logger.error(f"[INFERENCE_FUNCTIONS] Error checking instance in Orthanc: {e}")
         return False
 
 
 def fetch_orthanc_instance_ids_from_study(study_uid: str) -> List[str]:
     # Find Orthanc study by DICOM StudyInstanceUID, then list its instances
     # 1) Query studies by UID
-    logger.info(f"Resolving Orthanc study for StudyInstanceUID={study_uid}")
+    logger.info(f"[INFERENCE_FUNCTIONS] Resolving Orthanc study for StudyInstanceUID={study_uid}")
     r = requests.get(f"{orthanc_url}/studies", auth=(orthanc_user, orthanc_pass))
     r.raise_for_status()
     studies = r.json()
@@ -65,21 +64,22 @@ def fetch_orthanc_instance_ids_from_study(study_uid: str) -> List[str]:
             match = sid
             break
     if not match:
-        logger.warning(f"[EF] No Orthanc study matches StudyInstanceUID={study_uid}")
+        logger.warning(f"[INFERENCE_FUNCTIONS] No Orthanc study matches StudyInstanceUID={study_uid}")
         return []
     
     # 2) Get all instances in that study
     insts = requests.get(f"{orthanc_url}/studies/{match}/instances", auth=(orthanc_user, orthanc_pass)).json()
     ids = [i["ID"] for i in insts]
-    logger.info(f"[EF] Found {len(ids)} instance(s) in the study")
+    logger.info(f"[INFERENCE_FUNCTIONS] Found {len(ids)} instance(s) in the study")
     return ids
 
 def pick_frames_from_instance(instance_id: str, num_frames: int = 16) -> List[Image.Image]:
     # Get instance metadata to know number of frames
-    logger.info(f"[EF] Picking frames from instance {instance_id}")
+    logger.info(f"[INFERENCE_FUNCTIONS] Picking frames from instance {instance_id}")
     meta = requests.get(f"{orthanc_url}/instances/{instance_id}", auth=(orthanc_user, orthanc_pass)).json()
-    frames = meta.get("Frames", 1)  # multi-frame cine or 1
-    logger.info(f"[EF] Instance has {frames} frame(s)")
+    frames = meta.get("MainDicomTags", {}).get("NumberOfFrames", 1)  # multi-frame cine or 1
+    frames = int(frames)
+    logger.info(f"[INFERENCE_FUNCTIONS] Instance has {frames} frame(s)")
     # Pick 16 approximately evenly spaced frame indices (1-based in Orthanc HTTP)
     indices = [max(1, min(frames, 1 + math.floor(i * frames / num_frames))) for i in range(num_frames)]
     imgs: List[Image.Image] = []
@@ -92,11 +92,11 @@ def pick_frames_from_instance(instance_id: str, num_frames: int = 16) -> List[Im
         img = Image.open(io.BytesIO(resp.content)).convert("RGB")
         img = img.resize((224, 224), Image.BILINEAR)
         imgs.append(img)
-    logger.info(f"[EF] Collected {len(imgs)} frame(s)")
+    logger.info(f"[INFERENCE_FUNCTIONS] Collected {len(imgs)} frame(s)")
     return imgs
 
 def stack_to_tensor(frames: List[Image.Image]) -> torch.Tensor:
-    logger.info("[EF] Stacking frames into tensor and ImageNet-normalizing")
+    logger.info("[INFERENCE_FUNCTIONS] Stacking frames into tensor and ImageNet-normalizing")
     # frames: list of PIL RGB 224x224; output: (1,3,T,224,224), normalized ImageNet
     arr = np.stack([np.asarray(f).astype(np.float32) / 255.0 for f in frames], axis=0)  # (T, H, W, C)
     # ImageNet mean/std
@@ -105,7 +105,7 @@ def stack_to_tensor(frames: List[Image.Image]) -> torch.Tensor:
     arr = (arr - mean) / std
     arr = np.transpose(arr, (3, 0, 1, 2))  # (C, T, H, W)
     t = torch.from_numpy(arr).unsqueeze(0)  # (1, C, T, H, W)
-    logger.info(f"[EF] Tensor shape: {tuple(t.shape)} dtype={t.dtype}")
+    logger.info(f"[INFERENCE_FUNCTIONS] Tensor shape: {tuple(t.shape)} dtype={t.dtype}")
     return t
 
 # Lazy load the model once
@@ -117,7 +117,7 @@ def get_model_and_device():
     if _model is None:
         # pick device explicitly
         _device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        logger.info(f"[EF] Loading PanEcho model on device: {_device}")
+        logger.info(f"[INFERENCE_FUNCTIONS] Loading PanEcho model on device: {_device}")
         try:
             # requires outbound network/git the first time unless cached locally
             _model = torch.hub.load(
@@ -126,8 +126,8 @@ def get_model_and_device():
                 force_reload=False
             )
             _model.to(_device).eval()
-            logger.info("[EF] PanEcho model loaded successfully")
+            logger.info("[INFERENCE_FUNCTIONS] PanEcho model loaded successfully")
         except Exception as e:
-            logger.error(f"[EF] Failed to load PanEcho via torch.hub: {e}")
+            logger.error(f"[INFERENCE_FUNCTIONS] Failed to load PanEcho via torch.hub: {e}")
             raise
     return _model, _device
