@@ -43,10 +43,8 @@ app.add_middleware(
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # backend/app
 UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")         # backend/app/uploads
-ARTIFACTS_DIR = os.path.join(BASE_DIR, "artifacts")    # backend/app/artifacts
 
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
-app.mount("/artifacts", StaticFiles(directory=ARTIFACTS_DIR), name="artifacts")
 
 # Routes
 app.include_router(upload_router, prefix="/api", tags=["Upload dicom"])

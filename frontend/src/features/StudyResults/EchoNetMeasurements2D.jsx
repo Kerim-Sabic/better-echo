@@ -25,11 +25,11 @@ const gInstances = (typeof window !== 'undefined'
   ? (window.__MEAS2D_INST__ = window.__MEAS2D_INST__ || new Set())
   : new Set());
 
-function toArtifactsUrl(filePath) {
+function toStaticUrl(filePath) {
   if (!filePath) return null;
   if (/^https?:/i.test(filePath)) return filePath;
   const base = (process.env.REACT_APP_API_URL || "").replace(/\/?api\/?$/, "");
-  return `${base}/artifacts/${filePath}`.replace(/\\/g, "/");
+  return `${base}/uploads/${filePath}`.replace(/\\/g, "/");
 }
 
 const EchoNetMeasurements2D = ({ studyUID }) => {
@@ -65,11 +65,9 @@ const EchoNetMeasurements2D = ({ studyUID }) => {
               const payload = JSON.parse(d.value_json || '{}');
               const task = (d.type || '').split('EchoNetMeasurements2D_')[1];
               if (!task) continue;
-              const videoUrl = toArtifactsUrl(payload.outputfile);
-              const csvUrl = toArtifactsUrl(payload.csv_file);
+              const videoUrl = toStaticUrl(payload.outputfile);
               results[task] = {
                 videoUrl,
-                csvUrl,
                 es: payload.min_length_cm ?? null,
                 ed: payload.max_length_cm ?? null,
               };
@@ -98,18 +96,17 @@ const EchoNetMeasurements2D = ({ studyUID }) => {
         // backend says this task is already running elsewhere
         return { inProgress: true };
       }
-      const videoUrl = toArtifactsUrl(res.output_file_mp4 || res.output_file);
-      const csvUrl = toArtifactsUrl(res.csv_file);
+      const videoUrl = toStaticUrl(res.output_file_mp4);
       setStateByUID((prev) => {
         const prevUID = prev[uid] || {};
         const results = {
           ...(prevUID.results || {}),
-          [task]: { videoUrl, csvUrl, es: res.min_length_cm, ed: res.max_length_cm },
+          [task]: { videoUrl, es: res.min_length_cm, ed: res.max_length_cm },
         };
         const selectedTask = prevUID.selectedTask || task;
         return { ...prev, [uid]: { ...prevUID, loading: null, error: null, results, selectedTask } };
       });
-      return { videoUrl, csvUrl, es: res.min_length_cm ?? null, ed: res.max_length_cm ?? null, inProgress: false };
+      return { videoUrl, es: res.min_length_cm ?? null, ed: res.max_length_cm ?? null, inProgress: false };
     } catch (e) {
       console.error("[Measurements2D] inference error", e);
       setStateByUID((prev) => ({
@@ -154,15 +151,14 @@ const EchoNetMeasurements2D = ({ studyUID }) => {
             const key = (d.type || '').split('EchoNetMeasurements2D_')[1];
             if (!key || localMap[key]) continue;
             try {
-              const payload = JSON.parse(d.value_json || '{}');
-              const videoUrl = toArtifactsUrl(payload.outputfile);
-              const csvUrl = toArtifactsUrl(payload.csv_file);
-              localMap[key] = { videoUrl, csvUrl, es: payload.min_length_cm ?? null, ed: payload.max_length_cm ?? null };
-              done += 1;
-              setStateByUID((prev) => ({
-                ...prev,
-                [uid]: { ...(prev[uid] || {}), results: { ...((prev[uid] || {}).results || {}), [key]: localMap[key] }, progress: done, total: TOTAL },
-              }));
+                const payload = JSON.parse(d.value_json || '{}');
+                const videoUrl = toStaticUrl(payload.outputfile);
+                localMap[key] = { videoUrl, es: payload.min_length_cm ?? null, ed: payload.max_length_cm ?? null };
+                done += 1;
+                setStateByUID((prev) => ({
+                  ...prev,
+                  [uid]: { ...(prev[uid] || {}), results: { ...((prev[uid] || {}).results || {}), [key]: localMap[key] }, progress: done, total: TOTAL },
+                }));
             } catch (_) {}
           }
         } catch (_) {}
@@ -331,16 +327,8 @@ const EchoNetMeasurements2D = ({ studyUID }) => {
                           Your browser does not support MP4 playback.
                         </video>
                       ) : (
-                        <div className="flex items-center justify-between p-3 text-sm border rounded">
-                          <div className="flex items-center gap-2 text-muted-foreground">
-                            <Video className="w-4 h-4" /> Browser playback requires MP4. Download AVI instead.
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <a className="underline" href={cur.videoUrl} target="_blank" rel="noreferrer">Download AVI</a>
-                            {cur.csvUrl && (
-                              <a className="underline" href={cur.csvUrl} target="_blank" rel="noreferrer">CSV</a>
-                            )}
-                          </div>
+                        <div className="flex items-center p-3 text-sm border rounded text-muted-foreground">
+                          <Video className="w-4 h-4 mr-2" /> MP4 video is not available.
                         </div>
                       )}
                     </div>

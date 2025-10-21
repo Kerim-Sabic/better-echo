@@ -17,10 +17,10 @@ from app.helpers.AVI_to_MP4_converter import convert_to_mp4
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-# Artifacts directory for outputs
+# Paths
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # backend/app/api
-ARTIFACTS_DIR = os.path.normpath(os.path.join(BASE_DIR, "..", "artifacts", "measurements", "2d"))
-os.makedirs(ARTIFACTS_DIR, exist_ok=True)
+UPLOADS_ROOT = os.path.normpath(os.path.join(BASE_DIR, "..", "uploads"))  # backend/app/uploads
+os.makedirs(UPLOADS_ROOT, exist_ok=True)
 
 
 @router.post("/infer/measurements/2d", response_model=Measurements2DResponse)
@@ -33,7 +33,7 @@ def infer_measurements_2d(
     """Perform 2D linear measurement annotation using EchoNet-Measurements.
 
     Returns annotated video and CSV. Caches results per (instance, task) as
-    DerivedResult so subsequent calls can reuse artifacts unless `force=true`.
+    DerivedResult so subsequent calls can reuse saved outputs unless `force=true`.
     """
     model_weights = model_weights.strip().lower()
     if model_weights not in VALID_2D_WEIGHTS:
@@ -51,8 +51,13 @@ def infer_measurements_2d(
     input_path = instance.file_path
     logger.info(f"[Measurements2D] Starting inference: {sop_instance_uid}, model_weights={model_weights}")
 
-    # --- Step 3: Ensure output directory ---
-    out_dir = os.path.join(ARTIFACTS_DIR, sop_instance_uid)
+    # --- Step 3: Ensure output directory under uploads/measurements_2D_keypoint_detection/<study_uid>/<sop_instance_uid> ---
+    try:
+        study_uid = instance.series.study.study_uid
+    except Exception:
+        raise HTTPException(status_code=500, detail="Failed to resolve Study UID for the instance.")
+    uploads_measurements_root = os.path.join(UPLOADS_ROOT, "measurements_2D_keypoint_detection")
+    out_dir = os.path.join(uploads_measurements_root, study_uid, sop_instance_uid)
     os.makedirs(out_dir, exist_ok=True)
 
     # --- Step 4: Try cached DerivedResult (unless forced) ---
@@ -67,20 +72,13 @@ def infer_measurements_2d(
         try:
             import json
             payload = json.loads(existing.value_json)
-            out_mp4 = payload.get("outputfile")
-            out_csv = payload.get("csv_file")
-            # Validate artifacts exist; if missing, ignore cache
-            base_dir2 = os.path.dirname(os.path.abspath(__file__))
-            artifacts_root = os.path.normpath(os.path.join(base_dir2, "..", "artifacts"))
-            ok_files = True
-            for rel in [out_mp4, out_csv]:
-                if rel:
-                    fullp = os.path.join(artifacts_root, rel)
-                    if not os.path.exists(fullp):
-                        ok_files = False
-                        break
-            if not ok_files:
-                raise Exception("Cached artifacts missing, recomputing")
+            out_mp4_rel = payload.get("outputfile")
+            # Validate artifact exists under uploads
+            if not out_mp4_rel:
+                raise Exception("No cached outputfile path")
+            abs_mp4 = os.path.join(UPLOADS_ROOT, out_mp4_rel)
+            if not os.path.exists(abs_mp4):
+                raise Exception("Cached artifact missing, recomputing")
             min_len_cm = payload.get("min_length_cm")
             max_len_cm = payload.get("max_length_cm")
             return Measurements2DResponse(
@@ -88,9 +86,7 @@ def infer_measurements_2d(
                 message="Cached result returned",
                 sop_instance_uid=sop_instance_uid,
                 model_weights=model_weights,
-                output_file=None,
-                csv_file=out_csv,
-                output_file_mp4=out_mp4,
+                output_file_mp4=out_mp4_rel,
                 min_length_cm=min_len_cm,
                 max_length_cm=max_len_cm,
                 in_progress=False,
@@ -108,8 +104,6 @@ def infer_measurements_2d(
                 message="Inference in progress",
                 sop_instance_uid=sop_instance_uid,
                 model_weights=model_weights,
-                output_file=None,
-                csv_file=None,
                 output_file_mp4=None,
                 min_length_cm=None,
                 max_length_cm=None,
@@ -164,14 +158,20 @@ def infer_measurements_2d(
     except Exception as e:
         logger.warning(f"[Measurements2D] Failed to parse lengths from CSV: {e}")
 
-    # --- Step 9: Convert absolute paths -> artifacts-relative ---
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    artifacts_dir = os.path.normpath(os.path.join(base_dir, "..", "artifacts"))
-    def _rel(p: str | None) -> str | None:
+    # Delete CSV after MP4 creation (doctor only needs MP4)
+    if out_mp4:
+        try:
+            if os.path.exists(out_csv):
+                os.remove(out_csv)
+        except Exception:
+            pass
+
+    # --- Step 9: Convert absolute paths -> uploads-relative ---
+    def _rel_uploads(p: str | None) -> str | None:
         if not p:
             return None
         try:
-            rp = os.path.relpath(p, artifacts_dir)
+            rp = os.path.relpath(p, UPLOADS_ROOT)
             return rp.replace("\\", "/")
         except Exception:
             return p
@@ -180,8 +180,7 @@ def infer_measurements_2d(
     try:
         import json as _json
         payload = {
-            "outputfile": _rel(out_mp4) if out_mp4 else _rel(out_avi),
-            "csv_file": _rel(out_csv),
+            "outputfile": _rel_uploads(out_mp4) if out_mp4 else None,
             "min_length_cm": min_len_cm,
             "max_length_cm": max_len_cm,
             "model_weights": model_weights,
@@ -212,9 +211,7 @@ def infer_measurements_2d(
         message="Inference completed",
         sop_instance_uid=sop_instance_uid,
         model_weights=model_weights,
-        output_file=_rel(out_avi),
-        csv_file=_rel(out_csv),
-        output_file_mp4=_rel(out_mp4),
+        output_file_mp4=_rel_uploads(out_mp4),
         min_length_cm=min_len_cm,
         max_length_cm=max_len_cm,
         in_progress=False,
