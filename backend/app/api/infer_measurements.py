@@ -190,9 +190,7 @@ def infer_measurements_2d(
             study_id=instance.series.study.id,
             instance_id=instance.id,
             type=dr_type,
-            value_numeric=None,
             value_json=_json.dumps(payload),
-            units="cm",
             model_name="EchoNetMeasurements2D",
             model_version="v1",
         )
