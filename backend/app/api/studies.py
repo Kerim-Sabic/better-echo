@@ -97,21 +97,16 @@ def delete_study(study_id: int, db: Session = Depends(get_db)):
     else:
         logger.warning(f"LV segmentation results folder {lv_segmentation_folder} not found")
     
-    # Delete EchoNet-Measurements artifacts for all instances (videos/CSVs)
+    # Delete EchoNet-Measurements files for all instances (videos/CSVs)
     try:
-        # artifacts path: backend/app/artifacts/measurements/2d/<SOPInstanceUID>
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        artifacts_2d = os.path.normpath(os.path.join(base_dir, "..", "artifacts", "measurements", "2d"))
-        # Gather instance SOP UIDs under this study
-        instance_uids = [inst.sop_instance_uid for ser in study.series for inst in ser.instances]
-        for uid in instance_uids:
-            art_dir = os.path.join(artifacts_2d, uid)
-            if os.path.exists(art_dir):
-                try:
-                    rmtree(art_dir)
-                    logger.info(f"Deleted measurements artifacts folder {art_dir}")
-                except Exception as err:
-                    logger.error(f"Failed to delete measurements artifacts folder {art_dir}: {str(err)}")
+        uploads_measurements_root = os.path.join(UPLOAD_DIR, "measurements_2D_keypoint_detection")
+        try:
+            uploads_measurements_study = os.path.join(uploads_measurements_root, study.study_uid)
+            if os.path.exists(uploads_measurements_study):
+                rmtree(uploads_measurements_study)
+                logger.info(f"Deleted uploads measurements folder {uploads_measurements_study}")
+        except Exception as err:
+            logger.error(f"Failed to delete uploads measurements folder: {str(err)}")
     except Exception as err:
         logger.error(f"Failed to delete measurements artifacts: {str(err)}")
 
