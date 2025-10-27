@@ -77,7 +77,7 @@ def unload_model():
 
 
 @router.post("/infer/echonet-dynamic/LV-segmentation", response_model=LVSegmentationResponse)
-async def infer_lv_segmentation(
+def infer_lv_segmentation(
     sop_instance_uid: str = Query(..., description="The DICOM SOPInstanceUID to run segmentation on"),
     db: Session = Depends(get_db)
 
@@ -209,8 +209,8 @@ async def infer_lv_segmentation(
 
     # --- Step 11: Return success response ---
     logger.info("[Echonet-dynamic] LV-segmentation model inference completed")
-    return LVSegmentationResponse(
-        success=True,
-        message="LV segmentation completed successfully",
-        output_file=relative_output_path
-    )
+    return {
+        "success": True,
+        "message": "LV segmentation completed successfully",
+        "output_file": relative_output_path
+    }

@@ -232,22 +232,34 @@ class EchoPrime:
             stack_of_features=torch.cat(stack_of_features_list,dim=0)
         return stack_of_features
 
-    def get_views(self, stack_of_videos, visualize=False, return_view_list=False):
+    def get_views(self, stack_of_videos, visualize=False, return_view_list=False, return_scores: bool = False):  # CHANGED: added return_scores
         """
         Args:
             stack_of_videos (torch.Tensor): A float tensor with preprocessed echo video data
-            
+            visualize (bool): show montage
+            return_view_list (bool): return list of view labels
+            return_scores (bool): when used with return_view_list=True, also return per-class softmax probabilities  # NEW
+
         Returns:
-            stack_of_view_encodings (torch.Tensor) A float tensor of one hot embeddings with shape (N, 11)
-                                                representing echocardiogram views
+            if return_view_list and return_scores:
+                (view_list, view_confidence_list)
+            elif return_view_list:
+                view_list: List[str]
+            else:
+                stack_of_view_encodings (torch.Tensor) one-hot embeddings with shape (N, 11)
         """
-        ## get views   
-        stack_of_first_frames = stack_of_videos[:,:,0,:,:].to(self.device)
+        ## get views
+        stack_of_first_frames = stack_of_videos[:, :, 0, :, :].to(self.device)
         with torch.no_grad():
-            out_logits=self.view_classifier(stack_of_first_frames)
-        out_views=torch.argmax(out_logits,dim=1)
+            out_logits = self.view_classifier(stack_of_first_frames)
+        out_views = torch.argmax(out_logits, dim=1)
         view_list = [utils.COARSE_VIEWS[v] for v in out_views]
-        stack_of_view_encodings = torch.stack([torch.nn.functional.one_hot(out_views,11)]).squeeze().to(self.device)
+        stack_of_view_encodings = torch.stack([torch.nn.functional.one_hot(out_views, 11)]).squeeze().to(self.device)
+
+        probs = torch.softmax(out_logits, dim=1)  # NEW: per-class probabilities [N, 11]
+        probs_list = probs.detach().cpu().tolist()
+
+        view_confidence_list = probs.max(dim=1).values.detach().cpu().tolist()
 
         # visualize images and the assigned views
         if visualize:
@@ -256,11 +268,11 @@ class EchoPrime:
             fig, axes = plt.subplots(rows, cols, figsize=(cols, rows))
             axes = axes.flatten()
             for i in range(len(view_list)):
-                display_image = (stack_of_first_frames[i].cpu().permute([1,2,0]) * 255).numpy()
+                display_image = (stack_of_first_frames[i].cpu().permute([1, 2, 0]) * 255).numpy()
                 display_image = np.clip(display_image, 0, 255).astype('uint8')
                 display_image = np.ascontiguousarray(display_image)
                 display_image = cv2.cvtColor(display_image, cv2.COLOR_RGB2BGR)
-                cv2.putText(display_image, view_list[i].replace("_"," "), (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 220, 255), 2)
+                cv2.putText(display_image, view_list[i].replace("_", " "), (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 220, 255), 2)
                 axes[i].imshow(display_image)
                 axes[i].axis('off')
 
@@ -269,10 +281,14 @@ class EchoPrime:
             plt.subplots_adjust(wspace=0.05, hspace=0.05)
             plt.show()
 
+        if return_view_list and return_scores:         # NEW: dual return with scores
+            return view_list, view_confidence_list
+
         if return_view_list:
             return view_list
-            
+
         return stack_of_view_encodings
+    
     @torch.no_grad()
     def encode_study(self,stack_of_videos,visualize=False):
         """

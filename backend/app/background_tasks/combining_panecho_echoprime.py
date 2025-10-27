@@ -13,7 +13,7 @@ from app.schemas.infer_panecho_schemas import InferPanEchoRequest
 from app.api.infer_echoprime import infer_echoprime
 from app.schemas.infer_echoprime_schemas import InferEchoPrimeRequest
 
-from app.core.artifacts import PANECHO_TYPE, ECHOPRIME_TYPE, COMBINED_TYPE
+from app.core.artifacts import PANECHO_TYPE, ECHOPRIME_TYPE, PANECHO_ECHOPRIME_COMBINED_TYPE
 from app.helpers.combine_panecho_echoprime_predictions import combine_results
 
 logger = logging.getLogger(__name__)
@@ -110,7 +110,7 @@ def combining_panecho_echoprime(study_uid: str):
 
         combined_row = (
             db.query(DerivedResult)
-            .filter(DerivedResult.study_id == study.id, DerivedResult.type == COMBINED_TYPE)
+            .filter(DerivedResult.study_id == study.id, DerivedResult.type == PANECHO_ECHOPRIME_COMBINED_TYPE)
             .first()
         )
 
@@ -123,7 +123,7 @@ def combining_panecho_echoprime(study_uid: str):
         else:
             combined_row = DerivedResult(
                 study_id = study.id,
-                type=COMBINED_TYPE,
+                type=PANECHO_ECHOPRIME_COMBINED_TYPE,
                 panecho_echoprime_overlapping_tasks = combined_results["ranges"],
                 panecho_only_tasks = combined_results["panecho_only"],
                 echoprime_only_tasks= combined_results["echoprime_only"],
@@ -137,6 +137,7 @@ def combining_panecho_echoprime(study_uid: str):
         db.commit()
         logger.info(f"[COMBINED] Combined_Results persisted for study {study_uid}")
 
+    # --- Part 4. If an error occurs, change the combined results row status to failed ---
     except Exception as err:
         logger.exception(f"[COMBINED] Orchestration failed for {study_uid}: {err}")
         try:
@@ -145,7 +146,7 @@ def combining_panecho_echoprime(study_uid: str):
             if study:
                 row = (
                     db.query(DerivedResult)
-                    .filter(DerivedResult.study_id == study.id, DerivedResult.type == COMBINED_TYPE)
+                    .filter(DerivedResult.study_id == study.id, DerivedResult.type == PANECHO_ECHOPRIME_COMBINED_TYPE)
                     .first()
                 )
                 if row:
