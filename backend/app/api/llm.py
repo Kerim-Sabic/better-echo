@@ -14,7 +14,6 @@ from app.models.studies import Study
 from app.models.derived_results import DerivedResult, ResultStatus
 from app.helpers.combined_results_row_to_dict import build_combined_sections_from_row
 from app.schemas.llm_schemas import (
-    LLMReportRequest,
     LLMReportResponse,
     LLMChatRequest,
     LLMChatResponse,
@@ -40,8 +39,8 @@ def _json_of(value: Any) -> Dict[str, Any]:
         return {}
 
 
-@router.post("/llm/report/generate", response_model=LLMReportResponse)
-def generate_llm_report(payload: LLMReportRequest, db: Session = Depends(get_db)):
+@router.post("/studies/{study_uid}/llm/report/generate", response_model=LLMReportResponse)
+def generate_llm_report(study_uid: str, db: Session = Depends(get_db)):
     """
     Generate an AI echo report using the combined PanEcho+EchoPrime JSON as context.
 
@@ -52,8 +51,6 @@ def generate_llm_report(payload: LLMReportRequest, db: Session = Depends(get_db)
     4) Persist the generated report as a DerivedResult (LLM_Echo_Report).
     5) Return the report text.
     """
-    study_uid = payload.study_uid
-
     # --- Step 1: Validate study and combined row ---
     study: Optional[Study] = db.query(Study).filter(Study.study_uid == study_uid).first()
     if not study:

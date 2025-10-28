@@ -1,8 +1,9 @@
 $env:HF_HOME="C:\Users\kerim\OneDrive\Desktop\hf-cache"
 wsl.exe -d Ubuntu -- bash -lc "
   export HF_HOME='/mnt/c/Users/kerim/OneDrive/Desktop/hf-cache' &&
-  export CUDA_VISIBLE_DEVICES=0 &&
-  conda activate vllm &&
+  source ~/.bashrc &&
+  source ~/vllm/bin/activate &&
+  export CUDA_VISIBLE_DEVICES=1 &&
   vllm serve Qwen/Qwen2.5-14B-Instruct-AWQ \
     --quantization awq_marlin \
     --dtype float16 \

@@ -96,7 +96,7 @@ def test_generate_report_success(monkeypatch):
     monkeypatch.setattr("requests.post", _fake_post)
 
     client = TestClient(app)
-    res = client.post("/api/llm/report/generate", json={"study_uid": "1.2.3"})
+    res = client.post("/api/studies/1.2.3/llm/report/generate")
     assert res.status_code == 200, res.text
     body = res.json()
     assert body["report"] == "Generated echo report text."

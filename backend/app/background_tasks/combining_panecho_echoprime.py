@@ -15,7 +15,6 @@ from app.schemas.infer_echoprime_schemas import InferEchoPrimeRequest
 
 from app.core.artifacts import PANECHO_TYPE, ECHOPRIME_TYPE, COMBINED_TYPE
 from app.helpers.combine_panecho_echoprime_predictions import combine_results
-from app.services.llm_report_service import generate_for_study
 
 logger = logging.getLogger(__name__)
 
@@ -137,13 +136,6 @@ def combining_panecho_echoprime(study_uid: str):
 
         db.commit()
         logger.info(f"[COMBINED] Combined_Results persisted for study {study_uid}")
-
-        # --- Part 4: Trigger LLM report generation (best-effort) ---
-        try:
-            logger.info(f"[COMBINED] Generating LLM report for study {study_uid}")
-            generate_for_study(study_uid=study_uid, db=db)
-        except Exception as e:
-            logger.warning(f"[COMBINED] LLM report generation failed for {study_uid}: {e}")
 
     except Exception as err:
         logger.exception(f"[COMBINED] Orchestration failed for {study_uid}: {err}")
