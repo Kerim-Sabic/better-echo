@@ -1,0 +1,182 @@
+{
+  "ejection_fraction": {
+    "panecho_name": "EF",
+    "echoprime_name": "ejection_fraction",
+    "combine_rule": "average_value",
+    "discrepancy_threshold": 5.0,
+    "units": "%",
+    "expected_direction": "n/a",
+    "notes": "Use the average of PanEcho and EchoPrime EF; flag if they differ by more than 5 percentage points."
+  },
+  "pulmonary_artery_pressure": {
+    "panecho_name": "RVSP",
+    "echoprime_name": "pulmonary_artery_pressure_continuous",
+    "combine_rule": "average_value",
+    "discrepancy_threshold": 5.0,
+    "units": "mmHg",
+    "expected_direction": "higher_is_worse",
+    "notes": "Average RVSP (PanEcho) and PAP (EchoPrime); flag if difference >5 mmHg."
+  },
+  "pericardial_effusion": {
+    "panecho_name": "pericardial-effusion",
+    "echoprime_name": "pericardial_effusion",
+    "panecho_threshold": 0.15,
+    "echoprime_threshold": 0.20,
+    "combine_rule": "positive_if_either_positive",
+    "expected_direction": "higher_is_worse",
+    "notes": "Call effusion present if either model probability exceeds its threshold; PanEcho threshold set low to capture even small effusions."
+  },
+  "left_atrium_dilation": {
+    "panecho_name": "LASize",
+    "echoprime_name": "left_atrium_dilation",
+    "panecho_threshold": 0.30,
+    "echoprime_threshold": 0.50,
+    "combine_rule": "prefer_model:PanEcho",
+    "expected_direction": "higher_is_worse",
+    "notes": "Treat mild LA enlargement as positive; PanEcho >0.3 triggers enlargement even if EchoPrime is silent."
+  },
+  "right_atrium_dilation": {
+    "panecho_name": "RASize",
+    "echoprime_name": "right_atrium_dilation",
+    "panecho_threshold": 0.30,
+    "echoprime_threshold": 0.50,
+    "combine_rule": "prefer_model:PanEcho",
+    "expected_direction": "higher_is_worse",
+    "notes": "Capture mild RA enlargement with PanEcho if probability >=0.3."
+  },
+  "right_ventricle_dilation": {
+    "panecho_name": "RVSize",
+    "echoprime_name": "right_ventricle_dilation",
+    "panecho_threshold": 0.30,
+    "echoprime_threshold": 0.50,
+    "combine_rule": "prefer_model:PanEcho",
+    "expected_direction": "higher_is_worse",
+    "notes": "Prefer PanEcho for mild RV enlargement; EchoPrime often misses subtle cases."
+  },
+  "rv_systolic_function_depressed": {
+    "panecho_name": "RVSystolicFunction",
+    "echoprime_name": "rv_systolic_function_depressed",
+    "panecho_threshold": 0.40,
+    "echoprime_threshold": 0.50,
+    "combine_rule": "positive_if_either_positive",
+    "expected_direction": "higher_is_worse",
+    "notes": "Label RV dysfunction if either model probability crosses its threshold; PanEcho threshold reduced to avoid false positives for mild dysfunction."
+  },
+  "mitral_regurgitation": {
+    "panecho_name": "MVRegurgitation",
+    "echoprime_name": "mitral_regurgitation",
+    "panecho_threshold": 0.80,
+    "echoprime_threshold": 0.10,
+    "combine_rule": "prefer_panecho_if_echoprime_zero",
+    "expected_direction": "higher_is_worse",
+    "notes": "Require EchoPrime to give non-zero probability to call significant MR; PanEcho alone must be highly confident (>0.8) to override."
+  },
+  "tricuspid_valve_regurgitation": {
+    "panecho_name": "TVRegurgitation",
+    "echoprime_name": "tricuspid_valve_regurgitation",
+    "panecho_threshold": 0.80,
+    "echoprime_threshold": 0.10,
+    "combine_rule": "prefer_panecho_if_echoprime_zero",
+    "expected_direction": "higher_is_worse",
+    "notes": "Follow same strategy as MR: treat moderate/severe TR as positive only if EchoPrime shows any evidence or PanEcho >0.8."
+  },
+  "aortic_regurgitation": {
+    "panecho_name": "AVRegurg",
+    "echoprime_name": "aortic_regurgitation",
+    "panecho_threshold": 0.80,
+    "echoprime_threshold": 0.10,
+    "combine_rule": "prefer_panecho_if_echoprime_zero",
+    "expected_direction": "higher_is_worse",
+    "notes": "Identify moderate or severe aortic regurgitation only when EchoPrime indicates presence or PanEcho probability exceeds 0.8."
+  },
+  "aortic_stenosis": {
+    "panecho_name": "AVStenosis",
+    "echoprime_name": "aortic_stenosis",
+    "panecho_threshold": 0.90,
+    "echoprime_threshold": 0.10,
+    "combine_rule": "prefer_panecho_if_echoprime_zero",
+    "expected_direction": "higher_is_worse",
+    "notes": "PanEcho’s AVStenosis groups mild and moderate; thus treat only very high PanEcho confidence (>0.9) or any EchoPrime indication as significant AS."
+  },
+  "mitral_stenosis": {
+    "panecho_name": "MVStenosis",
+    "echoprime_name": "mitral_stenosis",
+    "panecho_threshold": 0.50,
+    "echoprime_threshold": 0.50,
+    "combine_rule": "positive_if_either_positive",
+    "expected_direction": "higher_is_worse",
+    "notes": "MS is rare; label present if either model probability >=0.5."
+  },
+  "tricuspid_stenosis": {
+    "panecho_name": null,
+    "echoprime_name": "tricuspid_stenosis",
+    "panecho_threshold": null,
+    "echoprime_threshold": 0.50,
+    "combine_rule": "prefer_model:EchoPrime",
+    "expected_direction": "higher_is_worse",
+    "notes": "PanEcho does not predict tricuspid stenosis; rely solely on EchoPrime."
+  },
+  "bicuspid_aortic_valve": {
+    "panecho_name": "AVStructure",
+    "echoprime_name": "bicuspid_aov_morphology",
+    "panecho_threshold": 0.50,
+    "echoprime_threshold": 0.50,
+    "combine_rule": "positive_if_either_positive",
+    "expected_direction": "n/a",
+    "notes": "Either model can detect bicuspid aortic valve."
+  },
+  "mitral_annular_calcification": {
+    "panecho_name": null,
+    "echoprime_name": "mitral_annular_calcification",
+    "panecho_threshold": null,
+    "echoprime_threshold": 0.50,
+    "combine_rule": "prefer_model:EchoPrime",
+    "expected_direction": "higher_is_worse",
+    "notes": "Only EchoPrime outputs MAC; threshold at 0.5."
+  },
+  "mitraclip": {
+    "panecho_name": null,
+    "echoprime_name": "mitraclip",
+    "panecho_threshold": null,
+    "echoprime_threshold": 0.50,
+    "combine_rule": "prefer_model:EchoPrime",
+    "expected_direction": "n/a",
+    "notes": "Detect presence of MitraClip device via EchoPrime."
+  },
+  "pacemaker": {
+    "panecho_name": null,
+    "echoprime_name": "pacemaker",
+    "panecho_threshold": null,
+    "echoprime_threshold": 0.50,
+    "combine_rule": "prefer_model:EchoPrime",
+    "expected_direction": "n/a",
+    "notes": "EchoPrime outputs pacemaker; require probability >0.5 to call presence."
+  },
+  "tavr": {
+    "panecho_name": null,
+    "echoprime_name": "tavr",
+    "panecho_threshold": null,
+    "echoprime_threshold": 0.50,
+    "combine_rule": "prefer_model:EchoPrime",
+    "expected_direction": "n/a",
+    "notes": "Detect transcatheter aortic valve replacement via EchoPrime."
+  },
+  "impella": {
+    "panecho_name": null,
+    "echoprime_name": "impella",
+    "panecho_threshold": null,
+    "echoprime_threshold": 0.50,
+    "combine_rule": "prefer_model:EchoPrime",
+    "expected_direction": "n/a",
+    "notes": "Detect Impella device via EchoPrime."
+  },
+  "dilated_ivc": {
+    "panecho_name": "RAP-8-or-higher",
+    "echoprime_name": "dilated_ivc",
+    "panecho_threshold": 0.50,
+    "echoprime_threshold": 0.50,
+    "combine_rule": "positive_if_either_positive",
+    "expected_direction": "higher_is_worse",
+    "notes": "High right atrial pressure or dilated IVC: call positive if either model probability >=0.5."
+  }
+}

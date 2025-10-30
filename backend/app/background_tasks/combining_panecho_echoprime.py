@@ -119,6 +119,7 @@ def combining_panecho_echoprime(study_uid: str):
             combined_row.panecho_only_tasks = combined_results["panecho_only"]
             combined_row.echoprime_only_tasks= combined_results["echoprime_only"]
             combined_row.disagreement_flags = combined_results["flags"]
+            combined_row.integrated_tasks = combined_results["integrated_tasks"]
             combined_row.status = ResultStatus.complete
         else:
             combined_row = DerivedResult(
@@ -128,6 +129,7 @@ def combining_panecho_echoprime(study_uid: str):
                 panecho_only_tasks = combined_results["panecho_only"],
                 echoprime_only_tasks= combined_results["echoprime_only"],
                 disagreement_flags = combined_results["flags"],
+                integrated_tasks = combined_results["integrated_tasks"],
                 model_name = "PanEcho_EchoPrime_Combined",
                 model_version = "v1",
                 status = ResultStatus.complete

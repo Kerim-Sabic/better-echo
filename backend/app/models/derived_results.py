@@ -20,6 +20,7 @@ class DerivedResult(Base):
     panecho_only_tasks = Column(JSON, nullable=True)
     echoprime_only_tasks = Column(JSON, nullable=True)
     disagreement_flags = Column(JSON, nullable=True)
+    integrated_tasks = Column(JSON, nullable=True)
     model_name = Column(String, nullable=False)
     model_version = Column(String)
     created_at = Column(DateTime, server_default=func.now())

@@ -7,6 +7,7 @@ class CombinedSections(BaseModel):
     panecho_only_tasks: Dict[str, Any] = Field(default_factory=dict)
     echoprime_only_tasks: Dict[str, Any] = Field(default_factory=dict)
     disagreement_flags: Dict[str, Any] = Field(default_factory=dict)
+    integrated_tasks: Dict[str, Any] = Field(default_factory=dict)
 
 class CompleteResponse(BaseModel):
     status: Literal["complete"]
