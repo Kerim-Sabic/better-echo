@@ -110,6 +110,21 @@ def delete_study(study_id: int, db: Session = Depends(get_db)):
     except Exception as err:
         logger.error(f"Failed to delete measurements artifacts: {str(err)}")
 
+    # Delete LLM report artifacts for this study
+    try:
+        llm_reports_root = os.path.join(UPLOAD_DIR, "llm_reports")
+        llm_reports_study = os.path.join(llm_reports_root, study.study_uid)
+        if os.path.exists(llm_reports_study):
+            try:
+                rmtree(llm_reports_study)
+                logger.info(f"Deleted LLM reports folder {llm_reports_study}")
+            except Exception as err:
+                logger.error(f"Failed to delete LLM reports folder: {str(err)}")
+        else:
+            logger.warning(f"LLM reports folder {llm_reports_study} not found")
+    except Exception as err:
+        logger.error(f"Failed to delete LLM report artifacts: {str(err)}")
+
     # Delete from Database
     try:
         db.delete(study)
