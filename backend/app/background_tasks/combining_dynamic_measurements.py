@@ -3,7 +3,6 @@ import logging
 from typing import Dict, List, Optional, Any
 
 from sqlalchemy.orm import Session
-from sqlalchemy import select
 
 from app.database.db import SessionLocal
 from app.models.studies import Study
@@ -22,11 +21,28 @@ logger = logging.getLogger(__name__)
 VIEW_TASK_MAP: Dict[str, List[Dict]] = {
     "A4C": [
         {"task": "echonet_dynamic_lv_segmentation"},
-        {"task": "measurements_2d", "weights": ["rv_base"]},
+        {
+            "task": "measurements_2d",
+            "weights": [
+                {"weights_name": "rv_base", "ui_label": "RV basal diameter"},
+            ],
+        },
     ],
-    "PLAX": [
-        {"task": "measurements_2d", "weights": ["aorta", "aortic_root", "ivc", "ivs", "la", "lvid", "lvpw", "pa"]},
-    ]
+    "PARASTERNAL_LONG": [
+        {
+            "task": "measurements_2d",
+            "weights": [
+                {"weights_name": "aorta",        "ui_label": "Ascending aorta diameter"},
+                {"weights_name": "aortic_root",  "ui_label": "Aortic root diameter"},
+                {"weights_name": "ivc",          "ui_label": "Inferior vena cava diameter"},
+                {"weights_name": "ivs",          "ui_label": "Interventricular septal thickness"},
+                {"weights_name": "la",           "ui_label": "Left atrial diameter"},
+                {"weights_name": "lvid",         "ui_label": "LV internal diameter (LVIDd/LVIDs)"},
+                {"weights_name": "lvpw",         "ui_label": "LV posterior wall thickness"},
+                {"weights_name": "pa",           "ui_label": "Main pulmonary artery diameter"},
+            ],
+        }
+    ],
 }
 
 def _tasks_for_view(view: str) -> List[Dict]:
@@ -38,39 +54,68 @@ def _run_echonet_dynamic(db: Session, instance: Instance) -> Dict[str, Any]:
     """
     try:
         if infer_lv_segmentation is None:
-            return {"task": "echonet_dynamic_lv_segmentation", "status": "FAILED", "message": "infer_echonet_dynamic not wired"}
+            return {"task": "echonet_dynamic_lv_segmentation", 
+                    "status": "FAILED", 
+                    "message": "infer_echonet_dynamic not wired", 
+                    "ui_label": "Left Ventricle (LV) segmentation"}
         
         response = infer_lv_segmentation(instance.sop_instance_uid, db)
-        logger.info(f"[ECHONET DYNAMIC RESPONSE TYPE], {type(response)}")
         output_path = (response or {}).get("output_file")
 
         if not output_path:
-            return {"task": "echonet_dynamic_lv_segmentation", "status": "FAILED", "message": "No output path returned"}
-        return {"task": "echonet_dynamic_lv_segmentation", "status": "DONE", "output_path": output_path}
+            return {"task": "echonet_dynamic_lv_segmentation", 
+                    "status": "FAILED", 
+                    "message": "No output path returned", 
+                    "ui_label": "Left Ventricle (LV) segmentation"}
+        
+        return {"task": "echonet_dynamic_lv_segmentation", 
+                "status": "DONE", 
+                "output_path": output_path, 
+                "ui_label": "Left Ventricle (LV) segmentation"}
     
     except Exception as err:
         logger.exception(f"[DYNAMIC_MEASUREMENTS_COMBINING] LV-seg failed for {instance.sop_instance_uid}: {err}")
-        return {"task": "echonet_dynamic_lv_segmentation", "status": "FAILED", "message": str(err)}
+        return {"task": "echonet_dynamic_lv_segmentation", 
+                "status": "FAILED", 
+                "message": str(err), "ui_label": "Left Ventricle (LV) segmentation"}
 
-def _run_measurements(db: Session, instance: Instance, *, weights: str = None) -> Dict[str, Any]:
+def _run_measurements(db: Session, instance: Instance, *, weights: Dict[str, str]) -> Dict[str, Any]:
     """
     Call 2D measurements route as a plain function (no HTTP).
     """
+    weights_name = weights["weights_name"]
+    ui_label = weights["ui_label"]
     try:
         if infer_measurements_2d is None:
-            return {"task": "measurements_2d", "status": "FAILED", "message": "infer_measurements_2d not wired", "weights": weights}
+            return {"task": "measurements_2d", 
+                    "status": "FAILED", 
+                    "message": "infer_measurements_2d not wired", 
+                    "weights": weights_name,
+                    "ui_label": ui_label}
     
-        response = infer_measurements_2d(instance.sop_instance_uid, weights, db=db)
-        logger.info(f"[MEASUREMENTS RESPONSE TYPE], {type(response)}")
+        response = infer_measurements_2d(instance.sop_instance_uid, weights_name, db=db)
         output_path = (response or {}).get("output_file_mp4")
     
         if not output_path:
-            return {"task": "measurements_2d", "status": "FAILED", "message": "No output path returned", "weights": weights}
-        return {"task": "measurements_2d", "status": "DONE", "output_path": output_path, "weights": weights}
+            return {"task": "measurements_2d", 
+                    "status": "FAILED", 
+                    "message": "No output path returned", 
+                    "weights": weights_name,
+                    "ui_label": ui_label}
+        
+        return {"task": "measurements_2d", 
+                "status": "DONE", 
+                "output_path": output_path, 
+                "weights": weights_name,
+                "ui_label": ui_label}
 
     except Exception as err:
         logger.exception(f"[DYNAMIC_MEASUREMENTS_COMBINING] 2D measurements failed for {instance.sop_instance_uid}: {err}")
-        return {"task": "measurements_2d", "status": "FAILED", "message": str(err), "weights": weights}
+        return {"task": "measurements_2d", 
+                "status": "FAILED", 
+                "message": str(err), 
+                "weights": weights_name,
+                "ui_label": ui_label}
 
 
 def combining_dynamic_measurements(study_uid: str) -> None:
@@ -121,7 +166,7 @@ def combining_dynamic_measurements(study_uid: str) -> None:
         summaries: List[Dict[str, Any]] = []
         for instance in instances:
             predicted_view = (instance.predicted_view or "").upper()
-            predicted_view_confidence = (instance.predicted_view_confidence or "")
+            predicted_view_confidence = (instance.predicted_view_confidence or None)
             tasks_config = _tasks_for_view(predicted_view)
 
             # --- Part 2.1 If there is no inference for the instance with this view ---
