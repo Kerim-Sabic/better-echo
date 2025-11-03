@@ -12,8 +12,8 @@ from app.models.studies import Study
 from app.models.derived_results import DerivedResult, ResultStatus
 from app.core.artifacts import DYNAMIC_MEASUREMENTS_COMBINED_TYPE
 from app.background_tasks.combining_dynamic_measurements import combining_dynamic_measurements
-from app.helpers.dynamic_measurements_combined_results_row_to_dict import combined_results_row_to_dict
-from app.schemas.combined_dynamic_measurements_schemas import (
+from app.helpers.row_to_dict.dynamic_measurements_combined_results_row_to_dict import combined_results_row_to_dict
+from app.schemas.orchestration_apis_schemas.combined_dynamic_measurements_schemas import (
     CombinedResultsResponse, CompleteResponse, PendingResponse
 )
 

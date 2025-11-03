@@ -8,10 +8,10 @@ from typing import Optional, Dict, Any
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.core.artifacts import COMBINED_TYPE, LLM_REPORT_TYPE
+from app.core.artifacts import PANECHO_ECHOPRIME_COMBINED_TYPE, LLM_REPORT_TYPE
 from app.models.studies import Study
 from app.models.derived_results import DerivedResult, ResultStatus
-from app.helpers.combined_results_row_to_dict import build_combined_sections_from_row
+from app.helpers.row_to_dict.combined_results_row_to_dict import build_combined_sections_from_row
 from app.services.llm_client import LLMClient
 from app.prompting.params import LLMParams
 from app.prompting.builder import build_report_messages, extract_report_blocks
@@ -33,7 +33,7 @@ def generate_for_study(study_uid: str, db: Session) -> Dict[str, Any]:
 
     combined_row: Optional[DerivedResult] = (
         db.query(DerivedResult)
-        .filter(DerivedResult.study_id == study.id, DerivedResult.type == COMBINED_TYPE)
+        .filter(DerivedResult.study_id == study.id, DerivedResult.type == PANECHO_ECHOPRIME_COMBINED_TYPE)
         .first()
     )
     if not combined_row or combined_row.status != ResultStatus.complete:
@@ -112,15 +112,24 @@ def generate_for_study(study_uid: str, db: Session) -> Dict[str, Any]:
     }
 
     try:
-        dr = DerivedResult(
-            study_id=study.id,
-            type=LLM_REPORT_TYPE,
-            value_json=json.dumps(payload, ensure_ascii=False),
-            model_name="LLM",
-            model_version="v1",
-            status=ResultStatus.complete,
+        existing = (
+            db.query(DerivedResult)
+            .filter(DerivedResult.study_id == study.id, DerivedResult.type == LLM_REPORT_TYPE)
+            .first()
         )
-        db.add(dr)
+        if existing:
+            existing.value_json = json.dumps(payload, ensure_ascii=False)
+            existing.status = ResultStatus.complete
+        else:
+            dr = DerivedResult(
+                study_id=study.id,
+                type=LLM_REPORT_TYPE,
+                value_json=json.dumps(payload, ensure_ascii=False),
+                model_name="LLM_Report_Generator",
+                model_version="v1",
+                status=ResultStatus.complete,
+            )
+            db.add(dr)
         db.commit()
     except Exception as e:
         logger.warning(f"[LLM] Persisting LLM report failed: {e}")
@@ -131,4 +140,3 @@ def generate_for_study(study_uid: str, db: Session) -> Dict[str, Any]:
         "report": report_md,
         "diagnoses_json": diagnoses_json,
     }
-
