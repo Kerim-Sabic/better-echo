@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-@router.get("/studies/{study_uid}/llm-report",
+@router.get("/studies/{study_uid}/llm-report-results",
             response_model=LLMReportResponse,)
 def get_llm_report(
     study_uid: str,
@@ -57,7 +57,7 @@ def get_llm_report(
         raise HTTPException(status_code=404, detail="Study not found")
     
     # --- Part 2. Lookup LLM report row ---
-    llm_report_row = Optional[DerivedResult] = (
+    llm_report_row: Optional[DerivedResult] = (
         db.query(DerivedResult)
         .filter(DerivedResult.study_id == study.id, DerivedResult.type == LLM_REPORT_TYPE)
         .first()
@@ -65,7 +65,6 @@ def get_llm_report(
 
     # --- Part 3 If LLM report is present and complete -> return payload ---
     if llm_report_row and llm_report_row.status == ResultStatus.complete:
-        logger.info(f"[TEST] {llm_report_row}")
         payload = build_llm_report_from_row(llm_report_row)
 
         logger.info(f"[LLM_REPORT] LLM report present for study_uid={study_uid}")
@@ -85,7 +84,7 @@ def get_llm_report(
         )
     
     # --- Part 5 If LLM report is missing: check PanEcho+EchoPrime combined results pre-requisite ---
-    panecho_echoprime_combined_row = Optional[DerivedResult] = (
+    panecho_echoprime_combined_row: Optional[DerivedResult] = (
         db.query(DerivedResult)
         .filter(
             DerivedResult.study_id == study.id,
