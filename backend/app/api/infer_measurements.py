@@ -206,13 +206,13 @@ def infer_measurements_2d(
         pass
 
     # --- Step 12: Respond ---
-    return Measurements2DResponse(
-        success=True,
-        message="Inference completed",
-        sop_instance_uid=sop_instance_uid,
-        model_weights=model_weights,
-        output_file_mp4=_rel_uploads(out_mp4),
-        min_length_cm=min_len_cm,
-        max_length_cm=max_len_cm,
-        in_progress=False,
-    )
+    return {
+        "success": True,
+        "message": "Inference completed",
+        "sop_instance_uid": sop_instance_uid,
+        "model_weights": model_weights,
+        "output_file_mp4": _rel_uploads(out_mp4),
+        "min_length_cm": min_len_cm,
+        "max_length_cm": max_len_cm,
+        "in_progress": False,
+    }

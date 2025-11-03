@@ -1,99 +1,166 @@
 import { useMemo } from "react";
 import { useCombinedResultsQuery } from "./useCombinedResultsQuery";
+import { useDynamicMeasurementsResultsQuery } from "./useDynamicMeasurementsResultsQuery";
 
 /**
  * @returns {{
  *   state: "loading" | "pending" | "ready" | "not_found" | "error",
  *   error: unknown,
  *   studyUID: string | null,
- *   results: any,
+ *   // data buckets
+ *   panechoEchoprimeResults: any,         // PanEcho + EchoPrime combined results
+ *   dynamicMeasurementsResults: any,      // Dynamic + Measurements combined results
  *   hasMeasurements: boolean,
+ *   // controls
  *   isPolling: boolean,
  *   refresh: () => void
  * }}
  */
 export function useStudyResults(studyUid) {
-    // Fetch PanEcho+EchoPrime combined results (polls while pending)
-    const combinedResultsQuery = useCombinedResultsQuery(studyUid, {
-        enabled: Boolean(studyUid),
-    });
+  // ---- Queries --------------------------------------------------------------
+  const combinedResultsQuery = useCombinedResultsQuery(studyUid, {
+    enabled: Boolean(studyUid),
+  });
 
-    // Derive a page-level state from the resource query
-    const pageState = useMemo(() => {
-        if (!studyUid) return "not_found";
-        if (combinedResultsQuery.isError) return "error";
+  const dynamicMeasurementsQuery = useDynamicMeasurementsResultsQuery(studyUid, {
+    enabled: Boolean(studyUid),
+  });
 
-        const combinedResultsResponse = combinedResultsQuery.data;
+  // Future-ready: just add new resources here (e.g., useReportQuery)
+  // Each resource should expose { data: {status, isPending, isComplete, results, ...}, isError, isFetching, refetch }
+  const resources = [
+    {
+      key: "panechoEchoprime",
+      query: combinedResultsQuery,
+      extractResults: (resp) =>
+        resp?.results ??
+        (resp?.status === 200 && resp?.data?.status === "complete"
+          ? resp?.data?.panecho_echoprime_results ?? null
+          : null),
+    },
+    {
+      key: "dynamicMeasurements",
+      query: dynamicMeasurementsQuery,
+      extractResults: (resp) =>
+        resp?.results ??
+        (resp?.status === 200 && resp?.data?.status === "complete"
+          ? resp?.data?.dynamic_measurements_results ?? null
+          : null),
+    },
+    // {
+    //   key: "report",
+    //   query: useReportQuery(studyUid, { enabled: Boolean(studyUid) }),
+    //   extractResults: (resp) => resp?.results ?? null,
+    // },
+  ];
 
-        // First load
-        if (!combinedResultsResponse) return "loading";
+  // ---- Aggregate page-level state ------------------------------------------
+  const pageState = useMemo(() => {
+    if (!studyUid) return "not_found";
 
-        // Not found
-        if (combinedResultsResponse.status === 404) return "not_found";
+    const datas = resources.map((resource) => resource.query.data);
+    const fetchings = resources.map((resource) => resource.query.isFetching);
+    const errors = resources.map((resource) => resource.query.isError);
 
-        const isPending =
-            combinedResultsResponse?.isPending ??
-            (combinedResultsResponse.status === 202 &&
-                combinedResultsResponse.data?.status === "pending");
-        
-        const isComplete = 
-        combinedResultsResponse?.isComplete ??
-        (combinedResultsResponse.status === 200 &&
-            combinedResultsResponse.data?.status === "complete");
+    const noDataYet = datas.every((data) => !data);
+    if (noDataYet) return "loading";
 
-        if (isPending) return "pending";
-        if (isComplete) return "ready";
+    const all404 = datas.length > 0 && datas.every((data) => data?.status === 404);
+    if (all404) return "not_found";
 
-        // Fallback
-        return combinedResultsQuery.isFetching ? "loading" : "error";
-    }, [studyUid, combinedResultsQuery.isError, combinedResultsQuery.isFetching, combinedResultsQuery.data])
+    const anyPending = datas.some(
+      (data) => data?.isPending || (data?.status === 202 && data?.data?.status === "pending")
+    );
+    if (anyPending) return "pending";
 
-    // Normalize UI data once (add more sections later as you add hooks)
-    const combinedResults = useMemo(() => {
-        const combinedResultsResponse = combinedResultsQuery.data;
-        if (!combinedResultsResponse) return null;
+    const anyComplete = datas.some(
+      (data) => data?.isComplete || (data?.status === 200 && data?.data?.status === "complete")
+    );
+    if (anyComplete) return "ready";
 
-        // Convenience field from 'select'
-        if (combinedResultsResponse.results) return combinedResultsResponse.results;
+    const anyFetching = fetchings.some(Boolean);
+    if (anyFetching) return "loading";
 
-        // Fallback: read directly from API shape
-        if (
-            combinedResultsResponse.status === 200 &&
-            combinedResultsResponse.data?.status === "complete"
-        ) {
-            return combinedResultsResponse.data.panecho_echoprime_results ?? null;
-        }
-        return null;
-    }, [combinedResultsQuery.data]);
+    const anyError = errors.some(Boolean);
+    if (anyError) return "error";
 
-    // The UI-facing contract: one stable object the page/layout consumes
-    const viewModel = useMemo(
+    // Fallback
+    return "error";
+  }, [studyUid, resources]);
+
+  // ---- Normalize outputs per resource --------------------------------------
+  const panechoEchoprimeResults = useMemo(() => {
+    const response = combinedResultsQuery.data;
+    if (!response) return null;
+    // prefer pre-computed results from select()
+    if (response.results) return response.results;
+    // fallback to raw API shape
+    if (response.status === 200 && response.data?.status === "complete") {
+      return response.data.panecho_echoprime_results ?? null;
+    }
+    return null;
+  }, [combinedResultsQuery.data]);
+
+  const dynamicMeasurementsResults = useMemo(() => {
+    const response = dynamicMeasurementsQuery.data;
+    if (!response) return null;
+    if (response.results) return response.results;
+    if (response.status === 200 && response.data?.status === "complete") {
+      return response.data.dynamic_measurements_results ?? null;
+    }
+    return null;
+  }, [dynamicMeasurementsQuery.data]);
+
+  // ---- Derived booleans & controls -----------------------------------------
+  const isPolling = useMemo(() => {
+    const data = [combinedResultsQuery.data, dynamicMeasurementsQuery.data];
+    return data.some(
+      (data) => data?.isPending || (data?.status === 202 && data?.data?.status === "pending")
+    );
+  }, [combinedResultsQuery.data, dynamicMeasurementsQuery.data]);
+
+  const firstError =
+    combinedResultsQuery.error ??
+    dynamicMeasurementsQuery.error ??
+    null;
+
+  const hasMeasurements = Boolean(panechoEchoprimeResults || dynamicMeasurementsResults);
+
+  // ---- Compose UI-facing view model ----------------------------------------
+  const viewModel = useMemo(
     () => ({
-        state: pageState,
-        error: combinedResultsQuery.error ?? null,
+      state: pageState,
+      error: firstError,
 
-        // identifiers / header bits
-        studyUID: studyUid ?? null,
+      // identifiers / header bits
+      studyUID: studyUid ?? null,
 
-        // data buckets
-        results: combinedResults,
-        hasMeasurements: Boolean(combinedResults),
+      // data buckets
+      panechoEchoprimeResults,
+      dynamicMeasurementsResults,
 
-        // controls
-        isPolling: 
-            (combinedResultsQuery.data?.isPending ??
-                (combinedResultsQuery.data?.status === 202)) || false,
-        refresh: () => combinedResultsQuery.refetch(),
+      hasMeasurements,
+
+      // controls
+      isPolling,
+      refresh: () => {
+        combinedResultsQuery.refetch();
+        dynamicMeasurementsQuery.refetch();
+        // add future refetches here (e.g., reportQuery.refetch())
+      },
     }),
     [
-        pageState,
-        combinedResultsQuery.error,
-        studyUid,
-        combinedResults,
-        combinedResultsQuery.data,
-        combinedResultsQuery.refetch,
+      pageState,
+      firstError,
+      studyUid,
+      panechoEchoprimeResults,
+      dynamicMeasurementsResults,
+      hasMeasurements,
+      isPolling,
+      combinedResultsQuery.refetch,
+      dynamicMeasurementsQuery.refetch,
     ]
-    );
+  );
 
-    return viewModel;
+  return viewModel;
 }
