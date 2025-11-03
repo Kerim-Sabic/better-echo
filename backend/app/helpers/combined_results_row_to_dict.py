@@ -38,5 +38,5 @@ def build_combined_sections_from_row(derived_results) -> Dict[str, Any]:
             "integrated_tasks": {},
         }
     return build_combined_sections_payload(
-        getattr(derived_results, "integrated_tasks", None),
+        getattr(derived_results, "value_json", None),
     )
