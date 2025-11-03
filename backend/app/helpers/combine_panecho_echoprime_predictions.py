@@ -432,6 +432,6 @@ def combine_results(
         "echoprime_normalized": echoprime_normalized,       # full normalized EchoPrime #21
         "panecho_only": panecho_only_outputs,               # tasks only PanEcho predicts #28
         "echoprime_only": echoprime_only_outputs,           # tasks only EchoPrime predicts #9
-        "integrated_tasks": integrated_tasks,               # combined task-level results #49
+        "integrated_tasks": integrated_tasks,               # combined task-level results #51
         "flags": sorted(set(alert_flags)),                  # disagreement flags (if any)
-    }                                                       # 49 tasks predicted in total
+    }                                                       # 51 tasks predicted in total

@@ -3,10 +3,6 @@ from pydantic import BaseModel, Field
 
 class CombinedSections(BaseModel):
     """Structured payload built by build_combined_sections_from_row()"""
-    panecho_echoprime_overlapping_tasks: Dict[str, Any] = Field(default_factory=dict)
-    panecho_only_tasks: Dict[str, Any] = Field(default_factory=dict)
-    echoprime_only_tasks: Dict[str, Any] = Field(default_factory=dict)
-    disagreement_flags: Dict[str, Any] = Field(default_factory=dict)
     integrated_tasks: Dict[str, Any] = Field(default_factory=dict)
 
 class CompleteResponse(BaseModel):
