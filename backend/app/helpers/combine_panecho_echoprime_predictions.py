@@ -4,7 +4,7 @@ import json, pathlib, logging
 logger = logging.getLogger(__name__)
 
 # Load configuration file once
-CONFIG_FILE = pathlib.Path(__file__).parent.parent / "configs" / "thresholds.config.json"
+CONFIG_FILE = pathlib.Path(__file__).parent.parent.parent / "configs" / "thresholds.config.json"
 try:
     with open(CONFIG_FILE) as f:
         TASK_CONFIG = json.load(f)
