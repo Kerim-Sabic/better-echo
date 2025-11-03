@@ -4,6 +4,7 @@ import EchocardiogramViewer from "../components/EchocardiogramViewer";
 import Header from "../components/Header";
 import AiMeasurements from "../components/AiMeasurements";
 import AiVideoMeasurements from "../components/AiVideoMeasurements";
+import LlmReport from "../components/LlmReport";
 
 
 export function StudyResultsLayout({ navigateBack, viewModel }) {
@@ -13,6 +14,7 @@ export function StudyResultsLayout({ navigateBack, viewModel }) {
     studyUID,
     panechoEchoprimeResults,
     dynamicMeasurementsResults,
+    llmReportResults,
     hasMeasurements,
     isPolling,
     refresh,
@@ -137,9 +139,7 @@ export function StudyResultsLayout({ navigateBack, viewModel }) {
               )}
 
               {activeTab === "report" && (
-                <PlaceholderCard title="AI Report">
-                  Replace this with your <code>AIReport</code> component.
-                </PlaceholderCard>
+                <LlmReport llmReportResults={llmReportResults}/>
               )}
             </div>
           </div>
