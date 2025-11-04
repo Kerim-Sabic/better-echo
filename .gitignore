@@ -5,6 +5,7 @@ __pycache__/
 backend/venv/
 backend/.env/
 backend/app/logs
+backend/app/AI_models/PanEcho/weights
 
 # Ignores all the files in uploads except .gitkeep
 backend/app/uploads/*
