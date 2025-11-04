@@ -88,6 +88,21 @@ def infer_echoprime(
     logger.info(f"[EchoPrime] infer_echoprime called with study_uid={study_uid}")
 
     ep = get_ep() # model is loaded on first request
+        # --- Device diagnostics (TO CHECK IF GPU IS USED)---
+    #try:
+        #enc = getattr(ep, "echo_encoder", None)
+        #vc  = getattr(ep, "view_classifier", None)
+        #enc_dev = next(enc.parameters()).device if enc else "unknown"
+        #vc_dev  = next(vc.parameters()).device if vc else "unknown"
+        #logger.info(f"[EchoPrime] encoder_device={enc_dev}, view_classifier_device={vc_dev}")
+    #except Exception as e:
+        #logger.warning(f"[EchoPrime] Could not read model device(s): {e}")
+
+    #if torch.cuda.is_available():
+        #logger.info(f"[EchoPrime] CUDA available: True; device_count={torch.cuda.device_count()}")
+    #else:
+        #logger.info("[EchoPrime] CUDA available: False")
+
 
     # --- Step 1: fetch instances from Orthanc ---
     instance_orthanc_ids = fetch_orthanc_instance_ids_from_study(study_uid)
