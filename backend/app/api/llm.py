@@ -12,7 +12,7 @@ from app.core.artifacts import PANECHO_ECHOPRIME_COMBINED_TYPE, ECHOPRIME_TYPE, 
 from app.database.db import get_db
 from app.models.studies import Study
 from app.models.derived_results import DerivedResult, ResultStatus
-from app.helpers.combined_results_row_to_dict import build_combined_sections_from_row
+from app.helpers.row_to_dict.combined_results_row_to_dict import build_combined_sections_from_row
 from app.schemas.llm_schemas import (
     LLMReportResponse,
     LLMChatRequest,
