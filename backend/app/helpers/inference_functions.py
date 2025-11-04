@@ -1,4 +1,5 @@
 import io
+import os
 import math
 import logging
 from typing import List
@@ -6,6 +7,7 @@ import requests
 from PIL import Image
 import numpy as np
 import torch
+from pathlib import Path
 
 from app.core.config import settings
 
@@ -119,16 +121,32 @@ def get_model_and_device():
         # pick device explicitly
         _device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         logger.info(f"[INFERENCE_FUNCTIONS] Loading PanEcho model on device: {_device}")
-        try:
-            # requires outbound network/git the first time unless cached locally
-            _model = torch.hub.load(
-                'CarDS-Yale/PanEcho',
-                'PanEcho',
-                force_reload=False
+        
+        # Local PanEcho repo path (vendored)
+        local_repo_dir = (Path(__file__).resolve().parent.parent / "AI_models" / "PanEcho").resolve()
+        hubconf_path = local_repo_dir / "hubconf.py"
+        if not hubconf_path.exists():
+            raise RuntimeError(
+                f"PanEcho local repo is missing at {local_repo_dir}."
+                f"Expected hubconf.py at {hubconf_path}. Please vendor the repo and assets."
             )
-            _model.to(_device).eval()
-            logger.info("[INFERENCE_FUNCTIONS] PanEcho model loaded successfully")
+        
+        # Ensure a local torch hub cache (keeps artifacts in-repo; no network)
+        torch_cache_dir = (local_repo_dir / "pytorch_hub_cache").resolve()
+        os.environ.setdefault("TORCH_HOME", str(torch_cache_dir))
+        try:
+            torch_cache_dir.mkdir(parents=True, exist_ok=True)
         except Exception as e:
-            logger.error(f"[INFERENCE_FUNCTIONS] Failed to load PanEcho via torch.hub: {e}")
-            raise
+            logger.warning(f"[INFERENCE_FUNCTIONS] Could not create TORCH_HOME at {torch_cache_dir}: {e}")
+        
+        # Strictly load from local repo (offline)
+        _model = torch.hub.load(
+            str(local_repo_dir),
+            'PanEcho',
+            source='local',
+            force_reload=False
+        )
+        _model.to(_device).eval()
+        logger.info("[INFERENCE_FUNCTIONS] PanEcho (local) loaded successfully")
+
     return _model, _device
