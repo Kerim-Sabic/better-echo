@@ -77,8 +77,9 @@ def pick_frames_from_instance(instance_id: str, num_frames: int = 16) -> List[Im
     # Get instance metadata to know number of frames
     logger.info(f"[INFERENCE_FUNCTIONS] Picking frames from instance {instance_id}")
     meta = requests.get(f"{orthanc_url}/instances/{instance_id}", auth=(orthanc_user, orthanc_pass)).json()
-    frames = meta.get("MainDicomTags", {}).get("NumberOfFrames", 1)  # multi-frame cine or 1
-    frames = int(frames)
+    frames_list = requests.get(f"{orthanc_url}/instances/{instance_id}/frames",
+                               auth=(orthanc_user, orthanc_pass), timeout=10).json()
+    frames = len(frames_list) if isinstance(frames_list, list) else int(meta.get("MainDicomTags", {}).get("NumberOfFrames", 1))
     logger.info(f"[INFERENCE_FUNCTIONS] Instance has {frames} frame(s)")
     # Pick 16 approximately evenly spaced frame indices (1-based in Orthanc HTTP)
     indices = [max(1, min(frames, 1 + math.floor(i * frames / num_frames))) for i in range(num_frames)]
