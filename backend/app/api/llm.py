@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.core.artifacts import COMBINED_TYPE, ECHOPRIME_TYPE, LLM_REPORT_TYPE
+from app.core.artifacts import PANECHO_ECHOPRIME_COMBINED_TYPE, ECHOPRIME_TYPE, LLM_REPORT_TYPE
 from app.database.db import get_db
 from app.models.studies import Study
 from app.models.derived_results import DerivedResult, ResultStatus
@@ -58,7 +58,7 @@ def generate_llm_report(study_uid: str, db: Session = Depends(get_db)):
 
     combined_row: Optional[DerivedResult] = (
         db.query(DerivedResult)
-        .filter(DerivedResult.study_id == study.id, DerivedResult.type == COMBINED_TYPE)
+        .filter(DerivedResult.study_id == study.id, DerivedResult.type == PANECHO_ECHOPRIME_COMBINED_TYPE)
         .first()
     )
     if not combined_row:
@@ -97,7 +97,7 @@ def chat_about_report(payload: LLMChatRequest, db: Session = Depends(get_db)):
     # Combined results (diagnoses JSON)
     combined_row: Optional[DerivedResult] = (
         db.query(DerivedResult)
-        .filter(DerivedResult.study_id == study.id, DerivedResult.type == COMBINED_TYPE)
+        .filter(DerivedResult.study_id == study.id, DerivedResult.type == PANECHO_ECHOPRIME_COMBINED_TYPE)
         .first()
     )
     if not combined_row or combined_row.status != ResultStatus.complete:
