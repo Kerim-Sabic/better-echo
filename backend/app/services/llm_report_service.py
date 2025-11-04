@@ -8,7 +8,7 @@ from typing import Optional, Dict, Any
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.core.artifacts import COMBINED_TYPE, LLM_REPORT_TYPE
+from app.core.artifacts import PANECHO_ECHOPRIME_COMBINED_TYPE, LLM_REPORT_TYPE
 from app.models.studies import Study
 from app.models.derived_results import DerivedResult, ResultStatus
 from app.helpers.combined_results_row_to_dict import build_combined_sections_from_row
@@ -33,7 +33,7 @@ def generate_for_study(study_uid: str, db: Session) -> Dict[str, Any]:
 
     combined_row: Optional[DerivedResult] = (
         db.query(DerivedResult)
-        .filter(DerivedResult.study_id == study.id, DerivedResult.type == COMBINED_TYPE)
+        .filter(DerivedResult.study_id == study.id, DerivedResult.type == PANECHO_ECHOPRIME_COMBINED_TYPE)
         .first()
     )
     if not combined_row or combined_row.status != ResultStatus.complete:

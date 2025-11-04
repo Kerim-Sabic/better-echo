@@ -115,19 +115,13 @@ def combining_panecho_echoprime(study_uid: str):
         )
 
         if combined_row:
-            combined_row.panecho_echoprime_overlapping_tasks = combined_results["ranges"]
-            combined_row.panecho_only_tasks = combined_results["panecho_only"]
-            combined_row.echoprime_only_tasks= combined_results["echoprime_only"]
-            combined_row.disagreement_flags = combined_results["flags"]
+            combined_row.value_json = combined_results["integrated_tasks"]
             combined_row.status = ResultStatus.complete
         else:
             combined_row = DerivedResult(
                 study_id = study.id,
                 type=PANECHO_ECHOPRIME_COMBINED_TYPE,
-                panecho_echoprime_overlapping_tasks = combined_results["ranges"],
-                panecho_only_tasks = combined_results["panecho_only"],
-                echoprime_only_tasks= combined_results["echoprime_only"],
-                disagreement_flags = combined_results["flags"],
+                value_json = combined_results["integrated_tasks"],
                 model_name = "PanEcho_EchoPrime_Combined",
                 model_version = "v1",
                 status = ResultStatus.complete

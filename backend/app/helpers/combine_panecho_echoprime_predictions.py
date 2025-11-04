@@ -1,4 +1,16 @@
 from typing import Any, Dict, List, Tuple, Optional
+import json, pathlib, logging
+
+logger = logging.getLogger(__name__)
+
+# Load configuration file once
+CONFIG_FILE = pathlib.Path(__file__).parent.parent.parent / "configs" / "thresholds.config.json"
+try:
+    with open(CONFIG_FILE) as f:
+        TASK_CONFIG = json.load(f)
+except Exception as e:
+    TASK_CONFIG = {}
+    logger.warning(f"[combine_results] Could not load config: {e}")
 
 # Part 1. PanEcho task metadata (class orders, positive labels, units)
 # These control how we interpret raw PanEcho outputs
@@ -32,6 +44,56 @@ PANECHO_REGRESSION_UNITS = {
     "LAIDs2D": "cm", "LAVol": "cm^3", "RADimensionM-L(cm)": "cm", "AVPkVel(m|s)": "m/s",
     "TVPkGrad": "mmHg", "AORoot": "cm",
 }
+PANECHO_POSITIVE_CLASSES = {
+    "MVRegurgitation": ["Moderate|Severe"],
+    "TVRegurgitation": ["Moderate|Severe"],
+    "AVRegurg": ["Moderate|Severe"],
+    "AVStenosis": ["Severe"],
+}
+
+def _panecho_positive_probability(
+        task_name: str,
+        panecho_normalized: Dict[str, Any]
+) -> Optional[float]:
+    """
+    Returns the probability of a 'clinically significant' finding from PanEcho:
+    - For binary tasks: just use the probability_present
+    - For multiclass tasks: sum probabilities of 'positive' classes defined in PANECHO_POSITIVE_CLASSES
+    If no positive classes are defined, fall back to the existing 'abnormal' probability (1 - p(normal))
+    """
+    node = panecho_normalized.get(task_name)
+    if not node:
+        return None
+    
+    kind = node.get("kind")
+    if kind == "binary":
+        return node.get("probability_present")
+    
+    if kind == "multiclass":
+        class_probs = node.get("probs") or {}
+        positive_labels = PANECHO_POSITIVE_CLASSES.get(task_name)
+        if positive_labels:
+            # Sum up the probabilities for the positive labels
+            return float(sum(class_probs.get(label, 0.0) for label in positive_labels))
+        else:
+            # Fallback: abnormal = 1 - probability of the normal class (existing behaviour)
+            normal_class_by_task = {
+                "LVSize": "Normal",
+                "LVSystolicFunction": "Normal|Hyperdynamic",
+                "LVDiastolicFunction": "Normal",
+                "RVSize": "Normal",
+                "LASize": "Normal",
+                "AVStenosis": "None",
+                "AVRegurg": "None|Trace",
+                "MVRegurgitation": "None|Trace",
+                "TVRegurgitation": "None|Trace",
+            }
+            normal_label = normal_class_by_task.get(task_name)
+            if normal_label:
+                return 1.0 - float(class_probs.get(normal_label, 0.0))
+            return None
+    #  Unknown or raw shape
+    return None
 
 # Part 2. Tiny helper utilities (used by normalizers and comparison)
 def _is_sequence(value: Any) -> bool:
@@ -176,6 +238,114 @@ def combine_results(
     panecho_normalized = normalize_panecho_predictions(panecho_predictions)
     echoprime_normalized = normalize_echoprime_predictions(echoprime_predictions)
 
+    integrated_tasks = {}
+
+    for task_key, cfg in TASK_CONFIG.items():
+        panecho_name = cfg.get("panecho_name")
+        echoprime_name = cfg.get("echoprime_name")
+
+        # Fetch PanEcho probability or value
+        pan_prob = None
+        pan_val = None
+        if panecho_name:
+            node = panecho_normalized.get(panecho_name)
+            if node:
+                if node["kind"] in ("binary", "binary_like"): # but note: PanEcho uses "binary"
+                    pan_prob = _panecho_positive_probability(panecho_name, panecho_normalized)
+                elif node["kind"] == "multiclass":
+                    pan_prob = _panecho_positive_probability(panecho_name, panecho_normalized)
+                elif node["kind"] in ("regression", "regression_like"):
+                    pan_val = node.get("value")
+
+        # Fetch EchoPrime probability or value
+        echo_prob = None
+        echo_val = None
+        if echoprime_name:
+            node = echoprime_normalized.get(echoprime_name)
+            if node:
+                if node["kind"] in ("binary", "binary_like"):
+                    echo_prob = node.get("probability_present")
+                elif node["kind"] in ("regression", "regression_like"):
+                    echo_val = node.get("value")
+
+        # Apply thresholds
+        panecho_pass = (pan_prob is not None and cfg.get("panecho_threshold") is not None and pan_prob >= cfg["panecho_threshold"])
+        echoprime_pass = (echo_prob is not None and cfg.get("echoprime_threshold") is not None and echo_prob >= cfg["echoprime_threshold"])
+    
+        # Decide integrated value / label based on combine_rule
+        rule = cfg.get("combine_rule")
+        integrated_label = None
+        integrated_value = None
+        sources = []
+
+        if rule == "average_value":
+            # For continuous metrics like EF and PAP
+            if pan_val is not None and echo_val is not None:
+                integrated_value = (pan_val + echo_val) / 2.0
+                sources = ["PanEcho", "EchoPrime"]
+            elif pan_val is not None:
+                integrated_value = pan_val
+                sources = ["PanEcho"]
+            elif echo_val is not None:
+                integrated_value = echo_val
+                sources = ["EchoPrime"]
+            # Optionally: check discrepancy threshold here
+        elif rule.startswith("prefer_model"):
+            # Example: "prefer_model:PanEcho" or "prefer_model:EchoPrime"
+            preferred_model = rule.split(":")[1]
+            # Use probability-based decision
+            if preferred_model == "PanEcho" and panecho_pass:
+                integrated_label = "Present"
+                sources.append("PanEcho")
+            elif preferred_model == "EchoPrime" and echoprime_pass:
+                integrated_label = "Present"
+                sources.append("EchoPrime")
+            # fallback: negative
+            if not integrated_label:
+                integrated_label = "Absent"
+        elif rule == "positive_if_either_positive":
+            if panecho_pass or echoprime_pass:
+                integrated_label = "Present"
+                if panecho_pass:
+                    sources.append("PanEcho")
+                if echoprime_pass:
+                    sources.append("EchoPrime")
+            else:
+                integrated_label = "Absent"
+        elif rule == "agree_if_both_positive":
+            if panecho_pass and echoprime_pass:
+                integrated_label = "Present"
+                sources = ["PanEcho", "EchoPrime"]
+            else:
+                integrated_label = "Absent"
+        elif rule == "prefer_panecho_if_echoprime_zero":
+            # If EchoPrime probability is zero or below its threshold,
+            # but PanEcho is extremely confident, call it Present
+            echo_is_zero_or_below = (echo_prob is None or echo_prob < cfg.get("echoprime_threshold", 0.0))
+            # PanEcho must exceed its high threshold (panecho_threshold)
+            if echo_is_zero_or_below and panecho_pass:
+                integrated_label = "Present"
+                sources.append("PanEcho")
+            else:
+                # Otherwise, if Echoprime passes its own threshold, call Present
+                # (so we still respect EchoPrime positives)
+                if echoprime_pass:
+                    integrated_label = "Present"
+                    sources.append("EchoPrime")
+                else:
+                    integrated_label = "Absent"
+        
+        integrated_tasks[task_key] = {
+            "panecho_value_or_prob": pan_val if pan_val is not None else pan_prob,
+            "echoprime_value_or_prob": echo_val if echo_val is not None else echo_prob,
+            "integrated_value": integrated_value,
+            "integrated_label": integrated_label,
+            "units": cfg.get("units"),
+            "sources": sources,
+            # Optionally: discrepancy flags (e.g., if one says present, other says absent)
+            "discrepancy": (panecho_pass != echoprime_pass) if (pan_prob is not None and echo_prob is not None) else None,
+        }
+
     # 5.2 Pull shared continuos metrics (EF, PAP/RVSP) for range comparison
     panecho_ef_percent = panecho_normalized.get("EF", {}).get("value")
     echoprime_ef_percent = echoprime_normalized.get("ejection_fraction", {}).get("value")
@@ -262,5 +432,6 @@ def combine_results(
         "echoprime_normalized": echoprime_normalized,       # full normalized EchoPrime #21
         "panecho_only": panecho_only_outputs,               # tasks only PanEcho predicts #28
         "echoprime_only": echoprime_only_outputs,           # tasks only EchoPrime predicts #9
+        "integrated_tasks": integrated_tasks,               # combined task-level results #51
         "flags": sorted(set(alert_flags)),                  # disagreement flags (if any)
-    }                                                       # 49 tasks predicted in total
+    }                                                       # 51 tasks predicted in total
