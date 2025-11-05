@@ -277,6 +277,7 @@ def combine_results(
         integrated_label = None
         integrated_value = None
         sources = []
+        discrepancy = None
 
         if rule == "average_value":
             # For continuous metrics like EF and PAP
@@ -292,17 +293,46 @@ def combine_results(
             # Optionally: check discrepancy threshold here
         elif rule.startswith("prefer_model"):
             # Example: "prefer_model:PanEcho" or "prefer_model:EchoPrime"
-            preferred_model = rule.split(":")[1]
-            # Use probability-based decision
-            if preferred_model == "PanEcho" and panecho_pass:
-                integrated_label = "Present"
-                sources.append("PanEcho")
-            elif preferred_model == "EchoPrime" and echoprime_pass:
-                integrated_label = "Present"
-                sources.append("EchoPrime")
-            # fallback: negative
-            if not integrated_label:
-                integrated_label = "Absent"
+            preferred_model = rule.split(":", 1)[1].strip()
+
+            # Numeric (regression) path if any numeric value present
+            is_numeric = (pan_val is not None) or (echo_val is not None)
+            if is_numeric:
+                # Choose preferred model's numeric value if present, else fallback
+                if preferred_model == "PanEcho" and (pan_val is not None):
+                    integrated_value = pan_val
+                    sources = ["PanEcho"]
+                elif preferred_model == "EchoPrime" and (echo_val is not None):
+                    integrated_value = echo_val
+                    sources = ["EchoPrime"]
+                else:
+                    # Fallback to whichever numeric value exists
+                    if pan_val is not None:
+                        integrated_value = pan_val
+                        sources = ["PanEcho"]
+                    elif echo_val is not None:
+                        integrated_value = echo_val
+                        sources = ["EchoPrime"]
+
+                # Optional: numeric discrepancy if both present and threshold in config
+                thr = cfg.get("discrepancy_threshold")
+                if (thr is not None) and (pan_val is not None) and (echo_val is not None):
+                    try:
+                        discrepancy = abs(float(pan_val) - float(echo_val)) > float(thr)
+                    except Exception:
+                        discrepancy = False
+
+                # No integrated_label for numeric tasks
+            else:
+                # Classification (prob/prob-like): prefer chosen model only
+                if preferred_model == "PanEcho" and panecho_pass:
+                    integrated_label = "Present"
+                    sources.append("PanEcho")
+                elif preferred_model == "EchoPrime" and echoprime_pass:
+                    integrated_label = "Present"
+                    sources.append("EchoPrime")
+                if not integrated_label:
+                    integrated_label = "Absent"
         elif rule == "positive_if_either_positive":
             if panecho_pass or echoprime_pass:
                 integrated_label = "Present"
@@ -342,8 +372,7 @@ def combine_results(
             "integrated_label": integrated_label,
             "units": cfg.get("units"),
             "sources": sources,
-            # Optionally: discrepancy flags (e.g., if one says present, other says absent)
-            "discrepancy": (panecho_pass != echoprime_pass) if (pan_prob is not None and echo_prob is not None) else None,
+            "discrepancy": (discrepancy if (discrepancy is not None) else ((panecho_pass != echoprime_pass) if (pan_prob is not None and echo_prob is not None) else None)),
         }
 
     # 5.2 Pull shared continuos metrics (EF, PAP/RVSP) for range comparison
