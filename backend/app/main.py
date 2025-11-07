@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import uvicorn
 
+from app.api.health import router as health_router
 from app.api.upload import router as upload_router
 from app.api.studies import router as studies_router
 from app.api.infer_panecho import router as infer_all_panecho_router
@@ -50,6 +51,7 @@ UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")         # backend/app/uploads
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 # Routes
+app.include_router(health_router, prefix="/api", tags=["Health"])
 app.include_router(upload_router, prefix="/api", tags=["Upload dicom"])
 app.include_router(studies_router, prefix="/api", tags=["Studies"])
 app.include_router(infer_all_panecho_router, prefix="/api", tags=["Inference"])

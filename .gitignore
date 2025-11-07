@@ -18,6 +18,23 @@ backend/app/artifacts/*
 # Frontend
 node_modules/
 build/
+frontend/build/
+
+# Electron Desktop
+dist/
+out/
+*.log
+backend/dist/
+backend/desktop/build/
+backend/desktop/*.exe
+backend/desktop/*.app
+
+# PyInstaller
+*.spec.orig
+
+# Electron Builder
+.webpack/
+build-resources/icon.*
 
 # General
 .DS_Store

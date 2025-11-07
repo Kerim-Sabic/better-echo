@@ -1,6 +1,7 @@
 // src/App.js
 import React from "react";
 import { BrowserRouter, Routes, Route, useNavigate, Navigate } from "react-router-dom";
+import RoutePersistence from "./RoutePersistence";
 
 import { AuthProvider } from "./contexts/AuthenticationContext";
 import ProtectedRoute from "./contexts/ProtectedRoute";
@@ -14,13 +15,29 @@ import StudyResults from "./pages/StudyResults";
 
 function SplashRoute() {
   const navigate = useNavigate();
-  return <SplashScreen onComplete={() => navigate("/login")} />;
+  return (
+    <SplashScreen
+      onComplete={() => {
+        try {
+          const saved = localStorage.getItem("lastRoute");
+          if (saved && saved !== "/" && saved !== "/login") {
+            navigate(saved);
+            return;
+          }
+        } catch (e) {
+          // ignore storage errors
+        }
+        navigate("/login");
+      }}
+    />
+  );
 }
 
 export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider> {/* Authentication context */}
+        <RoutePersistence />
         <Routes>
           {/* Splash → auto-navigates to /login */}
           <Route path="/" element={<SplashRoute />} />
