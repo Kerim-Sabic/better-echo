@@ -40,7 +40,7 @@ PANECHO_BINARY_POSITIVE_LABEL = {
 PANECHO_REGRESSION_UNITS = {
     "EF": "%", "GLS": "%", "LVEDV": "cm^3", "LVESV": "cm^3", "LVSV": "cm^3",
     "IVSd": "cm", "LVPWd": "cm", "LVIDs": "cm", "LVIDd": "cm", "LVOTDiam": "cm",
-    "E|EAvg": None, "RVSP": "mmHg", "RVIDd": "cm", "TAPSE": "cm", "RVSVel": "cm/s",
+    "E|EAvg": "E/E' ratio", "RVSP": "mmHg", "RVIDd": "cm", "TAPSE": "cm", "RVSVel": "cm/s",
     "LAIDs2D": "cm", "LAVol": "cm^3", "RADimensionM-L(cm)": "cm", "AVPkVel(m|s)": "m/s",
     "TVPkGrad": "mmHg", "AORoot": "cm",
 }

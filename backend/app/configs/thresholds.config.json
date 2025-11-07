@@ -413,7 +413,7 @@
         "panecho_threshold": null,
         "echoprime_threshold": null,
         "combine_rule": "prefer_model:PanEcho",
-        "units": null,
+        "units": "E/E' ratio",
         "expected_direction": "higher_is_worse",
         "notes": "E/E' average ratio. PanEcho only."
     },
