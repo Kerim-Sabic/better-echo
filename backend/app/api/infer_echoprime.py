@@ -106,8 +106,6 @@ def infer_echoprime(
 
     # --- Step 1: fetch instances from Orthanc ---
     instance_orthanc_ids = fetch_orthanc_instance_ids_from_study(study_uid)
-    if len(instance_orthanc_ids) < 2:
-        raise HTTPException(status_code=400, detail="EchoPrime requires at least 2 DICOM files for a study")
     
     # --- Step 2: download dicoms ---
     study_dir = download_dicoms_for_study(instance_orthanc_ids)

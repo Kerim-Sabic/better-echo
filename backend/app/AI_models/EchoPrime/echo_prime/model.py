@@ -254,7 +254,7 @@ class EchoPrime:
             out_logits = self.view_classifier(stack_of_first_frames)
         out_views = torch.argmax(out_logits, dim=1)
         view_list = [utils.COARSE_VIEWS[v] for v in out_views]
-        stack_of_view_encodings = torch.stack([torch.nn.functional.one_hot(out_views, 11)]).squeeze().to(self.device)
+        stack_of_view_encodings = torch.nn.functional.one_hot(out_views, num_classes=11).float().to(self.device)
 
         probs = torch.softmax(out_logits, dim=1)  # NEW: per-class probabilities [N, 11]
         probs_list = probs.detach().cpu().tolist()

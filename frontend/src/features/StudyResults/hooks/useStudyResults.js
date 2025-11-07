@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useCombinedResultsQuery } from "./useCombinedResultsQuery";
 import { useDynamicMeasurementsResultsQuery } from "./useDynamicMeasurementsResultsQuery";
+import { useLlmReportResultsQuery } from "./useLlmReportResultsQuery";
 
 /**
  * @returns {{
@@ -10,6 +11,7 @@ import { useDynamicMeasurementsResultsQuery } from "./useDynamicMeasurementsResu
  *   // data buckets
  *   panechoEchoprimeResults: any,         // PanEcho + EchoPrime combined results
  *   dynamicMeasurementsResults: any,      // Dynamic + Measurements combined results
+ *   llmReportResults: any,                // LLM report results
  *   hasMeasurements: boolean,
  *   // controls
  *   isPolling: boolean,
@@ -22,10 +24,13 @@ export function useStudyResults(studyUid) {
     enabled: Boolean(studyUid),
   });
 
-  const dynamicMeasurementsQuery = useDynamicMeasurementsResultsQuery(studyUid, {
+  const dynamicMeasurementsResultsQuery = useDynamicMeasurementsResultsQuery(studyUid, {
     enabled: Boolean(studyUid),
   });
 
+  const llmReportResultsQuery = useLlmReportResultsQuery(studyUid, {
+    enabled: Boolean(studyUid),
+  });
   // Future-ready: just add new resources here (e.g., useReportQuery)
   // Each resource should expose { data: {status, isPending, isComplete, results, ...}, isError, isFetching, refetch }
   const resources = [
@@ -40,18 +45,22 @@ export function useStudyResults(studyUid) {
     },
     {
       key: "dynamicMeasurements",
-      query: dynamicMeasurementsQuery,
+      query: dynamicMeasurementsResultsQuery,
       extractResults: (resp) =>
         resp?.results ??
         (resp?.status === 200 && resp?.data?.status === "complete"
           ? resp?.data?.dynamic_measurements_results ?? null
           : null),
     },
-    // {
-    //   key: "report",
-    //   query: useReportQuery(studyUid, { enabled: Boolean(studyUid) }),
-    //   extractResults: (resp) => resp?.results ?? null,
-    // },
+    {
+      key: "llmReport",
+      query: llmReportResultsQuery,
+      extractResults: (resp) =>
+        resp?.results ??
+        (resp?.status === 200 && resp?.data?.status === "complete"
+          ? resp?.data?.llm_report ?? null
+          : null),   
+    },
   ];
 
   // ---- Aggregate page-level state ------------------------------------------
@@ -102,26 +111,45 @@ export function useStudyResults(studyUid) {
   }, [combinedResultsQuery.data]);
 
   const dynamicMeasurementsResults = useMemo(() => {
-    const response = dynamicMeasurementsQuery.data;
+    const response = dynamicMeasurementsResultsQuery.data;
     if (!response) return null;
     if (response.results) return response.results;
     if (response.status === 200 && response.data?.status === "complete") {
       return response.data.dynamic_measurements_results ?? null;
     }
     return null;
-  }, [dynamicMeasurementsQuery.data]);
+  }, [dynamicMeasurementsResultsQuery.data]);
+
+  const llmReportResults = useMemo(() => {
+    const response = llmReportResultsQuery.data;
+    if (!response) return null;
+    if (response.results) return response.results;
+    if (response.status === 200 && response.data?.status === "complete") {
+      return response.data.llm_report ?? null;
+    }
+    return null;
+  }, [llmReportResultsQuery.data]);
 
   // ---- Derived booleans & controls -----------------------------------------
   const isPolling = useMemo(() => {
-    const data = [combinedResultsQuery.data, dynamicMeasurementsQuery.data];
+    const data = [
+      combinedResultsQuery.data, 
+      dynamicMeasurementsResultsQuery.data,
+      llmReportResultsQuery.data,
+    ];
     return data.some(
       (data) => data?.isPending || (data?.status === 202 && data?.data?.status === "pending")
     );
-  }, [combinedResultsQuery.data, dynamicMeasurementsQuery.data]);
+  }, [
+    combinedResultsQuery.data,
+    dynamicMeasurementsResultsQuery.data,
+    llmReportResultsQuery.data,
+  ]);
 
   const firstError =
     combinedResultsQuery.error ??
-    dynamicMeasurementsQuery.error ??
+    dynamicMeasurementsResultsQuery.error ??
+    llmReportResultsQuery.error ??
     null;
 
   const hasMeasurements = Boolean(panechoEchoprimeResults || dynamicMeasurementsResults);
@@ -138,6 +166,7 @@ export function useStudyResults(studyUid) {
       // data buckets
       panechoEchoprimeResults,
       dynamicMeasurementsResults,
+      llmReportResults,
 
       hasMeasurements,
 
@@ -145,7 +174,8 @@ export function useStudyResults(studyUid) {
       isPolling,
       refresh: () => {
         combinedResultsQuery.refetch();
-        dynamicMeasurementsQuery.refetch();
+        dynamicMeasurementsResultsQuery.refetch();
+        llmReportResultsQuery.refetch();
         // add future refetches here (e.g., reportQuery.refetch())
       },
     }),
@@ -155,10 +185,12 @@ export function useStudyResults(studyUid) {
       studyUid,
       panechoEchoprimeResults,
       dynamicMeasurementsResults,
+      llmReportResults,
       hasMeasurements,
       isPolling,
       combinedResultsQuery.refetch,
-      dynamicMeasurementsQuery.refetch,
+      dynamicMeasurementsResultsQuery.refetch,
+      llmReportResultsQuery.refetch,
     ]
   );
 

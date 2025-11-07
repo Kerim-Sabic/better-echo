@@ -1,29 +1,122 @@
-import React, { useState, useMemo } from "react";
+// src/features/StudyResults/components/AiMeasurements.jsx
+import React, { useMemo } from "react";
 import { Card, CardContent, CardTitle } from "../../../components/ui/card";
 
 /**
  * Props:
- * - panechoEchoprimeResults: object
+ * - panechoEchoprimeResults: {
+ *     integrated_tasks?: Record<string, {
+ *       panecho_value_or_prob?: number|null,
+ *       echoprime_value_or_prob?: number|null,
+ *       integrated_value?: number|null,
+ *       integrated_label?: string|null,
+ *       units?: string|null,
+ *       note?: string|null
+ *     }>,
+ *     // Back-compat shapes:
+ *     panecho_echoprime_overlapping_tasks?: Record<string, any>,
+ *     panecho_only_tasks?: Record<string, any>,
+ *     echoprime_only_tasks?: Record<string, any>,
+ *     disagreement_flags?: Record<string, any>
+ *   }
  */
 export default function AiMeasurements({ panechoEchoprimeResults }) {
   const {
-    panecho_echoprime_overlapping_tasks: overlap = {},
-    panecho_only_tasks: panechoOnly = {},
-    echoprime_only_tasks: echoprimeOnly = {},
-    disagreement_flags: flags = {},
-  } = panechoEchoprimeResults ?? {};
+    integrated_tasks,
+    panecho_echoprime_overlapping_tasks,
+    panecho_only_tasks,
+    echoprime_only_tasks,
+    disagreement_flags,
+  } = panechoEchoprimeResults || {};
 
-  const hasAny =
-    !!panechoEchoprimeResults &&
-    (Object.keys(overlap).length ||
-      Object.keys(panechoOnly).length ||
-      Object.keys(echoprimeOnly).length);
+  const hasIntegrated = !!integrated_tasks && Object.keys(integrated_tasks).length > 0;
 
-  if (!hasAny) {
+  // --------- Integrated rows (preferred) ----------
+  const integratedRows = useMemo(() => {
+    if (!hasIntegrated) return [];
+    return Object.entries(integrated_tasks).map(([name, obj]) => ({
+      key: name,
+      label: prettyName(name),
+      units: obj?.units ?? null,
+      integratedValue: obj?.integrated_value ?? null,
+      integratedLabel: obj?.integrated_label ?? null,
+      panechoValOrProb: obj?.panecho_value_or_prob ?? null,
+      echoprimeValOrProb: obj?.echoprime_value_or_prob ?? null,
+      note: obj?.note ?? null,
+    }));
+  }, [integrated_tasks, hasIntegrated]);
+
+  // --------- Back-compat rows (shown only if no 'integrated_tasks') ----------
+  const legacyOverlappingRows = useMemo(() => {
+    if (hasIntegrated || !panecho_echoprime_overlapping_tasks) return [];
+    return Object.entries(panecho_echoprime_overlapping_tasks).map(([name, obj]) => ({
+      key: name,
+      label: prettyName(name),
+      units: obj?.units ?? null,
+      panechoValOrProb:
+        obj?.from_panecho_abnormal_prob ?? obj?.from_panecho ?? null,
+      echoprimeValOrProb:
+        obj?.to_echoprime_prob ?? obj?.to_echoprime ?? null,
+      // Provide a reasonable "integrated" presentation for old structure
+      integratedValue: obj?.to_echoprime ?? obj?.from_panecho ?? null,
+      integratedLabel: obj?.flag_large_gap ? "⚠ Gap" : null,
+      note: obj?.note ?? null,
+    }));
+  }, [hasIntegrated, panecho_echoprime_overlapping_tasks]);
+
+  const legacyPanEchoOnlyRows = useMemo(() => {
+    if (hasIntegrated || !panecho_only_tasks) return [];
+    return Object.entries(panecho_only_tasks).map(([name, obj]) => {
+      const inferredUnits = obj?.units ?? null;
+      const [value, label] = normalizePanechoOnly(obj);
+      return {
+        key: `panecho_${name}`,
+        label: prettyName(name),
+        units: inferredUnits,
+        panechoValOrProb: value,
+        echoprimeValOrProb: null,
+        integratedValue: value,
+        integratedLabel: label,
+        note: null,
+      };
+    });
+  }, [hasIntegrated, panecho_only_tasks]);
+
+  const legacyEchoPrimeOnlyRows = useMemo(() => {
+    if (hasIntegrated || !echoprime_only_tasks) return [];
+    return Object.entries(echoprime_only_tasks).map(([name, obj]) => ({
+      key: `ep_${name}`,
+      label: prettyName(name),
+      units: obj?.units ?? null,
+      panechoValOrProb: null,
+      echoprimeValOrProb: obj?.probability_present ?? null,
+      integratedValue: null,
+      integratedLabel: binaryLabel(obj?.probability_present),
+      note: null,
+    }));
+  }, [hasIntegrated, echoprime_only_tasks]);
+
+  const rows = useMemo(() => {
+    if (hasIntegrated) return integratedRows;
+    // Combine legacy groups in one list
+    return [
+      ...legacyOverlappingRows,
+      ...legacyPanEchoOnlyRows,
+      ...legacyEchoPrimeOnlyRows,
+    ];
+  }, [
+    hasIntegrated,
+    integratedRows,
+    legacyOverlappingRows,
+    legacyPanEchoOnlyRows,
+    legacyEchoPrimeOnlyRows,
+  ]);
+
+  if (!rows.length) {
     return (
-      <Card className="overflow-hidden">
+      <Card className="w-full overflow-hidden">
         <CardContent className="p-6 text-sm text-gray-600">
-          No AI measurements available.
+          No measurements available.
         </CardContent>
       </Card>
     );
@@ -31,397 +124,162 @@ export default function AiMeasurements({ panechoEchoprimeResults }) {
 
   return (
     <div className="space-y-4">
-      {/* Highlights (optional, shows common headline metrics when present) */}
-      <Highlights overlap={overlap} panechoOnly={panechoOnly} />
-
-      {/* PanEcho + EchoPrime (overlapping) */}
-      <SectionCard title="PanEcho + EchoPrime (Overlapping Tasks)">
-        <OverlapTable data={overlap} />
-      </SectionCard>
-
-      {/* PanEcho only */}
-      <SectionCard title="PanEcho-only Measurements">
-        <PanechoOnlyTable data={panechoOnly} />
-      </SectionCard>
-
-      {/* EchoPrime only */}
-      <SectionCard title="EchoPrime-only Findings">
-        <EchoprimeOnlyTable data={echoprimeOnly} />
-      </SectionCard>
-
-      {/* Disagreement flags (if any) */}
-      {flags && Object.keys(flags).length > 0 && (
-        <SectionCard title="Disagreement Flags">
-          <pre className="text-xs bg-gray-50 rounded p-3 overflow-auto">
-            {JSON.stringify(flags, null, 2)}
-          </pre>
-        </SectionCard>
-      )}
-    </div>
-  );
-}
-
-/* -------------------- Sections -------------------- */
-
-function Highlights({ overlap, panechoOnly }) {
-  const ef = overlap?.EF_percent;
-  const pap = overlap?.pulmonary_pressure_mmHg__RVSP_vs_PAP;
-  const lv = {
-    edv: panechoOnly?.LVEDV,
-    esv: panechoOnly?.LVESV,
-    sv: panechoOnly?.LVSV,
-    gls: panechoOnly?.GLS,
-  };
-
-  const items = useMemo(() => {
-    const arr = [];
-    if (ef) {
-      arr.push({
-        label: "EF",
-        value: `${fmtNum(ef.to_echoprime ?? ef.from_panecho)}${ef.units || "%"}`,
-        sub:
-          ef.from_panecho != null && ef.to_echoprime != null
-            ? `${fmtNum(ef.from_panecho)} → ${fmtNum(ef.to_echoprime)} ${ef.units || "%"}`
-            : ef.range || "",
-        warn: !!ef.flag_large_gap,
-      });
-    }
-    if (pap) {
-      arr.push({
-        label: "Pulmonary Pressure",
-        value: `${fmtNum(pap.to_echoprime_PAP ?? pap.from_panecho_RVSP)} ${pap.units || "mmHg"}`,
-        sub:
-          pap.from_panecho_RVSP != null && pap.to_echoprime_PAP != null
-            ? `${fmtNum(pap.from_panecho_RVSP)} → ${fmtNum(pap.to_echoprime_PAP)} ${pap.units || "mmHg"}`
-            : pap.range || "",
-        warn: !!pap.flag_large_gap,
-      });
-    }
-    if (lv.edv?.value != null) {
-      arr.push({
-        label: "LVEDV",
-        value: `${fmtNum(lv.edv.value)} ${lv.edv.units || ""}`.trim(),
-      });
-    }
-    if (lv.esv?.value != null) {
-      arr.push({
-        label: "LVESV",
-        value: `${fmtNum(lv.esv.value)} ${lv.esv.units || ""}`.trim(),
-      });
-    }
-    if (lv.sv?.value != null) {
-      arr.push({
-        label: "LVSV",
-        value: `${fmtNum(lv.sv.value)} ${lv.sv.units || ""}`.trim(),
-      });
-    }
-    if (lv.gls?.value != null) {
-      arr.push({
-        label: "GLS",
-        value: `${fmtNum(lv.gls.value)} ${lv.gls.units || "%"}`.trim(),
-      });
-    }
-    return arr;
-  }, [ef, pap, lv.edv, lv.esv, lv.sv, lv.gls]);
-
-  if (!items.length) return null;
-
-  return (
-    <Card className="overflow-hidden">
-      <div className="px-6 pt-5">
-        <CardTitle className="text-base">Highlights</CardTitle>
-      </div>
-      <CardContent className="p-6">
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
-          {items.map((it, idx) => (
-            <div
-              key={idx}
-              className={[
-                "rounded-lg border p-3",
-                it.warn ? "border-amber-300 bg-amber-50/60" : "bg-gray-50",
-              ].join(" ")}
-            >
-              <div className="text-xs text-gray-500">{it.label}</div>
-              <div className="text-lg font-semibold">{it.value}</div>
-              {it.sub ? (
-                <div className="text-[11px] text-gray-500 mt-0.5">{it.sub}</div>
-              ) : null}
-            </div>
-          ))}
+      {/* Summary */}
+      <Card className="overflow-hidden">
+        <div className="px-6 pt-5">
+          <CardTitle className="text-base">AI Measurements</CardTitle>
         </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function SectionCard({ title, children }) {
-  return (
-    <Card className="overflow-hidden">
-      <div className="px-6 pt-5">
-        <CardTitle className="text-base">{title}</CardTitle>
-      </div>
-      <CardContent className="p-0">{children}</CardContent>
-    </Card>
-  );
-}
-
-function OverlapTable({ data }) {
-  const rows = Object.entries(data || {});
-  if (!rows.length) {
-    return <EmptyRows text="No overlapping tasks." />;
-  }
-
-  return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full text-sm">
-        <thead className="bg-gray-50 text-gray-600">
-          <tr>
-            <Th>Metric</Th>
-            <Th>PanEcho</Th>
-            <Th>EchoPrime</Th>
-            <Th>Range</Th>
-            <Th>Units</Th>
-            <Th>Gap</Th>
-          </tr>
-        </thead>
-        <tbody className="divide-y">
-          {rows.map(([key, v]) => {
-            const panecho =
-              v?.from_panecho ?? v?.from_panecho_abnormal_prob ?? v?.from_panecho_RVSP;
-            const echoprime =
-              v?.to_echoprime ?? v?.to_echoprime_prob ?? v?.to_echoprime_PAP;
-            const isProb =
-              "from_panecho_abnormal_prob" in (v || {}) || "to_echoprime_prob" in (v || {});
-            const panechoTxt = isProb ? pct(panecho) : fmtNum(panecho);
-            const echoTxt = isProb ? pct(echoprime) : fmtNum(echoprime);
-            const units = v?.units || (isProb ? "" : undefined);
-
-            return (
-              <tr key={key} className="hover:bg-gray-50">
-                <Td className="font-medium">{prettyKey(key)}</Td>
-                <Td>{panechoTxt}</Td>
-                <Td>{echoTxt}</Td>
-                <Td className="text-gray-500">{v?.range ?? ""}</Td>
-                <Td>{units || ""}</Td>
-                <Td>
-                  {v?.flag_large_gap ? (
-                    <span className="inline-block text-xs px-2 py-0.5 rounded bg-amber-100 text-amber-800">
-                      Large gap
-                    </span>
-                  ) : (
-                    <span className="text-xs text-gray-400">—</span>
-                  )}
-                </Td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function PanechoOnlyTable({ data }) {
-  const rows = Object.entries(data || {});
-  if (!rows.length) return <EmptyRows text="No PanEcho-only measurements." />;
-
-  return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full text-sm">
-        <thead className="bg-gray-50 text-gray-600">
-          <tr>
-            <Th>Metric</Th>
-            <Th>Value</Th>
-            <Th>Units</Th>
-            <Th>Details</Th>
-          </tr>
-        </thead>
-        <tbody className="divide-y">
-          {rows.map(([key, v]) => {
-            const kind = v?.kind;
-            if (kind === "regression") {
-              return (
-                <tr key={key} className="hover:bg-gray-50">
-                  <Td className="font-medium">{prettyKey(key)}</Td>
-                  <Td>{fmtNum(v?.value)}</Td>
-                  <Td>{v?.units || ""}</Td>
-                  <Td className="text-gray-500">—</Td>
-                </tr>
-              );
-            }
-
-            if (kind === "binary") {
-              return (
-                <tr key={key} className="hover:bg-gray-50">
-                  <Td className="font-medium">{prettyKey(key)}</Td>
-                  <Td>{pct(v?.probability_present)}</Td>
-                  <Td>{v?.positive_label ? `P(label=${v.positive_label})` : ""}</Td>
-                  <Td className="text-gray-500">Binary</Td>
-                </tr>
-              );
-            }
-
-            if (kind === "multiclass") {
-              return <MulticlassRow key={key} name={key} v={v} />;
-            }
-
-            // fallback
-            return (
-              <tr key={key} className="hover:bg-gray-50">
-                <Td className="font-medium">{prettyKey(key)}</Td>
-                <Td colSpan={3}>
-                  <code className="text-xs bg-gray-50 rounded px-1 py-0.5">
-                    {JSON.stringify(v)}
-                  </code>
-                </Td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function EchoprimeOnlyTable({ data }) {
-  const rows = Object.entries(data || {});
-  if (!rows.length) return <EmptyRows text="No EchoPrime-only findings." />;
-
-  return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full text-sm">
-        <thead className="bg-gray-50 text-gray-600">
-          <tr>
-            <Th>Finding</Th>
-            <Th>Probability</Th>
-            <Th>Notes</Th>
-          </tr>
-        </thead>
-        <tbody className="divide-y">
-          {rows.map(([key, v]) => {
-            // kind can be 'binary_like', treat like probability_present
-            const p = v?.probability_present;
-            return (
-              <tr key={key} className="hover:bg-gray-50">
-                <Td className="font-medium">{prettyKey(key)}</Td>
-                <Td>{pct(p)}</Td>
-                <Td className="text-gray-500">{v?.kind || "—"}</Td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-/* -------------------- Complex Row -------------------- */
-
-function MulticlassRow({ name, v }) {
-  const [open, setOpen] = useState(false);
-  const dist = v?.probs || {};
-  const classes = Array.isArray(v?.classes) ? v.classes : Object.keys(dist || {});
-  const rows = classes.map((c) => [c, dist?.[c]]).filter(([_, p]) => p != null);
-
-  return (
-    <>
-      <tr className="hover:bg-gray-50">
-        <Td className="font-medium">{prettyKey(name)}</Td>
-        <Td>
-          <span className="font-medium">{v?.label ?? "—"}</span>
-          {v?.confidence != null && (
-            <span className="ml-2 text-xs text-gray-500">({pct(v.confidence)})</span>
-          )}
-        </Td>
-        <Td>—</Td>
-        <Td>
-          <button
-            onClick={() => setOpen((s) => !s)}
-            className="text-xs px-2 py-1 rounded border bg-white hover:bg-gray-50"
-          >
-            {open ? "Hide distribution" : "Show distribution"}
-          </button>
-        </Td>
-      </tr>
-      {open && (
-        <tr className="bg-gray-50/60">
-          <Td colSpan={4}>
-            {rows.length ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                {rows.map(([cls, p]) => (
-                  <div key={cls} className="flex items-center gap-2">
-                    <div className="text-xs text-gray-600 w-40 truncate">{cls}</div>
-                    <div className="flex-1 h-2 rounded bg-gray-200 overflow-hidden">
-                      <div
-                        className="h-2 bg-gray-700"
-                        style={{ width: `${Math.min(100, Math.max(0, (p ?? 0) * 100))}%` }}
-                      />
-                    </div>
-                    <div className="text-xs text-gray-600 w-10 text-right">
-                      {pct(p)}
-                    </div>
-                  </div>
-                ))}
-              </div>
+        <CardContent className="p-6">
+          <div className="flex flex-wrap items-center gap-3 text-sm">
+            <Pill>Total measurements: {rows.length}</Pill>
+            {hasIntegrated ? (
+              <Pill variant="success">Integrated view</Pill>
             ) : (
-              <div className="text-xs text-gray-500">No class probabilities provided.</div>
+              <Pill variant="muted">Legacy view</Pill>
             )}
-          </Td>
-        </tr>
-      )}
-    </>
-  );
-}
+            {disagreement_flags && Object.keys(disagreement_flags).length > 0 && (
+              <Pill variant="warn">
+                Disagreements: {Object.keys(disagreement_flags).length}
+              </Pill>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
-/* -------------------- Small UI helpers -------------------- */
+      {/* Table */}
+      <div className="overflow-x-auto rounded-2xl border bg-white">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left border-b bg-gray-50">
+              <Th>Measurement</Th>
+              <Th>Integrated</Th>
+              <Th>Units</Th>
+              <Th>PanEcho</Th>
+              <Th>EchoPrime</Th>
+              <Th>Note</Th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.key} className="border-b last:border-0">
+                <Td className="font-medium">{r.label}</Td>
 
-function Th({ children }) {
-  return <th className="text-left font-medium px-3 py-2">{children}</th>;
-}
+                <Td>
+                  {r.integratedValue != null
+                    ? fmtNumber(r.integratedValue)
+                    : r.integratedLabel || "—"}
+                </Td>
 
-function Td({ children, className = "", ...rest }) {
-  return (
-    <td className={["px-3 py-2 align-top", className].join(" ")} {...rest}>
-      {children}
-    </td>
-  );
-}
+                <Td className="text-gray-500">{r.units || "—"}</Td>
 
-function EmptyRows({ text }) {
-  return (
-    <div className="p-4 text-sm text-gray-600">
-      {text}
+                <Td>{fmtMaybeValueOrProb(r.panechoValOrProb)}</Td>
+
+                <Td>{fmtMaybeValueOrProb(r.echoprimeValOrProb)}</Td>
+
+                <Td className="text-xs text-gray-500">{r.note || "—"}</Td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
 
-/* -------------------- Format helpers -------------------- */
+/* -------------------- helpers -------------------- */
 
-function fmtNum(n, digits = 2) {
-  if (n == null || Number.isNaN(n)) return "—";
-  const fixed = Number(n).toFixed(digits);
-  // trim trailing zeros but keep one leading zero for <1
-  return fixed.replace(/(\.\d*?[1-9])0+$/g, "$1").replace(/\.0+$/g, "");
+function Th({ children, className = "" }) {
+  return (
+    <th className={["px-3 py-2 text-xs font-semibold uppercase tracking-wide", className].join(" ")}>
+      {children}
+    </th>
+  );
+}
+function Td({ children, className = "" }) {
+  return <td className={["px-3 py-2 align-top", className].join(" ")}>{children}</td>;
 }
 
-function pct(p, digits = 1) {
-  if (p == null || Number.isNaN(p)) return "—";
-  return `${fmtNum(Number(p) * 100, digits)}%`;
-}
-
-function prettyKey(k) {
-  if (!k) return "";
-  // Friendly overrides
-  const map = {
-    EF_percent: "Ejection Fraction (EF)",
-    pulmonary_pressure_mmHg__RVSP_vs_PAP: "Pulmonary Pressure (RVSP vs PAP)",
-    AORoot: "Aortic Root",
-    "AVPkVel(m|s)": "Aortic Valve Peak Velocity",
-    "RADimensionM-L(cm)": "RA Dimension (M-L)",
+function Pill({ children, variant = "default" }) {
+  const variants = {
+    default: "border-gray-300 bg-white text-gray-700",
+    success: "border-emerald-300 bg-emerald-50 text-emerald-800",
+    warn: "border-amber-300 bg-amber-50 text-amber-800",
+    muted: "border-gray-200 bg-gray-100 text-gray-600",
   };
-  if (map[k]) return map[k];
-  return String(k)
+  return (
+    <span
+      className={[
+        "inline-flex items-center gap-1 text-xs px-2 py-1 rounded-lg border",
+        variants[variant] || variants.default,
+      ].join(" ")}
+    >
+      {children}
+    </span>
+  );
+}
+
+function prettyName(s) {
+  if (!s) return "—";
+  return String(s)
+    .replace(/__/g, "_")
     .replace(/_/g, " ")
-    .replace(/-/g, " – ")
     .replace(/\b([a-z])/g, (m) => m.toUpperCase());
+}
+
+function fmtNumber(n, digits = 2) {
+  if (n == null || Number.isNaN(Number(n))) return "—";
+  const x = Number(n);
+  // keep integers as-is, otherwise show toFixed
+  return Number.isInteger(x) ? String(x) : x.toFixed(digits);
+}
+
+function fmtProb(p, digits = 0) {
+  if (p == null || Number.isNaN(Number(p))) return "—";
+  return `${(Number(p) * 100).toFixed(digits)}%`;
+}
+
+function looksLikeProbability(val) {
+  // Treat 0..1 as probability (not perfect, but good heuristic)
+  if (val == null) return false;
+  const n = Number(val);
+  return Number.isFinite(n) && n >= 0 && n <= 1;
+}
+
+function fmtMaybeValueOrProb(v) {
+  if (v == null) return "—";
+  return looksLikeProbability(v) ? fmtProb(v, v === 0 || v === 1 ? 0 : 1) : fmtNumber(v);
+}
+
+function binaryLabel(p) {
+  if (p == null) return null;
+  const n = Number(p);
+  if (!Number.isFinite(n)) return null;
+  // Simple thresholding; adjust if you have your own threshold
+  return n >= 0.5 ? "Present" : "Absent";
+}
+
+/**
+ * Normalize older PanEcho-only task shapes:
+ * - kind: 'regression' -> value
+ * - kind: 'binary'/'binary_like' -> probability_present (+positive_label)
+ * - kind: 'multiclass' -> label
+ */
+function normalizePanechoOnly(obj) {
+  if (!obj || typeof obj !== "object") return [null, null];
+  const kind = obj.kind || null;
+  if (kind === "regression") {
+    return [obj.value ?? null, null];
+  }
+  if (kind === "binary" || kind === "binary_like") {
+    const p = obj.probability_present ?? null;
+    return [p, binaryLabel(p)];
+  }
+  if (kind === "multiclass") {
+    return [null, obj.label ?? null];
+  }
+  // Fallback: try common fields
+  if ("value" in obj) return [obj.value, null];
+  if ("label" in obj) return [null, obj.label];
+  if ("probability_present" in obj) return [obj.probability_present, binaryLabel(obj.probability_present)];
+  return [null, null];
 }
