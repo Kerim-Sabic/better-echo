@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, session } from 'electron';
+import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, session, screen } from 'electron';
 import { spawn, ChildProcess } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -11,6 +11,8 @@ const REACT_DEV_PORT = 3000;
 const BACKEND_DEV_PORT = 8000;
 // Toggle to default-open DevTools in development. Flip to true locally if desired.
 const OPEN_DEVTOOLS_DEFAULT = false;
+// Allow autoplay with audio for splash video first pass
+app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 
 // Orthanc Basic Auth configuration (can override via env vars)
 const ORTHANC_URL = process.env.ORTHANC_URL || 'http://localhost:8042';
@@ -71,7 +73,16 @@ function loadWindowState(): WindowState {
   } catch (e) {
     console.warn('Failed to load window state:', e);
   }
-  return { width: 1400, height: 900 };
+  // Default proportional size (85% of primary display work area)
+  try {
+    const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+    return {
+      width: Math.max(1280, Math.floor(width * 0.85)),
+      height: Math.max(800, Math.floor(height * 0.85)),
+    };
+  } catch {
+    return { width: 1400, height: 900 };
+  }
 }
 
 function saveWindowState(win: BrowserWindow | null): void {
@@ -94,7 +105,7 @@ function saveWindowState(win: BrowserWindow | null): void {
 
 function getTrayIconPath(): string {
   if (isDev) {
-    return path.join(__dirname, '..', '..', 'frontend', 'public', 'lovable-uploads', '9d9bcdf0-8a16-4777-8dc3-85ea7af6f600.png');
+    return path.join(__dirname, '..', '..', 'frontend', 'public', 'horalix-tray-icon-256.png');
   }
   return path.join(process.resourcesPath || path.join(__dirname, '..'), 'assets', 'tray.png');
 }
@@ -236,6 +247,11 @@ function createWindow(): void {
     height: state.height,
     x: state.x,
     y: state.y,
+    minWidth: 1280,
+    minHeight: 800,
+    center: state.x === undefined && state.y === undefined,
+    autoHideMenuBar: true,
+    icon: getTrayIconPath(),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -244,6 +260,10 @@ function createWindow(): void {
     },
     show: false,
   });
+
+  // Remove menu across platforms
+  Menu.setApplicationMenu(null);
+  mainWindow.setMenuBarVisibility(false);
 
   mainWindow.once('ready-to-show', () => {
     if (state.isMaximized) {

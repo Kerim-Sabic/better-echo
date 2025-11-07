@@ -40,7 +40,7 @@ module.exports = {
       to: 'docker-compose.yml',
     },
     {
-      from: 'frontend/public/lovable-uploads/9d9bcdf0-8a16-4777-8dc3-85ea7af6f600.png',
+      from: 'frontend/public/horalix-tray-icon-256.png',
       to: 'assets/tray.png',
     },
   ],
@@ -57,7 +57,7 @@ module.exports = {
         arch: ['x64'],
       },
     ],
-    icon: 'build-resources/icon.ico',
+    icon: 'frontend/public/horalix-taskbar-app-icon.ico',
   },
   nsis: {
     oneClick: false,

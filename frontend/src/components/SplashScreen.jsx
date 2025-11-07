@@ -1,67 +1,105 @@
-import { useEffect, useState } from "react";
-// If you have this asset, place it in src/assets and use a relative import.
-// Otherwise you can remove the backgroundImage style below.
-import heroBackground from "../assets/hero-background.jpg";
+import { useEffect, useRef, useState } from "react";
+import { getBackendUrl } from "../config/api";
 
 export default function SplashScreen({ onComplete }) {
+  const videoRef = useRef(null);
   const [isVisible, setIsVisible] = useState(true);
+  const [isZooming, setIsZooming] = useState(false);
+  const [direction, setDirection] = useState("forward"); // "forward" | "backward"
+  const [audioAllowed, setAudioAllowed] = useState(false);
 
+  // Helper: check backend health
+  async function checkHealth() {
+    try {
+      const base = await getBackendUrl(); // e.g., http://127.0.0.1:8000/api
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), 1200);
+      const res = await fetch(`${base}/health`, { signal: controller.signal });
+      clearTimeout(id);
+      return res.ok;
+    } catch {
+      return false;
+    }
+  }
+
+  // Play helpers
+  const playForward = (muted) => {
+    const el = videoRef.current;
+    if (!el) return;
+    el.src = "/horalix-splash-video.mp4";
+    el.muted = !!muted;
+    el.currentTime = 0;
+    el.play().catch(() => {});
+    setDirection("forward");
+  };
+  const playBackward = (muted) => {
+    const el = videoRef.current;
+    if (!el) return;
+    el.src = "/horalix-splash-video-reversed.mp4";
+    el.muted = !!muted;
+    el.currentTime = 0;
+    el.play().catch(() => {});
+    setDirection("backward");
+  };
+
+  // On mount: decide audio for first pass and start forward
   useEffect(() => {
-    const t = setTimeout(() => {
-      setIsVisible(false);
-      setTimeout(() => onComplete?.(), 500); // wait for fade
-    }, 3000);
-    return () => clearTimeout(t);
-  }, [onComplete]);
+    const playedBefore = typeof window !== "undefined" && localStorage.getItem("splashAudioPlayed") === "true";
+    const allowAudio = !playedBefore;
+    setAudioAllowed(allowAudio);
+    // Start forward; audio only if not played before
+    playForward(!allowAudio ? true : false);
+  }, []);
+
+  // Handle video end -> check readiness -> loop forward/back silently until ready
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el) return;
+
+    const onEnded = async () => {
+      // If first forward pass just ended and audio was allowed, mark as played
+      if (direction === "forward" && audioAllowed) {
+        try { localStorage.setItem("splashAudioPlayed", "true"); } catch {}
+        setAudioAllowed(false);
+      }
+
+      const ready = await checkHealth();
+      if (ready) {
+        // Smooth crossfade + slight zoom
+        setIsZooming(true);
+        setTimeout(() => setIsVisible(false), 50);
+        setTimeout(() => onComplete?.(), 700);
+        return;
+      }
+
+      // Not ready yet: pause ~300ms, then alternate direction silently
+      setTimeout(() => {
+        if (direction === "forward") {
+          playBackward(true);
+        } else {
+          playForward(true);
+        }
+      }, 300);
+    };
+
+    el.addEventListener("ended", onEnded);
+    return () => el.removeEventListener("ended", onEnded);
+  }, [direction, audioAllowed, onComplete]);
 
   return (
     <div
-      className={`fixed inset-0 bg-gradient-clinical flex items-center justify-center z-50 transition-opacity duration-500 ${
+      className={`fixed inset-0 z-50 transition-all duration-700 ease-out pointer-events-none ${
         isVisible ? "opacity-100" : "opacity-0"
-      }`}
-      style={{
-        backgroundImage: heroBackground
-          ? `linear-gradient(rgba(255,255,255,.9), rgba(255,255,255,.9)), url(${heroBackground})`
-          : undefined,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-      }}
-      role="img"
+      } ${isZooming ? "scale-105" : "scale-100"}`}
+      style={{ backgroundColor: "#000" }}
       aria-label="Application loading screen"
     >
-      <div className="text-center">
-        <div className="mb-8 flex items-center justify-center">
-          <div className="relative">
-            {/* Update src to your logo path */}
-            <img
-              src="/lovable-uploads/9d9bcdf0-8a16-4777-8dc3-85ea7af6f600.png"
-              alt="App Logo"
-              className="h-20 w-20 heartbeat"
-              role="img"
-              aria-label="Company logo"
-            />
-            <div className="absolute inset-0 h-20 w-20 rounded-full bg-primary/20 animate-pulse" />
-          </div>
-          <div className="ml-4">
-            <h1 className="text-4xl font-bold text-primary">Horalix</h1>
-            <h2 className="text-2xl font-light text-primary/80">Echo</h2>
-          </div>
-        </div>
-
-        <p className="text-xl text-muted-foreground font-medium">
-          AI-Powered Cardiac Insights
-        </p>
-
-        <div
-          className="mt-8 flex justify-center"
-          role="progressbar"
-          aria-label="Application loading"
-        >
-          <div className="w-32 h-1 bg-border rounded-full overflow-hidden">
-            <div className="h-full bg-gradient-primary animate-pulse rounded-full" />
-          </div>
-        </div>
-      </div>
+      <video
+        ref={videoRef}
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[50vw] h-[50vh] object-contain"
+        playsInline
+        preload="auto"
+      />
     </div>
   );
 }
