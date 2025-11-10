@@ -1,8 +1,7 @@
-// src/features/StudyResults/layouts/StudyResultsLayout.jsx
 import React, { useState } from "react";
 import EchocardiogramViewer from "../components/EchocardiogramViewer";
 import Header from "../components/Header";
-import AiMeasurements from "../components/AiMeasurements";
+import MainFileAiMeasurements from "../components/AiMeasurements/MainFileAiMeasurements";
 import AiVideoMeasurements from "../components/AiVideoMeasurements";
 import LlmReport from "../components/LlmReport";
 
@@ -131,7 +130,7 @@ export function StudyResultsLayout({ navigateBack, viewModel }) {
           <div className="mt-3 rounded-2xl border bg-white">
             <div className="p-4">
               {activeTab === "measurements" && (
-                <AiMeasurements panechoEchoprimeResults={panechoEchoprimeResults} />
+                <MainFileAiMeasurements panechoEchoprimeResults={panechoEchoprimeResults} />
               )}
 
               {activeTab === "segmentation" && (
