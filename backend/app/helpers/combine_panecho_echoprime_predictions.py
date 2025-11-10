@@ -284,6 +284,12 @@ def combine_results(
             if pan_val is not None and echo_val is not None:
                 integrated_value = (pan_val + echo_val) / 2.0
                 sources = ["PanEcho", "EchoPrime"]
+                thr = cfg.get("discrepancy_threshold")
+                if thr is not None:
+                    try:
+                        discrepancy = abs(float(pan_val) - float(echo_val)) > float(thr)
+                    except Exception:
+                        discrepancy = False
             elif pan_val is not None:
                 integrated_value = pan_val
                 sources = ["PanEcho"]

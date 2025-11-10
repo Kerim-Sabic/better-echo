@@ -3,7 +3,7 @@
         "panecho_name": "EF",
         "echoprime_name": "ejection_fraction",
         "combine_rule": "average_value",
-        "discrepancy_threshold": 5.0,
+        "discrepancy_threshold": 8.0,
         "units": "%",
         "expected_direction": "n/a",
         "notes": "Average EF values from both models and flag a discrepancy if they differ by more than 5 percentage points."
@@ -12,7 +12,7 @@
         "panecho_name": "RVSP",
         "echoprime_name": "pulmonary_artery_pressure_continuous",
         "combine_rule": "average_value",
-        "discrepancy_threshold": 5.0,
+        "discrepancy_threshold": 8.0,
         "units": "mmHg",
         "expected_direction": "higher_is_worse",
         "notes": "Average the RVSP (PanEcho) and PAP (EchoPrime). Flag a discrepancy if the absolute difference exceeds 5 mmHg."
