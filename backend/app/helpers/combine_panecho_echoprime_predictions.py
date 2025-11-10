@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Tuple, Optional
+from typing import Any, Dict, List, Optional
 import json, pathlib, logging
 
 logger = logging.getLogger(__name__)
@@ -229,10 +229,6 @@ def combine_results(
         study_uid: str,
         panecho_predictions: Dict[str, Any],
         echoprime_predictions: Dict[str, Any],
-        *,
-        ef_gap_threshold_points: float = 8.0,
-        pap_vs_rvsp_gap_threshold_mmhg: float = 8.0,
-        probability_gap_threshold: float = 0.40
 ) -> Dict[str, Any]:
     # 5.1 Normalize both models into a shared schema
     panecho_normalized = normalize_panecho_predictions(panecho_predictions)
@@ -381,6 +377,11 @@ def combine_results(
             "discrepancy": (discrepancy if (discrepancy is not None) else ((panecho_pass != echoprime_pass) if (pan_prob is not None and echo_prob is not None) else None)),
         }
 
+    # Return only the integrated tasks (legacy ranges/flags/partitions are not used)
+    return {
+        "integrated_tasks": integrated_tasks
+    }
+
     # 5.2 Pull shared continuos metrics (EF, PAP/RVSP) for range comparison
     panecho_ef_percent = panecho_normalized.get("EF", {}).get("value")
     echoprime_ef_percent = echoprime_normalized.get("ejection_fraction", {}).get("value")
@@ -459,14 +460,7 @@ def combine_results(
         if task_name not in echoprime_compared_keys:
             echoprime_only_outputs[task_name] = normalized_node
     
-    # 5.7 Return a compact, clinican-ready payload
+    # Return only the integrated tasks (persisted to DB by the background task)
     return {
-        "study_uid": study_uid,
-        "ranges": comparison_ranges,                        # doctor-facing comparisons (PanEcho -> EchoPrime); tasks provided by both models #12
-        "panecho_normalized": panecho_normalized,           # full normalized PanEcho #40
-        "echoprime_normalized": echoprime_normalized,       # full normalized EchoPrime #21
-        "panecho_only": panecho_only_outputs,               # tasks only PanEcho predicts #28
-        "echoprime_only": echoprime_only_outputs,           # tasks only EchoPrime predicts #9
-        "integrated_tasks": integrated_tasks,               # combined task-level results #51
-        "flags": sorted(set(alert_flags)),                  # disagreement flags (if any)
-    }                                                       # 51 tasks predicted in total
+        "integrated_tasks": integrated_tasks
+    }
