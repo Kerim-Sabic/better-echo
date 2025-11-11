@@ -5,6 +5,7 @@ import Header from "../components/Header";
 import AiMeasurements from "../components/AiMeasurements";
 import AiVideoMeasurements from "../components/AiVideoMeasurements";
 import LlmReport from "../components/LlmReport";
+import { TITLEBAR_HEIGHT } from "../../../components/TitleBar";
 
 
 export function StudyResultsLayout({ navigateBack, viewModel }) {
@@ -75,7 +76,7 @@ export function StudyResultsLayout({ navigateBack, viewModel }) {
   // ----- Normal (ready) UI -----
   return (
     // Add pt-16 to offset the FIXED header (h-16)
-    <div className="min-h-screen bg-gray-50 pt-16">
+    <div className="min-h-full flex flex-col bg-gray-50 pt-16">
       {/* Fixed header */}
       <div className="w-full">
         <Header
@@ -88,7 +89,7 @@ export function StudyResultsLayout({ navigateBack, viewModel }) {
       </div>
 
       {/* Full-bleed grid */}
-      <main className="w-full px-6 py-4 grid grid-cols-12 gap-6 2xl:gap-8">
+      <main className="flex-1 w-full px-6 py-4 grid grid-cols-12 gap-6 2xl:gap-8">
         {/* Left Pane: Cine Viewer */}
         <section className="col-span-12 lg:col-span-6">
           {/* Stick just below fixed header */}

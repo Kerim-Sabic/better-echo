@@ -6,6 +6,7 @@ import ManualInfoForm from "../features/NewStudy/ManualInfoForm";
 import { useNewStudy } from "../features/NewStudy/hooks/useNewStudy";
 import NewStudyHeader from "../features/NewStudy/NewStudyHeader";
 import { DuplicateFilesList } from "../features/NewStudy/DuplicateFilesList";
+import { TITLEBAR_HEIGHT } from "../components/TitleBar";
 
 export default function NewStudy() {
   const {
@@ -26,7 +27,7 @@ export default function NewStudy() {
   } = useNewStudy();
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="bg-background" style={{ minHeight: `calc(100vh - ${TITLEBAR_HEIGHT})` }}>
       {/* Header */}
       <NewStudyHeader status={status} />
 

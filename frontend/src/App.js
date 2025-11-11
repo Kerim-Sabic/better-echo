@@ -1,5 +1,6 @@
 // src/App.js
 import React from "react";
+import TitleBar, { TITLEBAR_HEIGHT } from "./components/TitleBar";
 import { BrowserRouter, Routes, Route, useNavigate, Navigate } from "react-router-dom";
 import RoutePersistence from "./RoutePersistence";
 
@@ -34,11 +35,19 @@ function SplashRoute() {
 }
 
 export default function App() {
+  const contentStyle = {
+    height: `calc(100vh - ${TITLEBAR_HEIGHT}px)`,
+    marginTop: `${TITLEBAR_HEIGHT}px`,
+    overflow: "auto",
+  };
   return (
-    <BrowserRouter>
-      <AuthProvider> {/* Authentication context */}
-        <RoutePersistence />
-        <Routes>
+    <div className="app-shell" style={{ height: "100vh", overflow: "hidden"}}>
+      <TitleBar />
+      <div className="app-viewport" style={{ ...contentStyle }}>
+        <BrowserRouter>
+        <AuthProvider> {/* Authentication context */}
+          <RoutePersistence />
+          <Routes>
           {/* Splash → auto-navigates to /login */}
           <Route path="/" element={<SplashRoute />} />
 
@@ -54,8 +63,10 @@ export default function App() {
 
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
-      </AuthProvider>
-    </BrowserRouter>
+          </Routes>
+        </AuthProvider>
+        </BrowserRouter>
+      </div>
+    </div>
   );
 }

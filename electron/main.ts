@@ -10,7 +10,7 @@ const isDev = process.env.NODE_ENV === 'development';
 const REACT_DEV_PORT = 3000;
 const BACKEND_DEV_PORT = 8000;
 // Toggle to default-open DevTools in development. Flip to true locally if desired.
-const OPEN_DEVTOOLS_DEFAULT = false;
+const OPEN_DEVTOOLS_DEFAULT = true;
 // Allow autoplay with audio for splash video first pass
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 
@@ -29,6 +29,10 @@ let backendPort: number = BACKEND_DEV_PORT;
 let tray: Tray | null = null;
 let isQuitting = false;
 let windowStatePath: string;
+// Feature flag: stop Orthanc Docker container on quit (default true in prod)
+const STOP_ORTHANC_ON_QUIT: boolean = (
+  (process.env.STOP_ORTHANC_ON_QUIT ?? (isDev ? '0' : '1')) === '1'
+);
 
 type WindowState = {
   x?: number;
@@ -240,17 +244,23 @@ function stopBackend(): void {
   }
 }
 
+const MIN_WIDTH = 1280;
+const MIN_HEIGHT = 800;
+
 function createWindow(): void {
   const state = loadWindowState();
   mainWindow = new BrowserWindow({
-    width: state.width,
-    height: state.height,
+    width: Math.max(MIN_WIDTH, state.width),
+    height: Math.max(MIN_HEIGHT, state.height),
     x: state.x,
     y: state.y,
-    minWidth: 1280,
-    minHeight: 800,
+    minWidth: MIN_WIDTH,
+    minHeight: MIN_HEIGHT,
     center: state.x === undefined && state.y === undefined,
     autoHideMenuBar: true,
+    frame: false,
+    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
+    backgroundColor: '#ffffff',
     icon: getTrayIconPath(),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -302,6 +312,14 @@ function createWindow(): void {
 
   mainWindow.on('resize', () => saveWindowState(mainWindow));
   mainWindow.on('move', () => saveWindowState(mainWindow));
+
+  // Notify renderer of maximize state changes
+  mainWindow.on('maximize', () => {
+    try { mainWindow?.webContents.send('window:isMaximized-changed', true); } catch {}
+  });
+  mainWindow.on('unmaximize', () => {
+    try { mainWindow?.webContents.send('window:isMaximized-changed', false); } catch {}
+  });
 }
 
 app.on('ready', async () => {
@@ -338,6 +356,10 @@ app.on('activate', () => {
 app.on('before-quit', () => {
   isQuitting = true;
   stopBackend();
+  // Best-effort: stop Orthanc container via docker compose in production
+  if (STOP_ORTHANC_ON_QUIT && !isDev) {
+    stopOrthanc().catch((e) => console.warn('Failed to stop Orthanc on quit:', e));
+  }
 });
 
 process.on('SIGTERM', () => {
@@ -373,7 +395,7 @@ function setupOrthancAuth(): void {
 }
 
 async function attemptStartOrthanc(): Promise<void> {
-  const composeFile = path.join(process.resourcesPath || path.join(__dirname, '..'), 'docker-compose.yml');
+  const composeFile = resolveComposeFilePath();
   const haveDocker = await checkDocker();
   if (!haveDocker) {
     console.warn('Docker not found. Skipping Orthanc startup.');
@@ -412,3 +434,65 @@ function runCommand(cmd: string, args: string[]): Promise<void> {
     });
   });
 }
+
+function resolveComposeFilePath(): string {
+  // Prefer packaged resources path, fall back to project root
+  const candidateA = path.join(process.resourcesPath || path.join(__dirname, '..'), 'docker-compose.yml');
+  if (fs.existsSync(candidateA)) return candidateA;
+  const candidateB = path.join(__dirname, '..', '..', 'docker-compose.yml');
+  if (fs.existsSync(candidateB)) return candidateB;
+  const candidateC = path.join(process.cwd(), 'docker-compose.yml');
+  return candidateC;
+}
+
+async function stopOrthanc(): Promise<void> {
+  const composeFile = resolveComposeFilePath();
+  const haveDocker = await checkDocker();
+  if (!haveDocker) {
+    console.warn('Docker not found. Cannot stop Orthanc.');
+    return;
+  }
+  // Try docker compose down; fallback to docker-compose; then try stop/rm
+  try {
+    await runCommand('docker', ['compose', '-f', composeFile, 'down']);
+    console.log('Orthanc stopped (docker compose down).');
+    return;
+  } catch (e) {
+    console.warn('docker compose down failed, trying docker-compose down...', e);
+  }
+  try {
+    await runCommand('docker-compose', ['-f', composeFile, 'down']);
+    console.log('Orthanc stopped (docker-compose down).');
+    return;
+  } catch (e) {
+    console.warn('docker-compose down failed, trying stop/rm...', e);
+  }
+  try {
+    await runCommand('docker', ['compose', '-f', composeFile, 'stop', 'orthanc']);
+    await runCommand('docker', ['compose', '-f', composeFile, 'rm', '-f', 'orthanc']);
+    console.log('Orthanc stopped (docker compose stop/rm).');
+  } catch (e) {
+    try {
+      await runCommand('docker-compose', ['-f', composeFile, 'stop', 'orthanc']);
+      await runCommand('docker-compose', ['-f', composeFile, 'rm', '-f', 'orthanc']);
+      console.log('Orthanc stopped (docker-compose stop/rm).');
+    } catch (err) {
+      console.warn('Failed to stop Orthanc via docker compose/compose stop/rm:', err);
+    }
+  }
+}
+
+// ----------------- Window control IPC -----------------
+ipcMain.handle('window:minimize', () => {
+  if (mainWindow) mainWindow.minimize();
+});
+ipcMain.handle('window:toggleMaximize', () => {
+  if (!mainWindow) return;
+  if (mainWindow.isMaximized()) mainWindow.unmaximize(); else mainWindow.maximize();
+});
+ipcMain.handle('window:isMaximized', () => {
+  return mainWindow ? mainWindow.isMaximized() : false;
+});
+ipcMain.handle('window:close', () => {
+  if (mainWindow) mainWindow.close();
+});

@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { getBackendUrl } from "../config/api";
 
 export default function SplashScreen({ onComplete }) {
-  const videoRef = useRef(null);
+  const videoARef = useRef(null); // forward
+  const videoBRef = useRef(null); // reverse
   const [isVisible, setIsVisible] = useState(true);
   const [isZooming, setIsZooming] = useState(false);
-  const [direction, setDirection] = useState("forward"); // "forward" | "backward"
+  const [active, setActive] = useState("A"); // "A" | "B"
   const [audioAllowed, setAudioAllowed] = useState(false);
 
   // Helper: check backend health
@@ -22,81 +23,107 @@ export default function SplashScreen({ onComplete }) {
     }
   }
 
-  // Play helpers
-  const playForward = (muted) => {
-    const el = videoRef.current;
+  function playVideo(el, muted) {
     if (!el) return;
-    el.src = "/horalix-splash-video.mp4";
     el.muted = !!muted;
-    el.currentTime = 0;
+    try {
+      el.currentTime = 0;
+    } catch {}
     el.play().catch(() => {});
-    setDirection("forward");
-  };
-  const playBackward = (muted) => {
-    const el = videoRef.current;
-    if (!el) return;
-    el.src = "/horalix-splash-video-reversed.mp4";
-    el.muted = !!muted;
-    el.currentTime = 0;
-    el.play().catch(() => {});
-    setDirection("backward");
-  };
+  }
 
-  // On mount: decide audio for first pass and start forward
+  // Initialize both videos and start forward pass
   useEffect(() => {
     const playedBefore = typeof window !== "undefined" && localStorage.getItem("splashAudioPlayed") === "true";
     const allowAudio = !playedBefore;
     setAudioAllowed(allowAudio);
-    // Start forward; audio only if not played before
-    playForward(!allowAudio ? true : false);
+
+    const a = videoARef.current;
+    const b = videoBRef.current;
+    if (!a || !b) return;
+
+    // Set sources and preload
+    a.src = "/horalix-splash-video.mp4";
+    b.src = "/horalix-splash-video-reversed.mp4";
+    try { a.load(); } catch {}
+    try { b.load(); } catch {}
+
+    // Start forward (A). Allow audio only on first ever run
+    playVideo(a, !allowAudio);
+    // Keep reverse (B) preloaded + muted
+    b.muted = true;
+    setActive("A");
   }, []);
 
-  // Handle video end -> check readiness -> loop forward/back silently until ready
+  // Handle ends for both players -> crossfade, poll health, exit when ready
   useEffect(() => {
-    const el = videoRef.current;
-    if (!el) return;
+    const a = videoARef.current;
+    const b = videoBRef.current;
+    if (!a || !b) return;
 
-    const onEnded = async () => {
-      // If first forward pass just ended and audio was allowed, mark as played
-      if (direction === "forward" && audioAllowed) {
+    const onEndedA = async () => {
+      // First forward completion: persist audio flag
+      if (audioAllowed) {
         try { localStorage.setItem("splashAudioPlayed", "true"); } catch {}
         setAudioAllowed(false);
       }
-
       const ready = await checkHealth();
       if (ready) {
-        // Smooth crossfade + slight zoom
         setIsZooming(true);
-        setTimeout(() => setIsVisible(false), 50);
-        setTimeout(() => onComplete?.(), 700);
+        setIsVisible(false);
+        setTimeout(() => onComplete?.(), 500);
         return;
       }
-
-      // Not ready yet: pause ~300ms, then alternate direction silently
-      setTimeout(() => {
-        if (direction === "forward") {
-          playBackward(true);
-        } else {
-          playForward(true);
-        }
-      }, 300);
+      // Crossfade to B immediately (no delay)
+      playVideo(b, true);
+      setActive("B");
     };
 
-    el.addEventListener("ended", onEnded);
-    return () => el.removeEventListener("ended", onEnded);
-  }, [direction, audioAllowed, onComplete]);
+    const onEndedB = async () => {
+      const ready = await checkHealth();
+      if (ready) {
+        setIsZooming(true);
+        setIsVisible(false);
+        setTimeout(() => onComplete?.(), 500);
+        return;
+      }
+      // Crossfade back to A (always muted after first pass)
+      playVideo(a, true);
+      setActive("A");
+    };
+
+    a.addEventListener("ended", onEndedA);
+    b.addEventListener("ended", onEndedB);
+    return () => {
+      a.removeEventListener("ended", onEndedA);
+      b.removeEventListener("ended", onEndedB);
+    };
+  }, [audioAllowed, onComplete]);
 
   return (
     <div
-      className={`fixed inset-0 z-50 transition-all duration-700 ease-out pointer-events-none ${
+      className={`fixed inset-0 z-50 transition-all duration-500 ease-out pointer-events-none ${
         isVisible ? "opacity-100" : "opacity-0"
       } ${isZooming ? "scale-105" : "scale-100"}`}
       style={{ backgroundColor: "#000" }}
       aria-label="Application loading screen"
     >
+      {/* Video A: forward */}
       <video
-        ref={videoRef}
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[50vw] h-[50vh] object-contain"
+        ref={videoARef}
+        className={`transition-opacity duration-200 ease-linear absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[50vw] h-[50vh] object-contain ${
+          active === "A" ? "opacity-100" : "opacity-0"
+        }`}
+        playsInline
+        preload="auto"
+      />
+
+      {/* Video B: reverse */}
+      <video
+        ref={videoBRef}
+        className={`transition-opacity duration-200 ease-linear absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[50vw] h-[50vh] object-contain ${
+          active === "B" ? "opacity-100" : "opacity-0"
+        }`}
         playsInline
         preload="auto"
       />
