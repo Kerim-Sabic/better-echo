@@ -1,7 +1,7 @@
 // src/App.js
 import React from "react";
 import TitleBar, { TITLEBAR_HEIGHT } from "./components/TitleBar";
-import { BrowserRouter, Routes, Route, useNavigate, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useNavigate, Navigate, useLocation } from "react-router-dom";
 import RoutePersistence from "./RoutePersistence";
 
 import { AuthProvider } from "./contexts/AuthenticationContext";
@@ -34,7 +34,9 @@ function SplashRoute() {
   );
 }
 
-export default function App() {
+function Shell() {
+  const location = useLocation();
+  const onSplash = location.pathname === "/";
   const contentStyle = {
     height: `calc(100vh - ${TITLEBAR_HEIGHT}px)`,
     marginTop: `${TITLEBAR_HEIGHT}px`,
@@ -42,9 +44,8 @@ export default function App() {
   };
   return (
     <div className="app-shell" style={{ height: "100vh", overflow: "hidden"}}>
-      <TitleBar />
-      <div className="app-viewport" style={{ ...contentStyle }}>
-        <BrowserRouter>
+      <TitleBar variant={onSplash ? "splash" : "light"} />
+      <div className="app-viewport" style={contentStyle}>
         <AuthProvider> {/* Authentication context */}
           <RoutePersistence />
           <Routes>
@@ -65,8 +66,15 @@ export default function App() {
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </AuthProvider>
-        </BrowserRouter>
       </div>
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Shell />
+    </BrowserRouter>
   );
 }

@@ -1,4 +1,3 @@
-// NewStudyHeader.jsx
 import React from "react";
 
 export default function NewStudyHeader({ status }) {
@@ -10,7 +9,9 @@ export default function NewStudyHeader({ status }) {
           <img
             src="horalix-taskbar-app-icon.png"
             alt="Horalix Logo"
-            className="w-8 h-8 mr-3"
+            className="w-8 h-8"
+            onLoad={() => console.log("NewStudyHeader logo loaded")}
+            onError={(e) => { console.warn("NewStudyHeader logo failed", e); }}
           />
           <div>
             <h1 className="text-2xl font-bold text-foreground">New Study</h1>

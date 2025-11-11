@@ -27,7 +27,7 @@ export default function NewStudy() {
   } = useNewStudy();
 
   return (
-    <div className="bg-background" style={{ minHeight: `calc(100vh - ${TITLEBAR_HEIGHT})` }}>
+    <div className="bg-background" style={{ minHeight: `calc(100vh - ${TITLEBAR_HEIGHT}px)` }}>
       {/* Header */}
       <NewStudyHeader status={status} />
 
