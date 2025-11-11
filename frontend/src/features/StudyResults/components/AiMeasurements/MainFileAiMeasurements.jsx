@@ -2,6 +2,7 @@ import React from "react";
 import { buildAiMeasurementsProps } from "./buildAiMeasurementsProps";
 import MainMeasurementsList from "./MainMeasurementsList";
 import MeasurementsList from "./MeasurementsList";
+import LoadingScreen from "../LoadingScreen";
 
 /**
  * Dumb UI entry. Accepts raw results, maps them via buildAiProps,
@@ -10,7 +11,12 @@ import MeasurementsList from "./MeasurementsList";
  * Props:
  * - panechoEchoprimeResults: object (raw results)
  */
-export default function MainFileAiMeasurements({ panechoEchoprimeResults }) {
+export default function MainFileAiMeasurements({ state, panechoEchoprimeResults }) {
+  
+  if (state !== "ready") {
+    return <LoadingScreen state={state} />;
+  }
+
   const { mainMeasurements, Measurements } = buildAiMeasurementsProps(panechoEchoprimeResults);
   console.log("MAIN MEASUREMENTS: ", mainMeasurements)
   console.log("MEASUREMENTS: ", Measurements)

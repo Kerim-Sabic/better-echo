@@ -10,10 +10,17 @@ export function StudyResultsLayout({ navigateBack, viewModel }) {
   const {
     state,
     error,
+
+    panEchoEchoprimeState,
+    dynamicMeasurementsState,
+    llmReportState,
+
     studyUID,
+
     panechoEchoprimeResults,
     dynamicMeasurementsResults,
     llmReportResults,
+
     hasMeasurements,
     isPolling,
     refresh,
@@ -21,55 +28,20 @@ export function StudyResultsLayout({ navigateBack, viewModel }) {
 
   const [activeTab, setActiveTab] = useState("measurements"); // 'measurements' | 'segmentation' | 'report'
 
-  // ----- Top-level states -----
-  if (state === "loading") {
+  // ----- Minimal fallback check -----
+  if (!studyUID) {
     return (
       <div className="grid place-items-center min-h-screen text-sm text-gray-600">
-        Loading study…
+        No study selected.
       </div>
     );
   }
-
-  if (state === "pending") {
-    return (
-      <div className="grid place-items-center min-h-screen text-sm text-gray-600">
-        Running inference…
-      </div>
-    );
-  }
-
-  if (state === "not_found") {
-    return (
-      <div className="grid place-items-center min-h-screen">
-        <div className="space-y-3 text-center">
-          <div className="text-lg font-semibold">Study not found</div>
-          <button
-            onClick={navigateBack}
-            className="px-3 py-1.5 rounded-xl border bg-white"
-          >
-            Back to Dashboard
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (state === "error") {
-    return (
-      <div className="grid place-items-center min-h-screen">
-        <div className="space-y-3 text-center">
-          <div className="text-lg font-semibold">Something went wrong</div>
-          <div className="text-sm text-gray-500">{String(error || "")}</div>
-          <button
-            onClick={navigateBack}
-            className="px-3 py-1.5 rounded-xl border bg-white"
-          >
-            Back to Dashboard
-          </button>
-        </div>
-      </div>
-    );
-  }
+  
+  // Compute combined loading for footer/status display
+  const anyLoading =
+    ["loading", "pending"].includes(panEchoEchoprimeState) ||
+    ["loading", "pending"].includes(dynamicMeasurementsState) ||
+    ["loading", "pending"].includes(llmReportState);
 
   // ----- Normal (ready) UI -----
   return (
@@ -121,7 +93,7 @@ export function StudyResultsLayout({ navigateBack, viewModel }) {
               </Pill>
 
               <div className="ml-auto text-xs text-gray-500 whitespace-nowrap">
-                {isPolling ? "Updating…" : "Ready"}
+                {anyLoading ? "Updating…" : "Ready"}
               </div>
             </div>
           </div>
@@ -130,15 +102,24 @@ export function StudyResultsLayout({ navigateBack, viewModel }) {
           <div className="mt-3 rounded-2xl border bg-white">
             <div className="p-4">
               {activeTab === "measurements" && (
-                <MainFileAiMeasurements panechoEchoprimeResults={panechoEchoprimeResults} />
+                <MainFileAiMeasurements
+                  state={panEchoEchoprimeState} 
+                  panechoEchoprimeResults={panechoEchoprimeResults} 
+                />
               )}
 
               {activeTab === "segmentation" && (
-                <AiVideoMeasurements dynamicMeasurementsResults={dynamicMeasurementsResults}/>
+                <AiVideoMeasurements
+                  state={dynamicMeasurementsState} 
+                  dynamicMeasurementsResults={dynamicMeasurementsResults}
+                />
               )}
 
               {activeTab === "report" && (
-                <LlmReport llmReportResults={llmReportResults}/>
+                <LlmReport
+                  state={llmReportState} 
+                  llmReportResults={llmReportResults}
+                />
               )}
             </div>
           </div>
@@ -149,7 +130,7 @@ export function StudyResultsLayout({ navigateBack, viewModel }) {
       <footer className="sticky bottom-0 z-40 bg-white/90 backdrop-blur border-t">
         <div className="w-full px-6 py-3 flex items-center gap-2">
           <div className="text-xs text-gray-500">
-            {isPolling ? "Polling for results…" : "Ready"}
+            {anyLoading ? "Polling for results…" : "Ready"}
           </div>
           <div className="ml-auto flex items-center gap-2">
             <button className="px-3 py-1.5 rounded-xl border bg-white">

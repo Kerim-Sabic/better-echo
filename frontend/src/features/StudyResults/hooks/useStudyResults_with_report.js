@@ -7,6 +7,11 @@ import { useLlmReportResultsQuery } from "./useLlmReportResultsQuery";
  * @returns {{
  *   state: "loading" | "pending" | "ready" | "not_found" | "error",
  *   error: unknown,
+ * 
+ *   panEchoEchoprimeState:     "loading" | "pending" | "ready" | "not_found" | "error",
+ *   dynamicMeasurementsState:  "loading" | "pending" | "ready" | "not_found" | "error",
+ *   llmReportState:            "loading" | "pending" | "ready" | "not_found" | "error",
+ * 
  *   studyUID: string | null,
  *   // data buckets
  *   panechoEchoprimeResults: any,         // PanEcho + EchoPrime combined results
@@ -97,6 +102,37 @@ export function useStudyResults(studyUid) {
     return "error";
   }, [studyUid, resources]);
 
+  // ---- Helper to compute a per-query state --------------------------------------
+  const computeState = (query) => {
+    const data = query.data;
+
+    if (!studyUid) return "not_found";
+    if (!data) return "loading";
+    if (data.status === 404) return "not_found";
+    if (query.isFetching) return "loading";
+    if (data.isPending || (data.status === 202 && data.data?.status === "pending")) return "pending";
+    if (data.isComplete || (data.status === 200 && data.data?.status === "complete")) return "ready";
+    if (query.isError) return "error";
+
+    return "error";
+  };
+
+  // ---- Individual states for each query -------------------------------------
+  const panEchoEchoprimeState = useMemo(
+    () => computeState(combinedResultsQuery),
+    [combinedResultsQuery.data, combinedResultsQuery.isFetching, combinedResultsQuery.isError]
+  );
+
+  const dynamicMeasurementsState = useMemo(
+    () => computeState(dynamicMeasurementsResultsQuery),
+    [dynamicMeasurementsResultsQuery.data, dynamicMeasurementsResultsQuery.isFetching, dynamicMeasurementsResultsQuery.isError]
+  );
+
+  const llmReportState = useMemo(
+    () => computeState(llmReportResultsQuery),
+    [llmReportResultsQuery.data, llmReportResultsQuery.isFetching, llmReportResultsQuery.isError]
+  );
+
   // ---- Normalize outputs per resource --------------------------------------
   const panechoEchoprimeResults = useMemo(() => {
     const response = combinedResultsQuery.data;
@@ -160,6 +196,11 @@ export function useStudyResults(studyUid) {
       state: pageState,
       error: firstError,
 
+      // Per-query states
+      panEchoEchoprimeState,
+      dynamicMeasurementsState,
+      llmReportState,
+
       // identifiers / header bits
       studyUID: studyUid ?? null,
 
@@ -191,6 +232,10 @@ export function useStudyResults(studyUid) {
       combinedResultsQuery.refetch,
       dynamicMeasurementsResultsQuery.refetch,
       llmReportResultsQuery.refetch,
+
+      panEchoEchoprimeState,
+      dynamicMeasurementsState,
+      llmReportState,
     ]
   );
 
