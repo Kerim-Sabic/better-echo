@@ -1,22 +1,15 @@
 import { useMemo } from "react";
 import { useCombinedResultsQuery } from "./useCombinedResultsQuery";
 import { useDynamicMeasurementsResultsQuery } from "./useDynamicMeasurementsResultsQuery";
-import { useLlmReportResultsQuery } from "./useLlmReportResultsQuery";
 
 /**
  * @returns {{
  *   state: "loading" | "pending" | "ready" | "not_found" | "error",
  *   error: unknown,
- * 
- *   panEchoEchoprimeState:     "loading" | "pending" | "ready" | "not_found" | "error",
- *   dynamicMeasurementsState:  "loading" | "pending" | "ready" | "not_found" | "error",
- *   llmReportState:            "loading" | "pending" | "ready" | "not_found" | "error",
- * 
  *   studyUID: string | null,
  *   // data buckets
  *   panechoEchoprimeResults: any,         // PanEcho + EchoPrime combined results
  *   dynamicMeasurementsResults: any,      // Dynamic + Measurements combined results
- *   llmReportResults: any,                // LLM report results
  *   hasMeasurements: boolean,
  *   // controls
  *   isPolling: boolean,
@@ -29,13 +22,10 @@ export function useStudyResults(studyUid) {
     enabled: Boolean(studyUid),
   });
 
-  const dynamicMeasurementsResultsQuery = useDynamicMeasurementsResultsQuery(studyUid, {
+  const dynamicMeasurementsQuery = useDynamicMeasurementsResultsQuery(studyUid, {
     enabled: Boolean(studyUid),
   });
 
-  const llmReportResultsQuery = useLlmReportResultsQuery(studyUid, {
-    enabled: Boolean(studyUid),
-  });
   // Future-ready: just add new resources here (e.g., useReportQuery)
   // Each resource should expose { data: {status, isPending, isComplete, results, ...}, isError, isFetching, refetch }
   const resources = [
@@ -50,22 +40,18 @@ export function useStudyResults(studyUid) {
     },
     {
       key: "dynamicMeasurements",
-      query: dynamicMeasurementsResultsQuery,
+      query: dynamicMeasurementsQuery,
       extractResults: (resp) =>
         resp?.results ??
         (resp?.status === 200 && resp?.data?.status === "complete"
           ? resp?.data?.dynamic_measurements_results ?? null
           : null),
     },
-    {
-      key: "llmReport",
-      query: llmReportResultsQuery,
-      extractResults: (resp) =>
-        resp?.results ??
-        (resp?.status === 200 && resp?.data?.status === "complete"
-          ? resp?.data?.llm_report ?? null
-          : null),   
-    },
+    // {
+    //   key: "report",
+    //   query: useReportQuery(studyUid, { enabled: Boolean(studyUid) }),
+    //   extractResults: (resp) => resp?.results ?? null,
+    // },
   ];
 
   // ---- Aggregate page-level state ------------------------------------------
@@ -102,37 +88,6 @@ export function useStudyResults(studyUid) {
     return "error";
   }, [studyUid, resources]);
 
-  // ---- Helper to compute a per-query state --------------------------------------
-  const computeState = (query) => {
-    const data = query.data;
-
-    if (!studyUid) return "not_found";
-    if (!data) return "loading";
-    if (data.status === 404) return "not_found";
-    if (query.isFetching) return "loading";
-    if (data.isPending || (data.status === 202 && data.data?.status === "pending")) return "pending";
-    if (data.isComplete || (data.status === 200 && data.data?.status === "complete")) return "ready";
-    if (query.isError) return "error";
-
-    return "error";
-  };
-
-  // ---- Individual states for each query -------------------------------------
-  const panEchoEchoprimeState = useMemo(
-    () => computeState(combinedResultsQuery),
-    [combinedResultsQuery.data, combinedResultsQuery.isFetching, combinedResultsQuery.isError]
-  );
-
-  const dynamicMeasurementsState = useMemo(
-    () => computeState(dynamicMeasurementsResultsQuery),
-    [dynamicMeasurementsResultsQuery.data, dynamicMeasurementsResultsQuery.isFetching, dynamicMeasurementsResultsQuery.isError]
-  );
-
-  const llmReportState = useMemo(
-    () => computeState(llmReportResultsQuery),
-    [llmReportResultsQuery.data, llmReportResultsQuery.isFetching, llmReportResultsQuery.isError]
-  );
-
   // ---- Normalize outputs per resource --------------------------------------
   const panechoEchoprimeResults = useMemo(() => {
     const response = combinedResultsQuery.data;
@@ -147,45 +102,26 @@ export function useStudyResults(studyUid) {
   }, [combinedResultsQuery.data]);
 
   const dynamicMeasurementsResults = useMemo(() => {
-    const response = dynamicMeasurementsResultsQuery.data;
+    const response = dynamicMeasurementsQuery.data;
     if (!response) return null;
     if (response.results) return response.results;
     if (response.status === 200 && response.data?.status === "complete") {
       return response.data.dynamic_measurements_results ?? null;
     }
     return null;
-  }, [dynamicMeasurementsResultsQuery.data]);
-
-  const llmReportResults = useMemo(() => {
-    const response = llmReportResultsQuery.data;
-    if (!response) return null;
-    if (response.results) return response.results;
-    if (response.status === 200 && response.data?.status === "complete") {
-      return response.data.llm_report ?? null;
-    }
-    return null;
-  }, [llmReportResultsQuery.data]);
+  }, [dynamicMeasurementsQuery.data]);
 
   // ---- Derived booleans & controls -----------------------------------------
   const isPolling = useMemo(() => {
-    const data = [
-      combinedResultsQuery.data, 
-      dynamicMeasurementsResultsQuery.data,
-      llmReportResultsQuery.data,
-    ];
+    const data = [combinedResultsQuery.data, dynamicMeasurementsQuery.data];
     return data.some(
       (data) => data?.isPending || (data?.status === 202 && data?.data?.status === "pending")
     );
-  }, [
-    combinedResultsQuery.data,
-    dynamicMeasurementsResultsQuery.data,
-    llmReportResultsQuery.data,
-  ]);
+  }, [combinedResultsQuery.data, dynamicMeasurementsQuery.data]);
 
   const firstError =
     combinedResultsQuery.error ??
-    dynamicMeasurementsResultsQuery.error ??
-    llmReportResultsQuery.error ??
+    dynamicMeasurementsQuery.error ??
     null;
 
   const hasMeasurements = Boolean(panechoEchoprimeResults || dynamicMeasurementsResults);
@@ -196,18 +132,12 @@ export function useStudyResults(studyUid) {
       state: pageState,
       error: firstError,
 
-      // Per-query states
-      panEchoEchoprimeState,
-      dynamicMeasurementsState,
-      llmReportState,
-
       // identifiers / header bits
       studyUID: studyUid ?? null,
 
       // data buckets
       panechoEchoprimeResults,
       dynamicMeasurementsResults,
-      llmReportResults,
 
       hasMeasurements,
 
@@ -215,8 +145,7 @@ export function useStudyResults(studyUid) {
       isPolling,
       refresh: () => {
         combinedResultsQuery.refetch();
-        dynamicMeasurementsResultsQuery.refetch();
-        llmReportResultsQuery.refetch();
+        dynamicMeasurementsQuery.refetch();
         // add future refetches here (e.g., reportQuery.refetch())
       },
     }),
@@ -226,16 +155,10 @@ export function useStudyResults(studyUid) {
       studyUid,
       panechoEchoprimeResults,
       dynamicMeasurementsResults,
-      llmReportResults,
       hasMeasurements,
       isPolling,
       combinedResultsQuery.refetch,
-      dynamicMeasurementsResultsQuery.refetch,
-      llmReportResultsQuery.refetch,
-
-      panEchoEchoprimeState,
-      dynamicMeasurementsState,
-      llmReportState,
+      dynamicMeasurementsQuery.refetch,
     ]
   );
 

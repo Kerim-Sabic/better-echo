@@ -9,6 +9,7 @@ import LoadingScreen from "../LoadingScreen";
  * then renders presentational lists.
  *
  * Props:
+ * - state: string (loading state)
  * - panechoEchoprimeResults: object (raw results)
  */
 export default function MainFileAiMeasurements({ state, panechoEchoprimeResults }) {
@@ -25,7 +26,7 @@ export default function MainFileAiMeasurements({ state, panechoEchoprimeResults 
   const hasMeasurements = Array.isArray(Measurements) && Measurements.length > 0;
 
   if (!hasMainMeasurements && !hasMeasurements) {
-    return <div className="text-sm text-gray-600">No measurements available.</div>;
+    return <div className="text-sm text-gray-600">No AI Measurements available.</div>;
   }
 
   return (

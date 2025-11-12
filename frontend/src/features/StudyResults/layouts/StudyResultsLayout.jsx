@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import EchocardiogramViewer from "../components/EchocardiogramViewer";
 import Header from "../components/Header";
 import MainFileAiMeasurements from "../components/AiMeasurements/MainFileAiMeasurements";
-import AiVideoMeasurements from "../components/AiVideoMeasurements";
+import MainFileAiVideoMeasurements from "../components/AiVideoMeasurements/MainFileAiVideoMeasurements";
 import LlmReport from "../components/LlmReport";
 
 
@@ -77,13 +77,13 @@ export function StudyResultsLayout({ navigateBack, viewModel }) {
                 isActive={activeTab === "measurements"}
                 onClick={() => setActiveTab("measurements")}
               >
-                Measurements
+                AI Measurements
               </Pill>
               <Pill
                 isActive={activeTab === "segmentation"}
                 onClick={() => setActiveTab("segmentation")}
               >
-                LV Segmentation
+                AI Segmentations
               </Pill>
               <Pill
                 isActive={activeTab === "report"}
@@ -109,7 +109,7 @@ export function StudyResultsLayout({ navigateBack, viewModel }) {
               )}
 
               {activeTab === "segmentation" && (
-                <AiVideoMeasurements
+                <MainFileAiVideoMeasurements
                   state={dynamicMeasurementsState} 
                   dynamicMeasurementsResults={dynamicMeasurementsResults}
                 />
