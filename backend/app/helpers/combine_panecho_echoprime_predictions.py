@@ -51,6 +51,25 @@ PANECHO_POSITIVE_CLASSES = {
     "AVStenosis": ["Severe"],
 }
 
+PANECHO_BINARY_NEGATIVE_LABEL = {
+"pericardial-effusion": "Absent",
+"LVWallThickness-increased-any": "Not Increased",
+"LVWallThickness-increased-modsev": "Not Moderately|Severely Increased",
+"LVWallMotionAbnormalities": "Absent",
+"RVSystolicFunction": "Normal",
+"RASize": "Normal",
+"AVStructure": "Not Bicuspid",
+"LVOT20mmHg": "Absent",
+"MVStenosis": "None",
+"RAP-8-or-higher": "Below 8",
+}
+
+def _panecho_negative_label(task_name: str) -> str:
+    pos = PANECHO_BINARY_POSITIVE_LABEL.get(task_name)
+    if pos == "Present":
+        return "Absent"
+    return PANECHO_BINARY_NEGATIVE_LABEL.get(task_name, f"Not {pos or 'Present'}")
+
 def _panecho_positive_probability(
         task_name: str,
         panecho_normalized: Dict[str, Any]
@@ -94,6 +113,14 @@ def _panecho_positive_probability(
             return None
     #  Unknown or raw shape
     return None
+
+def _binary_label_and_conf(prob_present: float, positive_label: str, negative_label: str, is_positive: bool):
+    if prob_present is None:
+        return None, None
+    return (positive_label, float(prob_present)) if is_positive else (negative_label, 1.0 - float(prob_present))
+
+def _ep_labels():
+    return "Present", "Absent"
 
 # Part 2. Tiny helper utilities (used by normalizers and comparison)
 def _is_sequence(value: Any) -> bool:
@@ -243,15 +270,16 @@ def combine_results(
         # Fetch PanEcho probability or value
         pan_prob = None
         pan_val = None
+        panecho_node = None
         if panecho_name:
-            node = panecho_normalized.get(panecho_name)
-            if node:
-                if node["kind"] in ("binary", "binary_like"): # but note: PanEcho uses "binary"
+            panecho_node = panecho_normalized.get(panecho_name)
+            if panecho_node:
+                if panecho_node["kind"] in ("binary", "binary_like"):
                     pan_prob = _panecho_positive_probability(panecho_name, panecho_normalized)
-                elif node["kind"] == "multiclass":
+                elif panecho_node["kind"] == "multiclass":
                     pan_prob = _panecho_positive_probability(panecho_name, panecho_normalized)
-                elif node["kind"] in ("regression", "regression_like"):
-                    pan_val = node.get("value")
+                elif panecho_node["kind"] in ("regression", "regression_like"):
+                    pan_val = panecho_node.get("value")
 
         # Fetch EchoPrime probability or value
         echo_prob = None
@@ -274,6 +302,7 @@ def combine_results(
         integrated_value = None
         sources = []
         discrepancy = None
+        preferred_model = rule.split(":", 1)[1].strip() if isinstance(rule, str) and rule.startswith("prefer_model") else None
 
         if rule == "average_value":
             # For continuous metrics like EF and PAP
@@ -327,48 +356,103 @@ def combine_results(
                 # No integrated_label for numeric tasks
             else:
                 # Classification (prob/prob-like): prefer chosen model only
-                if preferred_model == "PanEcho" and panecho_pass:
-                    integrated_label = "Present"
-                    sources.append("PanEcho")
-                elif preferred_model == "EchoPrime" and echoprime_pass:
-                    integrated_label = "Present"
-                    sources.append("EchoPrime")
-                if not integrated_label:
-                    integrated_label = "Absent"
+                if preferred_model == "PanEcho":
+                    pos = PANECHO_BINARY_POSITIVE_LABEL.get(panecho_name, "Present")
+                    neg = _panecho_negative_label(panecho_name) if panecho_name else "Absent"
+                    is_pos = bool(panecho_pass)
+                    integrated_label, integrated_value = _binary_label_and_conf(pan_prob, pos, neg, is_pos)
+                    sources = ["PanEcho"] if integrated_label else []
+                else:
+                    pos, neg = _ep_labels()
+                    is_pos = bool(echoprime_pass)
+                    integrated_label, integrated_value = _binary_label_and_conf(echo_prob, pos, neg, is_pos)
+                    sources = ["EchoPrime"] if integrated_label else []
         elif rule == "positive_if_either_positive":
             if panecho_pass or echoprime_pass:
-                integrated_label = "Present"
-                if panecho_pass:
-                    sources.append("PanEcho")
-                if echoprime_pass:
-                    sources.append("EchoPrime")
+                # Choose the passing model with higher p_present
+                pan_p = pan_prob if panecho_pass else None
+                ep_p = echo_prob if echoprime_pass else None
+                use_pan = (pan_p is not None) and (ep_p is None or pan_p >= ep_p)
+                if use_pan:
+                    pos = PANECHO_BINARY_POSITIVE_LABEL.get(panecho_name, "Present")
+                    neg = _panecho_negative_label(panecho_name) if panecho_name else "Absent"
+                    integrated_label, integrated_value = _binary_label_and_conf(pan_prob, pos, neg, True)
+                    sources = ["PanEcho"]
+                else:
+                    pos, neg = _ep_labels()
+                    integrated_label, integrated_value = _binary_label_and_conf(echo_prob, pos, neg, True)
+                    sources = ["EchoPrime"]
             else:
-                integrated_label = "Absent"
+                # Neither passes -> negative with highest negative confidence
+                pos_pan = PANECHO_BINARY_POSITIVE_LABEL.get(panecho_name, "Present")
+                neg_pan = _panecho_negative_label(panecho_name) if panecho_name else "Absent"
+                pos_ep, neg_ep = _ep_labels()
+                # Use the model with larger (1 - p_present) to name negative label
+                pan_neg_conf = (1.0 - pan_prob) if pan_prob is not None else None
+                ep_neg_conf = (1.0 - echo_prob) if echo_prob is not None else None
+                use_pan = (pan_neg_conf is not None) and (ep_neg_conf is None or pan_neg_conf >= ep_neg_conf)
+                if use_pan:
+                    integrated_label, integrated_value = _binary_label_and_conf(pan_prob, pos_pan, neg_pan, False)
+                    sources = ["PanEcho"]
+                else:
+                    integrated_label, integrated_value = _binary_label_and_conf(echo_prob, pos_ep, neg_ep, False)
+                    sources = ["EchoPrime"]
         elif rule == "agree_if_both_positive":
             if panecho_pass and echoprime_pass:
-                integrated_label = "Present"
+                # Positive only if both; confidence = min()
+                pos = PANECHO_BINARY_POSITIVE_LABEL.get(panecho_name, "Present")
+                integrated_label = pos # prefer PanEcho wording when available
+                integrated_value = float(min(pan_prob, echo_prob))
                 sources = ["PanEcho", "EchoPrime"]
             else:
-                integrated_label = "Absent"
+                # Negative; confidence = 1 - max()
+                neg = _panecho_negative_label(panecho_name) if panecho_name else "Absent"
+                worst = max([p for p in [pan_prob, echo_prob] if p is not None], default=None)
+                integrated_label = neg
+                integrated_value = (1.0 - worst) if worst is not None else None
+                sources = []
         elif rule == "prefer_panecho_if_echoprime_zero":
-            # If EchoPrime probability is zero or below its threshold,
-            # but PanEcho is extremely confident, call it Present
-            echo_is_zero_or_below = (echo_prob is None or echo_prob < cfg.get("echoprime_threshold", 0.0))
-            # PanEcho must exceed its high threshold (panecho_threshold)
-            if echo_is_zero_or_below and panecho_pass:
-                integrated_label = "Present"
-                sources.append("PanEcho")
+            if echoprime_pass:
+                pos, neg = _ep_labels()
+                integrated_label, integrated_value = _binary_label_and_conf(echo_prob, pos, neg, True)
+                sources = ["EchoPrime"]
+            elif panecho_pass:
+                pos = PANECHO_BINARY_POSITIVE_LABEL.get(panecho_name, "Present")
+                neg = _panecho_negative_label(panecho_name) if panecho_name else "Absent"
+                integrated_label, integrated_value = _binary_label_and_conf(pan_prob, pos, neg, True)
+                sources = ["PanEcho"]
             else:
-                # Otherwise, if Echoprime passes its own threshold, call Present
-                # (so we still respect EchoPrime positives)
-                if echoprime_pass:
-                    integrated_label = "Present"
-                    sources.append("EchoPrime")
+                # Neither passes -> negative; pick the model with higher negative confidence for labeling
+                pos_pan = PANECHO_BINARY_POSITIVE_LABEL.get(panecho_name, "Present")
+                neg_pan = _panecho_negative_label(panecho_name) if panecho_name else "Absent"
+                pos_ep, neg_ep = _ep_labels()
+                pan_neg_conf = (1.0 - pan_prob) if pan_prob is not None else None
+                ep_neg_conf = (1.0 - echo_prob) if echo_prob is not None else None
+                use_pan = (pan_neg_conf is not None) and (ep_neg_conf is None or pan_neg_conf >= ep_neg_conf)
+                if use_pan:
+                    integrated_label, integrated_value = _binary_label_and_conf(pan_prob, pos_pan, neg_pan, False)
+                    sources = ["PanEcho"]
                 else:
-                    integrated_label = "Absent"
+                    integrated_label, integrated_value = _binary_label_and_conf(echo_prob, pos_ep, neg_ep, False)
+                    sources = ["EchoPrime"]
+        
+        prefer_pan_multiclass = (
+            preferred_model == "PanEcho"
+            and panecho_node is not None
+            and panecho_node.get("kind") == "multiclass"
+        )
+        if prefer_pan_multiclass:
+            probs = panecho_node.get("probs") or {}
+            integrated_label = panecho_node.get("label")
+            integrated_value = panecho_node.get("confidence")
+            sources = ["PanEcho"]
+        else:
+            probs = None
+
+        panecho_payload = (probs if prefer_pan_multiclass else (pan_val if pan_val is not None else pan_prob))
         
         integrated_tasks[task_key] = {
-            "panecho_value_or_prob": pan_val if pan_val is not None else pan_prob,
+            "panecho_value_or_prob": panecho_payload,
             "echoprime_value_or_prob": echo_val if echo_val is not None else echo_prob,
             "integrated_value": integrated_value,
             "integrated_label": integrated_label,
