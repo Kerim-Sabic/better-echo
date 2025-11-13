@@ -70,8 +70,7 @@ export default function DashboardHeader({ onNewStudy }) {
             )}
           </div>
         </div>
-        {/* Accent underline */}
-        <div className="mt-3 h-0.5 w-full rounded-full bg-gradient-to-r from-[#9333EA] via-[#6366F1] to-[#06B6D4]" />
+        {/* Removed accent underline per request */}
       </div>
     </header>
   );

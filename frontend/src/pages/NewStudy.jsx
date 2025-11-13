@@ -1,7 +1,6 @@
 import { Button } from "../components/ui/button";
 import UploadDicomCard from "../features/NewStudy/UploadDicomCard";
 import MetadataPreview from "../features/NewStudy/MetadataPreview";
-import ManualInfoForm from "../features/NewStudy/ManualInfoForm";
 
 import { useNewStudy } from "../features/NewStudy/hooks/useNewStudy";
 import NewStudyHeader from "../features/NewStudy/NewStudyHeader";
@@ -27,7 +26,7 @@ export default function NewStudy() {
   } = useNewStudy();
 
   return (
-    <div className="bg-background" style={{ minHeight: `calc(100vh - ${TITLEBAR_HEIGHT}px)` }}>
+    <div className="bg-[#f8f8f8]" style={{ minHeight: `calc(100vh - ${TITLEBAR_HEIGHT}px)` }}>
       {/* Header */}
       <NewStudyHeader status={status} />
 
@@ -52,21 +51,17 @@ export default function NewStudy() {
           </p>
         )}
 
-        <ManualInfoForm
-          showManual={showManual}
-          setShowManual={setShowManual}
-          form={form}
-          setForm={setForm}
-        />
+        {/* Manual info form removed per new design */}
 
-        <div className="flex items-center justify-end gap-3">
-          <Button variant="outline" onClick={() => window.history.back()}>
+        <div className="flex items-center justify-end gap-4">
+          <Button variant="outline" onClick={() => window.history.back()} className="h-12 px-8 gap-2">
             Cancel
           </Button>
           <Button
-            variant="clinical"
+            variant="gradient"
             onClick={createStudyAndAnalyze}
             disabled={!studyUID}
+            className="h-12 px-8 gap-2 shadow-md hover:shadow-lg"
           >
             Continue to Results
           </Button>

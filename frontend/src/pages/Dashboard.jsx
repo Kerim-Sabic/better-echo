@@ -3,6 +3,7 @@ import { Activity } from "lucide-react";
 
 import DashboardHeader from "../features/Dashboard/DashboardHeader";
 import SearchAndFilters from "../features/Dashboard/SearchAndFilters";
+import DashboardStats from "../features/Dashboard/DashboardStats";
 import StudyList from "../features/Dashboard/StudyList";
 import EditStudyDialog from "../features/Dashboard/EditStudyDialog";
 
@@ -17,6 +18,8 @@ export default function Dashboard() {
     selectedFilter,
     setSelectedFilter,
     filteredStudies,
+    studies,
+    counts,
     loading,
     editOpen,
     setEditOpen,
@@ -33,7 +36,7 @@ export default function Dashboard() {
     navigate(`/studies/${encodeURIComponent(study.study_uid || study.id)}`);
 
   return (
-    <div className="bg-background" style={{ minHeight: `calc(100vh - ${TITLEBAR_HEIGHT})`}}>
+    <div className="bg-[#f8f8f8]" style={{ minHeight: `calc(100vh - ${TITLEBAR_HEIGHT}px)`}}>
       <DashboardHeader onNewStudy={onNewStudy} />
 
       <main className="container px-6 py-6 mx-auto">
@@ -45,11 +48,14 @@ export default function Dashboard() {
         )}
         {!loading && (
           <>
+            <DashboardStats studies={studies} />
+
             <SearchAndFilters
               searchTerm={searchTerm}
               setSearchTerm={setSearchTerm}
               selectedFilter={selectedFilter}
               setSelectedFilter={setSelectedFilter}
+              counts={counts}
             />
 
             <StudyList
@@ -87,3 +93,4 @@ export default function Dashboard() {
     </div>
   );
 }
+

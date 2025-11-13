@@ -1,15 +1,8 @@
-import { useContext, useState, useTransition } from "react";
-import { Eye, EyeOff, Shield, Info } from "lucide-react";
+import { useContext, useState } from "react";
+import { Fingerprint, Info } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "../components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -28,7 +21,7 @@ export default function Login() {
 
  const [username, setUsername] = useState("");
  const [password, setPassword] = useState("")
- const [showPassword, setShowPassword] = useState(false);
+ const [showPassword] = useState(false);
  const [isLoading, setIsLoading] = useState(false);
  const [error, setError] = useState("");
 
@@ -49,100 +42,73 @@ export default function Login() {
   };
 
   return (
-    <div className="flex items-center justify-center p-4 bg-gradient-clinical" style={{ minHeight: `calc(100vh - ${TITLEBAR_HEIGHT}px)`}}>
-      <div className="w-full max-w-md">
-        <div className="mb-8 text-center">
-          <div className="flex items-center justify-center mb-4">
-            <img
-              src="horalix-taskbar-app-icon.png"
-              alt="Horalix Logo"
-              className="w-12 h-12 mr-3"
-            />
-            <div>
-              <h1 className="text-3xl font-bold text-primary">Horalix Echo</h1>
-              <p className="text-sm text-muted-foreground">
-                AI-Powered Cardiac Insights
-              </p>
-            </div>
-          </div>
+    <div
+      className="theme-login relative flex items-center justify-center px-4 bg-[#f8f8f8]"
+      style={{ minHeight: `calc(100vh - ${TITLEBAR_HEIGHT}px)` }}
+    >
+      {/* Subtle radial background pattern */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(147,51,234,0.05),transparent_55%)] pointer-events-none" />
+
+      <div className="relative w-full max-w-md px-2 animate-fade-in">
+        {/* Logo + title */}
+        <div className="text-center mb-10 animate-slide-up">
+          <img src="horalix-taskbar-app-icon.png" alt="Horalix Logo" className="h-20 w-auto mx-auto drop-shadow-lg mb-3" />
+          <h1 className="text-3xl font-semibold tracking-tight text-foreground">Horalix Pulse</h1>
+          <p className="text-muted-foreground font-light text-sm tracking-wide">AI-Powered Cardiac Precision</p>
         </div>
 
-        <Card className="card-clinical">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-semibold">
-              Welcome Back
-            </CardTitle>
-            <CardDescription>
-              Sign in to access your cardiac analysis platform
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
+        {/* Glassmorphic login card */}
+        <div className="glass-card rounded-2xl p-8 animate-slide-up" style={{ animationDelay: '0.05s' }}>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="username" className="sr-only">Username</Label>
                 <Input
                   id="username"
                   type="text"
-                  placeholder="Enter your username"
+                  placeholder="Username"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   required
-                  className="h-12"
+                  className="h-12 rounded-lg border-0 border-b-2 border-border bg-transparent px-4 py-3 text-base focus-visible:border-primary focus-visible:ring-0 smooth-transition"
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Enter your password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    className="h-12 pr-12"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((s) => !s)}
-                    className="absolute transition-colors -translate-y-1/2 right-3 top-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showPassword ? (
-                      <EyeOff className="w-5 h-5" />
-                    ) : (
-                      <Eye className="w-5 h-5" />
-                    )}
-                  </button>
-                </div>
+              <div>
+                <Label htmlFor="password" className="sr-only">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="h-12 rounded-lg border-0 border-b-2 border-border bg-transparent px-4 py-3 text-base focus-visible:border-primary focus-visible:ring-0 smooth-transition"
+                />
               </div>
-
-              {error && (
-                <div className="p-3 border border-red-200 rounded-md bg-red-50">
-                  <p className="text-sm text-red-600">{error}</p>
-                </div>
-              )}
-
-              <Button
-                type="submit"
-                variant="clinical"
-                className="w-full h-12 text-lg font-medium"
-                disabled={isLoading}
-              >
-                {isLoading ? "Signing In..." : "Sign In"}
-              </Button>
-
-            </form>
-
-            <div className="pt-6 mt-6 border-t border-border">
-              <Button variant="outline" className="w-full h-12 mb-3">
-                <Shield className="w-5 h-5 mr-2" />
-                Sign in with Hospital SSO
-              </Button>
             </div>
-          </CardContent>
-        </Card>
 
+            {error && (
+              <div className="p-3 border border-red-200 rounded-md bg-red-50">
+                <p className="text-sm text-red-600">{error}</p>
+              </div>
+            )}
+
+            <Button type="submit" variant="gradient" size="lg" className="w-full text-base font-semibold tracking-wide" disabled={isLoading}>
+              {isLoading ? "Signing in..." : "Sign In"}
+            </Button>
+          </form>
+
+          {/* Biometric only, centered */}
+          <div className="mt-6 pt-6 border-t border-border/50 flex items-center justify-center">
+            <button className="group flex items-center gap-2 text-sm text-muted-foreground hover:text-primary smooth-transition" aria-label="Biometric login">
+              <Fingerprint className="w-5 h-5 group-hover-animate-glow group-hover:drop-shadow-[0_0_12px_rgba(147,51,234,0.55)]" />
+              <span className="text-xs">Biometric</span>
+            </button>
+          </div>
+        </div>
+
+        {/* About */}
         <div className="mt-6 text-center">
           <Dialog>
             <DialogTrigger asChild>

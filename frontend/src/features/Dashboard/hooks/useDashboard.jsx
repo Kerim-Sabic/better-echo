@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { listStudiesApi, patchStudyApi, deleteStudyApi } from "../../../api/StudiesApi";
 
 export function useDashboard() {
@@ -72,16 +72,28 @@ export function useDashboard() {
     setStudies((prev) => prev.filter((s) => s.id !== row.id));
   };
 
-  // Filter logic
-  const filteredStudies = studies.filter((s) => {
+  // Search-only filtering for counts and status derivations
+  const searchFiltered = useMemo(() => {
     const q = searchTerm.toLowerCase();
-    const patient_name = (s.patient.patient_name || "").toLowerCase();
-    const suid = (s.study_uid || "").toLowerCase();
-    const matchesSearch = patient_name.includes(q) || suid.includes(q);
-    const matchesFilter =
-      selectedFilter === "all" || s.status === selectedFilter;
-    return matchesSearch && matchesFilter;
-  });
+    return studies.filter((s) => {
+      const patientName = (s.patient?.patient_name || "").toLowerCase();
+      const suid = (s.study_uid || "").toLowerCase();
+      return patientName.includes(q) || suid.includes(q);
+    });
+  }, [studies, searchTerm]);
+
+  // Apply status filter to search-filtered results for the list
+  const filteredStudies = useMemo(() => {
+    return searchFiltered.filter((s) => selectedFilter === "all" || s.status === selectedFilter);
+  }, [searchFiltered, selectedFilter]);
+
+  // Counts for filter chips (reflect current search)
+  const counts = useMemo(() => {
+    const all = searchFiltered.length;
+    const completed = searchFiltered.filter((s) => s.status === "completed").length;
+    const processing = searchFiltered.filter((s) => s.status === "processing").length;
+    return { all, completed, processing };
+  }, [searchFiltered]);
 
   return {
     searchTerm,        // Current text entered in the search bar
@@ -90,6 +102,7 @@ export function useDashboard() {
     setSelectedFilter, // Function to update the selected filter
     studies,           // Raw list of studies fetched from API
     filteredStudies,   // Studies after applying search & filter
+    counts,            // Counts for All/Completed/Processing
     loading,           // Boolean: true while studies are being loaded
     editOpen,          // Boolean: whether the edit modal is open
     setEditOpen,       // Function to toggle edit modal
