@@ -7,6 +7,7 @@ import StudyList from "../features/Dashboard/StudyList";
 import EditStudyDialog from "../features/Dashboard/EditStudyDialog";
 
 import { useDashboard } from "../features/Dashboard/hooks/useDashboard";
+import { TITLEBAR_HEIGHT } from "../components/TitleBar";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -32,7 +33,7 @@ export default function Dashboard() {
     navigate(`/studies/${encodeURIComponent(study.study_uid || study.id)}`);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="bg-background" style={{ minHeight: `calc(100vh - ${TITLEBAR_HEIGHT})`}}>
       <DashboardHeader onNewStudy={onNewStudy} />
 
       <main className="container px-6 py-6 mx-auto">

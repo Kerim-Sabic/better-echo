@@ -1,6 +1,8 @@
 // src/App.js
 import React from "react";
-import { BrowserRouter, Routes, Route, useNavigate, Navigate } from "react-router-dom";
+import TitleBar, { TITLEBAR_HEIGHT } from "./components/TitleBar";
+import { BrowserRouter, Routes, Route, useNavigate, Navigate, useLocation } from "react-router-dom";
+import RoutePersistence from "./RoutePersistence";
 
 import { AuthProvider } from "./contexts/AuthenticationContext";
 import ProtectedRoute from "./contexts/ProtectedRoute";
@@ -14,14 +16,39 @@ import StudyResults from "./pages/StudyResults";
 
 function SplashRoute() {
   const navigate = useNavigate();
-  return <SplashScreen onComplete={() => navigate("/login")} />;
+  return (
+    <SplashScreen
+      onComplete={() => {
+        try {
+          const saved = localStorage.getItem("lastRoute");
+          if (saved && saved !== "/" && saved !== "/login") {
+            navigate(saved);
+            return;
+          }
+        } catch (e) {
+          // ignore storage errors
+        }
+        navigate("/login");
+      }}
+    />
+  );
 }
 
-export default function App() {
+function Shell() {
+  const location = useLocation();
+  const onSplash = location.pathname === "/";
+  const contentStyle = {
+    height: `calc(100vh - ${TITLEBAR_HEIGHT}px)`,
+    marginTop: `${TITLEBAR_HEIGHT}px`,
+    overflow: "auto",
+  };
   return (
-    <BrowserRouter>
-      <AuthProvider> {/* Authentication context */}
-        <Routes>
+    <div className="app-shell" style={{ height: "100vh", overflow: "hidden"}}>
+      <TitleBar variant={onSplash ? "splash" : "light"} />
+      <div className="app-viewport" style={contentStyle}>
+        <AuthProvider> {/* Authentication context */}
+          <RoutePersistence />
+          <Routes>
           {/* Splash → auto-navigates to /login */}
           <Route path="/" element={<SplashRoute />} />
 
@@ -37,8 +64,17 @@ export default function App() {
 
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
-      </AuthProvider>
+          </Routes>
+        </AuthProvider>
+      </div>
+    </div>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Shell />
     </BrowserRouter>
   );
 }

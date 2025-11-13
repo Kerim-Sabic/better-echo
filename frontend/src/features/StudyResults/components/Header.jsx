@@ -1,5 +1,6 @@
 // src/features/StudyResults/components/Header.jsx
 import React from "react";
+import { TITLEBAR_HEIGHT } from "../../../components/TitleBar";
 
 export default function Header({
   navigateBack,
@@ -9,7 +10,7 @@ export default function Header({
   onRefresh,
 }) {
   return (
-    <header className="fixed inset-x-0 top-0 z-50 bg-white/90 backdrop-blur border-b h-16">
+    <header className="fixed inset-x-0 top-0 z-50 bg-white/90 backdrop-blur border-b h-16" style={{ marginTop: `${TITLEBAR_HEIGHT}px` }}>
       <div className="w-full h-full px-6 flex items-center gap-3">
         <button
           onClick={navigateBack}

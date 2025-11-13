@@ -4,6 +4,7 @@ import Header from "../components/Header";
 import MainFileAiMeasurements from "../components/AiMeasurements/MainFileAiMeasurements";
 import MainFileAiVideoMeasurements from "../components/AiVideoMeasurements/MainFileAiVideoMeasurements";
 import MainFileLlmReport from "../components/LlmReport/MainFileLlmReport";
+import { TITLEBAR_HEIGHT } from "../../../components/TitleBar";
 
 
 export function StudyResultsLayout({ navigateBack, viewModel }) {

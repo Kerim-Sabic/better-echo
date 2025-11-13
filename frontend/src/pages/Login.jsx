@@ -20,6 +20,7 @@ import {
 } from "../components/ui/dialog";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../contexts/AuthenticationContext";
+import { TITLEBAR_HEIGHT } from "../components/TitleBar";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -48,12 +49,12 @@ export default function Login() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen p-4 bg-gradient-clinical">
+    <div className="flex items-center justify-center p-4 bg-gradient-clinical" style={{ minHeight: `calc(100vh - ${TITLEBAR_HEIGHT}px)`}}>
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
           <div className="flex items-center justify-center mb-4">
             <img
-              src="/lovable-uploads/9d9bcdf0-8a16-4777-8dc3-85ea7af6f600.png"
+              src="horalix-taskbar-app-icon.png"
               alt="Horalix Logo"
               className="w-12 h-12 mr-3"
             />

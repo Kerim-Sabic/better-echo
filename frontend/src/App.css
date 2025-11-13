@@ -8,15 +8,22 @@
   --accent: #2563eb; /* blue */
   --radius: 16px;
   --shadow: 0 6px 24px rgba(2, 6, 23, 0.06);
+  --titlebar-height: 40px;
+  --content-top-gap: 12px;
 }
 
 * {
   box-sizing: border-box;
 }
-html,
-body,
-#root {
-  height: 100%;
+html, body, #root { height: 100vh; overflow: hidden; margin: 0; }
+
+.app-shell { position: relative; height: 100%; overflow: hidden; }
+
+.app-viewport {
+  height: calc(100% - var(--titlebar-height) + var(--content-top-gap));
+  margin-top: calc(var(--titlebar-height) + var(--content-top-gap));
+  overflow: auto; /* only the content area scrolls */
+  overscroll-behavior: contain;
 }
 body {
   margin: 0;

@@ -25,7 +25,7 @@ export default function DashboardHeader({ onNewStudy }) {
           {/* LEFT SIDE */}
           <div className="flex items-center space-x-4">
             <img
-              src="/lovable-uploads/9d9bcdf0-8a16-4777-8dc3-85ea7af6f600.png"
+              src="horalix-taskbar-app-icon.png"
               alt="Horalix Logo"
               className="w-8 h-8"
             />

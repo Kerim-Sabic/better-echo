@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import NewStudy from "../components/NewStudy";
 import UploadForm from "../components/UploadForm";
+import { TITLEBAR_HEIGHT } from "../components/TitleBar";
 
 export default function Forms() {
     const navigate = useNavigate();
@@ -20,7 +21,7 @@ export default function Forms() {
     };
 
     return (
-        <div style={{ display: "grid", gap: 24, padding: 24 }}>
+        <div style={{ minHeight: `calc(100vh - ${TITLEBAR_HEIGHT})`, display: "grid", gap: 24, padding: 24 }}>
             <NewStudy
                 onBack={() => navigate("/home")}
                 onStudyCreated={handleStudyCreated}

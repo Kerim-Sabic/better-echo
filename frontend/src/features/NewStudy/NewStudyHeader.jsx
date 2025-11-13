@@ -1,4 +1,3 @@
-// NewStudyHeader.jsx
 import React from "react";
 
 export default function NewStudyHeader({ status }) {
@@ -8,9 +7,11 @@ export default function NewStudyHeader({ status }) {
         {/* Left Section: Logo + Title */}
         <div className="flex items-center space-x-4">
           <img
-            src="/lovable-uploads/9d9bcdf0-8a16-4777-8dc3-85ea7af6f600.png"
+            src="horalix-taskbar-app-icon.png"
             alt="Horalix Logo"
             className="w-8 h-8"
+            onLoad={() => console.log("NewStudyHeader logo loaded")}
+            onError={(e) => { console.warn("NewStudyHeader logo failed", e); }}
           />
           <div>
             <h1 className="text-2xl font-bold text-foreground">New Study</h1>
