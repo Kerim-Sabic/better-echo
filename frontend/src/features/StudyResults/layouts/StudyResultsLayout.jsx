@@ -26,9 +26,8 @@ export function StudyResultsLayout({ navigateBack, viewModel }) {
     refresh,
   } = viewModel ?? {};
 
-  const [activeTab, setActiveTab] = useState("measurements"); // 'measurements' | 'segmentation' | 'report'
+  const [activeTab, setActiveTab] = useState("measurements");
 
-  // ----- Minimal fallback check -----
   if (!studyUID) {
     return (
       <div className="grid place-items-center min-h-screen text-sm text-gray-600">
@@ -36,99 +35,93 @@ export function StudyResultsLayout({ navigateBack, viewModel }) {
       </div>
     );
   }
-  
-  // Compute combined loading for footer/status display
+
   const anyLoading =
     ["loading", "pending"].includes(panEchoEchoprimeState) ||
     ["loading", "pending"].includes(dynamicMeasurementsState) ||
     ["loading", "pending"].includes(llmReportState);
 
-  // ----- Normal (ready) UI -----
   return (
-    // Add pt-16 to offset the FIXED header (h-16)
-    <div className="min-h-screen bg-gray-50 pt-16">
-      {/* Fixed header */}
-      <div className="w-full">
-        <Header
-          navigateBack={navigateBack}
-          studyUID={studyUID}
-          hasMeasurements={hasMeasurements}
-          isPolling={isPolling}
-          onRefresh={refresh}
-        />
+    <div className="h-screen flex flex-col bg-gray-50 overflow-hidden">
+
+      {/* -------- Header -------- */}
+      <header className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur border-b h-16">
+        <div className="h-full px-6 flex items-center">
+          <Header
+            navigateBack={navigateBack}
+            studyUID={studyUID}
+            hasMeasurements={hasMeasurements}
+            isPolling={isPolling}
+            onRefresh={refresh}
+          />
+        </div>
+      </header>
+
+      {/* -------- MAIN CONTENT AREA  -------- */}
+      <div className="flex flex-1 pt-16 pb-14 overflow-hidden">
+
+        {/* -------- LEFT VIEWER PANE -------- */}
+        <section className="w-full lg:w-1/2 h-full overflow-auto p-6">
+          <EchocardiogramViewer studyUID={studyUID} />
+        </section>
+
+        {/* -------- RIGHT PANE -------- */}
+        <section className="w-full lg:w-1/2 h-full flex flex-col overflow-hidden p-6">
+
+          {/* Sticky tab bar inside right column */}
+          <div className="sticky top-0 z-40 bg-white/90 backdrop-blur border rounded-xl px-3 py-2 flex items-center gap-2">
+            <Pill
+              isActive={activeTab === "measurements"}
+              onClick={() => setActiveTab("measurements")}
+            >
+              AI Measurements
+            </Pill>
+            <Pill
+              isActive={activeTab === "segmentation"}
+              onClick={() => setActiveTab("segmentation")}
+            >
+              AI Segmentations
+            </Pill>
+            <Pill
+              isActive={activeTab === "report"}
+              onClick={() => setActiveTab("report")}
+            >
+              AI Report
+            </Pill>
+
+            <div className="ml-auto text-xs text-gray-500">
+              {anyLoading ? "Updating…" : "Ready"}
+            </div>
+          </div>
+
+          {/* Scrollable panel content */}
+          <div className="flex-1 overflow-y-auto mt-3 rounded-2xl border bg-white p-4">
+            {activeTab === "measurements" && (
+              <MainFileAiMeasurements
+                state={panEchoEchoprimeState}
+                panechoEchoprimeResults={panechoEchoprimeResults}
+              />
+            )}
+            {activeTab === "segmentation" && (
+              <MainFileAiVideoMeasurements
+                state={dynamicMeasurementsState}
+                dynamicMeasurementsResults={dynamicMeasurementsResults}
+              />
+            )}
+            {activeTab === "report" && (
+              <LlmReport
+                state={llmReportState}
+                llmReportResults={llmReportResults}
+              />
+            )}
+          </div>
+
+        </section>
       </div>
 
-      {/* Full-bleed grid */}
-      <main className="w-full px-6 py-4 grid grid-cols-12 gap-6 2xl:gap-8">
-        {/* Left Pane: Cine Viewer */}
-        <section className="col-span-12 lg:col-span-6">
-          {/* Stick just below fixed header */}
-          <div className="lg:sticky lg:top-16">
-            <EchocardiogramViewer studyUID={studyUID} />
-          </div>
-        </section>
-
-        {/* Right Pane: local sticky tab bar + panels */}
-        <section className="col-span-12 lg:col-span-6">
-          {/* Right-only sticky tab bar (sits under fixed header) */}
-          <div className="sticky top-16 z-40">
-            <div className="bg-white/90 backdrop-blur border rounded-xl px-3 py-2 flex items-center gap-2">
-              <Pill
-                isActive={activeTab === "measurements"}
-                onClick={() => setActiveTab("measurements")}
-              >
-                AI Measurements
-              </Pill>
-              <Pill
-                isActive={activeTab === "segmentation"}
-                onClick={() => setActiveTab("segmentation")}
-              >
-                AI Segmentations
-              </Pill>
-              <Pill
-                isActive={activeTab === "report"}
-                onClick={() => setActiveTab("report")}
-              >
-                AI Report
-              </Pill>
-
-              <div className="ml-auto text-xs text-gray-500 whitespace-nowrap">
-                {anyLoading ? "Updating…" : "Ready"}
-              </div>
-            </div>
-          </div>
-
-          {/* Panels */}
-          <div className="mt-3 rounded-2xl border bg-white">
-            <div className="p-4">
-              {activeTab === "measurements" && (
-                <MainFileAiMeasurements
-                  state={panEchoEchoprimeState} 
-                  panechoEchoprimeResults={panechoEchoprimeResults} 
-                />
-              )}
-
-              {activeTab === "segmentation" && (
-                <MainFileAiVideoMeasurements
-                  state={dynamicMeasurementsState} 
-                  dynamicMeasurementsResults={dynamicMeasurementsResults}
-                />
-              )}
-
-              {activeTab === "report" && (
-                <LlmReport
-                  state={llmReportState} 
-                  llmReportResults={llmReportResults}
-                />
-              )}
-            </div>
-          </div>
-        </section>
-      </main>
-
-      {/* Footer */}
-      <footer className="sticky bottom-0 z-40 bg-white/90 backdrop-blur border-t">
-        <div className="w-full px-6 py-3 flex items-center gap-2">
+      {/* -------- FOOTER -------- */}
+      <footer className="fixed bottom-0 left-0 right-0 z-50 bg-white/90 backdrop-blur border-t h-14">
+        <div className="h-full px-6 flex items-center">
           <div className="text-xs text-gray-500">
             {anyLoading ? "Polling for results…" : "Ready"}
           </div>
@@ -142,9 +135,11 @@ export function StudyResultsLayout({ navigateBack, viewModel }) {
           </div>
         </div>
       </footer>
+
     </div>
   );
 }
+
 
 /* -------------------- helpers -------------------- */
 
