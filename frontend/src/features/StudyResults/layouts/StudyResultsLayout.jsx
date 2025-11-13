@@ -3,7 +3,7 @@ import EchocardiogramViewer from "../components/EchocardiogramViewer";
 import Header from "../components/Header";
 import MainFileAiMeasurements from "../components/AiMeasurements/MainFileAiMeasurements";
 import MainFileAiVideoMeasurements from "../components/AiVideoMeasurements/MainFileAiVideoMeasurements";
-import LlmReport from "../components/LlmReport";
+import MainFileLlmReport from "../components/LlmReport/MainFileLlmReport";
 
 
 export function StudyResultsLayout({ navigateBack, viewModel }) {
@@ -109,7 +109,7 @@ export function StudyResultsLayout({ navigateBack, viewModel }) {
               />
             )}
             {activeTab === "report" && (
-              <LlmReport
+              <MainFileLlmReport
                 state={llmReportState}
                 llmReportResults={llmReportResults}
               />
