@@ -18,7 +18,7 @@ const buttonVariants = cva(
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
         clinical:
-          "bg-gradient-to-r from-primary to-primary-glow text-primary-foreground shadow-clinical hover:shadow-glow transition-all duration-300 hover:scale-[1.02]",
+          "bg-gradient-to-r from-[#9333EA] via-[#6366F1] to-[#06B6D4] text-white shadow-md transition-transform duration-200 hover:scale-[1.02] hover:brightness-95",
         accent:
           "bg-gradient-to-r from-accent to-accent-glow text-accent-foreground shadow-clinical hover:shadow-glow transition-all duration-300 hover:scale-[1.02]",
       },

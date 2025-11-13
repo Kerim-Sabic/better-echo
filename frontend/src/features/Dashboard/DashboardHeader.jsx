@@ -30,7 +30,7 @@ export default function DashboardHeader({ onNewStudy }) {
               className="w-8 h-8"
             />
             <div>
-              <h1 className="text-2xl font-bold text-foreground">
+              <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#9333EA] via-[#6366F1] to-[#06B6D4]">
                 Patient Studies
               </h1>
               <p className="text-sm text-muted-foreground">
@@ -52,7 +52,7 @@ export default function DashboardHeader({ onNewStudy }) {
             )}
 
             {/* New Study button */}
-            <Button className="btn-clinical" onClick={onNewStudy}>
+            <Button variant="clinical" onClick={onNewStudy}>
               <Plus className="w-5 h-5 mr-2" />
               New Study
             </Button>
@@ -70,6 +70,8 @@ export default function DashboardHeader({ onNewStudy }) {
             )}
           </div>
         </div>
+        {/* Accent underline */}
+        <div className="mt-3 h-0.5 w-full rounded-full bg-gradient-to-r from-[#9333EA] via-[#6366F1] to-[#06B6D4]" />
       </div>
     </header>
   );

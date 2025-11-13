@@ -125,7 +125,8 @@ export default function Login() {
 
               <Button
                 type="submit"
-                className="w-full h-12 text-lg font-medium btn-clinical"
+                variant="clinical"
+                className="w-full h-12 text-lg font-medium"
                 disabled={isLoading}
               >
                 {isLoading ? "Signing In..." : "Sign In"}

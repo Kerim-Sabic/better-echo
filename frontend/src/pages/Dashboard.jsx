@@ -39,7 +39,7 @@ export default function Dashboard() {
       <main className="container px-6 py-6 mx-auto">
         {loading && (
           <div className="py-12 text-center">
-            <Activity className="w-16 h-16 mx-auto mb-4 text-muted-foreground animate-pulse" />
+            <Activity className="w-16 h-16 mx-auto mb-4 text-primary animate-pulse" />
             <p className="text-muted-foreground">Loading studies…</p>
           </div>
         )}
@@ -70,7 +70,7 @@ export default function Dashboard() {
 
             {filteredStudies.length === 0 && (
               <div className="py-12 text-center">
-                <Activity className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+                <Activity className="w-16 h-16 mx-auto mb-4 text-primary" />
                 <h3 className="mb-2 text-lg font-medium text-foreground">
                   No studies found
                 </h3>

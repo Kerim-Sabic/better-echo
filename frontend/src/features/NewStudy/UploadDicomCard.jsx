@@ -15,8 +15,10 @@ export default function UploadDicomCard({ files, setFiles, studyUID, isUploading
       <CardContent className="space-y-4">
         <label
           className={cn(
-            "flex flex-col items-center justify-center w-full rounded-lg border border-dashed border-border bg-background cursor-pointer",
-            "hover:border-primary/60 hover:bg-accent/30 transition-colors"
+            "flex flex-col items-center justify-center w-full rounded-lg border border-dashed border-border cursor-pointer",
+            // Soft brand-tinted background with stronger hover
+            "bg-gradient-to-br from-[#9333EA]/10 via-[#6366F1]/10 to-[#06B6D4]/10",
+            "hover:border-[#06B6D4]/60 hover:from-[#9333EA]/20 hover:via-[#6366F1]/20 hover:to-[#06B6D4]/20 transition-colors"
           )}
           style={{ minHeight: "11rem", padding: "1rem" }} // minimum height for the upload area
         >
@@ -28,7 +30,7 @@ export default function UploadDicomCard({ files, setFiles, studyUID, isUploading
             onChange={(e) => setFiles(Array.from(e.target.files) || [])}
           />
           <div className="flex items-start w-full gap-3">
-            <div className="flex-shrink-0 p-2 rounded-md bg-primary/10">
+            <div className="flex-shrink-0 p-2 rounded-md bg-gradient-to-r from-[#9333EA]/10 via-[#6366F1]/10 to-[#06B6D4]/10">
               <Upload className="w-5 h-5 text-primary" />
             </div>
             <div className="flex-1 text-left">
@@ -39,7 +41,7 @@ export default function UploadDicomCard({ files, setFiles, studyUID, isUploading
                   ? files.map((f, idx) => (
                       <span
                         key={idx}
-                        className="px-2 py-1 text-sm break-words rounded bg-primary/10"
+                        className="px-2 py-1 text-sm break-words rounded bg-brand-soft"
                       >
                         {f.name}
                       </span>

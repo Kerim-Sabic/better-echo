@@ -64,7 +64,7 @@ export default function NewStudy() {
             Cancel
           </Button>
           <Button
-            className="btn-clinical"
+            variant="clinical"
             onClick={createStudyAndAnalyze}
             disabled={!studyUID}
           >

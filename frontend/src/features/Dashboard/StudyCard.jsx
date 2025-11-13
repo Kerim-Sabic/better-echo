@@ -13,7 +13,7 @@ export default function StudyCard({ study, onSelectStudy, onEdit, onDelete }) {
         <div className="grid grid-cols-1 md:grid-cols-[1fr,auto] gap-4 min-h-[160px] w-full">
           {/* LEFT */}
           <div className="flex items-center space-x-4 overflow-hidden">
-            <div className="flex items-center justify-center flex-shrink-0 w-12 h-12 rounded-full bg-primary/10">
+            <div className="flex items-center justify-center flex-shrink-0 w-12 h-12 rounded-full bg-gradient-to-r from-[#9333EA]/10 via-[#6366F1]/10 to-[#06B6D4]/10">
               <User className="w-6 h-6 text-primary" />
             </div>
             <div className="space-y-1 overflow-hidden">
