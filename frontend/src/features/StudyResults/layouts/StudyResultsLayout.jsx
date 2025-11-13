@@ -43,7 +43,7 @@ export function StudyResultsLayout({ navigateBack, viewModel }) {
     ["loading", "pending"].includes(llmReportState);
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50 overflow-hidden">
+    <div className="h-full flex flex-col bg-gray-50 overflow-hidden">
 
       {/* -------- Header -------- */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur border-b h-16">

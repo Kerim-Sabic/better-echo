@@ -13,7 +13,7 @@ const EchocardiogramViewerSection = ({ studyUID }) => {
       <CardContent className="p-0">
         <div className="p-6">
           {studyUID ? (
-            <div className="w-full h-[calc(100vh-265px)] rounded-xl overflow-hidden border bg-black">
+            <div className="w-full h-[calc(100vh-303px)] rounded-xl overflow-hidden border bg-black">
               <Viewer studyUID={studyUID} />
             </div>
           ) : (
