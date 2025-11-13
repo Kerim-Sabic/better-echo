@@ -22,7 +22,7 @@
         "echoprime_name": "pericardial_effusion",
         "panecho_threshold": 0.15,
         "echoprime_threshold": 0.20,
-        "combine_rule": "positive_if_either_positive",
+        "combine_rule": "prefer_model:PanEcho",
         "units": null,
         "expected_direction": "higher_is_worse",
         "notes": "Label effusion present if either model's probability exceeds its threshold. A lower PanEcho threshold is used to catch small effusions."
@@ -62,7 +62,7 @@
         "echoprime_name": "rv_systolic_function_depressed",
         "panecho_threshold": 0.40,
         "echoprime_threshold": 0.04,
-        "combine_rule": "positive_if_either_positive",
+        "combine_rule": "prefer_model:PanEcho",
         "units": null,
         "expected_direction": "higher_is_worse",
         "notes": "Label RV systolic dysfunction if either model probability crosses its threshold. PanEcho threshold is reduced to avoid false positives for mild dysfunction."
@@ -112,7 +112,7 @@
         "echoprime_name": "mitral_stenosis",
         "panecho_threshold": 0.50,
         "echoprime_threshold": 0.50,
-        "combine_rule": "positive_if_either_positive",
+        "combine_rule": "prefer_model:PanEcho",
         "units": null,
         "expected_direction": "higher_is_worse",
         "notes": "Mitral stenosis is rare; label present if either model probability is ≥ 0.5."
@@ -132,7 +132,7 @@
         "echoprime_name": "bicuspid_aov_morphology",
         "panecho_threshold": 0.50,
         "echoprime_threshold": 0.50,
-        "combine_rule": "positive_if_either_positive",
+        "combine_rule": "prefer_model:PanEcho",
         "units": null,
         "expected_direction": "n/a",
         "notes": "Either model can detect a bicuspid aortic valve."
@@ -152,7 +152,7 @@
         "echoprime_name": "dilated_ivc",
         "panecho_threshold": 0.50,
         "echoprime_threshold": 0.32,
-        "combine_rule": "positive_if_either_positive",
+        "combine_rule": "prefer_model:PanEcho",
         "units": null,
         "expected_direction": "higher_is_worse",
         "notes": "PanEcho's RAP-8-or-higher corresponds to elevated right atrial pressure; EchoPrime's dilated IVC indicates similar physiology. Call positive if either probability ≥ 0.5."

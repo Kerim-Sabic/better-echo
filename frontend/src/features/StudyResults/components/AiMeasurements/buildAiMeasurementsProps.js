@@ -91,7 +91,9 @@ const NORMAL_RANGES = {
   aortic_root_diameter: { min: 2.0, max: 3.7 }, //cm
 };
 
-// --- Helper: determine color based on normal range ---
+// ------------------------------------------------------------
+// PART 1 — Color helper
+// ------------------------------------------------------------
 function getMeasurementColor(key, value) {
   if (!isFiniteNumber(value)) return null;
   const range = NORMAL_RANGES[key];
@@ -117,76 +119,122 @@ function getMeasurementColor(key, value) {
   return "red";
 }
 
-// --- Part 1. Mapping raw inputs -> dumb-ui props ---
-// Build two arrays the UI can render
-// -mainMeasurements:
-// -Measurements:
+// ------------------------------------------------------------
+// PART 2 — Core transformation logic
+// ------------------------------------------------------------
 export function buildAiMeasurementsProps(panechoEchoprimeResults) {
-    const tasks = panechoEchoprimeResults?.integrated_tasks
-    if (!tasks) return { mainMeasurements: [], Measurements: [] };
+  const tasks = panechoEchoprimeResults?.integrated_tasks;
+  if (!tasks) return { mainMeasurements: [], Measurements: [] };
 
-    const asItem = (key, label) => {
-      const task = tasks[key];
-      if (!task) return null;
+  // ------------------------------------------------------------
+  // PART 3 — Transformer for each task
+  // ------------------------------------------------------------
+  const asItem = (key, label) => {
+    const task = tasks[key];
+    if (!task) return null;
 
-      // --- Part 1.1 get status if present(this is for the classification tasks)
-      const hasStatus =
-        task?.integrated_label === "Present" || task?.integrated_label === "Absent";
+    const integratedLabel = task?.integrated_label;
+    const units = task?.units;
+    const discrepancy = task?.discrepancy ?? null;
 
-      // --- Part 1.2 get integrated_value to use to configure the color of the task
-      //(green for normal, yellow for borderline, red for not normal measurement)
-      const raw_integrated_value = task?.integrated_value;
+    // Determine if classification task
+    const isClassification = units == null;
 
-      // --- Part 1.3 get color of the task based on the integrated_value
-      const color =
-        !hasStatus && isFiniteNumber(raw_integrated_value)
-          ? getMeasurementColor(key, raw_integrated_value)
-          : null;
+    // ------------------------------------------------------------
+    // PART 3.1 — Determine color
+    // ------------------------------------------------------------
+    const rawValue = task?.integrated_value;
+    const color =
+      !isClassification && isFiniteNumber(rawValue)
+        ? getMeasurementColor(key, rawValue)
+        : null;
 
-      let value = null;
+    // ------------------------------------------------------------
+    // PART 3.2 — VALUE LOGIC
+    // ------------------------------------------------------------
+    let value = null;
+
+    if (!isClassification) {
+      // ---------------------------
+      // REGRESSION TASKS
+      // ---------------------------
 
       if (RANGE_KEYS.has(key)) {
-        const two_values = [task?.panecho_value_or_prob, task?.echoprime_value_or_prob]
-          .map((val) => (isFiniteNumber(val) ? Number(val) : null))
-          .filter((val) => val !== null);
+        // RANGE regression task
+        const vals = [
+          task?.panecho_value_or_prob,
+          task?.echoprime_value_or_prob,
+        ]
+          .map((v) => (isFiniteNumber(v) ? Number(v) : null))
+          .filter((v) => v !== null);
 
-        if (two_values.length >= 2) {
-          const min = Math.min(...two_values);
-          const max = Math.max(...two_values);
-          value = `${formatNumber(min)}-${formatNumber(max)}`;
-        } else if (two_values.length === 1) {
-          value = formatNumber(two_values[0]);
+        if (vals.length >= 2) {
+          const min = Math.min(...vals);
+          const max = Math.max(...vals);
+          value = `${formatNumber(min)}-${formatNumber(max)} ${units}`;
+        } else if (vals.length === 1) {
+          value = `${formatNumber(vals[0])} ${units}`;
         }
-      } else if (isFiniteNumber(task?.integrated_value)) {
-        value = formatNumber(task.integrated_value);
+      } else {
+        // Simple regression → return integrated_value + units
+        if (isFiniteNumber(task.integrated_value)) {
+          value = `${formatNumber(task.integrated_value)} ${units}`;
+        }
       }
+    } else {
+      // ---------------------------
+      // CLASSIFICATION TASKS
+      // ---------------------------
 
-      return {
-        key,
-        label, // now from SECTION_MAP
-        value: hasStatus ? null : value,
-        units: hasStatus ? null : task?.units ?? null,
-        status: hasStatus ? task.integrated_label : null,
-        discrepancy: task?.discrepancy ?? null,
-        color,
-      };
+      const peProb = task?.panecho_value_or_prob;
+
+      if (peProb && typeof peProb === "object") {
+        // Return full probability map + final label
+        value = {
+          probs: peProb,
+          integrated_label: integratedLabel,
+        };
+      } else {
+        // Fallback → return just the integrated label
+        value = integratedLabel ?? null;
+      }
+    }
+
+    // ------------------------------------------------------------
+    // PART 3.3 — Build final item payload
+    // ------------------------------------------------------------
+    return {
+      key,
+      label,
+      value,
+      units: units ?? null,
+      status: isClassification ? integratedLabel : null,
+      discrepancy,
+      color,
     };
+  };
 
+  // ------------------------------------------------------------
+  // PART 4 — Build main measurement tiles
+  // ------------------------------------------------------------
+  const mainMeasurements = MAIN_KEYS.map(({ key, label }) =>
+    asItem(key, label)
+  ).filter(Boolean);
 
-    // --- Build main measurements ---
-    const mainMeasurements = MAIN_KEYS.map(({ key, label }) => asItem(key, label)).filter(Boolean);
-
-    // --- Build grouped measurements ---
-    const Measurements = Object.entries(SECTION_MAP).map(([section, entries]) => ({
+  // ------------------------------------------------------------
+  // PART 5 — Build grouped section measurements
+  // ------------------------------------------------------------
+  const Measurements = Object.entries(SECTION_MAP).map(
+    ([section, entries]) => ({
       section,
       items: Object.entries(entries)
         .map(([key, label]) => asItem(key, label))
         .filter(Boolean),
-    }));
+    })
+  );
 
-
-    return { mainMeasurements, Measurements};
-};
+  return { mainMeasurements, Measurements };
+}
 
 // --- Utility functions ---
 function isFiniteNumber(val) {
