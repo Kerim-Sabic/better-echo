@@ -66,7 +66,7 @@ export function StudyResultsLayout({ navigateBack, viewModel }) {
         </section>
 
         {/* -------- RIGHT PANE -------- */}
-        <section className="w-full lg:w-1/2 h-full flex flex-col overflow-hidden p-6">
+        <section className="w-full lg:w-1/2 h-full flex flex-col overflow-y-auto p-6">
 
           {/* Sticky tab bar inside right column */}
           <div className="sticky top-0 z-40 bg-white/90 backdrop-blur border rounded-xl px-3 py-2 flex items-center gap-2">
