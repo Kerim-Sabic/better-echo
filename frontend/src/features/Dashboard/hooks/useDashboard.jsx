@@ -67,7 +67,6 @@ export function useDashboard() {
 
   // Delete study
   const onDelete = async (row) => {
-    if (!window.confirm("Delete this study? This cannot be undone.")) return;
     await deleteStudyApi(row.id);
     setStudies((prev) => prev.filter((s) => s.id !== row.id));
   };

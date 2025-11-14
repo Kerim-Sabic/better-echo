@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 import { Activity } from "lucide-react";
 
 import DashboardHeader from "../features/Dashboard/DashboardHeader";
@@ -6,12 +7,15 @@ import SearchAndFilters from "../features/Dashboard/SearchAndFilters";
 import DashboardStats from "../features/Dashboard/DashboardStats";
 import StudyList from "../features/Dashboard/StudyList";
 import EditStudyDialog from "../features/Dashboard/EditStudyDialog";
+import DeleteStudyDialog from "../features/Dashboard/DeleteStudyDialog";
 
 import { useDashboard } from "../features/Dashboard/hooks/useDashboard";
 import { TITLEBAR_HEIGHT } from "../components/TitleBar";
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const [studyToDelete, setStudyToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
   const {
     searchTerm,
     setSearchTerm,
@@ -62,7 +66,7 @@ export default function Dashboard() {
               studies={filteredStudies}
               onSelectStudy={onSelectStudy}
               onEdit={openEdit}
-              onDelete={onDelete}
+              onDelete={(s) => setStudyToDelete(s)}
             />
 
             <EditStudyDialog
@@ -72,6 +76,23 @@ export default function Dashboard() {
               setEditForm={setEditForm}
               onSave={saveEdit}
               saving={saving}
+            />
+
+            <DeleteStudyDialog
+              open={!!studyToDelete}
+              study={studyToDelete}
+              busy={deleting}
+              onCancel={() => setStudyToDelete(null)}
+              onConfirm={async () => {
+                if (!studyToDelete) return;
+                try {
+                  setDeleting(true);
+                  await onDelete(studyToDelete);
+                } finally {
+                  setDeleting(false);
+                  setStudyToDelete(null);
+                }
+              }}
             />
 
             {filteredStudies.length === 0 && (
