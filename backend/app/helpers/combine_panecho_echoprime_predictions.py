@@ -15,26 +15,26 @@ except Exception as e:
 # Part 1. PanEcho task metadata (class orders, positive labels, units)
 # These control how we interpret raw PanEcho outputs
 PANECHO_MULTICLASS_LABELS = {
-    "LVSize": ["Mildly Increased", "Moderately|Severely Increased", "Normal"],
-    "LVSystolicFunction": ["Mildly Decreased", "Moderately|Severely Decreased", "Normal|Hyperdynamic"],
-    "LVDiastolicFunction": ["Mild|Indeterminate", "Moderate|Severe", "Normal"],
-    "RVSize": ["Mildly Increased", "Moderately|Severely Increased", "Normal"],
-    "LASize": ["Mildly Dilated", "Moderately|Severely Dilated", "Normal"],
-    "AVStenosis": ["Mild|Moderate", "None", "Severe"],
-    "AVRegurg": ["Mild", "Moderate|Severe", "None|Trace"],
-    "MVRegurgitation": ["Mild", "Moderate|Severe", "None|Trace"],
-    "TVRegurgitation": ["Mild", "Moderate|Severe", "None|Trace"],
+    "LVSize": ["Mildly Increased", "Moderately or Severely Increased", "Normal"],
+    "LVSystolicFunction": ["Mildly Decreased", "Moderately or Severely Decreased", "Normal or Hyperdynamic"],
+    "LVDiastolicFunction": ["Mild or Indeterminate", "Moderate or Severe", "Normal"],
+    "RVSize": ["Mildly Increased", "Moderately or Severely Increased", "Normal"],
+    "LASize": ["Mildly Dilated", "Moderately or Severely Dilated", "Normal"],
+    "AVStenosis": ["Mild or Moderate", "None", "Severe"],
+    "AVRegurg": ["Mild", "Moderate or Severe", "None or Trace"],
+    "MVRegurgitation": ["Mild", "Moderate or Severe", "None or Trace"],
+    "TVRegurgitation": ["Mild", "Moderate or Severe", "None or Trace"],
 }
 PANECHO_BINARY_POSITIVE_LABEL = {
     "pericardial-effusion": "Present",
     "LVWallThickness-increased-any": "Increased",
-    "LVWallThickness-increased-modsev": "Moderately|Severely Increased",
+    "LVWallThickness-increased-modsev": "Moderately or Severely Increased",
     "LVWallMotionAbnormalities": "Present",   # PanEcho may emit scalar p(Present)
     "RVSystolicFunction": "Decreased",        # scalar p(Decreased)
     "RASize": "Dilated",                      # scalar p(Dilated)
     "AVStructure": "Bicuspid",
     "LVOT20mmHg": "Present",
-    "MVStenosis": "Mild|Moderate|Severe",
+    "MVStenosis": "Mild or Moderate or Severe",
     "RAP-8-or-higher": "Present",
 }
 PANECHO_REGRESSION_UNITS = {
@@ -45,16 +45,16 @@ PANECHO_REGRESSION_UNITS = {
     "TVPkGrad": "mmHg", "AORoot": "cm",
 }
 PANECHO_POSITIVE_CLASSES = {
-    "MVRegurgitation": ["Moderate|Severe"],
-    "TVRegurgitation": ["Moderate|Severe"],
-    "AVRegurg": ["Moderate|Severe"],
+    "MVRegurgitation": ["Moderate or Severe"],
+    "TVRegurgitation": ["Moderate or Severe"],
+    "AVRegurg": ["Moderate or Severe"],
     "AVStenosis": ["Severe"],
 }
 
 PANECHO_BINARY_NEGATIVE_LABEL = {
 "pericardial-effusion": "Absent",
 "LVWallThickness-increased-any": "Not Increased",
-"LVWallThickness-increased-modsev": "Not Moderately|Severely Increased",
+"LVWallThickness-increased-modsev": "Not Moderately or Severely Increased",
 "LVWallMotionAbnormalities": "Absent",
 "RVSystolicFunction": "Normal",
 "RASize": "Normal",
@@ -98,14 +98,14 @@ def _panecho_positive_probability(
             # Fallback: abnormal = 1 - probability of the normal class (existing behaviour)
             normal_class_by_task = {
                 "LVSize": "Normal",
-                "LVSystolicFunction": "Normal|Hyperdynamic",
+                "LVSystolicFunction": "Normal or Hyperdynamic",
                 "LVDiastolicFunction": "Normal",
                 "RVSize": "Normal",
                 "LASize": "Normal",
                 "AVStenosis": "None",
-                "AVRegurg": "None|Trace",
-                "MVRegurgitation": "None|Trace",
-                "TVRegurgitation": "None|Trace",
+                "AVRegurg": "None or Trace",
+                "MVRegurgitation": "None or Trace",
+                "TVRegurgitation": "None or Trace",
             }
             normal_label = normal_class_by_task.get(task_name)
             if normal_label:
@@ -229,14 +229,14 @@ def _panecho_abnormal_probability(task_name: str, panecho_normalized: Dict[str, 
         # 4.1.1 Map each multiclass task to its "normal" label
         normal_class_by_task = {
             "LVSize": "Normal",
-            "LVSystolicFunction": "Normal|Hyperdynamic",
+            "LVSystolicFunction": "Normal or Hyperdynamic",
             "LVDiastolicFunction": "Normal",
             "RVSize": "Normal",
             "LASize": "Normal",
             "AVStenosis": "None",
-            "AVRegurg": "None|Trace",
-            "MVRegurgitation": "None|Trace",
-            "TVRegurgitation": "None|Trace",
+            "AVRegurg": "None or Trace",
+            "MVRegurgitation": "None or Trace",
+            "TVRegurgitation": "None or Trace",
         }
         normal_label = normal_class_by_task.get(task_name)
         if not normal_label:
