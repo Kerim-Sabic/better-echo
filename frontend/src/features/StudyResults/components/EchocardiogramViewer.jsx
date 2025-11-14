@@ -17,7 +17,7 @@ const EchocardiogramViewerSection = ({ studyUID }) => {
               <Viewer studyUID={studyUID} />
             </div>
           ) : (
-            <div className="flex items-center justify-center w-full h-[calc(100vh-265px)] rounded-md bg-muted text-muted-foreground">
+            <div className="flex items-center justify-center w-full h-[calc(100vh-303px)] rounded-md bg-muted text-muted-foreground">
               No study UID
             </div>
           )}

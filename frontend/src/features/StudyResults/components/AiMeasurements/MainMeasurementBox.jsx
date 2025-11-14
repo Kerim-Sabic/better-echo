@@ -3,22 +3,71 @@ import React from "react";
 export default function MainMeasurementBox({ mainMeasurement }) {
   if (!mainMeasurement) return null;
 
-  const { label, value, units, status, discrepancy, color} = mainMeasurement;
+  const { label, value, discrepancy, color } = mainMeasurement;
+
+  // --------------------------------------------
+  // PART 1 — Color themes (same as MeasurementBox)
+  // --------------------------------------------
+  const colorThemes = {
+    green: {
+      bg: "from-green-500/10 via-green-400/5 to-emerald-500/10",
+      border: "border-green-300/40",
+      text: "text-green-700",
+    },
+    yellow: {
+      bg: "from-yellow-400/10 via-yellow-300/10 to-amber-400/10",
+      border: "border-yellow-300/40",
+      text: "text-yellow-700",
+    },
+    red: {
+      bg: "from-red-500/10 via-red-400/10 to-orange-500/10",
+      border: "border-red-300/40",
+      text: "text-red-700",
+    },
+    default: {
+      bg: "from-white/80 via-white/60 to-purple-50/10",
+      border: "border-white/40",
+      text: "text-gray-800",
+    },
+  };
+
+  const theme = colorThemes[color] || colorThemes.default;
 
   return (
-    <div className="bg-white shadow rounded-lg p-4 w-40 flex flex-col items-center justify-center border border-gray-200">
-      <div className="text-sm text-gray-500">{label}</div>
+    <div
+      className={`
+        p-5 rounded-3xl 
+        bg-gradient-to-br ${theme.bg}
+        backdrop-blur-md border ${theme.border}
+        shadow-md hover:shadow-xl hover:scale-[1.02]
+        transition-all duration-300
+        w-full max-w-[220px]
+        flex flex-col items-center text-center
+      `}
+    >
+      {/* Label */}
+      <div className="text-sm font-semibold text-gray-800 tracking-wide">
+        {label}
+      </div>
 
-      {status ? (
-        <div className="mt-1 text-lg font-semibold text-gray-800">{status}</div>
-      ) : (
-        <div className="mt-1 text-lg font-semibold text-gray-800">
-          {value} {units || ""}
-        </div>
-      )}
+      {/* Value ONLY (no units, no status) */}
+      <div className={`mt-3 text-3xl font-bold ${theme.text}`}>
+        {value}
+      </div>
 
+      {/* Discrepancy */}
       {discrepancy && (
-        <div className="mt-1 text-xs text-red-500 font-medium">Discrepancy</div>
+        <div
+          className="
+            mt-3 text-xs font-semibold 
+            px-3 py-1 rounded-xl 
+            bg-gradient-to-br from-red-500/10 to-orange-500/10 
+            border border-red-300/40 
+            text-red-700 shadow-sm
+          "
+        >
+          ⚠ Discrepancy
+        </div>
       )}
     </div>
   );

@@ -1,98 +1,7 @@
-// Keys for the main (hero) metrics shown at the top of the UI.
-const MAIN_KEYS = [
-  { key: "ejection_fraction", label: "Ejection Fraction (EF)" },
-  { key: "gls", label: "Global Longitudinal Strain (GLS)" },
-  { key: "pulmonary_artery_pressure", label: "Pulmonary Artery Pressure" },
-];
-
-
-// For these keys, present a RANGE (min->max) from PanEcho & EchoPrime values (not the integrated value).
-const RANGE_KEYS = new Set(["ejection_fraction", "pulmonary_artery_pressure"]);
-
-// Section buckets that determine which tasks appear in which group (and order).
-const SECTION_MAP = {
-  "Valves": {
-    aortic_stenosis: "Aortic Stenosis",
-    aortic_regurgitation: "Aortic Regurgitation",
-    mitral_regurgitation: "Mitral Regurgitation",
-    mitral_stenosis: "Mitral Stenosis",
-    tricuspid_valve_regurgitation: "Tricuspid Regurgitation",
-    tricuspid_stenosis: "Tricuspid Stenosis",
-    pulmonic_valve_regurgitation: "Pulmonic Regurgitation",
-    lvot20mmhg: "LVOT Gradient (20 mmHg)",
-    avpkvel: "Aortic Valve Peak Velocity",
-    lvotdiam: "LVOT Diameter",
-    mitral_annular_calcification: "Mitral Annular Calcification",
-  },
-  "LV Size & Function": {
-    ejection_fraction: "Ejection Fraction (EF)",
-    gls: "Global Longitudinal Strain (GLS)",
-    lvidd: "LV Internal Diameter (Diastole)",
-    lvids: "LV Internal Diameter (Systole)",
-    lvedv: "LV End-Diastolic Volume (LVEDV)",
-    lvesv: "LV End-Systolic Volume (LVESV)",
-    lvsv: "LV Stroke Volume (LVSV)",
-    ivsd: "Interventricular Septum Thickness (IVSd)",
-    lvpwd: "LV Posterior Wall Thickness (LVPWd)",
-    lvsize: "LV Size",
-    lvsystolicfunction: "LV Systolic Function",
-    lvwallmotionabnormalities: "LV Wall Motion Abnormalities",
-    wall_motion_hypokinesis: "Regional Hypokinesis",
-    lvdiastolicfunction: "LV Diastolic Function",
-    lvwallthickness_increased_any: "LV Wall Thickening (Any)",
-    lvwallthickness_increased_modsev: "LV Wall Thickening (Mod/Sev)",
-  },
-  "Atria": {
-    lavol: "LA Volume",
-    laids2d: "LA Indexed Volume (2D)",
-    e_eavg: "E/E′ Ratio (Avg)",
-    elevated_left_atrial_pressure: "Elevated LA Pressure",
-    left_atrium_dilation: "Left Atrial Dilation",
-    right_atrium_dilation: "Right Atrial Dilation",
-    atrial_septum_hypertrophy: "Atrial Septum Hypertrophy",
-  },
-  "Right Heart": {
-    pulmonary_artery_pressure: "Pulmonary Artery Pressure",
-    rvidd: "RV Internal Diameter (Diastole)",
-    tapse: "TAPSE",
-    rv_s_vel: "RV S′ Velocity",
-    tvpkgrad: "Tricuspid Valve Peak Gradient",
-    radimension_ml: "RA Dimension (M/L)",
-    right_ventricle_dilation: "Right Ventricular Dilation",
-    rv_systolic_function_depressed: "RV Systolic Function Depressed",
-    dilated_ivc: "Dilated IVC",
-    pericardial_effusion: "Pericardial Effusion",
-  },
-  "Aorta": {
-    aortic_root_diameter: "Aortic Root Diameter",
-    aortic_root_dilation: "Aortic Root Dilation",
-    bicuspid_aortic_valve: "Bicuspid Aortic Valve",
-  },
-  "Devices / Procedures": {
-    pacemaker: "Pacemaker",
-    impella: "Impella Device",
-    mitraclip: "MitraClip",
-    tavr: "TAVR Procedure",
-  },
-};
-
-
-// Values are examples — should be adapted to your dataset or medical source.
-const NORMAL_RANGES = {
-  ejection_fraction: { min: 50, max: 70 }, // normal LVEF %
-  gls: { min: -22, max: -18 },             // normal global longitudinal strain (%)
-  pulmonary_artery_pressure: { min: 10, max: 25 }, // mmHg
-  lvidd: { min: 4.2, max: 5.8 },             // cm (male ref)
-  lvids: { min: 2.5, max: 4.0 },             // cm
-  lvedv: { min: 67, max: 155 },              // cm^3
-  lvesv: { min: 22, max: 58 },               // cm^3
-  tapse: { min: 1.7, max: 3.0 },             // cm
-  rv_s_vel: { min: 9.5, max: 20 },         // cm/s
-  aortic_root_diameter: { min: 2.0, max: 3.7 }, //cm
-};
+import { MAIN_KEYS, RANGE_KEYS, SECTION_MAP, NORMAL_RANGES } from "./AiMeasurementsConstants"
 
 // ------------------------------------------------------------
-// PART 1 — Color helper
+// PART 1.1 — Measurement (regression tasks) Color helper
 // ------------------------------------------------------------
 function getMeasurementColor(key, value) {
   if (!isFiniteNumber(value)) return null;
@@ -120,6 +29,23 @@ function getMeasurementColor(key, value) {
 }
 
 // ------------------------------------------------------------
+// PART 1.2 — Categorical (classification tasks) Color helper
+// ------------------------------------------------------------
+
+function getCategoricalColor(key, integratedLabel) {
+  const def = NORMAL_RANGES[key];
+  if (!def || !def.categories || !integratedLabel) return null;
+
+  const label = integratedLabel.trim();
+
+  if (def.categories.normal?.includes(label)) return "green";
+  if (def.categories.borderline?.includes(label)) return "yellow";
+  if (def.categories.abnormal?.includes(label)) return "red";
+
+  return null;
+}
+
+// ------------------------------------------------------------
 // PART 2 — Core transformation logic
 // ------------------------------------------------------------
 export function buildAiMeasurementsProps(panechoEchoprimeResults) {
@@ -139,15 +65,21 @@ export function buildAiMeasurementsProps(panechoEchoprimeResults) {
 
     // Determine if classification task
     const isClassification = units == null;
+    const rawValue = task?.integrated_value;
 
     // ------------------------------------------------------------
     // PART 3.1 — Determine color
     // ------------------------------------------------------------
-    const rawValue = task?.integrated_value;
-    const color =
-      !isClassification && isFiniteNumber(rawValue)
-        ? getMeasurementColor(key, rawValue)
-        : null;
+    
+    let color = null;
+
+    if (!isClassification && isFiniteNumber(rawValue)) {
+      // REGRESSION TASKS
+      color = getMeasurementColor(key, rawValue);
+    } else if (isClassification && integratedLabel) {
+      // CLASSIFICATION TASKS
+      color = getCategoricalColor(key, integratedLabel)
+    }
 
     // ------------------------------------------------------------
     // PART 3.2 — VALUE LOGIC
