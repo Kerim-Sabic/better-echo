@@ -5,6 +5,10 @@ import MainFileAiMeasurements from "../components/AiMeasurements/MainFileAiMeasu
 import MainFileAiVideoMeasurements from "../components/AiVideoMeasurements/MainFileAiVideoMeasurements";
 import MainFileLlmReport from "../components/LlmReport/MainFileLlmReport";
 import { TITLEBAR_HEIGHT } from "../../../components/TitleBar";
+import { buildAiMeasurementsProps } from "../components/AiMeasurements/buildAiMeasurementsProps";
+import { listStudiesApi } from "../../../api/StudiesApi";
+import { printMeasurementsReport } from "../components/Report/printMeasurementsReport";
+import { buildMeasurementsReportHtml } from "../components/Report/buildMeasurementsReportHtml";
 
 
 export function StudyResultsLayout({ navigateBack, viewModel }) {
@@ -42,11 +46,67 @@ export function StudyResultsLayout({ navigateBack, viewModel }) {
     ["loading", "pending"].includes(dynamicMeasurementsState) ||
     ["loading", "pending"].includes(llmReportState);
 
+  async function toDataUrl(src) {
+    try {
+      const res = await fetch(src);
+      if (!res.ok) throw new Error('fetch failed');
+      const blob = await res.blob();
+      return await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } catch {
+      return null;
+    }
+  }
+
+  async function handlePrint() {
+    try {
+      const { mainMeasurements = [], Measurements = [] } = buildAiMeasurementsProps(
+        panechoEchoprimeResults || null
+      ) || {};
+
+      const hasAny = (Array.isArray(mainMeasurements) && mainMeasurements.length > 0) ||
+        (Array.isArray(Measurements) && Measurements.some((g) => (g.items || []).length > 0));
+      if (!hasAny) {
+        alert("No measurements to print.");
+        return;
+      }
+
+      let patientName = null;
+      try {
+        const studies = await listStudiesApi();
+        const match = Array.isArray(studies) ? studies.find((s) => s.study_uid === studyUID) : null;
+        patientName = match?.patient?.patient_name || null;
+      } catch {}
+
+      // Try Electron PDF preview if available
+      const logoDataUrl = await toDataUrl('/horalix-taskbar-app-icon.png');
+      const html = buildMeasurementsReportHtml({ logoDataUrl, patientName, studyUID, mainMeasurements, Measurements });
+      const preview = window.electronAPI?.report?.previewPdf;
+      if (typeof preview === 'function') {
+        const res = await preview(html, { printBackground: true, pageSize: 'A4' });
+        if (!res?.ok) {
+          console.warn('PDF preview failed', res?.error);
+          // fallback to browser print
+          printMeasurementsReport({ patientName, studyUID, mainMeasurements, Measurements });
+        }
+        return;
+      }
+      // fallback to browser print if no Electron API
+      printMeasurementsReport({ patientName, studyUID, mainMeasurements, Measurements });
+    } catch (e) {
+      console.warn("Failed to prepare print", e);
+    }
+  }
+
   return (
-    <div className="h-full flex flex-col bg-gray-50 overflow-hidden">
+    <div className="h-full flex flex-col bg-[#f8f8f8] overflow-hidden">
 
       {/* -------- Header -------- */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur border-b h-16">
+      <header className="fixed left-0 right-0 z-50 bg-white/90 backdrop-blur border-b h-16" style={{ top: TITLEBAR_HEIGHT }}>
         <div className="h-full px-6 flex items-center">
           <Header
             navigateBack={navigateBack}
@@ -54,6 +114,7 @@ export function StudyResultsLayout({ navigateBack, viewModel }) {
             hasMeasurements={hasMeasurements}
             isPolling={isPolling}
             onRefresh={refresh}
+            onPrint={handlePrint}
           />
         </div>
       </header>
@@ -91,7 +152,7 @@ export function StudyResultsLayout({ navigateBack, viewModel }) {
             </Pill>
 
             <div className="ml-auto text-xs text-gray-500">
-              {anyLoading ? "Updating…" : "Ready"}
+              {anyLoading ? "Updating..." : "Ready"}
             </div>
           </div>
 
@@ -124,7 +185,7 @@ export function StudyResultsLayout({ navigateBack, viewModel }) {
       <footer className="fixed bottom-0 left-0 right-0 z-50 bg-white/90 backdrop-blur border-t h-14">
         <div className="h-full px-6 flex items-center">
           <div className="text-xs text-gray-500">
-            {anyLoading ? "Polling for results…" : "Ready"}
+            {anyLoading ? "Polling for results..." : "Ready"}
           </div>
           <div className="ml-auto flex items-center gap-2">
             <button className="px-3 py-1.5 rounded-xl border bg-white">

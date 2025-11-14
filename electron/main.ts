@@ -10,7 +10,7 @@ const isDev = process.env.NODE_ENV === 'development';
 const REACT_DEV_PORT = 3000;
 const BACKEND_DEV_PORT = 8000;
 // Toggle to default-open DevTools in development. Flip to true locally if desired.
-const OPEN_DEVTOOLS_DEFAULT = true;
+const OPEN_DEVTOOLS_DEFAULT = false;
 // Allow autoplay with audio for splash video first pass
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 

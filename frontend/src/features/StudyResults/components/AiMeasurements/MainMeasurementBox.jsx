@@ -5,9 +5,7 @@ export default function MainMeasurementBox({ mainMeasurement }) {
 
   const { label, value, discrepancy, color } = mainMeasurement;
 
-  // --------------------------------------------
-  // PART 1 — Color themes (same as MeasurementBox)
-  // --------------------------------------------
+  // Color themes (aligned with MeasurementBox)
   const colorThemes = {
     green: {
       bg: "from-green-500/10 via-green-400/5 to-emerald-500/10",
@@ -45,8 +43,18 @@ export default function MainMeasurementBox({ mainMeasurement }) {
         flex flex-col items-center text-center
       `}
     >
-      {/* Label */}
-      <div className="text-sm font-semibold text-gray-800 tracking-wide">
+      {/* Label (up to 2 lines with ellipsis; full text on hover) */}
+      <div
+        className="text-sm font-semibold text-gray-800 tracking-wide text-center"
+        title={label}
+        style={{
+          display: "-webkit-box",
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: "vertical",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+        }}
+      >
         {label}
       </div>
 
@@ -55,7 +63,7 @@ export default function MainMeasurementBox({ mainMeasurement }) {
         {value}
       </div>
 
-      {/* Discrepancy */}
+      {/* Discrepancy (centered with tooltip) */}
       {discrepancy && (
         <div
           className="
@@ -64,7 +72,10 @@ export default function MainMeasurementBox({ mainMeasurement }) {
             bg-gradient-to-br from-red-500/10 to-orange-500/10 
             border border-red-300/40 
             text-red-700 shadow-sm
+            text-center
           "
+          title={"AI is unsure: two model estimates differ significantly (wide range). Please review."}
+          aria-label="Discrepancy information"
         >
           ⚠ Discrepancy
         </div>
@@ -72,3 +83,4 @@ export default function MainMeasurementBox({ mainMeasurement }) {
     </div>
   );
 }
+

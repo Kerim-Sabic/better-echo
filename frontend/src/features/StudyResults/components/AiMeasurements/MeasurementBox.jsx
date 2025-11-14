@@ -4,7 +4,7 @@ export default function MeasurementBox({ item }) {
   const { label, value, discrepancy, color } = item;
 
   // ------------------------------------------------------------
-  // PART 1 — Define ALL color themes first
+  // PART 1 - Define ALL color themes first
   // ------------------------------------------------------------
   const colorThemes = {
     green: {
@@ -37,7 +37,7 @@ export default function MeasurementBox({ item }) {
   const { bg, border, text, bar } = colorTheme;
 
   // ------------------------------------------------------------
-  // PART 2 — Identify classification tasks
+  // PART 2 - Identify classification tasks
   // ------------------------------------------------------------
   const isProbObject =
     value &&
@@ -46,7 +46,7 @@ export default function MeasurementBox({ item }) {
     typeof value.probs === "object";
 
   // ------------------------------------------------------------
-  // PART 3 — Detect unavailable measurement
+  // PART 3 - Detect unavailable measurement
   // ------------------------------------------------------------
   const isMissing =
     value === null ||
@@ -65,13 +65,23 @@ export default function MeasurementBox({ item }) {
         w-full max-w-[260px]
       `}
     >
-      {/* Label */}
-      <div className="text-sm font-semibold text-gray-800 tracking-wide text-center truncate">
+      {/* Label (up to 2 lines with ellipsis; full text on hover) */}
+      <div
+        className="text-sm font-semibold text-gray-800 tracking-wide text-center"
+        title={label}
+        style={{
+          display: "-webkit-box",
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: "vertical",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+        }}
+      >
         {label}
       </div>
 
       {/* ------------------------------------------------------------
-          CASE 1 — VALUE NOT AVAILABLE
+          CASE 1 - VALUE NOT AVAILABLE
          ------------------------------------------------------------ */}
       {isMissing ? (
         <div className="mt-4 text-center">
@@ -81,7 +91,7 @@ export default function MeasurementBox({ item }) {
         </div>
       ) : isProbObject ? (
         /* ------------------------------------------------------------
-            CASE 2 — CLASSIFICATION (with probabilities)
+            CASE 2 - CLASSIFICATION (with probabilities)
            ------------------------------------------------------------ */
         <div className="mt-3 text-center">
           <div className={`text-lg font-semibold ${text}`}>
@@ -123,7 +133,7 @@ export default function MeasurementBox({ item }) {
         </div>
       ) : (
         /* ------------------------------------------------------------
-            CASE 3 — NUMERIC OR SIMPLE LABEL
+            CASE 3 - NUMERIC OR SIMPLE LABEL
            ------------------------------------------------------------ */
         <div className="mt-5 text-center">
           <span className={`text-3xl font-bold ${text}`}>{value}</span>
@@ -134,12 +144,15 @@ export default function MeasurementBox({ item }) {
       {discrepancy && (
         <div
           className="
-            mt-4 text-xs font-semibold 
+            mt-3 text-xs font-semibold 
             px-3 py-1 rounded-xl 
             bg-gradient-to-br from-red-500/10 to-orange-500/10 
             border border-red-300/40 
             text-red-700 shadow-sm
+            text-center
           "
+          title={"AI is unsure: two model estimates differ significantly (wide range). Please review."}
+          aria-label="Discrepancy information"
         >
           ⚠ Discrepancy
         </div>
@@ -147,3 +160,4 @@ export default function MeasurementBox({ item }) {
     </div>
   );
 }
+
