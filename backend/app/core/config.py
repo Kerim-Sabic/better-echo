@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     LLM_MODEL: str = "Qwen/Qwen2.5-14B-Instruct-AWQ"
 
     LLM_PROMPT_TEMPLATE_PATH: str = "app/prompting/echo_report_prompt.md.j2"
-    LLM_TEMPERATURE_REPORT: float = 0.6
+    LLM_TEMPERATURE_REPORT: float = 0.0
     LLM_TEMPERATURE_CHAT: float = 0.2
     LLM_DESIRED_OUTPUT_TOKENS_REPORT: int = 1400
     LLM_DESIRED_OUTPUT_TOKENS_CHAT: int = 512
