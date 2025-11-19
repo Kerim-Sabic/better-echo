@@ -22,6 +22,15 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # backend/app/api
 UPLOADS_ROOT = os.path.normpath(os.path.join(BASE_DIR, "..", "uploads"))  # backend/app/uploads
 os.makedirs(UPLOADS_ROOT, exist_ok=True)
 
+def _rel_uploads(p: str | None) -> str | None:
+    if not p:
+        return None
+    try:
+        rp = os.path.relpath(p, UPLOADS_ROOT)
+        return rp.replace("\\", "/")
+    except Exception:
+        return p
+
 
 @router.post("/infer/measurements/2d", response_model=Measurements2DResponse)
 def infer_measurements_2d(
@@ -30,10 +39,16 @@ def infer_measurements_2d(
     force: bool = Query(False, description="Force re-run even if a cached result exists"),
     db: Session = Depends(get_db),
 ):
-    """Perform 2D linear measurement annotation using EchoNet-Measurements.
+    """
+    Perform 2D linear measurement annotation using EchoNet-Measurements and return an annotated MP4 plus summary metrics.
 
-    Returns annotated video and CSV. Caches results per (instance, task) as
-    DerivedResult so subsequent calls can reuse saved outputs unless `force=true`.
+    Steps:
+    1. Validate that the instance exists in Orthanc and resolve the local DICOM file path.
+    2. Derive a study-specific output directory under `uploads/measurements_2D_keypoint_detection`.
+    3. Check for a cached DerivedResult unless `force=true`, returning cached MP4/min/max if available.
+    4. Use a lockfile to avoid duplicate concurrent inferences for the same instance/weights.
+    5. Run `run_2d_inference` to produce an annotated AVI and CSV, then convert AVI → MP4 and derive min/max lengths from the CSV.
+    6. Persist a DerivedResult row with MP4 path and measurements, clean up lock + temporary files, and return the response payload.
     """
     model_weights = model_weights.strip().lower()
     if model_weights not in VALID_2D_WEIGHTS:
@@ -166,17 +181,7 @@ def infer_measurements_2d(
         except Exception:
             pass
 
-    # --- Step 9: Convert absolute paths -> uploads-relative ---
-    def _rel_uploads(p: str | None) -> str | None:
-        if not p:
-            return None
-        try:
-            rp = os.path.relpath(p, UPLOADS_ROOT)
-            return rp.replace("\\", "/")
-        except Exception:
-            return p
-
-    # --- Step 10: Persist DerivedResult for reuse ---
+    # --- Step 9: Persist DerivedResult for reuse ---
     try:
         import json as _json
         payload = {
@@ -198,14 +203,14 @@ def infer_measurements_2d(
     except Exception as e:
         logger.warning(f"[Measurements2D] Failed to persist DerivedResult: {e}")
 
-    # --- Step 11: Cleanup lock and respond ---
+    # --- Step 10: Cleanup lock and respond ---
     try:
         if os.path.exists(lock_path):
             os.remove(lock_path)
     except Exception:
         pass
 
-    # --- Step 12: Respond ---
+    # --- Step 11: Respond ---
     return {
         "success": True,
         "message": "Inference completed",

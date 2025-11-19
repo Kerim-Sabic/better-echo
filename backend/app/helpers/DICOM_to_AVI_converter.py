@@ -1,8 +1,12 @@
+import logging
 import os
 from pathlib import Path
 import numpy as np
 import cv2
 import pydicom as dicom
+
+logger = logging.getLogger(__name__)
+
 
 def _to_uint8(img: np.ndarray) -> np.ndarray:
     # Normalize any bit-depth image to uint8 for OpenCV video writer
@@ -14,6 +18,7 @@ def _to_uint8(img: np.ndarray) -> np.ndarray:
         img = np.zeros_like(img)
     return img.astype(np.uint8)
 
+
 def mask_frame(frame: np.ndarray) -> np.ndarray:
     # frame is square (N, N) uint8
     dimension = frame.shape[0]
@@ -22,6 +27,7 @@ def mask_frame(frame: np.ndarray) -> np.ndarray:
     mask &= ((m1 - m2) < int(dimension / 2) + int(dimension / 10))
     mask = mask.astype(np.uint8)
     return cv2.bitwise_and(frame, frame, mask=mask)
+
 
 def _get_fps(ds) -> float:
     # Prefer CineRate, fallback to FrameTime (ms), else 30
@@ -32,6 +38,7 @@ def _get_fps(ds) -> float:
     if isinstance(frame_time, (int, float)) and frame_time > 0:
         return max(1.0, 1000.0 / float(frame_time))
     return 30.0
+
 
 def dicom_to_avi(dicom_path: str, output_path: str, crop_size=(112, 112)) -> str:
     """
@@ -72,18 +79,18 @@ def dicom_to_avi(dicom_path: str, output_path: str, crop_size=(112, 112)) -> str
             side = min(H, W)
             top = (H - side) // 2
             left = (W - side) // 2
-            px = px[:, top:top+side, left:left+side]
+            px = px[:, top:top + side, left:left + side]
             H = W = side
 
         # Gentle border trim (10%)
         trim = max(0, int(0.1 * H))
         if trim * 2 < H:
-            px = px[:, trim:H-trim, trim:W-trim]
+            px = px[:, trim:H - trim, trim:W - trim]
             H = W = px.shape[1]
 
         # Resize target
         target_w, target_h = crop_size
-        fourcc = cv2.VideoWriter_fourcc(*'MJPG')
+        fourcc = cv2.VideoWriter_fourcc(*"MJPG")
         fps = _get_fps(ds)
 
         out = cv2.VideoWriter(output_path, fourcc, float(fps), (target_w, target_h))
@@ -91,9 +98,9 @@ def dicom_to_avi(dicom_path: str, output_path: str, crop_size=(112, 112)) -> str
             raise RuntimeError("OpenCV VideoWriter failed to open.")
 
         for i in range(F):
-            gray = _to_uint8(px[i])                  # (H,W) uint8
+            gray = _to_uint8(px[i])  # (H,W) uint8
             resized = cv2.resize(gray, (target_w, target_h), interpolation=cv2.INTER_CUBIC)
-            masked = mask_frame(resized)            # (H,W)
+            masked = mask_frame(resized)  # (H,W)
             bgr = cv2.merge([masked, masked, masked])
             out.write(bgr)
 
@@ -101,5 +108,5 @@ def dicom_to_avi(dicom_path: str, output_path: str, crop_size=(112, 112)) -> str
         return output_path
 
     except Exception as err:
-        print(f"Failed to convert {dicom_path} → AVI: {err}")
+        logger.exception("Failed to convert %s to AVI: %s", dicom_path, err)
         return ""

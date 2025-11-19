@@ -10,7 +10,7 @@ import pydicom
 
 from app.services.orthanc_client import (
     send_dicom_to_orthanc,
-    get_instance_tags
+    get_instance_tags,
 )
 
 from app.database.db import get_db
@@ -23,7 +23,8 @@ from app.schemas.upload_schemas import UploadDicomResponseSchema
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-UPLOAD_DIR = "app/uploads"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # backend/app/api
+UPLOAD_DIR = os.path.normpath(os.path.join(BASE_DIR, "..", "uploads"))  # backend/app/uploads
 
 def _first(val, default=""):
     """
@@ -61,6 +62,17 @@ def _clean_for_ui(tags: dict) -> dict:
 
 @router.post("/upload-dicom", response_model=UploadDicomResponseSchema)
 async def upload_dicom(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    """
+    Upload a DICOM file, send it to Orthanc, and persist Patient/Study/Series/Instance metadata.
+
+    Steps:
+    1. Read the uploaded file into memory and validate it as a DICOM, extracting the StudyInstanceUID.
+    2. Create a study-specific folder under `app/uploads` and save the original DICOM there.
+    3. Send the DICOM to Orthanc and handle duplicate uploads by deleting the local file and returning a 400 error.
+    4. Fetch DICOM tags from Orthanc, normalize them for UI use, and resolve patient/study/series identifiers.
+    5. Upsert Patient, Study, and Series rows in the database, ensuring consistency with Orthanc IDs.
+    6. Insert the new Instance row, commit the transaction, and return upload metadata + tags to the frontend.
+    """
     os.makedirs(UPLOAD_DIR, exist_ok=True)
     ts = datetime.now().strftime("%Y%m%d%H%M%S")
     file_location = None
@@ -93,7 +105,7 @@ async def upload_dicom(file: UploadFile = File(...), db: Session = Depends(get_d
         if upload_response.get("Status") == "AlreadyStored":
             logger.warning("Duplicate upload attempt: DICOM already stored in Orthanc")
             
-            # Delete the local file to avoid incosistencies
+            # Delete the local file to avoid inconsistencies and keep DB/Orthanc aligned
             if os.path.exists(file_location):
                 os.remove(file_location)
                 logger.info(f"Deleted local duplicate file at {file_location}")
@@ -197,6 +209,6 @@ async def upload_dicom(file: UploadFile = File(...), db: Session = Depends(get_d
         db.rollback()
         if file_location and os.path.exists(file_location):
             os.remove(file_location)
-            logger.info(f"Deleted local file due to error ar {file_location}")
-        logger.error(f"Upload failed: {str(err)}")
+            logger.info(f"Deleted local file due to error at {file_location}")
+        logger.exception(f"Upload failed: {str(err)}")
         raise HTTPException(status_code=500, detail=f"Failed to save file: {str(err)}")

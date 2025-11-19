@@ -29,6 +29,7 @@ router = APIRouter()
 
 
 def _json_of(value: Any) -> Dict[str, Any]:
+    """Best-effort JSON parser that returns an empty dict on falsy or invalid input."""
     if not value:
         return {}
     if isinstance(value, dict):
@@ -42,14 +43,13 @@ def _json_of(value: Any) -> Dict[str, Any]:
 @router.post("/studies/{study_uid}/llm/report/generate", response_model=LLMReportResponse)
 def generate_llm_report(study_uid: str, db: Session = Depends(get_db)):
     """
-    Generate an AI echo report using the combined PanEcho+EchoPrime JSON as context.
+    Generate and persist an AI echo report for a study using combined PanEcho + EchoPrime results.
 
-    Steps
-    1) Validate study + ensure combined results exist and are complete.
-    2) Build a compact prompt from combined sections.
-    3) Call the local OpenAI-compatible chat completions endpoint via LLMClient.
-    4) Persist the generated report as a DerivedResult (LLM_Echo_Report).
-    5) Return the report text.
+    Steps:
+    1. Resolve the study by `study_uid` and ensure a combined PanEcho+EchoPrime DerivedResult row exists.
+    2. Validate that the combined row is complete; otherwise return a 409 indicating pending results.
+    3. Delegate to `generate_for_study` to build the prompt, call the LLM, and persist the LLM report DerivedResult.
+    4. Return an `LLMReportResponse` with the study UID, model, report text, and diagnoses JSON (if present).
     """
     # --- Step 1: Validate study and combined row ---
     study: Optional[Study] = db.query(Study).filter(Study.study_uid == study_uid).first()
@@ -66,12 +66,13 @@ def generate_llm_report(study_uid: str, db: Session = Depends(get_db)):
     if combined_row.status != ResultStatus.complete:
         raise HTTPException(status_code=409, detail="Combined results are still pending. Retry shortly.")
 
-    # Delegate to service (uses prompting template + extraction + persistence)
+    # --- Step 2: Delegate to report generation service ---
     try:
         result = generate_for_study(study_uid=study_uid, db=db)
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"LLM report generation failed: {e}")
+        raise HTTPException(status_code=502, detail="LLM report generation failed")
 
+    # --- Step 3: Return generated report ---
     return LLMReportResponse(
         study_uid=study_uid,
         model=result.get("model", settings.LLM_MODEL),
@@ -83,9 +84,14 @@ def generate_llm_report(study_uid: str, db: Session = Depends(get_db)):
 @router.post("/llm/chat", response_model=LLMChatResponse)
 def chat_about_report(payload: LLMChatRequest, db: Session = Depends(get_db)):
     """
-    Answer a user question about a study using the LLM with short context:
-    - previously generated LLM report (if present), else EchoPrime report as fallback
-    - diagnoses JSON from the combined results
+    Answer a user question about a study using the LLM with short context from a prior report and diagnoses JSON.
+
+    Steps:
+    1. Resolve the study by `study_uid` and fetch the combined PanEcho+EchoPrime results row; return 409 if not complete.
+    2. Prefer an existing LLM-generated report; if absent, fall back to the EchoPrime report; otherwise use a generic fallback text.
+    3. Optionally extract `diagnoses_json` from the saved LLM report, if present.
+    4. Use `build_chat_messages` to construct the LLM chat messages with report, diagnoses, combined sections, and the question.
+    5. Call the LLM via `LLMClient.chat_completion` and return the answer with the model name.
     """
     study_uid = payload.study_uid
 

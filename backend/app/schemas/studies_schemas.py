@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from typing import List, Optional
+from typing import List, Optional, Any
 from pydantic import BaseModel, RootModel
 
 
@@ -40,9 +40,8 @@ class StudyUpdateResponse(BaseModel):
 class DerivedResultResponse(BaseModel):
     id: int
     type: str
-    value_numeric: Optional[float] = None
-    value_json: Optional[str] = None
-    units: Optional[str]
+    status: Optional[str] = None
+    value_json: Optional[Any] = None
     model_name: Optional[str]
     model_version: Optional[str]
     created_at: datetime

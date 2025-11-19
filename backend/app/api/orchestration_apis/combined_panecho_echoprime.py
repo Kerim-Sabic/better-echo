@@ -23,7 +23,7 @@ router = APIRouter()
 
 @router.get(
         "/studies/{study_uid}/PanEcho-EchoPrime-combined-results",
-        response_model=CombinedResultsResponse
+        response_model=CombinedResultsResponse,
 )
 def get_combined_results(
     study_uid: str,
@@ -31,11 +31,17 @@ def get_combined_results(
     db: Session = Depends(get_db),
 ):
     """
-    Read-only endpoint for the Study Results page.
-    Part 1. Check if combined results exists for the study; if yes, return it.
-    Part 2. If not, schedule background orchestration and return 202 {pending}.
+    Read combined PanEcho + EchoPrime results for a study, enqueue orchestration if missing, and return complete or pending status.
+
+    Steps:
+    1. Resolve the study by `study_uid` and look up any existing combined PanEcho+EchoPrime DerivedResult row.
+    2. If a complete combined row exists, convert it to a payload and return a 200 `CompleteResponse`.
+    3. If a pending/failed row exists, return a 202 `PendingResponse` with a `Retry-After` header, without enqueuing again.
+    4. If no combined row exists, create a pending marker row as an idempotency guard.
+    5. Only when the pending row is successfully created, enqueue `combining_panecho_echoprime` as a background task.
+    6. Return a 202 `PendingResponse` with a `Retry-After` header instructing the client to poll again.
     """
-    # --- Part 1. Lookup study + combined row ---
+    # --- Part 1: Lookup study + combined row ---
     study: Optional[Study] = db.query(Study).filter(Study.study_uid == study_uid).first()
     if not study:
         raise HTTPException(status_code=404, detail="Study not found")
@@ -46,7 +52,7 @@ def get_combined_results(
         .first()
     )
 
-    # --- Part 1.1 If already present and complete -> return payload ---
+    # --- Part 1.1: If already present and complete -> return payload ---
     if combined_results_row and combined_results_row.status == ResultStatus.complete:
         payload = build_combined_sections_from_row(combined_results_row)
 
@@ -58,7 +64,7 @@ def get_combined_results(
         )
         
     
-    # --- Part 1.2 If present but not complete -> pending (DON'T enqueue again) ---
+    # --- Part 1.2: If present but not complete -> pending (DON'T enqueue again) ---
     if combined_results_row and combined_results_row.status in (
         ResultStatus.pending, ResultStatus.failed
     ):
@@ -66,14 +72,15 @@ def get_combined_results(
 
         logger.info(f"[COMBINED_RESULTS] inferences and orchestration is running for study_uid: {study_uid}")
 
+        # HTTP 202 with Retry-After header tells client to poll again
         return JSONResponse(
             status_code=202,
             content=pending.model_dump(),
             headers={"retry-after": "3"}
         )
     
-    # --- Part 2. Not found -> trigger background task and return pending ---
-    # --- Part 2.1 Try to create the 'pending' row as our idempotency marker ---
+    # --- Part 2: Not found -> try to create pending marker and trigger background task ---
+    # --- Part 2.1: Try to create the 'pending' row as our idempotency marker ---
     created = False
     try:
         new_row = DerivedResult(

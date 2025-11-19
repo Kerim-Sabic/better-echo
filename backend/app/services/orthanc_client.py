@@ -1,5 +1,7 @@
 import requests
 import logging
+from typing import Any, Dict, Optional
+
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -9,23 +11,17 @@ orthanc_username = settings.ORTHANC_USER
 orthanc_password = settings.ORTHANC_PASS
 AUTH = (orthanc_username, orthanc_password)
 
-def send_dicom_to_orthanc(filepath: str) -> str:
-    """
-    Uploads a DICOM file to Orthanc.
-    Returns: { ID (ID of the DICOM instance)
-             ParentPatient
-             ParentSeries
-             ParentStudy
-             Path
-             Status }
 
+def send_dicom_to_orthanc(filepath: str) -> Dict[str, Any]:
+    """
+    Upload a DICOM file to Orthanc and return its JSON upload response.
     """
     logger.info(f"Sending DICOM file to Orthanc: {filepath}")
     with open(filepath, "rb") as f:
         try:
             response = requests.post(
                 f"{orthanc_url}/instances",
-                auth=(orthanc_username, orthanc_password),
+                auth=AUTH,
                 data=f,
                 headers={"Content-Type": "application/dicom"}
             )
@@ -42,17 +38,16 @@ def send_dicom_to_orthanc(filepath: str) -> str:
 
     return upload_response
 
-# Fetches DICOM tags for a given instance ID from Orthanc.
-def get_instance_tags(instance_id: str) -> dict:
+def get_instance_tags(instance_id: str) -> Dict[str, Any]:
     """
-    Fetches DICOM tags for a given instance ID from Orthanc.
-    Returns: Dictionary of tags for that dicom instance.
+    Fetch DICOM tags for a given instance ID from Orthanc.
+    Returns a dictionary of tags for that DICOM instance.
     """
     logger.info(f"Fetching tags for instance ID: {instance_id}")
     try:
         response = requests.get(
             f"{orthanc_url}/instances/{instance_id}/tags",
-            auth=(orthanc_username, orthanc_password)
+            auth=AUTH,
         )
         response.raise_for_status()
         logger.info(f"Fetched tags for instance {instance_id} from Orthanc")
@@ -61,15 +56,22 @@ def get_instance_tags(instance_id: str) -> dict:
         logger.error(f"Failed to fetch tags from Orthanc for instance {instance_id}: {str(e)}")
         raise RuntimeError(f"Failed to fetch tags from Orthanc: {e}")
 
-def get_series_id_from_instance(instance_id: str) -> str:
+# Currently unused; reserved for future series-level operations.
+def get_series_id_from_instance(instance_id: str) -> Optional[str]:
+    """
+    Return the Orthanc internal series ID (ParentSeries) for a given instance ID.
+    """
     # GET /instances/{id}
     r = requests.get(f"{orthanc_url}/instances/{instance_id}", auth=AUTH, timeout=30)
     r.raise_for_status()
     data = r.json()
     return data.get("ParentSeries")  # <- Orthanc series internal ID (UUID-like)
 
-# Deletes an entire study from Orthanc by study_orthanc_id
 def delete_study_from_orthanc(study_orthanc_id: str) -> bool:
+    """
+    Delete a study from Orthanc by its Orthanc study ID.
+    Returns True on success, False otherwise.
+    """
     try:
         del_response = requests.delete(f"{orthanc_url}/studies/{study_orthanc_id}", auth=AUTH, timeout=30)
         if del_response.status_code == 200:

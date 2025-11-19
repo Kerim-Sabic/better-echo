@@ -25,6 +25,7 @@ def generate_for_study(study_uid: str, db: Session) -> Dict[str, Any]:
     Generates an LLM report for a study using the combined sections as context.
     Persists a DerivedResult (LLM_Echo_Report) with report_md and diagnoses_json.
     Returns the response payload {study_uid, model, report, diagnoses_json}.
+    Writes artifacts to uploads/llm_reports/{study_uid} and persists to DB.
     """
     # --- Step 1: Resolve study and combined row ---
     study: Optional[Study] = db.query(Study).filter(Study.study_uid == study_uid).first()

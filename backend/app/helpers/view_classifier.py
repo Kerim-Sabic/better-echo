@@ -16,7 +16,8 @@ from app.models.derived_results import DerivedResult
 
 logger = logging.getLogger(__name__)
 
-UPLOAD_DIR = "app/uploads"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # backend/app/helpers
+UPLOAD_DIR = os.path.normpath(os.path.join(BASE_DIR, "..", "uploads"))
 
 def _list_dicom_files_for_study_folder(study_folder: str) -> List[str]:
     """
@@ -75,7 +76,7 @@ def view_classifier(study_uid: str, db: Session) -> Dict[str, Dict[str, Optional
         .all()
     )
     if not instances:
-            logger.warning(f"[view_classifier] No instances found in DB for study {study_uid}")
+        logger.warning(f"[view_classifier] No instances found in DB for study {study_uid}")
     
     # Part 1.3 Build lookups
     instance_by_path: Dict[str, Instance] = {os.path.abspath(i.file_path): i for i in instances if i.file_path}
@@ -158,5 +159,5 @@ def view_classifier(study_uid: str, db: Session) -> Dict[str, Dict[str, Optional
     _unload_model(ep)
     logger.info(f"[view_classifier] EchoPrime model is unloaded.")
 
-    return
+    return result_map
     

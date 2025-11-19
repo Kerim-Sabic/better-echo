@@ -2,7 +2,7 @@ import io
 import os
 import math
 import logging
-from typing import List
+from typing import List, Tuple
 import requests
 from PIL import Image
 import numpy as np
@@ -10,10 +10,6 @@ import torch
 from pathlib import Path
 
 from app.core.config import settings
-
-"""
-THIS FILE PROVIDES FUNCTIONS FOR INFERENCE TASKS
-"""
 
 logger = logging.getLogger(__name__)
 
@@ -26,18 +22,29 @@ def check_instance_exists_in_orthanc(sop_instance_uid: str) -> bool:
     """
     Check if a DICOM instance (SOPInstanceUID) exists in Orthanc.
     Returns True if found, False otherwise.
+
+    Note: performs an O(N) scan of Orthanc instances and is tuned for
+    smaller deployments; large archives may want a query-based approach.
     """
     try:
         logger.info(f"[INFERENCE_FUNCTIONS] Checking if instance exists in Orthanc: SOPInstanceUID={sop_instance_uid}")
         
-        # Query all instances
-        r = requests.get(f"{orthanc_url}/instances", auth=(orthanc_user, orthanc_pass))
+        # Query all instances (O(N) scan over Orthanc instances)
+        r = requests.get(
+            f"{orthanc_url}/instances",
+            auth=(orthanc_user, orthanc_pass),
+            timeout=10,
+        )
         r.raise_for_status()
         instances = r.json()  # list of instance Orthanc IDs
 
         # Look for a matching SOPInstanceUID
         for iid in instances:
-            r_info = requests.get(f"{orthanc_url}/instances/{iid}", auth=(orthanc_user, orthanc_pass))
+            r_info = requests.get(
+                f"{orthanc_url}/instances/{iid}",
+                auth=(orthanc_user, orthanc_pass),
+                timeout=10,
+            )
             r_info.raise_for_status()
             info = r_info.json()
             if info.get("MainDicomTags", {}).get("SOPInstanceUID") == sop_instance_uid:
@@ -53,15 +60,25 @@ def check_instance_exists_in_orthanc(sop_instance_uid: str) -> bool:
 
 
 def fetch_orthanc_instance_ids_from_study(study_uid: str) -> List[str]:
+    """
+    Resolve an Orthanc study by StudyInstanceUID and return a list of its instance IDs.
+    """
     # Find Orthanc study by DICOM StudyInstanceUID, then list its instances
-    # 1) Query studies by UID
     logger.info(f"[INFERENCE_FUNCTIONS] Resolving Orthanc study for StudyInstanceUID={study_uid}")
-    r = requests.get(f"{orthanc_url}/studies", auth=(orthanc_user, orthanc_pass))
+    r = requests.get(
+        f"{orthanc_url}/studies",
+        auth=(orthanc_user, orthanc_pass),
+        timeout=10,
+    )
     r.raise_for_status()
     studies = r.json()
     match = None
     for sid in studies:
-        info = requests.get(f"{orthanc_url}/studies/{sid}", auth=(orthanc_user, orthanc_pass)).json()
+        info = requests.get(
+            f"{orthanc_url}/studies/{sid}",
+            auth=(orthanc_user, orthanc_pass),
+            timeout=10,
+        ).json()
         if info.get("MainDicomTags", {}).get("StudyInstanceUID") == study_uid:
             match = sid
             break
@@ -69,18 +86,33 @@ def fetch_orthanc_instance_ids_from_study(study_uid: str) -> List[str]:
         logger.warning(f"[INFERENCE_FUNCTIONS] No Orthanc study matches StudyInstanceUID={study_uid}")
         return []
     
-    # 2) Get all instances in that study
-    insts = requests.get(f"{orthanc_url}/studies/{match}/instances", auth=(orthanc_user, orthanc_pass)).json()
+    # Get all instances in that study
+    insts = requests.get(
+        f"{orthanc_url}/studies/{match}/instances",
+        auth=(orthanc_user, orthanc_pass),
+        timeout=10,
+    ).json()
     ids = [i["ID"] for i in insts]
     logger.info(f"[INFERENCE_FUNCTIONS] Found {len(ids)} instance(s) in the study")
     return ids
 
 def pick_frames_from_instance(instance_id: str, num_frames: int = 16) -> List[Image.Image]:
+    """
+    Fetch approximately `num_frames` evenly spaced rendered frames for an Orthanc instance.
+    Returns a list of RGB PIL images resized to 224x224.
+    """
     # Get instance metadata to know number of frames
     logger.info(f"[INFERENCE_FUNCTIONS] Picking frames from instance {instance_id}")
-    meta = requests.get(f"{orthanc_url}/instances/{instance_id}", auth=(orthanc_user, orthanc_pass)).json()
-    frames_list = requests.get(f"{orthanc_url}/instances/{instance_id}/frames",
-                               auth=(orthanc_user, orthanc_pass), timeout=10).json()
+    meta = requests.get(
+        f"{orthanc_url}/instances/{instance_id}",
+        auth=(orthanc_user, orthanc_pass),
+        timeout=10,
+    ).json()
+    frames_list = requests.get(
+        f"{orthanc_url}/instances/{instance_id}/frames",
+        auth=(orthanc_user, orthanc_pass),
+        timeout=10,
+    ).json()
     frames = len(frames_list) if isinstance(frames_list, list) else int(meta.get("MainDicomTags", {}).get("NumberOfFrames", 1))
     logger.info(f"[INFERENCE_FUNCTIONS] Instance has {frames} frame(s)")
     # Pick 16 approximately evenly spaced frame indices (1-based in Orthanc HTTP)
@@ -89,8 +121,11 @@ def pick_frames_from_instance(instance_id: str, num_frames: int = 16) -> List[Im
     for idx in indices:
         # rendered PNG/JPEG of that frame
         # /instances/{id}/frames/{frame}/rendered  (Orthanc returns image bytes)
-        resp = requests.get(f"{orthanc_url}/instances/{instance_id}/frames/{idx}/rendered",
-                            auth=(orthanc_user, orthanc_pass))
+        resp = requests.get(
+            f"{orthanc_url}/instances/{instance_id}/frames/{idx}/rendered",
+            auth=(orthanc_user, orthanc_pass),
+            timeout=10,
+        )
         resp.raise_for_status()
         img = Image.open(io.BytesIO(resp.content)).convert("RGB")
         img = img.resize((224, 224), Image.BILINEAR)
@@ -115,7 +150,11 @@ def stack_to_tensor(frames: List[Image.Image]) -> torch.Tensor:
 _model = None
 _device = None
 
-def get_model_and_device():
+def get_model_and_device() -> Tuple[torch.nn.Module, torch.device]:
+    """
+    Lazily load the local PanEcho model (CPU or GPU) once and reuse it
+    across calls.
+    """
     global _model, _device
     if _model is None:
         # pick device explicitly

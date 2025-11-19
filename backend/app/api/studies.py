@@ -12,27 +12,47 @@ from app.models.studies import Study
 from app.models.instances import Instance
 from app.models.derived_results import DerivedResult
 from app.services.orthanc_client import delete_study_from_orthanc
-from app.schemas.studies_schemas import (StudyListResponse, 
-                                        StudyDeleteResponse, 
-                                        StudyUpdateResponse, 
-                                        DerivedResultResponse,
-                                        InstanceResponse)
+from app.schemas.studies_schemas import (
+    StudyListResponse,
+    StudyDeleteResponse,
+    StudyUpdateResponse,
+    DerivedResultResponse,
+    InstanceResponse,
+)
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-UPLOAD_DIR = "app/uploads"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # backend/app/api
+UPLOAD_DIR = os.path.normpath(os.path.join(BASE_DIR, "..", "uploads"))  # backend/app/uploads
+
+
+def _delete_folder_if_exists(path: str, label: str) -> None:
+    if os.path.exists(path):
+        try:
+            rmtree(path)
+            logger.info(f"Deleted {label} {path}")
+        except Exception as err:
+            logger.error(f"Failed to delete {label} {path}: {err}")
+    else:
+        logger.warning(f"{label} {path} not found")
 
 @router.get("/studies", response_model=StudyListResponse)
 def list_studies(db: Session = Depends(get_db)):
     """
-    Retrieves all studies with patient info
-    """
-    rows = db.query(Study).order_by(Study.uploaded_at.desc()).all()
-    data = []
+    Retrieve all studies with patient info for the dashboard.
 
-    for study in rows:
-        study_dict = {
+    Steps:
+    1. Query all studies ordered by `uploaded_at` in descending order.
+    2. For each study, build a payload including patient metadata.
+    3. Return the list of study dictionaries, which Pydantic maps into `StudyListResponse`.
+    """
+    # --- Step 1: Query studies ordered by upload time ---
+    rows = db.query(Study).order_by(Study.uploaded_at.desc()).all()
+
+    # --- Step 2: Build response objects ---
+    return [
+        {
             "id": study.id,
             "study_uid": study.study_uid,
             "study_date": study.study_date,
@@ -45,28 +65,31 @@ def list_studies(db: Session = Depends(get_db)):
                 "patient_name": study.patient.patient_name,
                 "patient_sex": study.patient.patient_sex,
                 "patient_birth_date": study.patient.patient_birth_date,
-            }
+            },
         }
-        data.append(study_dict)
-
-    return data
+        for study in rows
+    ]
 
 @router.delete("/studies/{study_id}", response_model=StudyDeleteResponse)
 def delete_study(study_id: int, db: Session = Depends(get_db)):
     """
-    Deletes the study from both the database and the orthanc server.
-    Deletes all instances for that study from the app/uploads folder.
-    Deletes the patient related to that study from the database, if that
-    patient has no more studies in the database (this mimics the orthanc
-    server behavior and keeps orthanc server and database consistent).
+    Delete a study from Orthanc, local uploads, and the database; delete the patient if they have no remaining studies.
+
+    Steps:
+    1. Resolve the study by ID and its related patient, or 404 if not found.
+    2. If present, delete the corresponding study from Orthanc using `study_orthanc_id`.
+    3. Delete local artifacts under `app/uploads` for the study, LV segmentation, 2D measurements, and LLM reports.
+    4. Remove the study from the database and, if it was the patient's last study, delete the patient row.
+    5. Commit changes and return a confirmation payload.
     """
+    # --- Step 1: Resolve study and related patient ---
     study = db.query(Study).get(study_id)
     if not study:
         raise HTTPException(status_code=404, detail="Study not found")
     
     patient = study.patient # get related patient
     
-    # Delete from Orthanc first using orthanc_id
+    # --- Step 2: Delete from Orthanc first using study_orthanc_id ---
     if study.study_orthanc_id:
         deleted = delete_study_from_orthanc(study.study_orthanc_id)
         if not deleted:
@@ -75,57 +98,32 @@ def delete_study(study_id: int, db: Session = Depends(get_db)):
                 detail=f"Failed to delete study {study_id} from Orthanc. Database not modified."
             )
     
-    # Delete the entire local study folder
+    # --- Step 3: Delete local artifacts under uploads ---
     study_folder = os.path.join(UPLOAD_DIR, study.study_uid)
-    if os.path.exists(study_folder):
-        try:
-            rmtree(study_folder)
-            logger.info(f"Deleted study folder {study_folder}")
-        except Exception as err:
-            logger.error(f"Failed to delete study folder {study_folder}: {str(err)}")
-    else:
-        logger.warning(f"Study folder {study_folder} not found")
+    _delete_folder_if_exists(study_folder, "study folder")
 
-    # Delete the LV segmentation files folder for the study_uid being deleted.
-    lv_segmentation_folder = os.path.join(UPLOAD_DIR, "echonet_dynamic_LV-segmentation_files", study.study_uid)
-    if os.path.exists(lv_segmentation_folder):
-        try:
-            rmtree(lv_segmentation_folder)
-            logger.info(f"Deleted LV segmentation results folder {lv_segmentation_folder}")
-        except Exception as err:
-            logger.error(f"Failed to delete LV segmentation results folder {lv_segmentation_folder}: {str(err)}")
-    else:
-        logger.warning(f"LV segmentation results folder {lv_segmentation_folder} not found")
-    
-    # Delete EchoNet-Measurements files for all instances (videos/CSVs)
-    try:
-        uploads_measurements_root = os.path.join(UPLOAD_DIR, "measurements_2D_keypoint_detection")
-        try:
-            uploads_measurements_study = os.path.join(uploads_measurements_root, study.study_uid)
-            if os.path.exists(uploads_measurements_study):
-                rmtree(uploads_measurements_study)
-                logger.info(f"Deleted uploads measurements folder {uploads_measurements_study}")
-        except Exception as err:
-            logger.error(f"Failed to delete uploads measurements folder: {str(err)}")
-    except Exception as err:
-        logger.error(f"Failed to delete measurements artifacts: {str(err)}")
+    lv_segmentation_folder = os.path.join(
+        UPLOAD_DIR,
+        "echonet_dynamic_LV-segmentation_files",
+        study.study_uid,
+    )
+    _delete_folder_if_exists(lv_segmentation_folder, "LV segmentation results folder")
 
-    # Delete LLM report artifacts for this study
-    try:
-        llm_reports_root = os.path.join(UPLOAD_DIR, "llm_reports")
-        llm_reports_study = os.path.join(llm_reports_root, study.study_uid)
-        if os.path.exists(llm_reports_study):
-            try:
-                rmtree(llm_reports_study)
-                logger.info(f"Deleted LLM reports folder {llm_reports_study}")
-            except Exception as err:
-                logger.error(f"Failed to delete LLM reports folder: {str(err)}")
-        else:
-            logger.warning(f"LLM reports folder {llm_reports_study} not found")
-    except Exception as err:
-        logger.error(f"Failed to delete LLM report artifacts: {str(err)}")
+    uploads_measurements_study = os.path.join(
+        UPLOAD_DIR,
+        "measurements_2D_keypoint_detection",
+        study.study_uid,
+    )
+    _delete_folder_if_exists(uploads_measurements_study, "uploads measurements folder")
 
-    # Delete from Database
+    llm_reports_study = os.path.join(
+        UPLOAD_DIR,
+        "llm_reports",
+        study.study_uid,
+    )
+    _delete_folder_if_exists(llm_reports_study, "LLM reports folder")
+
+    # --- Step 4: Delete study (and maybe patient) from database ---
     try:
         db.delete(study)
         db.commit()
@@ -152,12 +150,20 @@ def delete_study(study_id: int, db: Session = Depends(get_db)):
 @router.patch("/studies/{study_id}", response_model=StudyUpdateResponse)
 def update_study(study_id: int, payload: dict, db: Session = Depends(get_db)):
     """
-    Updates the study_date and the patient_name for the related study.
+    Update the `study_date` and/or the patient name for a given study.
+
+    Steps:
+    1. Fetch the study by ID or return 404 if it does not exist.
+    2. If present in the payload, update `study_date` on the Study row.
+    3. If present in the payload and a patient exists, update the Patient's `patient_name`.
+    4. Commit the transaction and return a success message.
     """
+    # --- Step 1: Fetch study or 404 ---
     study = db.query(Study).get(study_id)
     if not study:
         raise HTTPException(status_code=404, detail="Study not found")
     
+    # --- Step 2: Apply updates from payload ---
     # allow updating study_date
     if "study_date" in payload:
         study.study_date = payload["study_date"]
@@ -165,6 +171,8 @@ def update_study(study_id: int, payload: dict, db: Session = Depends(get_db)):
     # allow updating patient_name (via the related Patient model)
     if "patient_name" in payload and study.patient:
         study.patient.patient_name = payload["patient_name"]
+
+    # --- Step 3: Commit changes ---
     db.commit()
     return {"ok": True, "message": "Study information successfully updated"}
 
@@ -172,7 +180,12 @@ def update_study(study_id: int, payload: dict, db: Session = Depends(get_db)):
 @router.get("/studies/{study_uid}/derived-results", response_model=List[DerivedResultResponse])
 def list_derived_results(study_uid: str, db: Session = Depends(get_db)):
     """
-    Lists the derived results of the study from the database
+    List derived results for a study from the database.
+
+    Steps:
+    1. Resolve the study by `study_uid` or return 404 if not found.
+    2. Query all DerivedResult rows for that study ordered by `created_at` descending.
+    3. Map each row into a dictionary that matches `DerivedResultResponse` and return the list.
     """
     s = db.query(Study).filter(Study.study_uid == study_uid).first()
     if not s:
@@ -189,9 +202,8 @@ def list_derived_results(study_uid: str, db: Session = Depends(get_db)):
         {
             "id": r.id,
             "type": r.type,
-            "value_numeric": r.value_numeric,
+            "status": r.status.value if r.status is not None else None,
             "value_json": r.value_json,
-            "units": r.units,
             "model_name": r.model_name,
             "model_version": r.model_version,
             "created_at": r.created_at,
@@ -208,6 +220,11 @@ def list_instances(
 ):
     """
     List all instances for a given Study UID.
+
+    Steps:
+    1. Resolve the study by `study_uid` or return 404 if not found.
+    2. Query all Instance rows for series that belong to that study.
+    3. Return the list of instances, which Pydantic maps into `InstanceResponse` objects.
     """
     # --- Step 1. Find the study ---
     study = db.query(Study).filter(Study.study_uid == study_uid).first()

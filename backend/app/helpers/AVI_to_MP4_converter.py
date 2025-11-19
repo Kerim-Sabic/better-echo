@@ -3,7 +3,8 @@ import subprocess
 
 def convert_to_mp4(input_path: str) -> str:
     """
-    Convert an AVI file to MP4 using ffmpeg.
+    Convert an AVI file to MP4 (H.264, CRF 23, fast preset) using ffmpeg.
+    This is the final encode step for LV segmentation and 2D measurements videos.
     """
     output_path = os.path.splitext(input_path)[0] + ".mp4"
     cmd = [
