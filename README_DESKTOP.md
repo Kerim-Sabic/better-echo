@@ -223,7 +223,7 @@ Output:
 
 ### Installer Configuration
 
-The installer behavior is configured in `electron-builder.config.js`:
+The installer behavior is configured in `electron/electron-builder.config.js`:
 - **ASAR Archive**: Code is packaged into app.asar for integrity
 - **Extra Resources**: Backend executable and AI models are extracted
 - **Auto-Updates**: Disabled by default (can be configured later)
@@ -297,7 +297,7 @@ Log files location:
 
 **Solutions:**
 1. Verify model files are in `backend/app/AI_models/`
-2. Check `electron-builder.config.js` includes models in `extraResources`
+2. Check `electron/electron-builder.config.js` includes models in `extraResources`
 3. Update model loading code to use runtime paths:
    ```python
    import sys
@@ -358,24 +358,26 @@ If you encounter issues not covered here:
 
 ```
 Echocardiology_App/
-├── electron/              # Electron main & preload scripts (TypeScript)
-│   ├── main.ts           # Main process (window management, backend lifecycle)
-│   ├── preload.ts        # Secure IPC bridge
-│   └── ipc.ts            # IPC handlers
-├── frontend/             # React application
-│   ├── src/              # React components
-│   └── build/            # Production build (created by npm run build)
-├── backend/              # FastAPI backend
-│   ├── app/              # Application code
-│   │   ├── AI_models/    # Pre-trained models
-│   │   ├── api/          # API routes
-│   │   └── main.py       # FastAPI entry point
-│   └── desktop/          # Desktop packaging
-│       ├── launcher.py   # PyInstaller entry point
-│       └── api.spec      # PyInstaller configuration
-├── scripts/              # Helper scripts
-├── dist/                 # Build output (installers)
-└── package.json          # Root dependencies & scripts
+- electron/                      # Electron main process, preload, IPC, builder config
+  - main.ts                      # Main process (window, backend lifecycle)
+  - preload.ts                   # Secure IPC bridge
+  - ipc.ts                       # IPC handlers
+  - electron-builder.config.js   # Electron builder config
+  - build-resources/             # Icons, entitlements, tray assets
+- frontend/                      # React application
+  - src/                         # React components
+  - build/                       # Production build (created by npm run build)
+- backend/                       # FastAPI backend
+  - app/                         # Application code
+    - AI_models/                 # Pre-trained models
+    - api/                       # API routes
+    - main.py                    # FastAPI entry point
+  - desktop/                     # Desktop packaging
+    - launcher.py                # PyInstaller entry point
+    - api.spec                   # PyInstaller configuration
+- scripts/                       # Helper scripts
+- dist/                          # Build output (installers)
+- package.json                   # Root dependencies & scripts
 ```
 
 ### Runtime Flow

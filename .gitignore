@@ -39,7 +39,7 @@ docs/
 
 # Electron Builder
 .webpack/
-build-resources/icon.*
+electron/build-resources/icon.*
 
 # General
 .DS_Store

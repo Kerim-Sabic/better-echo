@@ -3,7 +3,7 @@ module.exports = {
   productName: 'Echocardiology App',
   directories: {
     output: 'dist',
-    buildResources: 'build-resources',
+    buildResources: 'electron/build-resources',
   },
   files: [
     'dist/electron/**/*',
@@ -75,11 +75,11 @@ module.exports = {
       },
     ],
     category: 'public.app-category.medical',
-    icon: 'build-resources/icon.icns',
+    icon: 'electron/build-resources/icon.icns',
     hardenedRuntime: true,
     gatekeeperAssess: false,
-    entitlements: 'build-resources/entitlements.mac.plist',
-    entitlementsInherit: 'build-resources/entitlements.mac.plist',
+    entitlements: 'electron/build-resources/entitlements.mac.plist',
+    entitlementsInherit: 'electron/build-resources/entitlements.mac.plist',
   },
   linux: {
     target: [
@@ -93,7 +93,7 @@ module.exports = {
       },
     ],
     category: 'Science',
-    icon: 'build-resources/icon.png',
+    icon: 'electron/build-resources/icon.png',
   },
   publish: null,
 };
