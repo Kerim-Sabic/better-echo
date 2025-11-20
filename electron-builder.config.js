@@ -10,6 +10,7 @@ module.exports = {
     'frontend/build/**/*',
     'package.json',
   ],
+  // Packaged backend executable is placed under resources/backend/dist/api(/api.exe)
   extraResources: [
     {
       from: 'backend/dist',

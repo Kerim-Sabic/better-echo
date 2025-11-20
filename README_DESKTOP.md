@@ -469,4 +469,6 @@ Consider adding GitHub Actions workflow to:
 
 - Packaging:
   - Packaged app attempts to start Orthanc using the bundled `docker-compose.yml`. Orthanc is not stopped automatically on quit.
+  - Electron main process is split for maintainability: `electron/main.ts` (app lifecycle), `electron/backend.ts` (spawn/health), `electron/orthanc.ts` (auth + docker compose helper), and `electron/window.ts` (window/tray/state).
+  - The packaged backend executable is expected at `resources/backend/dist/api/api` (or `api.exe` on Windows); Electron spawns it from there in production builds.
   - The backend console window is hidden by default. To enable it for debugging, change `console=False` to `console=True` in `backend/desktop/api.spec` and rebuild the backend.

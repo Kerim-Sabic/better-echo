@@ -28,6 +28,11 @@ backend/dist/
 backend/desktop/build/
 backend/desktop/*.exe
 backend/desktop/*.app
+dist/electron/
+backend/dist/api/
+
+# Docs
+docs/
 
 # PyInstaller
 *.spec.orig
