@@ -1,15 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
-import { getDynamicMeasurementsCombinedResults } from "../../../api/DynamiMeasurementsResultsApi";
+import { getDynamicMeasurementsCombinedResults } from "../../../api/DynamicMeasurementsResultsApi";
 
 /**
- * React Query hook that fetches (and conditionally polls) the 
+ * React Query hook that fetches (and conditionally polls) the
  * Dynamic+Measurements combined results for the given study.
- *
  */
 
 export function useDynamicMeasurementsResultsQuery(
     studyUid,
-    { enabled = true, queryKeyPrefix = "dynamicMeasurementsResults"} = {}
+    { enabled = true, queryKeyPrefix = "dynamicMeasurementsResults" } = {}
 ) {
     return useQuery({
         // cache key is per study
@@ -21,11 +20,11 @@ export function useDynamicMeasurementsResultsQuery(
 
         // derive a UI-friendly shape (keeps your components simple)
         select: (response) => {
-            const isPending = 
+            const isPending =
                 response?.status === 202 && response?.data?.status === "pending";
             const isComplete =
                 response?.status === 200 && response?.data?.status === "complete";
-            const results = isComplete ? response.data.dynamic_measurements_results: null;
+            const results = isComplete ? response.data.dynamic_measurements_results : null;
 
             return {
                 ...response, // {status, data, retryAfter}
@@ -46,7 +45,7 @@ export function useDynamicMeasurementsResultsQuery(
             }
             return false; // stop polling
         },
-    })
+    });
 }
 
 // useQuery(...) returns a Query Result object with many fields.

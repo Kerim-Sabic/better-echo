@@ -1,18 +1,26 @@
 import { createContext, useState, useEffect, useCallback } from "react";
-import { checkAuthApi, loginApi, logoutApi } from "../api/AuthenticationApi"; // Imported API function
+import { checkAuthApi, loginApi, logoutApi } from "../api/AuthenticationApi";
 
 export const AuthContext = createContext();
 
+/**
+ * Provides the authenticated user and auth helpers.
+ *
+ * Notes:
+ * - `loading` represents the initial `/check-auth` request on app startup.
+ * - Consumers should respect `loading` to avoid flicker or premature redirects
+ *   while the auth state is still being resolved.
+ */
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(true); // to track initial fetch
+    const [loading, setLoading] = useState(true);
 
-    // Fetch current user from /check-auth
+    // Fetch current user from /check-auth (initial auth check)
     const fetchUser = useCallback(async () => {
         try {
             const response = await checkAuthApi();
             setUser(response.user);
-        }   catch (err) {
+        } catch {
             setUser(null);
         } finally {
             setLoading(false);
@@ -25,24 +33,25 @@ export const AuthProvider = ({ children }) => {
 
     // LOGIN - instantly update context
     const login = async (username, password) => {
-        const response = await loginApi(username, password); // calls the backend
-        setUser(response.user); // Directly set the logged-in user
-        return response; // Return response if needed for navigation
-    }
+        const response = await loginApi(username, password);
+        setUser(response.user);
+        return response;
+    };
 
     // LOGOUT - instantly clear context
-    const logout = async() => {
+    const logout = async () => {
         await logoutApi();
-        setUser(null); // Clear user immediately
-    }
+        setUser(null);
+    };
 
-    const value = { 
-        user, 
-        setUser, 
+    const value = {
+        user,
+        setUser,
         refreshUser: fetchUser,
         login,
-        logout, 
-        loading };
+        logout,
+        loading,
+    };
 
     return (
         <AuthContext.Provider value={value}>

@@ -3,17 +3,17 @@ import { renderToStaticMarkup } from "react-dom/server";
 import MeasurementsReport from "./MeasurementsReport";
 
 export function printMeasurementsReport({ patientName, studyUID, mainMeasurements, Measurements }) {
-  try {
-    const body = renderToStaticMarkup(
-      <MeasurementsReport
-        patientName={patientName}
-        studyUID={studyUID}
-        mainMeasurements={mainMeasurements}
-        Measurements={Measurements}
-      />
-    );
+    try {
+        const body = renderToStaticMarkup(
+            <MeasurementsReport
+                patientName={patientName}
+                studyUID={studyUID}
+                mainMeasurements={mainMeasurements}
+                Measurements={Measurements}
+            />
+        );
 
-    const styles = `
+        const styles = `
       * { box-sizing: border-box; }
       html, body { margin: 0; padding: 0; }
       body { font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif; color: #111827; }
@@ -33,7 +33,7 @@ export function printMeasurementsReport({ patientName, studyUID, mainMeasurement
       @media print { body { background: #ffffff; } .page { box-shadow: none; } }
     `;
 
-    const html = `<!doctype html>
+        const html = `<!doctype html>
       <html>
         <head>
           <meta charset="utf-8" />
@@ -45,23 +45,21 @@ export function printMeasurementsReport({ patientName, studyUID, mainMeasurement
         </body>
       </html>`;
 
-    const win = window.open("", "_blank");
-    if (!win) return;
-    win.document.open();
-    win.document.write(html);
-    win.document.close();
-    // Ensure print after content load
-    const doPrint = () => {
-      try { win.focus(); } catch {}
-      try { win.print(); } catch {}
-    };
-    if (win.document.readyState === "complete") {
-      setTimeout(doPrint, 50);
-    } else {
-      win.onload = () => setTimeout(doPrint, 50);
+        const win = window.open("", "_blank");
+        if (!win) return;
+        win.document.open();
+        win.document.write(html);
+        win.document.close();
+        const doPrint = () => {
+            try { win.focus(); } catch {}
+            try { win.print(); } catch {}
+        };
+        if (win.document.readyState === "complete") {
+            setTimeout(doPrint, 50);
+        } else {
+            win.onload = () => setTimeout(doPrint, 50);
+        }
+    } catch (e) {
+        console.warn("Print failed", e);
     }
-  } catch (e) {
-    console.warn("Print failed", e);
-  }
 }
-

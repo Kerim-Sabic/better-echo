@@ -3,163 +3,163 @@
 @tailwind utilities;
 
 body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
-    "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
+        "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
+        sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
-    monospace;
+    font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
+        monospace;
 }
 
 :root {
-  --primary: #06B6D4; /* brand cyan */
-  --primary-foreground: #fff;
-  --muted-foreground: #64748b;
-  --border: #e2e8f0;
+    --primary: #06B6D4; /* brand cyan */
+    --primary-foreground: #fff;
+    --muted-foreground: #64748b;
+    --border: #e2e8f0;
 }
 
 /* Token-ish utility shims */
 .text-primary {
-  color: var(--primary);
+    color: var(--primary);
 }
 .text-primary\/80 {
-  color: rgba(45, 212, 191, 0.8);
+    color: rgba(45, 212, 191, 0.8);
 }
 .text-muted-foreground {
-  color: var(--muted-foreground);
+    color: var(--muted-foreground);
 }
 .bg-border {
-  background-color: var(--border);
+    background-color: var(--border);
 }
 
 /* “Clinical” background gradient name used in Splash */
 .bg-gradient-clinical {
-  background: linear-gradient(#ffffff, #ffffff);
+    background: linear-gradient(#ffffff, #ffffff);
 }
 .bg-gradient-primary {
-  background: linear-gradient(135deg, #2dd4bf, #5eead4);
+    background: linear-gradient(135deg, #2dd4bf, #5eead4);
 }
 .heartbeat {
-  animation: heartbeat 2s ease-in-out infinite;
+    animation: heartbeat 2s ease-in-out infinite;
 }
 @keyframes heartbeat {
-  0%,
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(1.05);
-    opacity: 0.9;
-  }
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.05);
+        opacity: 0.9;
+    }
 }
 
 :root {
-  /* neutrals / backgrounds */
-  --background: #ffffff;
-  --foreground: #0f172a;
+    /* neutrals / backgrounds */
+    --background: #ffffff;
+    --foreground: #0f172a;
 
-  --card: #ffffff;
-  --card-foreground: #0f172a;
+    --card: #ffffff;
+    --card-foreground: #0f172a;
 
-  --popover: #ffffff;
-  --popover-foreground: #0f172a;
+    --popover: #ffffff;
+    --popover-foreground: #0f172a;
 
-  --primary: #06B6D4; /* brand cyan */
-  --primary-foreground: #ffffff;
+    --primary: #06B6D4; /* brand cyan */
+    --primary-foreground: #ffffff;
 
-  --secondary: #f1f5f9;
-  --secondary-foreground: #0f172a;
+    --secondary: #f1f5f9;
+    --secondary-foreground: #0f172a;
 
-  --muted: #f1f5f9;
-  --muted-foreground: #64748b;
+    --muted: #f1f5f9;
+    --muted-foreground: #64748b;
 
-  --accent: #e0f2fe;
-  --accent-glow: #7dd3fc;
-  --accent-foreground: #0f172a;
+    --accent: #e0f2fe;
+    --accent-glow: #7dd3fc;
+    --accent-foreground: #0f172a;
 
-  --destructive: #ef4444;
-  --destructive-foreground: #ffffff;
+    --destructive: #ef4444;
+    --destructive-foreground: #ffffff;
 
-  --border: #e2e8f0;
-  --input: #e2e8f0;
-  --ring: #7dd3fc; /* cyan glow */
+    --border: #e2e8f0;
+    --input: #e2e8f0;
+    --ring: #7dd3fc; /* cyan glow */
 
-  --radius: 0.5rem;
+    --radius: 0.5rem;
 
-  /* brand gradient tokens (logo) */
-  --brand-purple: #9333EA;
-  --brand-indigo: #6366F1;
-  --brand-cyan: #06B6D4;
+    /* brand gradient tokens (logo) */
+    --brand-purple: #9333EA;
+    --brand-indigo: #6366F1;
+    --brand-cyan: #06B6D4;
 }
 
 /* map token-ish classnames used by components */
 .bg-background {
-  background-color: var(--background);
+    background-color: var(--background);
 }
 .text-foreground {
-  color: var(--foreground);
+    color: var(--foreground);
 }
 .bg-card {
-  background-color: var(--card);
+    background-color: var(--card);
 }
 .text-card-foreground {
-  color: var(--card-foreground);
+    color: var(--card-foreground);
 }
 .border-border {
-  border-color: var(--border);
+    border-color: var(--border);
 }
 .border-input {
-  border-color: var(--input);
+    border-color: var(--input);
 }
 .bg-accent {
-  background-color: var(--accent);
+    background-color: var(--accent);
 }
 .text-accent-foreground {
-  color: var(--accent-foreground);
+    color: var(--accent-foreground);
 }
 .bg-primary {
-  background-color: var(--primary);
+    background-color: var(--primary);
 }
 .text-primary {
-  color: var(--primary);
+    color: var(--primary);
 }
 .text-primary-foreground {
-  color: var(--primary-foreground);
+    color: var(--primary-foreground);
 }
 
 /* existing splash helpers from earlier message */
 .bg-gradient-clinical {
-  background: linear-gradient(#ffffff, #ffffff);
+    background: linear-gradient(#ffffff, #ffffff);
 }
 .bg-gradient-primary {
-  background: linear-gradient(135deg, #2dd4bf, #5eead4);
+    background: linear-gradient(135deg, #2dd4bf, #5eead4);
 }
 .bg-gradient-brand {
-  background-image: linear-gradient(135deg, var(--brand-purple), var(--brand-indigo), var(--brand-cyan));
+    background-image: linear-gradient(135deg, var(--brand-purple), var(--brand-indigo), var(--brand-cyan));
 }
 .text-gradient-brand {
-  background-image: linear-gradient(135deg, var(--brand-purple), var(--brand-indigo), var(--brand-cyan));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+    background-image: linear-gradient(135deg, var(--brand-purple), var(--brand-indigo), var(--brand-cyan));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
 }
 .bg-brand-soft {
-  background-image: linear-gradient(135deg, rgba(147, 51, 234, 0.08), rgba(99, 102, 241, 0.08), rgba(6, 182, 212, 0.08));
+    background-image: linear-gradient(135deg, rgba(147, 51, 234, 0.08), rgba(99, 102, 241, 0.08), rgba(6, 182, 212, 0.08));
 }
 .ring-brand {
-  --ring: #7dd3fc;
+    --ring: #7dd3fc;
 }
 
 /* Scoped theme override for login screen to match CEO design (purple primary) */
 .theme-login {
-  --primary: #9333EA; /* purple */
-  --ring: #A78BFA; /* soft purple ring/glow */
+    --primary: #9333EA; /* purple */
+    --ring: #A78BFA; /* soft purple ring/glow */
 }
 
 /* Tailwind-like token shims for state variants that our config doesn't generate */
@@ -172,53 +172,53 @@ code {
 
 /* text colors used by icons */
 .text-success {
-  color: #10b981;
+    color: #10b981;
 } /* emerald-500 */
 .text-warning {
-  color: #f59e0b;
+    color: #f59e0b;
 } /* amber-500 */
 
 /* status badge backgrounds */
 .status-normal {
-  background-color: #ecfdf5; /* emerald-50 */
-  color: #065f46; /* emerald-800 */
-  border-color: #a7f3d0; /* emerald-200 */
+    background-color: #ecfdf5; /* emerald-50 */
+    color: #065f46; /* emerald-800 */
+    border-color: #a7f3d0; /* emerald-200 */
 }
 .status-warning {
-  background-color: #fffbeb; /* amber-50 */
-  color: #92400e; /* amber-800 */
-  border-color: #fde68a; /* amber-300 */
+    background-color: #fffbeb; /* amber-50 */
+    color: #92400e; /* amber-800 */
+    border-color: #fde68a; /* amber-300 */
 }
 .status-critical {
-  background-color: #fef2f2; /* red-50 */
-  color: #991b1b; /* red-800 */
-  border-color: #fecaca; /* red-300 */
+    background-color: #fef2f2; /* red-50 */
+    color: #991b1b; /* red-800 */
+    border-color: #fecaca; /* red-300 */
 }
 
 /* Bigger viewer container */
 .viewer-shell {
-  width: 100%;
-  /* On large screens: ~65vh tall; on small, ~45vh */
-  height: 75vh;
-  background: #000;
-  border-radius: 12px;
-  overflow: hidden;
+    width: 100%;
+    /* On large screens: ~65vh tall; on small, ~45vh */
+    height: 75vh;
+    background: #000;
+    border-radius: 12px;
+    overflow: hidden;
 }
 
 /* Full-bleed iframe */
 .viewer-frame {
-  width: 100%;
-  height: 100%;
-  border: 0;
-  display: block;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    display: block;
 }
 
 /* Optional: on smaller screens, reduce height a bit */
 @media (max-width: 1024px) {
-  .viewer-shell { height: 50vh; }
+    .viewer-shell { height: 50vh; }
 }
 @media (max-width: 640px) {
-  .viewer-shell { height: 45vh; }
+    .viewer-shell { height: 45vh; }
 }
 
 /* Login page helpers (animations, glass, transitions) */
@@ -229,24 +229,24 @@ code {
 .fast-transition { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
 
 .glass-card {
-  background: rgba(255, 255, 255, 0.7);
-  -webkit-backdrop-filter: blur(20px);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.15);
+    background: rgba(255, 255, 255, 0.7);
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    box-shadow: 0 8px 24px rgba(99, 102, 241, 0.15);
 }
 
 @keyframes fade-in {
-  0% { opacity: 0; transform: translateY(10px); }
-  100% { opacity: 1; transform: translateY(0); }
+    0% { opacity: 0; transform: translateY(10px); }
+    100% { opacity: 1; transform: translateY(0); }
 }
 @keyframes slide-up {
-  0% { opacity: 0; transform: translateY(20px); }
-  100% { opacity: 1; transform: translateY(0); }
+    0% { opacity: 0; transform: translateY(20px); }
+    100% { opacity: 1; transform: translateY(0); }
 }
 @keyframes glow {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
 }
 
 /* Helper to simulate Tailwind group-hover for our custom animate-glow */

@@ -3,44 +3,44 @@ import { renderToStaticMarkup } from "react-dom/server";
 import MeasurementsReport from "./MeasurementsReport";
 
 export function buildMeasurementsReportHtml({
-  logoDataUrl,
-  patientName,
-  studyUID,
-  mainMeasurements = [],
-  Measurements = [],
+    logoDataUrl,
+    patientName,
+    studyUID,
+    mainMeasurements = [],
+    Measurements = [],
 }) {
-  const brandHeader = (
-    <div className="brand-header">
-      <div className="left">
-        {logoDataUrl ? <img className="logo" src={logoDataUrl} alt="Horalix Logo" /> : null}
-        <div className="titles">
-          <div className="title gradient">Study Results</div>
-          <div className="subtitle">AI Measurements Report</div>
+    const brandHeader = (
+        <div className="brand-header">
+            <div className="left">
+                {logoDataUrl ? <img className="logo" src={logoDataUrl} alt="Horalix Logo" /> : null}
+                <div className="titles">
+                    <div className="title gradient">Study Results</div>
+                    <div className="subtitle">AI Measurements Report</div>
+                </div>
+            </div>
+            <div className="right">
+                <div>Patient: {patientName || "-"}</div>
+                <div>UID: {studyUID || "-"}</div>
+            </div>
         </div>
-      </div>
-      <div className="right">
-        <div>Patient: {patientName || '-'}</div>
-        <div>UID: {studyUID || '-'}</div>
-      </div>
-    </div>
-  );
+    );
 
-  const report = (
-    <div className="page">
-      {brandHeader}
-      <MeasurementsReport
-        patientName={patientName}
-        studyUID={studyUID}
-        mainMeasurements={mainMeasurements}
-        Measurements={Measurements}
-        showHeader={false}
-      />
-    </div>
-  );
+    const report = (
+        <div className="page">
+            {brandHeader}
+            <MeasurementsReport
+                patientName={patientName}
+                studyUID={studyUID}
+                mainMeasurements={mainMeasurements}
+                Measurements={Measurements}
+                showHeader={false}
+            />
+        </div>
+    );
 
-  const body = renderToStaticMarkup(report);
+    const body = renderToStaticMarkup(report);
 
-  const styles = `
+    const styles = `
     * { box-sizing: border-box; }
     html, body { margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif; color: #111827; background: #ffffff; }
@@ -70,7 +70,7 @@ export function buildMeasurementsReportHtml({
     @media print { body { background: #ffffff; } .page { box-shadow: none; } }
   `;
 
-  return `<!doctype html>
+    return `<!doctype html>
   <html>
     <head>
       <meta charset="utf-8" />

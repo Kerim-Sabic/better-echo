@@ -2,14 +2,13 @@ import { useQuery } from "@tanstack/react-query";
 import { getLlmReportResults } from "../../../api/LlmReportResultsApi";
 
 /**
- * React Query hook that fetches (and conditionally polls) the 
+ * React Query hook that fetches (and conditionally polls) the
  * LLM report results for the given study.
- *
  */
 
 export function useLlmReportResultsQuery(
     studyUid,
-    { enabled = true, queryKeyPrefix = "llmReportResults"} = {}
+    { enabled = true, queryKeyPrefix = "llmReportResults" } = {}
 ) {
     return useQuery({
         // cache key is per study
@@ -21,7 +20,7 @@ export function useLlmReportResultsQuery(
 
         // derive a UI-friendly shape (keeps your components simple)
         select: (response) => {
-            const isPending = 
+            const isPending =
                 response?.status === 202 && response?.data?.status === "pending";
             const isComplete =
                 response?.status === 200 && response?.data?.status === "complete";
@@ -46,7 +45,7 @@ export function useLlmReportResultsQuery(
             }
             return false; // stop polling
         },
-    })
+    });
 }
 
 // useQuery(...) returns a Query Result object with many fields.
