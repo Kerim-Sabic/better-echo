@@ -17,6 +17,7 @@ from app.schemas.studies_schemas import (StudyListResponse,
                                         StudyUpdateResponse, 
                                         DerivedResultResponse,
                                         InstanceResponse)
+from app.helpers.authentication_functions import get_current_user_id
 
 logger = logging.getLogger(__name__)
 
@@ -24,11 +25,19 @@ router = APIRouter()
 UPLOAD_DIR = "app/uploads"
 
 @router.get("/studies", response_model=StudyListResponse)
-def list_studies(db: Session = Depends(get_db)):
+def list_studies(
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user_id)
+):
     """
-    Retrieves all studies with patient info
+    Retrieves only the studies belonging to the logged-in user.
     """
-    rows = db.query(Study).order_by(Study.uploaded_at.desc()).all()
+    rows = (
+        db.query(Study)
+        .filter(Study.user_id == current_user_id)
+        .order_by(Study.uploaded_at.desc())
+        .all()
+    )
     data = []
 
     for study in rows:

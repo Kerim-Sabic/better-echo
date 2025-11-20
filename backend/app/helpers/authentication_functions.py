@@ -43,7 +43,7 @@ def decode_token(token: str) -> dict:
         return None
     
 # --- Extract user from JWT stored in HTTP-only cookie ----------------
-def get_current_user(request: Request) -> int:
+def get_current_user_id(request: Request) -> int:
     # Part 1. Read cookie containing JWT
     auth_token = request.cookies.get("auth_token")
 

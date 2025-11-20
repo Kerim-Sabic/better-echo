@@ -19,7 +19,7 @@ from app.models.studies import Study
 from app.models.series import Series
 from app.models.instances import Instance
 from app.schemas.upload_schemas import UploadDicomResponseSchema
-from app.helpers.authentication_functions import get_current_user
+from app.helpers.authentication_functions import get_current_user_id
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +63,7 @@ def _clean_for_ui(tags: dict) -> dict:
 @router.post("/upload-dicom", response_model=UploadDicomResponseSchema)
 async def upload_dicom(file: UploadFile = File(...),
                        db: Session = Depends(get_db),
-                       current_user_id = Depends(get_current_user)):
+                       current_user_id: int = Depends(get_current_user_id)):
     os.makedirs(UPLOAD_DIR, exist_ok=True)
     ts = datetime.now().strftime("%Y%m%d%H%M%S")
     file_location = None
