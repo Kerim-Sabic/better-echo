@@ -13,6 +13,7 @@ from app.models.derived_results import DerivedResult, ResultStatus
 from app.core.artifacts import (
     PANECHO_ECHOPRIME_COMBINED_TYPE,
     LLM_REPORT_TYPE,
+    DYNAMIC_MEASUREMENTS_COMBINED_TYPE,
 )
 from app.background_tasks.generate_llm_report import (
     generate_llm_report,
@@ -81,7 +82,8 @@ def get_llm_report(
             headers={"retry-after": "3"},
         )
     
-    # --- Part 5: If LLM report is missing, check PanEcho+EchoPrime combined results pre-requisite ---
+    # --- Part 5 If LLM report is missing: check PanEcho+EchoPrime combined results pre-requisite
+    #  and the dynamic+measurements combined results pre-requisite ---
     panecho_echoprime_combined_row: Optional[DerivedResult] = (
         db.query(DerivedResult)
         .filter(
@@ -91,10 +93,30 @@ def get_llm_report(
         .first()
     )
 
-    if (not panecho_echoprime_combined_row) or (panecho_echoprime_combined_row.status != ResultStatus.complete):
+    dynamic_measurements_combined_row: Optional[DerivedResult] = (
+        db.query(DerivedResult)
+        .filter(
+            DerivedResult.study_id == study.id,
+            DerivedResult.type == DYNAMIC_MEASUREMENTS_COMBINED_TYPE,
+        )
+        .first()
+    )
+
+    is_panecho_echoprime_ready = (
+        panecho_echoprime_combined_row
+        and panecho_echoprime_combined_row.status == ResultStatus.complete
+    )
+
+    is_dynamic_measurements_ready = (
+        dynamic_measurements_combined_row
+        and dynamic_measurements_combined_row.status == ResultStatus.complete
+    )
+
+    if not is_panecho_echoprime_ready or not is_dynamic_measurements_ready:
         logger.info(
-            f"[LLM_REPORT] Waiting for PanEcho+EchoPrime combined results for study_uid={study_uid} "
+            f"[LLM_REPORT] Waiting for PanEcho+EchoPrime and Dynamic+Measurements combined results for study_uid={study_uid} "
             f"(panecho_echoprime_combined_row_status={getattr(panecho_echoprime_combined_row, 'status', None)})"
+            f"(dynamic_measurements_combined_row_status={getattr(dynamic_measurements_combined_row, 'status', None)})"
         )
         pending = LLMPendingResponse(status="pending", retry_after=3)
         # HTTP 202 with Retry-After header tells client to poll again
@@ -104,7 +126,7 @@ def get_llm_report(
             headers={"retry-after": "3"},
         )
     
-    # --- Part 6: If combined results are COMPLETE; create pending LLM row and enqueue ---
+    # --- Part 6. If PanEcho+EchoPrime and Dynamic+Measurements combined results COMPLETE; create pending LLM row and enqueue ---
     created = False
     try:
         new_row = DerivedResult(
