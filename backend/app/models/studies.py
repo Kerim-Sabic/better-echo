@@ -15,7 +15,10 @@ class Study(Base):
     uploaded_at = Column(DateTime, default=datetime.utcnow)
 
     patient_id = Column(Integer, ForeignKey("patients.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    
     patient = relationship("Patient", back_populates="studies")
+    user = relationship("User", back_populates="studies")
 
     series = relationship(
         "Series",

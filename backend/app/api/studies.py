@@ -12,13 +12,12 @@ from app.models.studies import Study
 from app.models.instances import Instance
 from app.models.derived_results import DerivedResult
 from app.services.orthanc_client import delete_study_from_orthanc
-from app.schemas.studies_schemas import (
-    StudyListResponse,
-    StudyDeleteResponse,
-    StudyUpdateResponse,
-    DerivedResultResponse,
-    InstanceResponse,
-)
+from app.schemas.studies_schemas import (StudyListResponse, 
+                                        StudyDeleteResponse, 
+                                        StudyUpdateResponse, 
+                                        DerivedResultResponse,
+                                        InstanceResponse)
+from app.helpers.authentication_functions import get_current_user_id
 
 logger = logging.getLogger(__name__)
 
@@ -38,21 +37,23 @@ def _delete_folder_if_exists(path: str, label: str) -> None:
         logger.warning(f"{label} {path} not found")
 
 @router.get("/studies", response_model=StudyListResponse)
-def list_studies(db: Session = Depends(get_db)):
+def list_studies(
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user_id)
+):
     """
-    Retrieve all studies with patient info for the dashboard.
-
-    Steps:
-    1. Query all studies ordered by `uploaded_at` in descending order.
-    2. For each study, build a payload including patient metadata.
-    3. Return the list of study dictionaries, which Pydantic maps into `StudyListResponse`.
+    Retrieves only the studies belonging to the logged-in user.
     """
-    # --- Step 1: Query studies ordered by upload time ---
-    rows = db.query(Study).order_by(Study.uploaded_at.desc()).all()
+    rows = (
+        db.query(Study)
+        .filter(Study.user_id == current_user_id)
+        .order_by(Study.uploaded_at.desc())
+        .all()
+    )
+    data = []
 
-    # --- Step 2: Build response objects ---
-    return [
-        {
+    for study in rows:
+        study_dict = {
             "id": study.id,
             "study_uid": study.study_uid,
             "study_date": study.study_date,
@@ -65,10 +66,11 @@ def list_studies(db: Session = Depends(get_db)):
                 "patient_name": study.patient.patient_name,
                 "patient_sex": study.patient.patient_sex,
                 "patient_birth_date": study.patient.patient_birth_date,
-            },
+            }
         }
-        for study in rows
-    ]
+        data.append(study_dict)
+
+    return data
 
 @router.delete("/studies/{study_id}", response_model=StudyDeleteResponse)
 def delete_study(study_id: int, db: Session = Depends(get_db)):
