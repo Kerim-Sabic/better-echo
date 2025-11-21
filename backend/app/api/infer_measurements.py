@@ -6,8 +6,8 @@ from sqlalchemy.orm import Session
 import logging
 
 from app.database.db import get_db
-from app.models.instances import Instance
-from app.models.derived_results import DerivedResult
+from app.database_models.instances import Instance
+from app.database_models.derived_results import DerivedResult
 from app.helpers.inference_functions import check_instance_exists_in_orthanc
 from app.AI_models.measurements.runner_2d import run_2d_inference, VALID_2D_WEIGHTS
 from app.schemas.infer_measurements_schemas import Measurements2DResponse

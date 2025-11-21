@@ -14,10 +14,10 @@ from app.services.orthanc_client import (
 )
 
 from app.database.db import get_db
-from app.models.patients import Patient
-from app.models.studies import Study
-from app.models.series import Series
-from app.models.instances import Instance
+from app.database_models.patients import Patient
+from app.database_models.studies import Study
+from app.database_models.series import Series
+from app.database_models.instances import Instance
 from app.schemas.upload_schemas import UploadDicomResponseSchema
 from app.helpers.authentication_functions import get_current_user_id
 

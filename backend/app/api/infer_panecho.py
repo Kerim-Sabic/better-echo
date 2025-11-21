@@ -15,8 +15,8 @@ from app.schemas.infer_panecho_schemas import (AllTasksPanEchoResponse,
                                             InferPanEchoRequest)
 
 from app.database.db import get_db
-from app.models.studies import Study
-from app.models.derived_results import DerivedResult
+from app.database_models.studies import Study
+from app.database_models.derived_results import DerivedResult
 
 logger = logging.getLogger(__name__)
 

@@ -14,8 +14,8 @@ from collections import OrderedDict
 
 from app.database.db import get_db
 from app.schemas.infer_echonet_dynamic_schemas import LVSegmentationResponse
-from app.models.instances import Instance
-from app.models.derived_results import DerivedResult
+from app.database_models.instances import Instance
+from app.database_models.derived_results import DerivedResult
 from app.helpers.inference_functions import check_instance_exists_in_orthanc
 from app.helpers.DICOM_to_AVI_converter import dicom_to_avi
 from app.helpers.AVI_to_MP4_converter import convert_to_mp4

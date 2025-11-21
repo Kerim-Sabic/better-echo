@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from app.database.db import engine, SessionLocal
-from app.models import *
+from app.database_models import *
 
 from app.helpers.authentication_functions import hash_password
 

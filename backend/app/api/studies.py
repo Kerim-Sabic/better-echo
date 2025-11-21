@@ -8,9 +8,9 @@ from sqlalchemy.exc import SQLAlchemyError
 import logging
 
 from app.database.db import get_db
-from app.models.studies import Study
-from app.models.instances import Instance
-from app.models.derived_results import DerivedResult
+from app.database_models.studies import Study
+from app.database_models.instances import Instance
+from app.database_models.derived_results import DerivedResult
 from app.services.orthanc_client import delete_study_from_orthanc
 from app.schemas.studies_schemas import (StudyListResponse, 
                                         StudyDeleteResponse, 

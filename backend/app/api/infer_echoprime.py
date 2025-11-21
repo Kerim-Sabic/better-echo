@@ -17,8 +17,8 @@ from app.schemas.infer_echoprime_schemas import (EchoPrimeResponse,
                                                  InferEchoPrimeRequest)
 
 from app.database.db import get_db
-from app.models.studies import Study
-from app.models.derived_results import DerivedResult
+from app.database_models.studies import Study
+from app.database_models.derived_results import DerivedResult
 
 orthanc_url = settings.ORTHANC_URL
 orthanc_user = settings.ORTHANC_USER

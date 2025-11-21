@@ -5,10 +5,10 @@ from typing import Dict, List, Optional, Any
 from sqlalchemy.orm import Session
 
 from app.database.db import SessionLocal
-from app.models.studies import Study
-from app.models.series import Series
-from app.models.instances import Instance
-from app.models.derived_results import DerivedResult, ResultStatus
+from app.database_models.studies import Study
+from app.database_models.series import Series
+from app.database_models.instances import Instance
+from app.database_models.derived_results import DerivedResult, ResultStatus
 from app.api.infer_echonet_dynamic import infer_lv_segmentation
 from app.api.infer_measurements import infer_measurements_2d
 from app.helpers.view_classifier import view_classifier

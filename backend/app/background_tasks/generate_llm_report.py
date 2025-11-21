@@ -2,8 +2,8 @@ from __future__ import annotations
 import logging
 
 from app.database.db import SessionLocal
-from app.models.studies import Study
-from app.models.derived_results import DerivedResult, ResultStatus
+from app.database_models.studies import Study
+from app.database_models.derived_results import DerivedResult, ResultStatus
 from app.core.artifacts import LLM_REPORT_TYPE
 from app.services.llm_report_service import generate_for_study
 

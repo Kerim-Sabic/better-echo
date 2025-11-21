@@ -8,11 +8,11 @@ from typing import Dict, List, Tuple, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
-from app.models.studies import Study
-from app.models.series import Series
-from app.models.instances import Instance
-from app.models.patients import Patient
-from app.models.derived_results import DerivedResult
+from app.database_models.studies import Study
+from app.database_models.series import Series
+from app.database_models.instances import Instance
+from app.database_models.patients import Patient
+from app.database_models.derived_results import DerivedResult
 
 logger = logging.getLogger(__name__)
 

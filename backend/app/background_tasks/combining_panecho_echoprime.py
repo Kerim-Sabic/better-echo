@@ -5,8 +5,8 @@ import time
 import json
 
 from app.database.db import SessionLocal
-from app.models.studies import Study
-from app.models.derived_results import DerivedResult, ResultStatus
+from app.database_models.studies import Study
+from app.database_models.derived_results import DerivedResult, ResultStatus
 
 from app.api.infer_panecho import infer_panecho
 from app.schemas.infer_panecho_schemas import InferPanEchoRequest

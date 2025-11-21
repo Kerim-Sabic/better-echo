@@ -10,7 +10,7 @@ Initialize (or reset) the database schema.
 from app.database.db import engine, Base
 
 # IMPORTANT: DO NOT REMOVE!! import models so they register with Base.metadata
-from app.models import *
+from app.database_models import *
 
 
 def init_db(drop: bool = True):

@@ -1,7 +1,7 @@
 from typing import Optional, Dict, Any
 import json
 
-from app.models.derived_results import DerivedResult
+from app.database_models.derived_results import DerivedResult
 
 def build_llm_report_from_row(llm_report_row: Optional[DerivedResult]) -> Dict[str, Any]:
     """Helper function that safely parses value_json to dict."""

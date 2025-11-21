@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response, Request
 from sqlalchemy.orm import Session
 
 from app.database.db import get_db
-from app.models.users import User
+from app.database_models.users import User
 from app.helpers.authentication_functions import verify_password, create_token, decode_token
 from app.core.config import settings
 from app.schemas.authentication_schemas import LoginRequest, AuthResponse, LogoutResponse
