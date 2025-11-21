@@ -266,6 +266,8 @@ def run_2d_inference(model_weights: str, input_path: str, output_dir: str) -> Tu
             preds.append(coords)
 
     preds = np.asarray(preds)  # (F, 2, 2)
+    if len(frames_bgr) == 0 or preds.shape[0] == 0:
+        raise RuntimeError("No frames available for measurements.")
 
     # Prepare output video/CSV paths with short, unique base (timestamped)
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")

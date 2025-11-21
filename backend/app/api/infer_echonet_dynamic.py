@@ -142,7 +142,6 @@ def infer_lv_segmentation(
         frame_size = (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)))
         if frame_size[0] <= 0 or frame_size[1] <= 0:
             raise HTTPException(status_code=400, detail="Invalid input video dimensions")
-        # Read all frames into memory to allow retry/fallback without re-opening the file
         collected = []
         while True:
             ret, frame = cap.read()
@@ -152,6 +151,9 @@ def infer_lv_segmentation(
         frames = collected
     else:
         raise HTTPException(status_code=400, detail="Only .avi or .dcm files are supported")
+
+    if not frames:
+        raise HTTPException(status_code=400, detail="No frames available for LV segmentation.")
 
     # --- Step 4: Encode overlay video via ffmpeg (fallback to OpenCV if needed) ---
     study_uid = instance.series.study.study_uid

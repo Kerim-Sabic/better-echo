@@ -71,25 +71,53 @@ def ffmpeg_write_mp4_from_frames(
     ]
 
     proc = None
+    wrote_frames = False
     try:
         proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
+        proc_stdin = proc.stdin  # type: ignore[assignment]
+
         for frame in frames:
             if frame.shape[0] != height or frame.shape[1] != width:
                 raise ValueError("Frame dimensions do not match writer settings.")
             if frame.ndim != 3 or frame.shape[2] != 3:
                 raise ValueError("Frames must be BGR with 3 channels.")
-            proc.stdin.write(frame.tobytes())
-        proc.stdin.close()
+            proc_stdin.write(frame.tobytes())
+            wrote_frames = True
+
+        proc_stdin.close()
         stderr = proc.stderr.read().decode("utf-8", errors="ignore") if proc.stderr else ""
         ret = proc.wait()
+        if not wrote_frames:
+            raise ValueError("No frames provided to ffmpeg writer.")
         if ret != 0:
             raise RuntimeError(f"ffmpeg exited with status {ret}: {stderr}")
     except Exception:
+        if proc and proc.poll() is None:
+            try:
+                proc.terminate()
+                proc.wait(timeout=2)
+            except Exception:
+                try:
+                    proc.kill()
+                    proc.wait(timeout=1)
+                except Exception:
+                    pass
         try:
             if os.path.exists(output_path):
                 os.remove(output_path)
         except OSError:
             pass
         raise
+    finally:
+        try:
+            if proc and proc.stdin and not proc.stdin.closed:
+                proc.stdin.close()
+        except Exception:
+            pass
+        try:
+            if proc and proc.stderr:
+                proc.stderr.close()
+        except Exception:
+            pass
 
     return output_path
