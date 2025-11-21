@@ -1,4 +1,3 @@
-import tempfile
 import os
 from pathlib import Path
 
@@ -17,8 +16,8 @@ from app.schemas.infer_echonet_dynamic_schemas import LVSegmentationResponse
 from app.models.instances import Instance
 from app.models.derived_results import DerivedResult
 from app.helpers.inference_functions import check_instance_exists_in_orthanc
-from app.helpers.DICOM_to_AVI_converter import dicom_to_avi
-from app.helpers.AVI_to_MP4_converter import convert_to_mp4
+from app.helpers.DICOM_to_AVI_converter import read_dicom_frames
+from app.helpers.AVI_to_MP4_converter import ffmpeg_write_mp4_from_frames
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -88,11 +87,10 @@ def infer_lv_segmentation(
 
     Steps:
     1. Validate that the instance exists in Orthanc and in the local database.
-    2. Resolve the DICOM path and, if needed, convert `.dcm` to a temporary `.avi`.
-    3. Lazily load the segmentation model and open the input video.
-    4. Process each frame, run segmentation, and write an overlay AVI to a study-specific folder.
-    5. Release resources, convert the AVI to MP4, remove intermediate files, and persist a DerivedResult.
-    6. Return a success response containing the relative MP4 path.
+    2. Resolve the DICOM/AVI path and load frames (no DICOM -> AVI intermediate).
+    3. Lazily load the segmentation model and render overlays.
+    4. Encode overlays once to high-quality H.264 MP4 via ffmpeg (fallback to OpenCV if needed).
+    5. Persist a DerivedResult and return the relative MP4 path.
     """
     # --- Step 1: Check if instance with given sop_instance_uid exists ---
     if not check_instance_exists_in_orthanc(sop_instance_uid):
@@ -116,116 +114,103 @@ def infer_lv_segmentation(
             detail=f"DICOM file not found at {dicom_file_path}",
         )
 
-    # --- Step 3: Handle DICOM vs AVI based on file_path ---
-    tmp_avi_path = None
+    # --- Step 3: Load frames and determine FPS/dimensions (avoid DICOM -> AVI intermediate) ---
     suffix = Path(dicom_file_path).suffix.lower()
-    if suffix == ".dcm":
-        logger.info("[Echonet-dynamic] DICOM file found, converting to AVI...")
-        dicom_output_tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".avi")
-        try:
-            tmp_avi_path = dicom_output_tmp.name
-        finally:
-            # Close handle so OpenCV can read/write the file on all platforms
-            dicom_output_tmp.close()
-
-        avi_path = dicom_to_avi(dicom_file_path, tmp_avi_path)
-        if not avi_path:
-            # Best-effort cleanup of the temp file
-            if tmp_avi_path and os.path.exists(tmp_avi_path):
-                try:
-                    os.remove(tmp_avi_path)
-                except OSError:
-                    pass
-            raise HTTPException(status_code=400, detail="Failed to convert DICOM to AVI")
-        input_video_path = avi_path
-    elif suffix == ".avi":
-        input_video_path = dicom_file_path
-    else:
-        raise HTTPException(status_code=400, detail="Only .avi or .dcm files are supported")
-
-    # --- Step 4-8: Run model inference and write segmented AVI ---
+    frames = None
     cap = None
-    out = None
-    try:
-        # --- Step 4: Load model (lazy load) ---
-        model_instance = load_model()
-        logger.info("[Echonet-dynamic] LV-segmentation model loaded")
+    fps = 30.0
+    frames = None
+    cap = None
+    fps = 30.0
+    frame_size = None
 
-        # --- Step 5: Open input video ---
-        cap = cv2.VideoCapture(input_video_path)
+    if suffix == ".dcm":
+        logger.info("[Echonet-dynamic] Reading frames directly from DICOM")
+        try:
+            frames, fps = read_dicom_frames(dicom_file_path, apply_mask=True)
+        except Exception as exc:
+            logger.exception("[Echonet-dynamic] Failed to read DICOM frames")
+            raise HTTPException(status_code=400, detail=f"Failed to read frames from DICOM: {exc}")
+        if not frames:
+            raise HTTPException(status_code=400, detail="No frames found in DICOM")
+        frame_size = (frames[0].shape[1], frames[0].shape[0])  # (width, height)
+    elif suffix == ".avi":
+        cap = cv2.VideoCapture(dicom_file_path)
         if not cap.isOpened():
             raise HTTPException(status_code=400, detail="Could not open input video")
-
-        # --- Step 6: Create study specific subfolder ---
-        study_uid = instance.series.study.study_uid
-
-        study_upload_dir = os.path.join(UPLOAD_DIR, study_uid)
-        os.makedirs(study_upload_dir, exist_ok=True)
-
-        output_filename_avi = f"segmented_{Path(dicom_file_path).stem}.avi"
-        output_path_avi = os.path.join(study_upload_dir, output_filename_avi)
-
-        fourcc = cv2.VideoWriter_fourcc(*"XVID")
-        out = cv2.VideoWriter(
-            output_path_avi,
-            fourcc,
-            cap.get(cv2.CAP_PROP_FPS),
-            (int(cap.get(3)), int(cap.get(4))),
-        )
-
-        # --- Step 7: Process each frame ---
+        fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+        frame_size = (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)))
+        if frame_size[0] <= 0 or frame_size[1] <= 0:
+            raise HTTPException(status_code=400, detail="Invalid input video dimensions")
+        # Read all frames into memory to allow retry/fallback without re-opening the file
+        collected = []
         while True:
             ret, frame = cap.read()
             if not ret:
                 break
+            collected.append(frame)
+        frames = collected
+    else:
+        raise HTTPException(status_code=400, detail="Only .avi or .dcm files are supported")
 
-            # convert to tensor
+    # --- Step 4: Encode overlay video via ffmpeg (fallback to OpenCV if needed) ---
+    study_uid = instance.series.study.study_uid
+    study_upload_dir = os.path.join(UPLOAD_DIR, study_uid)
+    os.makedirs(study_upload_dir, exist_ok=True)
+    base_name = f"segmented_{Path(dicom_file_path).stem}"
+    output_path_mp4 = os.path.join(study_upload_dir, base_name + ".mp4")
+
+    model_instance = None
+
+    def _overlay_frames():
+        for frame in frames:
             img_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            img_tensor = F.to_tensor(img_rgb).unsqueeze(0).to(device)
+            resized_for_model = cv2.resize(img_rgb, (112, 112), interpolation=cv2.INTER_LINEAR)
+            img_tensor = F.to_tensor(resized_for_model).unsqueeze(0).to(device)
 
-            # run inference
             with torch.no_grad():
                 output = model_instance(img_tensor)["out"][0, 0]
 
-            # threshold to create binary mask
-            mask = (torch.sigmoid(output) > 0.5).cpu().numpy().astype(np.uint8)
+            mask_small = (torch.sigmoid(output) > 0.5).cpu().numpy().astype(np.uint8)
+            mask_resized = cv2.resize(mask_small, frame_size, interpolation=cv2.INTER_NEAREST)
 
-            # create red overlay for LV segmentation
             mask_color = np.zeros_like(frame)
-            mask_color[mask == 1] = [0, 0, 255]  # red mask
-            overlay = cv2.addWeighted(frame, 0.7, mask_color, 0.3, 0)
+            mask_color[mask_resized == 1] = [0, 0, 255]  # red mask
+            yield cv2.addWeighted(frame, 0.7, mask_color, 0.3, 0)
 
-            # write overlay frame to output
-            out.write(overlay)
+    try:
+        model_instance = load_model()
+        logger.info("[Echonet-dynamic] LV-segmentation model loaded")
+
+        try:
+            ffmpeg_write_mp4_from_frames(
+                frames=_overlay_frames(),
+                width=frame_size[0],
+                height=frame_size[1],
+                fps=float(fps),
+                output_path=output_path_mp4,
+                crf=16,
+                preset="slow",
+            )
+        except Exception as ff_err:
+            logger.warning("[Echonet-dynamic] ffmpeg high-quality encode failed, falling back to OpenCV: %s", ff_err)
+            fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+            vw = cv2.VideoWriter(output_path_mp4, fourcc, float(fps), frame_size)
+            if not vw.isOpened():
+                raise HTTPException(status_code=500, detail="Failed to open video writer for output.")
+            for frame in _overlay_frames():
+                vw.write(frame)
+            vw.release()
     finally:
-        # --- Step 8: Release resources and temp artifacts ---
         if cap is not None:
             cap.release()
-        if out is not None:
-            out.release()
-        # Unload model after inference to free memory
         unload_model()
         logger.info("[Echonet-dynamic] LV-segmentation model unloaded")
-        # Clean up intermediate DICOM->AVI temp file if we used one
-        if tmp_avi_path and os.path.exists(tmp_avi_path) and tmp_avi_path != input_video_path:
-            try:
-                os.remove(tmp_avi_path)
-            except OSError:
-                pass
 
-    # --- Step 9: Convert AVI to MP4 ---
-    output_path_mp4 = convert_to_mp4(output_path_avi)
-    # --- Step 9.1: Make relative path (remove absolute UPLOAD_DIR prefix) ---
     relative_output_path = os.path.relpath(output_path_mp4, start=UPLOAD_DIR).replace("\\", "/")
     relative_output_path = f"echonet_dynamic_LV-segmentation_files/{relative_output_path}"
 
-    # Remove AVI file
-    try:
-        os.remove(output_path_avi)
-    except OSError:
-        pass
-
-    # --- Step 10: Save DerivedResult in database ---
+    # --- Step 5: Save DerivedResult in database ---
     if instance:
         dr = DerivedResult(
             study_id=instance.series.study.id,
@@ -246,7 +231,7 @@ def infer_lv_segmentation(
             db.commit()
             logger.info(f"[Echonet-dynamic] Saved DerivedResult in DB for study_uid={study_uid}")
 
-    # --- Step 11: Return success response ---
+    # --- Step 6: Return success response ---
     logger.info("[Echonet-dynamic] LV-segmentation model inference completed")
     return {
         "success": True,

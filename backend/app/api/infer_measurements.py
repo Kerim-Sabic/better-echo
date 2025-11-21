@@ -133,7 +133,7 @@ def infer_measurements_2d(
 
     # --- Step 6: Run model inference (creates AVI + CSV) ---
     try:
-        out_avi, out_csv = run_2d_inference(model_weights=model_weights, input_path=input_path, output_dir=out_dir)
+        out_video, out_csv = run_2d_inference(model_weights=model_weights, input_path=input_path, output_dir=out_dir)
     except Exception as e:
         logger.exception("[Measurements2D] Inference failed")
         try:
@@ -143,18 +143,21 @@ def infer_measurements_2d(
             pass
         raise HTTPException(status_code=500, detail=f"Inference failed: {e}")
 
-    logger.info(f"[Measurements2D] Completed. Output AVI: {out_avi}")
+    logger.info(f"[Measurements2D] Completed. Output video: {out_video}")
 
-    # --- Step 7: Convert AVI -> MP4 (and remove AVI) ---
+    # --- Step 7: Finalize MP4 output (already encoded via ffmpeg; convert only if not mp4) ---
     out_mp4 = None
     try:
-        out_mp4_path = convert_to_mp4(out_avi)
+        out_mp4_path = out_video
+        if not out_video.lower().endswith(".mp4"):
+            out_mp4_path = convert_to_mp4(out_video)
+            if out_mp4_path != out_video:
+                try:
+                    if os.path.exists(out_video):
+                        os.remove(out_video)
+                except Exception:
+                    pass
         out_mp4 = os.path.normpath(out_mp4_path).replace("\\", "/")
-        # Remove the original AVI to save space
-        try:
-            os.remove(out_avi)
-        except Exception:
-            pass
     except Exception as e:
         logger.warning(f"[Measurements2D] MP4 conversion failed: {e}")
 
