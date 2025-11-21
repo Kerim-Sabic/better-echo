@@ -258,8 +258,7 @@ export const NORMAL_RANGES = {
     right_atrium_dilation: {
         categories: {
         normal:     ["Normal"],
-        borderline: ["Mildly Dilated"],
-        abnormal:   ["Moderately or Severely Dilated"],
+        abnormal:   ["Dilated"],
         },
     },
     elevated_left_atrial_pressure: {
