@@ -206,14 +206,14 @@ def infer_lv_segmentation(
                 if overlay.shape[1] != frame_size[0] or overlay.shape[0] != frame_size[1]:
                     overlay = cv2.resize(overlay, frame_size, interpolation=cv2.INTER_LINEAR)
                 if idx <= 5 or idx % 10 == 0:
-                    logger.info("[Echonet-dynamic] Processed %d frames for overlay (device=%s)", idx, device.type)
-                if time.time() - start_time > 30:
-                    raise RuntimeError(f"Overlay generation exceeded time budget at frame {idx} on {device.type}")
+                    elapsed = time.time() - start_time
+                    logger.info("[Echonet-dynamic] Processed %d/%d frames (%.1fs elapsed, device=%s)", idx, len(frames), elapsed, device.type)
                 yield overlay
 
         try:
             preset = "slow" if device.type == "cuda" else "medium"
             if allow_ffmpeg:
+                encode_start = time.time()
                 logger.info(
                     "[Echonet-dynamic] Encoding overlay via ffmpeg | frames=%d size=%s fps=%.2f preset=%s device=%s",
                     len(frames),
@@ -231,10 +231,25 @@ def infer_lv_segmentation(
                     crf=16,
                     preset=preset,
                     timeout_seconds=90.0,
+                    per_frame_timeout=30.0,
+                )
+                encode_duration = time.time() - encode_start
+                logger.info(
+                    "[Echonet-dynamic] ffmpeg encode completed in %.1fs | device=%s size=%s",
+                    encode_duration,
+                    device.type,
+                    frame_size,
                 )
                 return output_path_mp4
 
-            logger.info("[Echonet-dynamic] Using OpenCV writer (no ffmpeg) on %s", device.type)
+            encode_start = time.time()
+            logger.info(
+                "[Echonet-dynamic] Using OpenCV writer (no ffmpeg) | frames=%d size=%s fps=%.2f device=%s",
+                len(frames),
+                frame_size,
+                float(fps),
+                device.type,
+            )
             fourcc = cv2.VideoWriter_fourcc(*"mp4v")
             vw = cv2.VideoWriter(output_path_mp4, fourcc, float(fps), frame_size)
             if not vw.isOpened():
@@ -245,26 +260,44 @@ def infer_lv_segmentation(
                     vw.write(frame)
                     written = idx
                     if idx % 10 == 0:
-                        logger.info("[Echonet-dynamic] OpenCV progress: wrote %d frames (device=%s)", idx, device.type)
+                        logger.info("[Echonet-dynamic] OpenCV progress: wrote %d/%d frames (device=%s)", idx, len(frames), device.type)
             finally:
-                logger.info("[Echonet-dynamic] OpenCV finished with %d frames (device=%s)", written, device.type)
+                encode_duration = time.time() - encode_start
+                logger.info(
+                    "[Echonet-dynamic] OpenCV encode completed with %d frames in %.1fs | device=%s size=%s",
+                    written,
+                    encode_duration,
+                    device.type,
+                    frame_size,
+                )
                 vw.release()
             return output_path_mp4
         finally:
             unload_model()
 
     result_path = None
+    overall_start = time.time()
     try:
+        logger.info("[Echonet-dynamic] Attempting CUDA + ffmpeg encoding path")
         result_path = encode_on_device(torch.device("cuda"), allow_ffmpeg=True)
+        overall_duration = time.time() - overall_start
+        logger.info("[Echonet-dynamic] CUDA + ffmpeg path succeeded in %.1fs", overall_duration)
     except Exception as err_cuda:
-        logger.warning("[Echonet-dynamic] CUDA path failed, retrying on CPU without ffmpeg: %s", err_cuda)
+        logger.warning(
+            "[Echonet-dynamic] CUDA + ffmpeg path failed after %.1fs: %s | Falling back to CPU + OpenCV",
+            time.time() - overall_start,
+            err_cuda,
+        )
         try:
+            fallback_start = time.time()
             result_path = encode_on_device(torch.device("cpu"), allow_ffmpeg=False)
+            fallback_duration = time.time() - fallback_start
+            logger.info("[Echonet-dynamic] CPU + OpenCV fallback succeeded in %.1fs", fallback_duration)
         except Exception as err_cpu:
-            logger.exception("[Echonet-dynamic] CPU fallback failed")
+            logger.exception("[Echonet-dynamic] CPU + OpenCV fallback also failed")
             if cap is not None:
                 cap.release()
-            raise HTTPException(status_code=500, detail=f"LV segmentation failed: {err_cpu}")
+            raise HTTPException(status_code=500, detail=f"LV segmentation failed on both CUDA and CPU: {err_cpu}")
 
     if cap is not None:
         cap.release()

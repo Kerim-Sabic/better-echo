@@ -2,6 +2,8 @@ import logging
 import os
 import subprocess
 import tempfile
+import threading
+import time
 from typing import Iterable, Optional
 
 import numpy as np
@@ -53,10 +55,12 @@ def ffmpeg_write_mp4_from_frames(
     output_path: str,
     crf: int = 16,
     preset: str = "slow",
-    timeout_seconds: Optional[float] = 60.0,
+    timeout_seconds: Optional[float] = 90.0,
+    per_frame_timeout: float = 30.0,
 ) -> str:
     """
     Pipe raw BGR24 frames to ffmpeg and write a high-quality H.264 MP4.
+    Uses chunked writing and stderr reading thread to prevent pipe deadlocks.
     """
     cmd = [
         "ffmpeg",
@@ -76,27 +80,103 @@ def ffmpeg_write_mp4_from_frames(
 
     proc = None
     wrote_frames = False
-    stderr = ""
+    stderr_lines = []
+    stderr_lock = threading.Lock()
+
+    def read_stderr(pipe, output_list, lock):
+        """Continuously read stderr to prevent pipe fill."""
+        try:
+            for line in iter(pipe.readline, b""):
+                decoded = line.decode("utf-8", errors="ignore").strip()
+                if decoded:
+                    with lock:
+                        output_list.append(decoded)
+                        logger.debug(f"ffmpeg stderr: {decoded}")
+        except Exception:
+            pass
+        finally:
+            try:
+                pipe.close()
+            except Exception:
+                pass
+
+    def write_with_timeout(pipe, data, timeout):
+        """Write data in chunks with timeout to detect broken pipe."""
+        CHUNK_SIZE = 32768  # 32KB chunks
+        bytes_written = 0
+        start_time = time.time()
+
+        while bytes_written < len(data):
+            if time.time() - start_time > timeout:
+                raise RuntimeError(f"Frame write timed out after {timeout}s")
+
+            chunk_end = min(bytes_written + CHUNK_SIZE, len(data))
+            chunk = data[bytes_written:chunk_end]
+
+            try:
+                pipe.write(chunk)
+                pipe.flush()  # Ensure data is pushed to pipe
+                bytes_written += len(chunk)
+            except BrokenPipeError:
+                raise RuntimeError("ffmpeg pipe broken - process may have crashed")
+            except Exception as e:
+                raise RuntimeError(f"Failed to write frame data: {e}")
+
     try:
+        # Step 1: Start ffmpeg process
         proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
         proc_stdin = proc.stdin  # type: ignore[assignment]
 
+        # Step 2: Start stderr reading thread to prevent pipe fill
+        stderr_thread = threading.Thread(
+            target=read_stderr,
+            args=(proc.stderr, stderr_lines, stderr_lock),
+            daemon=True
+        )
+        stderr_thread.start()
+
+        # Step 3: Write frames with chunking and per-frame timeout
+        frame_count = 0
         for frame in frames:
             if frame.shape[0] != height or frame.shape[1] != width:
-                raise ValueError("Frame dimensions do not match writer settings.")
+                raise ValueError(f"Frame {frame_count}: dimensions {frame.shape[:2]} do not match {height}x{width}")
             if frame.ndim != 3 or frame.shape[2] != 3:
-                raise ValueError("Frames must be BGR with 3 channels.")
-            proc_stdin.write(frame.tobytes())
-            wrote_frames = True
+                raise ValueError(f"Frame {frame_count}: must be BGR with 3 channels, got shape {frame.shape}")
 
+            # Check if ffmpeg process is still alive
+            if proc.poll() is not None:
+                with stderr_lock:
+                    stderr_msg = "\n".join(stderr_lines[-10:])  # Last 10 lines
+                raise RuntimeError(f"ffmpeg process died unexpectedly at frame {frame_count}: {stderr_msg}")
+
+            # Write frame in chunks with timeout
+            frame_bytes = frame.tobytes()
+            write_with_timeout(proc_stdin, frame_bytes, per_frame_timeout)
+
+            wrote_frames = True
+            frame_count += 1
+
+        # Step 4: Close stdin to signal EOF to ffmpeg
         proc_stdin.close()
-        stderr = proc.stderr.read().decode("utf-8", errors="ignore") if proc.stderr else ""
+
+        # Step 5: Wait for ffmpeg to finish encoding
         ret = proc.wait(timeout=timeout_seconds)
+
+        # Step 6: Collect final stderr output
+        stderr_thread.join(timeout=2.0)
+        with stderr_lock:
+            stderr_output = "\n".join(stderr_lines)
+
+        # Step 7: Check results
         if not wrote_frames:
-            raise ValueError("No frames provided to ffmpeg writer.")
+            raise ValueError("No frames provided to ffmpeg writer")
         if ret != 0:
-            raise RuntimeError(f"ffmpeg exited with status {ret}: {stderr}")
+            raise RuntimeError(f"ffmpeg exited with status {ret}. Last stderr:\n{stderr_output[-500:]}")
+
+        logger.info(f"Successfully wrote {frame_count} frames to {output_path}")
+
     except subprocess.TimeoutExpired:
+        # ffmpeg took too long to finish after stdin was closed
         if proc and proc.poll() is None:
             try:
                 proc.terminate()
@@ -107,9 +187,17 @@ def ffmpeg_write_mp4_from_frames(
                     proc.wait(timeout=1)
                 except Exception:
                     pass
-        raise RuntimeError("ffmpeg encode timed out.")
+        with stderr_lock:
+            stderr_output = "\n".join(stderr_lines[-10:])
+        raise RuntimeError(f"ffmpeg encode timed out after {timeout_seconds}s. Last stderr:\n{stderr_output}")
+
     except Exception as exc:
-        logger.warning("ffmpeg encode failed: %s | stderr=%s", exc, stderr)
+        # Any error during frame writing or encoding
+        with stderr_lock:
+            stderr_output = "\n".join(stderr_lines[-10:])
+        logger.warning(f"ffmpeg encode failed: {exc} | Last stderr:\n{stderr_output}")
+
+        # Kill ffmpeg if still running
         if proc and proc.poll() is None:
             try:
                 proc.terminate()
@@ -120,21 +208,20 @@ def ffmpeg_write_mp4_from_frames(
                     proc.wait(timeout=1)
                 except Exception:
                     pass
+
+        # Clean up partial output file
         try:
             if os.path.exists(output_path):
                 os.remove(output_path)
         except OSError:
             pass
         raise
+
     finally:
+        # Ensure all resources are cleaned up
         try:
             if proc and proc.stdin and not proc.stdin.closed:
                 proc.stdin.close()
-        except Exception:
-            pass
-        try:
-            if proc and proc.stderr:
-                proc.stderr.close()
         except Exception:
             pass
 
