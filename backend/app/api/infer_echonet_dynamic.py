@@ -178,58 +178,63 @@ def infer_lv_segmentation(
     base_name = f"segmented_{Path(dicom_file_path).stem}"
     output_path_mp4 = os.path.join(study_upload_dir, base_name + ".mp4")
 
-    model_instance = None
+    def encode_on_device(target_device: torch.device, allow_ffmpeg: bool) -> str:
+        global device
+        if device != target_device:
+            unload_model()
+            device = target_device
 
-    def _overlay_frames():
-        start_time = time.time()
-        for idx, frame in enumerate(frames, start=1):
-            img_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            resized_for_model = cv2.resize(img_rgb, (112, 112), interpolation=cv2.INTER_LINEAR)
-            img_tensor = F.to_tensor(resized_for_model).unsqueeze(0).to(device)
-
-            with torch.no_grad():
-                output = model_instance(img_tensor)["out"][0, 0]
-
-            mask_small = (torch.sigmoid(output) > 0.5).cpu().numpy().astype(np.uint8)
-            mask_resized = cv2.resize(mask_small, frame_size, interpolation=cv2.INTER_NEAREST)
-
-            mask_color = np.zeros_like(frame)
-            mask_color[mask_resized == 1] = [0, 0, 255]  # red mask
-            overlay = cv2.addWeighted(frame, 0.7, mask_color, 0.3, 0)
-            if overlay.shape[1] != frame_size[0] or overlay.shape[0] != frame_size[1]:
-                overlay = cv2.resize(overlay, frame_size, interpolation=cv2.INTER_LINEAR)
-            if idx <= 5 or idx % 10 == 0:
-                logger.info("[Echonet-dynamic] Processed %d frames for overlay", idx)
-            if time.time() - start_time > 30:
-                raise RuntimeError(f"Overlay generation exceeded time budget at frame {idx}")
-            yield overlay
-
-    try:
         model_instance = load_model()
-        logger.info("[Echonet-dynamic] LV-segmentation model loaded")
+        logger.info("[Echonet-dynamic] LV-segmentation model loaded on %s", device.type)
+
+        def _overlay_frames():
+            start_time = time.time()
+            for idx, frame in enumerate(frames, start=1):
+                img_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                resized_for_model = cv2.resize(img_rgb, (112, 112), interpolation=cv2.INTER_LINEAR)
+                img_tensor = F.to_tensor(resized_for_model).unsqueeze(0).to(device)
+
+                with torch.no_grad():
+                    output = model_instance(img_tensor)["out"][0, 0]
+
+                mask_small = (torch.sigmoid(output) > 0.5).cpu().numpy().astype(np.uint8)
+                mask_resized = cv2.resize(mask_small, frame_size, interpolation=cv2.INTER_NEAREST)
+
+                mask_color = np.zeros_like(frame)
+                mask_color[mask_resized == 1] = [0, 0, 255]  # red mask
+                overlay = cv2.addWeighted(frame, 0.7, mask_color, 0.3, 0)
+                if overlay.shape[1] != frame_size[0] or overlay.shape[0] != frame_size[1]:
+                    overlay = cv2.resize(overlay, frame_size, interpolation=cv2.INTER_LINEAR)
+                if idx <= 5 or idx % 10 == 0:
+                    logger.info("[Echonet-dynamic] Processed %d frames for overlay (device=%s)", idx, device.type)
+                if time.time() - start_time > 30:
+                    raise RuntimeError(f"Overlay generation exceeded time budget at frame {idx} on {device.type}")
+                yield overlay
 
         try:
             preset = "slow" if device.type == "cuda" else "medium"
-            logger.info(
-                "[Echonet-dynamic] Encoding overlay via ffmpeg | frames=%d size=%s fps=%.2f preset=%s device=%s",
-                len(frames),
-                frame_size,
-                float(fps),
-                preset,
-                device.type,
-            )
-            ffmpeg_write_mp4_from_frames(
-                frames=_overlay_frames(),
-                width=frame_size[0],
-                height=frame_size[1],
-                fps=float(fps),
-                output_path=output_path_mp4,
-                crf=16,
-                preset=preset,
-                timeout_seconds=90.0,
-            )
-        except Exception as ff_err:
-            logger.warning("[Echonet-dynamic] ffmpeg high-quality encode failed, falling back to OpenCV: %s", ff_err)
+            if allow_ffmpeg:
+                logger.info(
+                    "[Echonet-dynamic] Encoding overlay via ffmpeg | frames=%d size=%s fps=%.2f preset=%s device=%s",
+                    len(frames),
+                    frame_size,
+                    float(fps),
+                    preset,
+                    device.type,
+                )
+                ffmpeg_write_mp4_from_frames(
+                    frames=_overlay_frames(),
+                    width=frame_size[0],
+                    height=frame_size[1],
+                    fps=float(fps),
+                    output_path=output_path_mp4,
+                    crf=16,
+                    preset=preset,
+                    timeout_seconds=90.0,
+                )
+                return output_path_mp4
+
+            logger.info("[Echonet-dynamic] Using OpenCV writer (no ffmpeg) on %s", device.type)
             fourcc = cv2.VideoWriter_fourcc(*"mp4v")
             vw = cv2.VideoWriter(output_path_mp4, fourcc, float(fps), frame_size)
             if not vw.isOpened():
@@ -240,15 +245,30 @@ def infer_lv_segmentation(
                     vw.write(frame)
                     written = idx
                     if idx % 10 == 0:
-                        logger.info("[Echonet-dynamic] OpenCV fallback progress: wrote %d frames", idx)
+                        logger.info("[Echonet-dynamic] OpenCV progress: wrote %d frames (device=%s)", idx, device.type)
             finally:
-                logger.info("[Echonet-dynamic] OpenCV fallback finished with %d frames", written)
-            vw.release()
-    finally:
-        if cap is not None:
-            cap.release()
-        unload_model()
-        logger.info("[Echonet-dynamic] LV-segmentation model unloaded")
+                logger.info("[Echonet-dynamic] OpenCV finished with %d frames (device=%s)", written, device.type)
+                vw.release()
+            return output_path_mp4
+        finally:
+            unload_model()
+
+    output_path_mp4 = None
+    try:
+        output_path_mp4 = encode_on_device(torch.device("cuda"), allow_ffmpeg=True)
+    except Exception as err_cuda:
+        logger.warning("[Echonet-dynamic] CUDA path failed, retrying on CPU without ffmpeg: %s", err_cuda)
+        try:
+            output_path_mp4 = encode_on_device(torch.device("cpu"), allow_ffmpeg=False)
+        except Exception as err_cpu:
+            logger.exception("[Echonet-dynamic] CPU fallback failed")
+            if cap is not None:
+                cap.release()
+            raise HTTPException(status_code=500, detail=f"LV segmentation failed: {err_cpu}")
+
+    if cap is not None:
+        cap.release()
+    logger.info("[Echonet-dynamic] LV-segmentation model unloaded")
 
     relative_output_path = os.path.relpath(output_path_mp4, start=UPLOAD_DIR).replace("\\", "/")
     relative_output_path = f"echonet_dynamic_LV-segmentation_files/{relative_output_path}"
