@@ -253,13 +253,13 @@ def infer_lv_segmentation(
         finally:
             unload_model()
 
-    output_path_mp4 = None
+    result_path = None
     try:
-        output_path_mp4 = encode_on_device(torch.device("cuda"), allow_ffmpeg=True)
+        result_path = encode_on_device(torch.device("cuda"), allow_ffmpeg=True)
     except Exception as err_cuda:
         logger.warning("[Echonet-dynamic] CUDA path failed, retrying on CPU without ffmpeg: %s", err_cuda)
         try:
-            output_path_mp4 = encode_on_device(torch.device("cpu"), allow_ffmpeg=False)
+            result_path = encode_on_device(torch.device("cpu"), allow_ffmpeg=False)
         except Exception as err_cpu:
             logger.exception("[Echonet-dynamic] CPU fallback failed")
             if cap is not None:
@@ -270,7 +270,10 @@ def infer_lv_segmentation(
         cap.release()
     logger.info("[Echonet-dynamic] LV-segmentation model unloaded")
 
-    relative_output_path = os.path.relpath(output_path_mp4, start=UPLOAD_DIR).replace("\\", "/")
+    if not result_path:
+        raise HTTPException(status_code=500, detail="LV segmentation failed: no output path produced.")
+
+    relative_output_path = os.path.relpath(result_path, start=UPLOAD_DIR).replace("\\", "/")
     relative_output_path = f"echonet_dynamic_LV-segmentation_files/{relative_output_path}"
 
     # --- Step 5: Save DerivedResult in database ---
