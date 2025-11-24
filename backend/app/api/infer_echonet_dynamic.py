@@ -162,6 +162,14 @@ def infer_lv_segmentation(
         logger.info("[Echonet-dynamic] Adjusted frame size to even dimensions for H.264: %s -> %s", frame_size, encode_size)
         frame_size = encode_size
 
+    logger.info(
+        "[Echonet-dynamic] Starting LV segmentation encode | frames=%d size=%s fps=%.2f device=%s",
+        len(frames),
+        frame_size,
+        float(fps),
+        device.type,
+    )
+
     # --- Step 4: Encode overlay video via ffmpeg (fallback to OpenCV if needed) ---
     study_uid = instance.series.study.study_uid
     study_upload_dir = os.path.join(UPLOAD_DIR, study_uid)
@@ -172,7 +180,7 @@ def infer_lv_segmentation(
     model_instance = None
 
     def _overlay_frames():
-        for frame in frames:
+        for idx, frame in enumerate(frames, start=1):
             img_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             resized_for_model = cv2.resize(img_rgb, (112, 112), interpolation=cv2.INTER_LINEAR)
             img_tensor = F.to_tensor(resized_for_model).unsqueeze(0).to(device)
@@ -188,6 +196,8 @@ def infer_lv_segmentation(
             overlay = cv2.addWeighted(frame, 0.7, mask_color, 0.3, 0)
             if overlay.shape[1] != frame_size[0] or overlay.shape[0] != frame_size[1]:
                 overlay = cv2.resize(overlay, frame_size, interpolation=cv2.INTER_LINEAR)
+            if idx % 50 == 0:
+                logger.info("[Echonet-dynamic] Processed %d frames for overlay", idx)
             yield overlay
 
     try:
@@ -196,6 +206,14 @@ def infer_lv_segmentation(
 
         try:
             preset = "slow" if device.type == "cuda" else "medium"
+            logger.info(
+                "[Echonet-dynamic] Encoding overlay via ffmpeg | frames=%d size=%s fps=%.2f preset=%s device=%s",
+                len(frames),
+                frame_size,
+                float(fps),
+                preset,
+                device.type,
+            )
             ffmpeg_write_mp4_from_frames(
                 frames=_overlay_frames(),
                 width=frame_size[0],
@@ -212,8 +230,10 @@ def infer_lv_segmentation(
             vw = cv2.VideoWriter(output_path_mp4, fourcc, float(fps), frame_size)
             if not vw.isOpened():
                 raise HTTPException(status_code=500, detail="Failed to open video writer for output.")
-            for frame in _overlay_frames():
+            for idx, frame in enumerate(_overlay_frames(), start=1):
                 vw.write(frame)
+                if idx % 50 == 0:
+                    logger.info("[Echonet-dynamic] OpenCV fallback progress: wrote %d frames", idx)
             vw.release()
     finally:
         if cap is not None:

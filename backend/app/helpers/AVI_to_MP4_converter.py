@@ -53,7 +53,7 @@ def ffmpeg_write_mp4_from_frames(
     output_path: str,
     crf: int = 16,
     preset: str = "slow",
-    timeout_seconds: Optional[float] = 120.0,
+    timeout_seconds: Optional[float] = 90.0,
 ) -> str:
     """
     Pipe raw BGR24 frames to ffmpeg and write a high-quality H.264 MP4.
@@ -109,7 +109,7 @@ def ffmpeg_write_mp4_from_frames(
                     pass
         raise RuntimeError("ffmpeg encode timed out.")
     except Exception as exc:
-        logger.warning("ffmpeg encode failed: %s", exc)
+        logger.warning("ffmpeg encode failed: %s | stderr=%s", exc, stderr)
         if proc and proc.poll() is None:
             try:
                 proc.terminate()
