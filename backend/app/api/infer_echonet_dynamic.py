@@ -10,6 +10,7 @@ from torchvision.transforms import functional as F
 import cv2
 import numpy as np
 from collections import OrderedDict
+import time
 
 from app.database.db import get_db
 from app.schemas.infer_echonet_dynamic_schemas import LVSegmentationResponse
@@ -180,6 +181,7 @@ def infer_lv_segmentation(
     model_instance = None
 
     def _overlay_frames():
+        start_time = time.time()
         for idx, frame in enumerate(frames, start=1):
             img_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             resized_for_model = cv2.resize(img_rgb, (112, 112), interpolation=cv2.INTER_LINEAR)
@@ -198,6 +200,9 @@ def infer_lv_segmentation(
                 overlay = cv2.resize(overlay, frame_size, interpolation=cv2.INTER_LINEAR)
             if idx % 50 == 0:
                 logger.info("[Echonet-dynamic] Processed %d frames for overlay", idx)
+            if time.time() - start_time > 60:
+                logger.warning("[Echonet-dynamic] Aborting overlay generation after 60s (idx=%d)", idx)
+                break
             yield overlay
 
     try:
