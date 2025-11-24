@@ -20,12 +20,11 @@ from app.database_models.series import Series
 from app.database_models.instances import Instance
 from app.schemas.upload_schemas import UploadDicomResponseSchema
 from app.helpers.authentication_functions import get_current_user_id
+from app.core.artifacts import UPLOAD_DIR
 
 logger = logging.getLogger(__name__)
-
 router = APIRouter()
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # backend/app/api
-UPLOAD_DIR = os.path.normpath(os.path.join(BASE_DIR, "..", "uploads"))  # backend/app/uploads
+
 
 def _first(val, default=""):
     """

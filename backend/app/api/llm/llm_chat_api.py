@@ -1,5 +1,4 @@
 from __future__ import annotations
-
 import json
 import logging
 from typing import Dict, Any, Optional, List
@@ -14,12 +13,10 @@ from app.database_models.studies import Study
 from app.database_models.derived_results import DerivedResult, ResultStatus
 from app.helpers.row_to_dict.combined_results_row_to_dict import build_combined_sections_from_row
 from app.schemas.llm_schemas import (
-    LLMReportResponse,
     LLMChatRequest,
     LLMChatResponse,
 )
 from app.services.llm_client import LLMClient
-from app.services.llm_report_service import generate_for_study
 from app.prompting.params import LLMParams
 from app.prompting.builder import build_chat_messages
 
@@ -38,48 +35,6 @@ def _json_of(value: Any) -> Dict[str, Any]:
         return json.loads(value)
     except Exception:
         return {}
-
-
-@router.post("/studies/{study_uid}/llm/report/generate", response_model=LLMReportResponse)
-def generate_llm_report(study_uid: str, db: Session = Depends(get_db)):
-    """
-    Generate and persist an AI echo report for a study using combined PanEcho + EchoPrime results.
-
-    Steps:
-    1. Resolve the study by `study_uid` and ensure a combined PanEcho+EchoPrime DerivedResult row exists.
-    2. Validate that the combined row is complete; otherwise return a 409 indicating pending results.
-    3. Delegate to `generate_for_study` to build the prompt, call the LLM, and persist the LLM report DerivedResult.
-    4. Return an `LLMReportResponse` with the study UID, model, report text, and diagnoses JSON (if present).
-    """
-    # --- Step 1: Validate study and combined row ---
-    study: Optional[Study] = db.query(Study).filter(Study.study_uid == study_uid).first()
-    if not study:
-        raise HTTPException(status_code=404, detail="Study not found")
-
-    combined_row: Optional[DerivedResult] = (
-        db.query(DerivedResult)
-        .filter(DerivedResult.study_id == study.id, DerivedResult.type == PANECHO_ECHOPRIME_COMBINED_TYPE)
-        .first()
-    )
-    if not combined_row:
-        raise HTTPException(status_code=409, detail="Combined results not available. Please trigger and wait for completion.")
-    if combined_row.status != ResultStatus.complete:
-        raise HTTPException(status_code=409, detail="Combined results are still pending. Retry shortly.")
-
-    # --- Step 2: Delegate to report generation service ---
-    try:
-        result = generate_for_study(study_uid=study_uid, db=db)
-    except Exception as e:
-        raise HTTPException(status_code=502, detail="LLM report generation failed")
-
-    # --- Step 3: Return generated report ---
-    return LLMReportResponse(
-        study_uid=study_uid,
-        model=result.get("model", settings.LLM_MODEL),
-        report=result.get("report", ""),
-        diagnoses_json=result.get("diagnoses_json"),
-    )
-
 
 @router.post("/llm/chat", response_model=LLMChatResponse)
 def chat_about_report(payload: LLMChatRequest, db: Session = Depends(get_db)):

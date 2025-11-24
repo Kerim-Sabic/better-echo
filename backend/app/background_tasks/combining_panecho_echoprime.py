@@ -8,9 +8,9 @@ from app.database.db import SessionLocal
 from app.database_models.studies import Study
 from app.database_models.derived_results import DerivedResult, ResultStatus
 
-from app.api.infer_panecho import infer_panecho
+from app.api.inference.infer_panecho_api import infer_panecho
 from app.schemas.infer_panecho_schemas import InferPanEchoRequest
-from app.api.infer_echoprime import infer_echoprime
+from app.api.inference.infer_echoprime_api import infer_echoprime
 from app.schemas.infer_echoprime_schemas import InferEchoPrimeRequest
 
 from app.core.artifacts import PANECHO_TYPE, ECHOPRIME_TYPE, PANECHO_ECHOPRIME_COMBINED_TYPE

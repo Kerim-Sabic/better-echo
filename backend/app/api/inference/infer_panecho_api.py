@@ -19,7 +19,6 @@ from app.database_models.studies import Study
 from app.database_models.derived_results import DerivedResult
 
 logger = logging.getLogger(__name__)
-
 router = APIRouter()
 
 @router.post("/infer/panecho", response_model=AllTasksPanEchoResponse)

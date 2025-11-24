@@ -12,13 +12,13 @@ from app.helpers.inference_functions import check_instance_exists_in_orthanc
 from app.AI_models.measurements.runner_2d import run_2d_inference, VALID_2D_WEIGHTS
 from app.schemas.infer_measurements_schemas import Measurements2DResponse
 from app.helpers.AVI_to_MP4_converter import convert_to_mp4
+from app.core.artifacts import BASE_DIR
 
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 # Paths
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # backend/app/api
 UPLOADS_ROOT = os.path.normpath(os.path.join(BASE_DIR, "..", "uploads"))  # backend/app/uploads
 os.makedirs(UPLOADS_ROOT, exist_ok=True)
 

@@ -19,6 +19,7 @@ from app.database_models.derived_results import DerivedResult
 from app.helpers.inference_functions import check_instance_exists_in_orthanc
 from app.helpers.DICOM_to_AVI_converter import dicom_to_avi
 from app.helpers.AVI_to_MP4_converter import convert_to_mp4
+from app.core.artifacts import BASE_DIR
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -26,7 +27,6 @@ router = APIRouter()
 model = None
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CHECKPOINT_PATH = os.path.normpath(os.path.join(
     BASE_DIR,
     "..", "AI_models", "EchonetDynamic", "output", "segmentation",
