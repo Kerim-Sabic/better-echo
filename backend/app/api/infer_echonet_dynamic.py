@@ -155,6 +155,13 @@ def infer_lv_segmentation(
     if not frames:
         raise HTTPException(status_code=400, detail="No frames available for LV segmentation.")
 
+    encode_size = (frame_size[0] - (frame_size[0] % 2), frame_size[1] - (frame_size[1] % 2))
+    if encode_size[0] <= 0 or encode_size[1] <= 0:
+        raise HTTPException(status_code=400, detail="Invalid frame dimensions for encoding.")
+    if encode_size != frame_size:
+        logger.info("[Echonet-dynamic] Adjusted frame size to even dimensions for H.264: %s -> %s", frame_size, encode_size)
+        frame_size = encode_size
+
     # --- Step 4: Encode overlay video via ffmpeg (fallback to OpenCV if needed) ---
     study_uid = instance.series.study.study_uid
     study_upload_dir = os.path.join(UPLOAD_DIR, study_uid)
@@ -178,13 +185,17 @@ def infer_lv_segmentation(
 
             mask_color = np.zeros_like(frame)
             mask_color[mask_resized == 1] = [0, 0, 255]  # red mask
-            yield cv2.addWeighted(frame, 0.7, mask_color, 0.3, 0)
+            overlay = cv2.addWeighted(frame, 0.7, mask_color, 0.3, 0)
+            if overlay.shape[1] != frame_size[0] or overlay.shape[0] != frame_size[1]:
+                overlay = cv2.resize(overlay, frame_size, interpolation=cv2.INTER_LINEAR)
+            yield overlay
 
     try:
         model_instance = load_model()
         logger.info("[Echonet-dynamic] LV-segmentation model loaded")
 
         try:
+            preset = "slow" if device.type == "cuda" else "medium"
             ffmpeg_write_mp4_from_frames(
                 frames=_overlay_frames(),
                 width=frame_size[0],
@@ -192,7 +203,8 @@ def infer_lv_segmentation(
                 fps=float(fps),
                 output_path=output_path_mp4,
                 crf=16,
-                preset="slow",
+                preset=preset,
+                timeout_seconds=180.0,
             )
         except Exception as ff_err:
             logger.warning("[Echonet-dynamic] ffmpeg high-quality encode failed, falling back to OpenCV: %s", ff_err)

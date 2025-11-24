@@ -1,3 +1,4 @@
+import logging
 import os
 from datetime import datetime
 from typing import Tuple, List, Dict, Optional
@@ -20,6 +21,8 @@ except Exception:  # pragma: no cover
 # Cache for loaded models per weight key
 _loaded_models: Dict[str, torch.nn.Module] = {}
 _device: Optional[torch.device] = None
+
+logger = logging.getLogger(__name__)
 
 
 VALID_2D_WEIGHTS = {
@@ -290,6 +293,13 @@ def run_2d_inference(model_weights: str, input_path: str, output_dir: str) -> Tu
     if ext == ".dcm":
         dicom_scale = _extract_dicom_scale(input_path)
 
+    encode_width = width - (width % 2)
+    encode_height = height - (height % 2)
+    if encode_width <= 0 or encode_height <= 0:
+        raise RuntimeError("Invalid frame dimensions for encoding.")
+    if encode_width != width or encode_height != height:
+        logger.info("[Measurements2D] Adjusted frame size to even dimensions: (%s, %s) -> (%s, %s)", width, height, encode_width, encode_height)
+
     # Draw predictions on frames_bgr (original resolution for display)
     # Scale coordinates if model frames were resized to different size
     scale_x = width / 640.0
@@ -355,22 +365,28 @@ def run_2d_inference(model_weights: str, input_path: str, output_dir: str) -> Tu
             cv2.putText(frame, label, text_pos, cv2.FONT_HERSHEY_SIMPLEX, font_scale, outline_color, 2, cv2.LINE_AA)
             cv2.putText(frame, label, text_pos, cv2.FONT_HERSHEY_SIMPLEX, font_scale, (200, 255, 200), 1, cv2.LINE_AA)
 
+            if frame.shape[1] != encode_width or frame.shape[0] != encode_height:
+                frame = cv2.resize(frame, (encode_width, encode_height), interpolation=cv2.INTER_LINEAR)
+
             yield frame
 
     fps_to_use = fps if fps > 0 else 30.0
     try:
+        preset = "slow" if get_device().type == "cuda" else "medium"
         ffmpeg_write_mp4_from_frames(
             frames=_overlay_frames(),
-            width=width,
-            height=height,
+            width=encode_width,
+            height=encode_height,
             fps=fps_to_use,
             output_path=out_video,
             crf=16,
-            preset="slow",
+            preset=preset,
+            timeout_seconds=180.0,
         )
     except Exception as ff_err:
         # Fallback to OpenCV writer if ffmpeg is unavailable
-        fallback_writer = cv2.VideoWriter(out_video, cv2.VideoWriter_fourcc(*"mp4v"), fps_to_use, (width, height))
+        logger.warning("[Measurements2D] ffmpeg encode failed, falling back to OpenCV: %s", ff_err)
+        fallback_writer = cv2.VideoWriter(out_video, cv2.VideoWriter_fourcc(*"mp4v"), fps_to_use, (encode_width, encode_height))
         if not fallback_writer.isOpened():
             raise RuntimeError(f"Failed to open fallback VideoWriter: {ff_err}")
         for frame in _overlay_frames():
