@@ -198,11 +198,10 @@ def infer_lv_segmentation(
             overlay = cv2.addWeighted(frame, 0.7, mask_color, 0.3, 0)
             if overlay.shape[1] != frame_size[0] or overlay.shape[0] != frame_size[1]:
                 overlay = cv2.resize(overlay, frame_size, interpolation=cv2.INTER_LINEAR)
-            if idx % 50 == 0:
+            if idx <= 5 or idx % 10 == 0:
                 logger.info("[Echonet-dynamic] Processed %d frames for overlay", idx)
-            if time.time() - start_time > 60:
-                logger.warning("[Echonet-dynamic] Aborting overlay generation after 60s (idx=%d)", idx)
-                break
+            if time.time() - start_time > 30:
+                raise RuntimeError(f"Overlay generation exceeded time budget at frame {idx}")
             yield overlay
 
     try:
@@ -227,7 +226,7 @@ def infer_lv_segmentation(
                 output_path=output_path_mp4,
                 crf=16,
                 preset=preset,
-                timeout_seconds=180.0,
+                timeout_seconds=90.0,
             )
         except Exception as ff_err:
             logger.warning("[Echonet-dynamic] ffmpeg high-quality encode failed, falling back to OpenCV: %s", ff_err)
@@ -235,10 +234,15 @@ def infer_lv_segmentation(
             vw = cv2.VideoWriter(output_path_mp4, fourcc, float(fps), frame_size)
             if not vw.isOpened():
                 raise HTTPException(status_code=500, detail="Failed to open video writer for output.")
-            for idx, frame in enumerate(_overlay_frames(), start=1):
-                vw.write(frame)
-                if idx % 50 == 0:
-                    logger.info("[Echonet-dynamic] OpenCV fallback progress: wrote %d frames", idx)
+            written = 0
+            try:
+                for idx, frame in enumerate(_overlay_frames(), start=1):
+                    vw.write(frame)
+                    written = idx
+                    if idx % 10 == 0:
+                        logger.info("[Echonet-dynamic] OpenCV fallback progress: wrote %d frames", idx)
+            finally:
+                logger.info("[Echonet-dynamic] OpenCV fallback finished with %d frames", written)
             vw.release()
     finally:
         if cap is not None:
