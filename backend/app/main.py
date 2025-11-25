@@ -19,6 +19,7 @@ from app.api.orchestration_apis.combined_panecho_echoprime import router as comb
 from app.api.orchestration_apis.combined_dynamic_measurements import router as combined_dynamic_measurements
 from app.api.orchestration_apis.llm_report_get_api import router as llm_report_get_api
 from app.api.get_patient_from_study_uid_api import router as get_patient_from_study_uid_api
+from app.helpers.AVI_to_MP4_converter import kill_tracked_ffmpeg_processes
 
 from app.core.config import settings
 
@@ -72,6 +73,18 @@ app.include_router(llm_router, prefix="/api", tags=["LLM"])
 app.include_router(combined_panecho_echoprime, prefix="/api", tags=["Orchestration APIs"])
 app.include_router(combined_dynamic_measurements, prefix="/api", tags=["Orchestration APIs"])
 app.include_router(llm_report_get_api, prefix="/api", tags=["Orchestration APIs"])
+
+
+@app.on_event("shutdown")
+def shutdown_cleanup():
+    """
+    Ensure auxiliary processes are stopped when the app exits.
+    """
+    try:
+        kill_tracked_ffmpeg_processes()
+        logger.info("Shutdown cleanup: terminated tracked ffmpeg processes.")
+    except Exception as exc:
+        logger.warning("Shutdown cleanup: failed to kill tracked ffmpeg processes: %s", exc)
 
 
 if __name__ == "__main__":

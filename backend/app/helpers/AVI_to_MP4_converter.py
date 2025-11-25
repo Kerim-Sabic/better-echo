@@ -4,11 +4,48 @@ import subprocess
 import tempfile
 import threading
 import time
+import signal
 from typing import Iterable, Optional
 
 import numpy as np
 
 logger = logging.getLogger(__name__)
+
+_ffmpeg_pids = set()
+_pid_lock = threading.Lock()
+
+
+def _register_ffmpeg_pid(pid: int) -> None:
+    with _pid_lock:
+        _ffmpeg_pids.add(pid)
+
+
+def _unregister_ffmpeg_pid(pid: int) -> None:
+    with _pid_lock:
+        _ffmpeg_pids.discard(pid)
+
+
+def kill_tracked_ffmpeg_processes() -> None:
+    """
+    Best-effort kill of any ffmpeg processes spawned by this helper.
+    Used on app shutdown to avoid orphaned encoders holding locks.
+    """
+    with _pid_lock:
+        pids = list(_ffmpeg_pids)
+        _ffmpeg_pids.clear()
+
+    for pid in pids:
+        try:
+            if os.name == "nt":
+                subprocess.run(["taskkill", "/PID", str(pid), "/T", "/F"], capture_output=True)
+            else:
+                os.kill(pid, signal.SIGTERM)
+        except Exception:
+            try:
+                if os.name != "nt":
+                    os.kill(pid, signal.SIGKILL)
+            except Exception:
+                pass
 
 
 def convert_to_mp4(input_path: str) -> str:
@@ -126,6 +163,8 @@ def ffmpeg_write_mp4_from_frames(
         # Step 1: Start ffmpeg process
         proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
         proc_stdin = proc.stdin  # type: ignore[assignment]
+        if proc and proc.pid:
+            _register_ffmpeg_pid(proc.pid)
 
         # Step 2: Start stderr reading thread to prevent pipe fill
         stderr_thread = threading.Thread(
@@ -224,5 +263,7 @@ def ffmpeg_write_mp4_from_frames(
                 proc.stdin.close()
         except Exception:
             pass
+        if proc and proc.pid:
+            _unregister_ffmpeg_pid(proc.pid)
 
     return output_path

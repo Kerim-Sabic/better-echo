@@ -200,11 +200,25 @@ def infer_lv_segmentation(
                 mask_small = (torch.sigmoid(output) > 0.5).cpu().numpy().astype(np.uint8)
                 mask_resized = cv2.resize(mask_small, frame_size, interpolation=cv2.INTER_NEAREST)
 
-                mask_color = np.zeros_like(frame)
-                mask_color[mask_resized == 1] = [0, 0, 255]  # red mask
-                overlay = cv2.addWeighted(frame, 0.7, mask_color, 0.3, 0)
-                if overlay.shape[1] != frame_size[0] or overlay.shape[0] != frame_size[1]:
-                    overlay = cv2.resize(overlay, frame_size, interpolation=cv2.INTER_LINEAR)
+                # Build a green outline (transparent fill)
+                mask_binary = (mask_resized > 0).astype(np.uint8)
+                # Soften edges: blur then a gentle open/close with an elliptical kernel
+                mask_smooth = cv2.GaussianBlur(mask_binary * 255, (7, 7), 0)
+                _, mask_binary = cv2.threshold(mask_smooth, 127, 1, cv2.THRESH_BINARY)
+                kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+                mask_binary = cv2.morphologyEx(mask_binary, cv2.MORPH_OPEN, kernel, iterations=1)
+                mask_binary = cv2.morphologyEx(mask_binary, cv2.MORPH_CLOSE, kernel, iterations=1)
+
+                contours, _ = cv2.findContours(mask_binary.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                if not contours:
+                    yield frame
+                    continue
+                largest = max(contours, key=cv2.contourArea)
+                overlay = frame.copy()
+                # Smooth contour outline
+                approx = cv2.approxPolyDP(largest, 2.5, True)
+                cv2.drawContours(overlay, [approx], -1, (0, 255, 0), 2, lineType=cv2.LINE_AA)
+
                 if idx <= 5 or idx % 10 == 0:
                     elapsed = time.time() - start_time
                     logger.info("[Echonet-dynamic] Processed %d/%d frames (%.1fs elapsed, device=%s)", idx, len(frames), elapsed, device.type)
