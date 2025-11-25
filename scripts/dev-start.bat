@@ -76,4 +76,5 @@ if not exist "backend\app\logs" (
 
 call npm run build:electron
 
+set ENABLE_LLM=false
 call npm run dev

@@ -24,6 +24,9 @@ import { useLlmReportResultsQuery } from "./useLlmReportResultsQuery";
  * }}
  */
 export function useStudyResults(studyUid) {
+  // ---- Check if LLM is enabled at build time ------------------------------
+  const isLLMEnabled = process.env.REACT_APP_ENABLE_LLM === 'true';
+
   // ---- Queries --------------------------------------------------------------
   const combinedResultsQuery = useCombinedResultsQuery(studyUid, {
     enabled: Boolean(studyUid),
@@ -34,7 +37,7 @@ export function useStudyResults(studyUid) {
   });
 
   const llmReportResultsQuery = useLlmReportResultsQuery(studyUid, {
-    enabled: Boolean(studyUid),
+    enabled: Boolean(studyUid) && isLLMEnabled, // Only fetch if LLM is enabled
   });
   // Future-ready: just add new resources here (e.g., useReportQuery)
   // Each resource should expose { data: {status, isPending, isComplete, results, ...}, isError, isFetching, refetch }
