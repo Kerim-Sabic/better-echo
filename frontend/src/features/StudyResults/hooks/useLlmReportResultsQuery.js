@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { getLlmReportResults } from "../../../api/LlmReportResultsApi";
+import { getLlmReportResults } from "../../../api/orchestration_apis/LlmReportResultsApi";
 
 /**
  * React Query hook that fetches (and conditionally polls) the

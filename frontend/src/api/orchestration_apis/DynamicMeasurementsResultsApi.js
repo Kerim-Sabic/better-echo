@@ -1,4 +1,4 @@
-import { apiClient, parseRetryAfter } from "./shared/client";
+import { apiClient, parseRetryAfter } from "../shared/client";
 
 /**
  * One-shot GET for Dynamic Measurements combined results.

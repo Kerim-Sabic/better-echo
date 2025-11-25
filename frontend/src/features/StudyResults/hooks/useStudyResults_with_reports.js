@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useCombinedResultsQuery } from "./useCombinedResultsQuery";
+import { usePanechoEchoprimeResultsQuery } from "./usePanechoEchoprimeResultsQuery";
 import { useDynamicMeasurementsResultsQuery } from "./useDynamicMeasurementsResultsQuery";
 import { useLlmReportResultsQuery } from "./useLlmReportResultsQuery";
 
@@ -25,7 +25,7 @@ import { useLlmReportResultsQuery } from "./useLlmReportResultsQuery";
  */
 export function useStudyResults(studyUid) {
   // ---- Queries --------------------------------------------------------------
-  const combinedResultsQuery = useCombinedResultsQuery(studyUid, {
+  const combinedResultsQuery = usePanechoEchoprimeResultsQuery(studyUid, {
     enabled: Boolean(studyUid),
   });
 

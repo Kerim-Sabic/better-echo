@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { listStudiesApi } from "../../../api/StudiesApi";
-import { useCombinedResultsQuery } from "./useCombinedResultsQuery";
+import { usePanechoEchoprimeResultsQuery } from "./usePanechoEchoprimeResultsQuery";
 import { useDynamicMeasurementsResultsQuery } from "./useDynamicMeasurementsResultsQuery";
 
 /**
@@ -25,7 +25,7 @@ export function useStudyResults(studyUid) {
     const [patientName, setPatientName] = useState(null);
 
     // ---- Queries --------------------------------------------------------------
-    const combinedResultsQuery = useCombinedResultsQuery(studyUid, {
+    const combinedResultsQuery = usePanechoEchoprimeResultsQuery(studyUid, {
         enabled: Boolean(studyUid),
     });
 
