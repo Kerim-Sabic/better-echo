@@ -72,13 +72,6 @@ def delete_study(study_id: int, db: Session = Depends(get_db)):
     )
     _delete_folder_if_exists(uploads_measurements_study, "uploads measurements folder")
 
-    llm_reports_study = os.path.join(
-        UPLOAD_DIR,
-        "llm_reports",
-        study.study_uid,
-    )
-    _delete_folder_if_exists(llm_reports_study, "LLM reports folder")
-
     # --- Step 4: Delete study (and maybe patient) from database ---
     try:
         db.delete(study)

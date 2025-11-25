@@ -19,7 +19,7 @@ from app.database_models.derived_results import DerivedResult
 from app.helpers.inference_functions import check_instance_exists_in_orthanc
 from app.helpers.DICOM_to_AVI_converter import dicom_to_avi
 from app.helpers.AVI_to_MP4_converter import convert_to_mp4
-from app.core.artifacts import BASE_DIR
+from app.core.artifacts import BASE_DIR, UPLOAD_DIR
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -32,8 +32,8 @@ CHECKPOINT_PATH = os.path.normpath(os.path.join(
     "..", "AI_models", "EchonetDynamic", "output", "segmentation",
     "deeplabv3_resnet50_random", "best.pt"
 ))
-UPLOAD_DIR = os.path.normpath(os.path.join(BASE_DIR, "..", "uploads", "echonet_dynamic_LV-segmentation_files"))
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+ECHONET_DYNAMIC_UPLOAD_DIR = os.path.normpath(os.path.join(UPLOAD_DIR, "echonet_dynamic_LV-segmentation_files"))
+os.makedirs(ECHONET_DYNAMIC_UPLOAD_DIR, exist_ok=True)
 
 
 def load_model():
@@ -159,7 +159,7 @@ def infer_lv_segmentation(
         # --- Step 6: Create study specific subfolder ---
         study_uid = instance.series.study.study_uid
 
-        study_upload_dir = os.path.join(UPLOAD_DIR, study_uid)
+        study_upload_dir = os.path.join(ECHONET_DYNAMIC_UPLOAD_DIR, study_uid)
         os.makedirs(study_upload_dir, exist_ok=True)
 
         output_filename_avi = f"segmented_{Path(dicom_file_path).stem}.avi"
@@ -216,7 +216,7 @@ def infer_lv_segmentation(
     # --- Step 9: Convert AVI to MP4 ---
     output_path_mp4 = convert_to_mp4(output_path_avi)
     # --- Step 9.1: Make relative path (remove absolute UPLOAD_DIR prefix) ---
-    relative_output_path = os.path.relpath(output_path_mp4, start=UPLOAD_DIR).replace("\\", "/")
+    relative_output_path = os.path.relpath(output_path_mp4, start=ECHONET_DYNAMIC_UPLOAD_DIR).replace("\\", "/")
     relative_output_path = f"echonet_dynamic_LV-segmentation_files/{relative_output_path}"
 
     # Remove AVI file

@@ -3,7 +3,7 @@ import os
 import glob
 import logging
 import gc
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Optional
 
 from sqlalchemy.orm import Session
 from sqlalchemy import select
@@ -11,13 +11,10 @@ from sqlalchemy import select
 from app.database_models.studies import Study
 from app.database_models.series import Series
 from app.database_models.instances import Instance
-from app.database_models.patients import Patient
-from app.database_models.derived_results import DerivedResult
+from app.core.artifacts import UPLOAD_DIR
 
 logger = logging.getLogger(__name__)
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # backend/app/helpers
-UPLOAD_DIR = os.path.normpath(os.path.join(BASE_DIR, "..", "uploads"))
 
 def _list_dicom_files_for_study_folder(study_folder: str) -> List[str]:
     """
