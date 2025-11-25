@@ -20,7 +20,14 @@ def list_studies(
     current_user_id: int = Depends(get_current_user_id)
 ):
     """
-    Retrieves only the studies belonging to the logged-in user.
+    Retrieve all studies belonging to the authenticated user.
+
+    Steps:
+    1. Read the authenticated user's ID from the JWT token.
+    2. Query the database for Study rows where `user_id` matches the logged-in user.
+    3. Order studies by upload timestamp (newest first).
+    4. Serialize each study along with basic patient information.
+    5. Return the filtered and formatted list of studies.
     """
     rows = (
         db.query(Study)
