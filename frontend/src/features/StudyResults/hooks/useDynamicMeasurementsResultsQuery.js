@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { getDynamicMeasurementsCombinedResults } from "../../../api/DynamicMeasurementsResultsApi";
+import { getDynamicMeasurementsCombinedResults } from "../../../api/orchestration_apis/DynamicMeasurementsResultsApi";
 
 /**
  * React Query hook that fetches (and conditionally polls) the

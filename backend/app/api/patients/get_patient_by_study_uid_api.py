@@ -10,9 +10,15 @@ router = APIRouter()
 @router.get("/{study_uid}/patient", response_model=PatientBase)
 def get_patient_by_study_uid(study_uid: str, db: Session = Depends(get_db)):
     """
-    Input study_uid to get all the data about the patient for that study_uid.
-    """
+    Retrieve patient information associated with a specific study UID.
 
+    Steps:
+    1. Accept the `study_uid` identifying the target echocardiography study.
+    2. Query the database to locate the corresponding Study row.
+    3. If no study exists with that UID, return a 404 Not Found response.
+    4. Access the related Patient record through the Study relationship.
+    5. Serialize and return key patient demographic details.
+    """
     # Find study
     study = db.query(Study).filter(Study.study_uid == study_uid).first()
     if not study:

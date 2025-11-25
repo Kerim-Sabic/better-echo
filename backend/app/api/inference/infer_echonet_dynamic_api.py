@@ -19,7 +19,7 @@ from app.database_models.derived_results import DerivedResult
 from app.helpers.inference_functions import check_instance_exists_in_orthanc
 from app.helpers.DICOM_to_AVI_converter import read_dicom_frames
 from app.helpers.AVI_to_MP4_converter import ffmpeg_write_mp4_from_frames
-from app.core.artifacts import BASE_DIR
+from app.core.artifacts import BASE_DIR, UPLOAD_DIR
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -32,8 +32,8 @@ CHECKPOINT_PATH = os.path.normpath(os.path.join(
     "..", "AI_models", "EchonetDynamic", "output", "segmentation",
     "deeplabv3_resnet50_random", "best.pt"
 ))
-UPLOAD_DIR = os.path.normpath(os.path.join(BASE_DIR, "..", "uploads", "echonet_dynamic_LV-segmentation_files"))
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+ECHONET_DYNAMIC_UPLOAD_DIR = os.path.normpath(os.path.join(UPLOAD_DIR, "echonet_dynamic_LV-segmentation_files"))
+os.makedirs(ECHONET_DYNAMIC_UPLOAD_DIR, exist_ok=True)
 
 
 def load_model():

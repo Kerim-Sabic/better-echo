@@ -15,12 +15,3 @@ export const deleteStudyApi = async (id) => {
     return data;
 };
 
-export const listDerivedResultsApi = async (study_uid) => {
-    const { data } = await apiClient.get(`/studies/${study_uid}/derived-results`);
-    return data;
-}
-
-export const listInstancesApi = async (study_uid) => {
-    const { data } = await apiClient.get(`/studies/${study_uid}/instances`);
-    return data;
-};
