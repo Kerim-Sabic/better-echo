@@ -14,6 +14,7 @@ from app.api.inference import router as inference_router
 from app.api.authentication import router as authentication_router
 from app.api.llm import router as llm_router
 from app.api.orchestration_apis import router as orchestration_router
+from app.helpers.AVI_to_MP4_converter import kill_tracked_ffmpeg_processes
 
 from app.core.config import settings
 from app.core.artifacts import UPLOAD_DIR
@@ -53,6 +54,17 @@ app.include_router(patients_router, prefix="/api", tags=["Patients"])
 app.include_router(inference_router, prefix="/api", tags=["Inference"])
 app.include_router(llm_router, prefix="/api", tags=["LLM"])
 app.include_router(orchestration_router, prefix="/api", tags=["Orchestration APIs"])
+
+@app.on_event("shutdown")
+def shutdown_cleanup():
+    """
+    Ensure auxiliary processes are stopped when the app exits.
+    """
+    try:
+        kill_tracked_ffmpeg_processes()
+        logger.info("Shutdown cleanup: terminated tracked ffmpeg processes.")
+    except Exception as exc:
+        logger.warning("Shutdown cleanup: failed to kill tracked ffmpeg processes: %s", exc)
 
 if __name__ == "__main__":
     logger.info("Starting FastAPI server on 0.0.0.0:8000")

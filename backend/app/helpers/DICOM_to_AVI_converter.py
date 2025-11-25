@@ -110,3 +110,55 @@ def dicom_to_avi(dicom_path: str, output_path: str, crop_size=(112, 112)) -> str
     except Exception as err:
         logger.exception("Failed to convert %s to AVI: %s", dicom_path, err)
         return ""
+
+
+def read_dicom_frames(dicom_path: str, apply_mask: bool = True):
+    """
+    Read DICOM cine frames into memory and return (frames_bgr, fps) without writing to disk.
+    This mirrors the preprocessing used in dicom_to_avi (blank-row removal, square crop, gentle trim)
+    but leaves frames at their cropped resolution instead of resizing to a fixed target.
+    """
+    ds = dicom.dcmread(dicom_path, force=True)
+    px = ds.pixel_array  # (H,W), (F,H,W), or (F,H,W,C)
+
+    if px.ndim == 2:
+        px = px[np.newaxis, ...]
+    elif px.ndim == 4:
+        px = px[..., 0]
+
+    F, H, W = px.shape
+
+    # Optional top blank crop
+    frame0_u8 = _to_uint8(px[0])
+    row_means = frame0_u8.mean(axis=1)
+    thr = np.min(frame0_u8) + 0.01 * (np.max(frame0_u8) - np.min(frame0_u8))
+    idxs = np.where(row_means < thr)[0]
+    y_crop = int(idxs[0]) if idxs.size > 0 else 0
+    if y_crop > 0 and y_crop < H - 8:
+        px = px[:, y_crop:, :]
+        H = px.shape[1]
+
+    # Center-crop to square region
+    if H != W:
+        side = min(H, W)
+        top = (H - side) // 2
+        left = (W - side) // 2
+        px = px[:, top:top + side, left:left + side]
+        H = W = side
+
+    # Gentle border trim (10%)
+    trim = max(0, int(0.1 * H))
+    if trim * 2 < H:
+        px = px[:, trim:H - trim, trim:W - trim]
+        H = W = px.shape[1]
+
+    fps = _get_fps(ds)
+    frames = []
+    for i in range(F):
+        gray = _to_uint8(px[i])
+        if apply_mask:
+            gray = mask_frame(gray)
+        bgr = cv2.merge([gray, gray, gray])
+        frames.append(bgr)
+
+    return frames, float(fps)

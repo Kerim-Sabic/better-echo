@@ -1,3 +1,4 @@
+import logging
 import os
 from datetime import datetime
 from typing import Tuple, List, Dict, Optional
@@ -6,6 +7,8 @@ import cv2
 import numpy as np
 import torch
 from torchvision.models.segmentation import deeplabv3_resnet50
+
+from app.helpers.AVI_to_MP4_converter import ffmpeg_write_mp4_from_frames
 
 try:
     import pydicom
@@ -18,6 +21,8 @@ except Exception:  # pragma: no cover
 # Cache for loaded models per weight key
 _loaded_models: Dict[str, torch.nn.Module] = {}
 _device: Optional[torch.device] = None
+
+logger = logging.getLogger(__name__)
 
 
 VALID_2D_WEIGHTS = {
@@ -264,29 +269,36 @@ def run_2d_inference(model_weights: str, input_path: str, output_dir: str) -> Tu
             preds.append(coords)
 
     preds = np.asarray(preds)  # (F, 2, 2)
+    if len(frames_bgr) == 0 or preds.shape[0] == 0:
+        raise RuntimeError("No frames available for measurements.")
 
     # Prepare output video/CSV paths with short, unique base (timestamped)
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     base_name = f"{model_weights}_{ts}"
-    out_avi = os.path.join(output_dir, base_name + ".avi")
-    out_csv = os.path.join(output_dir, base_name + ".csv")
+    base_path = os.path.join(output_dir, base_name)
+    out_video = base_path + ".mp4"
+    out_csv = base_path + ".csv"
+
     # If path too long on Windows, fall back to very short names
     try:
-        full_len_avi = len(os.path.abspath(out_avi))
+        full_len_video = len(os.path.abspath(out_video))
     except Exception:
-        full_len_avi = 1000  # force fallback if any issue
-    if full_len_avi > 240:
-        out_avi = os.path.join(output_dir, f"{model_weights}_{ts}.avi")
+        full_len_video = 1000  # force fallback if any issue
+    if full_len_video > 240:
+        out_video = os.path.join(output_dir, f"{model_weights}_{ts}.mp4")
         out_csv = os.path.join(output_dir, f"{model_weights}_{ts}.csv")
-    fourcc = cv2.VideoWriter_fourcc(*"XVID")
-    vw = cv2.VideoWriter(out_avi, fourcc, fps if fps > 0 else 30.0, (width, height))
-    if not vw.isOpened():
-        raise RuntimeError("Failed to open VideoWriter for output.")
 
     # If DICOM, extract scaling to compute physical length (cm)
     dicom_scale = None
     if ext == ".dcm":
         dicom_scale = _extract_dicom_scale(input_path)
+
+    encode_width = width - (width % 2)
+    encode_height = height - (height % 2)
+    if encode_width <= 0 or encode_height <= 0:
+        raise RuntimeError("Invalid frame dimensions for encoding.")
+    if encode_width != width or encode_height != height:
+        logger.info("[Measurements2D] Adjusted frame size to even dimensions: (%s, %s) -> (%s, %s)", width, height, encode_width, encode_height)
 
     # Draw predictions on frames_bgr (original resolution for display)
     # Scale coordinates if model frames were resized to different size
@@ -309,52 +321,77 @@ def run_2d_inference(model_weights: str, input_path: str, output_dir: str) -> Tu
     line_color = (255, 255, 255)    # white
     outline_color = (0, 0, 0)       # black outline
 
-    for i in range(len(frames_bgr)):
-        frame = frames_bgr[i].copy()
-        overlay = frame.copy()
-        p0 = preds[i, 0]
-        p1 = preds[i, 1]
-        x0, y0 = int(round(p0[0] * scale_x)), int(round(p0[1] * scale_y))
-        x1, y1 = int(round(p1[0] * scale_x)), int(round(p1[1] * scale_y))
-        # ensure within frame bounds
-        x0 = _clip(x0, 0, width - 1); y0 = _clip(y0, 0, height - 1)
-        x1 = _clip(x1, 0, width - 1); y1 = _clip(y1, 0, height - 1)
+    def _overlay_frames():
+        for i in range(len(frames_bgr)):
+            frame = frames_bgr[i].copy()
+            overlay = frame.copy()
+            p0 = preds[i, 0]
+            p1 = preds[i, 1]
+            x0, y0 = int(round(p0[0] * scale_x)), int(round(p0[1] * scale_y))
+            x1, y1 = int(round(p1[0] * scale_x)), int(round(p1[1] * scale_y))
+            # ensure within frame bounds
+            x0 = _clip(x0, 0, width - 1); y0 = _clip(y0, 0, height - 1)
+            x1 = _clip(x1, 0, width - 1); y1 = _clip(y1, 0, height - 1)
 
-        # Anti-aliased line on overlay
-        cv2.line(overlay, (x0, y0), (x1, y1), line_color, thick, cv2.LINE_AA)
+            # Anti-aliased line on overlay
+            cv2.line(overlay, (x0, y0), (x1, y1), line_color, thick, cv2.LINE_AA)
 
-        # Circles with outline
-        cv2.circle(overlay, (x0, y0), radius + 1, outline_color, 2, cv2.LINE_AA)
-        cv2.circle(overlay, (x0, y0), radius, point0_color, -1, cv2.LINE_AA)
-        cv2.circle(overlay, (x1, y1), radius + 1, outline_color, 2, cv2.LINE_AA)
-        cv2.circle(overlay, (x1, y1), radius, point1_color, -1, cv2.LINE_AA)
+            # Circles with outline
+            cv2.circle(overlay, (x0, y0), radius + 1, outline_color, 2, cv2.LINE_AA)
+            cv2.circle(overlay, (x0, y0), radius, point0_color, -1, cv2.LINE_AA)
+            cv2.circle(overlay, (x1, y1), radius + 1, outline_color, 2, cv2.LINE_AA)
+            cv2.circle(overlay, (x1, y1), radius, point1_color, -1, cv2.LINE_AA)
 
-        # Blend for a softer look
-        frame = cv2.addWeighted(overlay, alpha, frame, 1 - alpha, 0)
+            # Blend for a softer look
+            frame = cv2.addWeighted(overlay, alpha, frame, 1 - alpha, 0)
 
-        # Length label (prefer cm if DICOM scale available)
-        mid_x = int(round((x0 + x1) / 2))
-        mid_y = int(round((y0 + y1) / 2))
-        if dicom_scale is not None:
-            dx_model = abs(p1[0] - p0[0])
-            dy_model = abs(p1[1] - p0[1])
-            dx_orig = dx_model * dicom_scale["ratio_w"]
-            dy_orig = dy_model * dicom_scale["ratio_h"]
-            length_cm = (dx_orig * dicom_scale["conv_x_cm"]) ** 2 + (dy_orig * dicom_scale["conv_y_cm"]) ** 2
-            length_cm = float(np.sqrt(length_cm))
-            label = f"{length_cm:.2f} cm"
-        else:
-            # Fallback to pixel length
-            length_px = float(np.hypot(p1[0] - p0[0], p1[1] - p0[1]))
-            label = f"{length_px:.0f} px"
+            # Length label (prefer cm if DICOM scale available)
+            mid_x = int(round((x0 + x1) / 2))
+            mid_y = int(round((y0 + y1) / 2))
+            if dicom_scale is not None:
+                dx_model = abs(p1[0] - p0[0])
+                dy_model = abs(p1[1] - p0[1])
+                dx_orig = dx_model * dicom_scale["ratio_w"]
+                dy_orig = dy_model * dicom_scale["ratio_h"]
+                length_cm = (dx_orig * dicom_scale["conv_x_cm"]) ** 2 + (dy_orig * dicom_scale["conv_y_cm"]) ** 2
+                length_cm = float(np.sqrt(length_cm))
+                label = f"{length_cm:.2f} cm"
+            else:
+                # Fallback to pixel length
+                length_px = float(np.hypot(p1[0] - p0[0], p1[1] - p0[1]))
+                label = f"{length_px:.0f} px"
 
-        text_pos = (min(mid_x + radius + 6, width - 1), max(mid_y - radius - 6, 0))
-        cv2.putText(frame, label, text_pos, cv2.FONT_HERSHEY_SIMPLEX, font_scale, outline_color, 2, cv2.LINE_AA)
-        cv2.putText(frame, label, text_pos, cv2.FONT_HERSHEY_SIMPLEX, font_scale, (200, 255, 200), 1, cv2.LINE_AA)
+            text_pos = (min(mid_x + radius + 6, width - 1), max(mid_y - radius - 6, 0))
+            cv2.putText(frame, label, text_pos, cv2.FONT_HERSHEY_SIMPLEX, font_scale, outline_color, 2, cv2.LINE_AA)
+            cv2.putText(frame, label, text_pos, cv2.FONT_HERSHEY_SIMPLEX, font_scale, (200, 255, 200), 1, cv2.LINE_AA)
 
-        vw.write(frame)
+            if frame.shape[1] != encode_width or frame.shape[0] != encode_height:
+                frame = cv2.resize(frame, (encode_width, encode_height), interpolation=cv2.INTER_LINEAR)
 
-    vw.release()
+            yield frame
+
+    fps_to_use = fps if fps > 0 else 30.0
+    try:
+        preset = "slow" if get_device().type == "cuda" else "medium"
+        ffmpeg_write_mp4_from_frames(
+            frames=_overlay_frames(),
+            width=encode_width,
+            height=encode_height,
+            fps=fps_to_use,
+            output_path=out_video,
+            crf=16,
+            preset=preset,
+            timeout_seconds=180.0,
+        )
+    except Exception as ff_err:
+        # Fallback to OpenCV writer if ffmpeg is unavailable
+        logger.warning("[Measurements2D] ffmpeg encode failed, falling back to OpenCV: %s", ff_err)
+        fallback_writer = cv2.VideoWriter(out_video, cv2.VideoWriter_fourcc(*"mp4v"), fps_to_use, (encode_width, encode_height))
+        if not fallback_writer.isOpened():
+            raise RuntimeError(f"Failed to open fallback VideoWriter: {ff_err}")
+        for frame in _overlay_frames():
+            fallback_writer.write(frame)
+        fallback_writer.release()
 
     # Save CSV (path determined above with length guard)
     try:
@@ -388,4 +425,4 @@ def run_2d_inference(model_weights: str, input_path: str, output_dir: str) -> Tu
             comments="",
         )
 
-    return out_avi, out_csv
+    return out_video, out_csv
