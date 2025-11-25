@@ -4,7 +4,7 @@ import logging
 
 from app.database.db import get_db
 from app.database_models.studies import Study
-from app.schemas.studies_schemas import StudyUpdateResponse
+from app.schemas.studies.studies_schemas import StudyUpdateResponse
 
 logger = logging.getLogger(__name__)
 router = APIRouter()

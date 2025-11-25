@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.database.db import get_db
 from app.database_models.users import User
 from app.helpers.authentication_functions import decode_token
-from app.schemas.authentication_schemas import AuthResponse
+from app.schemas.authentication.authentication_schemas import AuthResponse
 from app.core.artifacts import AUTH_COOKIE_NAME
 
 router = APIRouter()

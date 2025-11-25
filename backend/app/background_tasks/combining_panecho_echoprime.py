@@ -9,9 +9,9 @@ from app.database_models.studies import Study
 from app.database_models.derived_results import DerivedResult, ResultStatus
 
 from app.api.inference.infer_panecho_api import infer_panecho
-from app.schemas.infer_panecho_schemas import InferPanEchoRequest
+from app.schemas.inference.infer_panecho_schemas import InferPanEchoRequest
 from app.api.inference.infer_echoprime_api import infer_echoprime
-from app.schemas.infer_echoprime_schemas import InferEchoPrimeRequest
+from app.schemas.inference.infer_echoprime_schemas import InferEchoPrimeRequest
 
 from app.core.artifacts import PANECHO_TYPE, ECHOPRIME_TYPE, PANECHO_ECHOPRIME_COMBINED_TYPE
 from app.helpers.combine_panecho_echoprime_predictions import combine_results

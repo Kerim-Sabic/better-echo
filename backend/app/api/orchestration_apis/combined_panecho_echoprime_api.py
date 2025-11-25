@@ -13,7 +13,7 @@ from app.database_models.derived_results import DerivedResult, ResultStatus
 from app.core.artifacts import PANECHO_ECHOPRIME_COMBINED_TYPE
 from app.background_tasks.combining_panecho_echoprime import combining_panecho_echoprime
 from app.helpers.row_to_dict.combined_results_row_to_dict import build_combined_sections_from_row
-from app.schemas.orchestration_apis_schemas.combined_panecho_echoprime_schemas import (
+from app.schemas.orchestration_apis.combined_panecho_echoprime_schemas import (
     CombinedResultsResponse, CompleteResponse, PendingResponse
 )
 

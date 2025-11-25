@@ -13,7 +13,7 @@ import torch
 from app.AI_models.EchoPrime.echo_prime import EchoPrime
 from app.helpers.inference_functions import fetch_orthanc_instance_ids_from_study
 from app.core.config import settings
-from app.schemas.infer_echoprime_schemas import (EchoPrimeResponse,
+from app.schemas.inference.infer_echoprime_schemas import (EchoPrimeResponse,
                                                  InferEchoPrimeRequest)
 
 from app.database.db import get_db

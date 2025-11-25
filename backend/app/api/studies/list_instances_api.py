@@ -7,7 +7,7 @@ import logging
 from app.database.db import get_db
 from app.database_models.studies import Study
 from app.database_models.instances import Instance
-from app.schemas.studies_schemas import InstanceResponse
+from app.schemas.studies.studies_schemas import InstanceResponse
 
 
 logger = logging.getLogger(__name__)

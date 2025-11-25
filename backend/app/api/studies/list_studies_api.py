@@ -6,7 +6,7 @@ import logging
 
 from app.database.db import get_db
 from app.database_models.studies import Study
-from app.schemas.studies_schemas import (StudyListResponse)
+from app.schemas.studies.studies_schemas import (StudyListResponse)
 from app.helpers.authentication_functions import get_current_user_id
 from app.core.artifacts import UPLOAD_DIR
 

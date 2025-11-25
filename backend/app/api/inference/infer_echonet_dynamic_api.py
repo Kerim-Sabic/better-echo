@@ -13,7 +13,7 @@ import numpy as np
 from collections import OrderedDict
 
 from app.database.db import get_db
-from app.schemas.infer_echonet_dynamic_schemas import LVSegmentationResponse
+from app.schemas.inference.infer_echonet_dynamic_schemas import LVSegmentationResponse
 from app.database_models.instances import Instance
 from app.database_models.derived_results import DerivedResult
 from app.helpers.inference_functions import check_instance_exists_in_orthanc

@@ -11,7 +11,7 @@ from app.helpers.inference_functions import (fetch_orthanc_instance_ids_from_stu
                         pick_frames_from_instance,
                         stack_to_tensor,
                         get_model_and_device)
-from app.schemas.infer_panecho_schemas import (AllTasksPanEchoResponse,
+from app.schemas.inference.infer_panecho_schemas import (AllTasksPanEchoResponse,
                                             InferPanEchoRequest)
 
 from app.database.db import get_db

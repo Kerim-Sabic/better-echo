@@ -12,7 +12,7 @@ from app.database.db import get_db
 from app.database_models.studies import Study
 from app.database_models.derived_results import DerivedResult, ResultStatus
 from app.helpers.row_to_dict.combined_results_row_to_dict import build_combined_sections_from_row
-from app.schemas.llm_schemas import (
+from app.schemas.llm.llm_schemas import (
     LLMChatRequest,
     LLMChatResponse,
 )

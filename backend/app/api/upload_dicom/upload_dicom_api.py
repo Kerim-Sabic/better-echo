@@ -18,7 +18,7 @@ from app.database_models.patients import Patient
 from app.database_models.studies import Study
 from app.database_models.series import Series
 from app.database_models.instances import Instance
-from app.schemas.upload_schemas import UploadDicomResponseSchema
+from app.schemas.upload_dicom.upload_dicom_schemas import UploadDicomResponseSchema
 from app.helpers.authentication_functions import get_current_user_id
 from app.core.artifacts import UPLOAD_DIR
 

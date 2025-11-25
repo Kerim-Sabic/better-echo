@@ -21,7 +21,7 @@ from app.background_tasks.generate_llm_report import (
 from app.helpers.row_to_dict.llm_report_row_to_dict import (
     build_llm_report_from_row,
 )
-from app.schemas.orchestration_apis_schemas.llm_report_get_api_schemas import (
+from app.schemas.orchestration_apis.llm_report_get_api_schemas import (
     LLMReportResponse,
     LLMCompleteResponse,
     LLMPendingResponse,

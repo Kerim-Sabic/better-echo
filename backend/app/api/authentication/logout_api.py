@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Response
 
-from app.schemas.authentication_schemas import LogoutResponse
+from app.schemas.authentication.authentication_schemas import LogoutResponse
 from app.core.artifacts import AUTH_COOKIE_NAME
 
 router = APIRouter()

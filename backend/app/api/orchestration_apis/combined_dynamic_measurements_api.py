@@ -16,7 +16,7 @@ from app.core.artifacts import (
 )
 from app.background_tasks.combining_dynamic_measurements import combining_dynamic_measurements
 from app.helpers.row_to_dict.dynamic_measurements_combined_results_row_to_dict import combined_results_row_to_dict
-from app.schemas.orchestration_apis_schemas.combined_dynamic_measurements_schemas import (
+from app.schemas.orchestration_apis.combined_dynamic_measurements_schemas import (
     CombinedResultsResponse, CompleteResponse, PendingResponse
 )
 

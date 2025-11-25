@@ -10,7 +10,7 @@ from app.database_models.instances import Instance
 from app.database_models.derived_results import DerivedResult
 from app.helpers.inference_functions import check_instance_exists_in_orthanc
 from app.AI_models.measurements.runner_2d import run_2d_inference, VALID_2D_WEIGHTS
-from app.schemas.infer_measurements_schemas import Measurements2DResponse
+from app.schemas.inference.infer_measurements_schemas import Measurements2DResponse
 from app.helpers.AVI_to_MP4_converter import convert_to_mp4
 from app.core.artifacts import BASE_DIR
 
