@@ -2,9 +2,10 @@
 echo Starting Echocardiology Desktop App in DEV mode...
 echo.
 echo This will start:
-echo   1. FastAPI backend on http://127.0.0.1:8000
-echo   2. React frontend on http://localhost:3000
-echo   3. Electron app connecting to both
+echo   1. Orthanc DICOM server (Docker)
+echo   2. FastAPI backend on http://127.0.0.1:8000
+echo   3. React frontend on http://localhost:3000
+echo   4. Electron app connecting to both
 echo.
 
 cd /d "%~dp0\.."
