@@ -74,7 +74,5 @@ if not exist "backend\app\logs" (
     mkdir backend\app\logs
 )
 
-call npm run build:electron
-
-set ENABLE_LLM=false
-call npm run dev
+rem Use PowerShell script for better Ctrl+C handling
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0dev-start.ps1"

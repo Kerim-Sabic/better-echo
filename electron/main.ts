@@ -123,17 +123,43 @@ app.on('before-quit', () => {
     }
 });
 
-process.on('SIGTERM', () => {
-    stopBackend();
-    stopLLM();
-    app.quit();
-});
+// Graceful shutdown handler for SIGTERM/SIGINT
+// NOTE: Cross-platform behavior differences:
+// - Unix/Linux/Mac: These handlers execute on Ctrl+C or kill signals ✅
+// - Windows (dev mode with batch/npm/concurrently): Signals don't reach Electron ❌
+//   → On Windows dev, the PowerShell script's finally block handles cleanup instead
+// - Windows (production): These handlers work correctly ✅
+// - System tray quit: Uses 'before-quit' handler (works on all platforms) ✅
+function gracefulShutdown(signal: string): void {
+    console.log(`Received ${signal}, shutting down gracefully...`);
 
-process.on('SIGINT', () => {
-    stopBackend();
-    stopLLM();
-    app.quit();
-});
+    // Prevent multiple shutdown attempts
+    if (isQuitting) {
+        console.log('Shutdown already in progress');
+        return;
+    }
+    isQuitting = true;
+
+    try {
+        // Stop services synchronously
+        console.log('Stopping backend...');
+        stopBackend();
+
+        console.log('Stopping LLM...');
+        stopLLM();
+
+        console.log('Shutdown complete');
+    } catch (err) {
+        console.error('Error during shutdown:', err);
+    } finally {
+        // Force exit after cleanup (more reliable than app.quit for signal handlers)
+        process.exit(0);
+    }
+}
+
+// Handle termination signals
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 // ----------------- Window control IPC -----------------
 ipcMain.handle('window:minimize', () => {

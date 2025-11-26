@@ -51,8 +51,15 @@ export async function startLLM(options: { resourcesPath: string }): Promise<void
 
     console.log('Starting LLM service...');
 
-    // Path to start_llm.ps1 script
-    const startScriptPath = path.join(options.resourcesPath, 'scripts', 'start_llm.ps1');
+    // Determine script path (works in both dev and production)
+    let startScriptPath: string;
+    if (process.env.NODE_ENV === 'development') {
+        // In dev, scripts are at project root
+        startScriptPath = path.join(process.cwd(), 'scripts', 'start_llm.ps1');
+    } else {
+        // In production, scripts are in resources
+        startScriptPath = path.join(options.resourcesPath, 'scripts', 'start_llm.ps1');
+    }
     console.log('LLM start script path:', startScriptPath);
 
     // Spawn PowerShell to run the start script
@@ -119,7 +126,7 @@ export function stopLLM(): void {
         '-File', stopScriptPath
     ], {
         stdio: 'inherit',
-        timeout: 5000 // 5 second timeout
+        timeout: 15000 // 15 second timeout (allows for WSL startup latency)
     });
 
     if (result.error) {

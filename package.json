@@ -8,8 +8,8 @@
   "private": true,
   "scripts": {
     "postinstall": "cd frontend && npm install",
-    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend:no-llm\" \"npm run dev:electron\"",
-    "dev:llm": "concurrently \"npm run dev:backend\" \"npm run dev:frontend:llm\" \"npm run dev:electron\"",
+    "dev": "concurrently --kill-others \"npm run dev:backend\" \"npm run dev:frontend:no-llm\" \"npm run dev:electron\"",
+    "dev:llm": "concurrently --kill-others \"npm run dev:backend\" \"npm run dev:frontend:llm\" \"npm run dev:electron\"",
     "dev:backend": "cd backend && python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload",
     "dev:frontend": "cd frontend && cross-env BROWSER=none npm start",
     "dev:frontend:no-llm": "cd frontend && cross-env BROWSER=none REACT_APP_ENABLE_LLM=false npm start",
