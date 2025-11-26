@@ -71,8 +71,9 @@ app.on('ready', async () => {
         const llmRunning = await isLLMRunning();
 
         if (enableLLM && !llmRunning) {
-            console.log('ENABLE_LLM is true and LLM not running, starting LLM...');
-            await startLLM({ resourcesPath }).catch((err) => {
+            console.log('ENABLE_LLM is true and LLM not running, starting LLM in background...');
+            // Don't await - let LLM start in background while window opens
+            startLLM({ resourcesPath }).catch((err) => {
                 console.warn('LLM start warning:', err);
                 // Continue without LLM if startup fails
             });

@@ -143,8 +143,12 @@ export function useStudyResults(studyUid) {
   );
 
   const llmReportState = useMemo(
-    () => computeState(llmReportResultsQuery),
-    [llmReportResultsQuery.data, llmReportResultsQuery.isFetching, llmReportResultsQuery.isError]
+    () => {
+      // If LLM is disabled, return undefined to show "disabled" message
+      if (!isLLMEnabled) return undefined;
+      return computeState(llmReportResultsQuery);
+    },
+    [isLLMEnabled, llmReportResultsQuery.data, llmReportResultsQuery.isFetching, llmReportResultsQuery.isError]
   );
 
   // ---- Normalize outputs per resource --------------------------------------
