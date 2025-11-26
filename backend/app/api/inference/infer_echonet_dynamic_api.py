@@ -173,7 +173,7 @@ def infer_lv_segmentation(
 
     # --- Step 4: Encode overlay video via ffmpeg (fallback to OpenCV if needed) ---
     study_uid = instance.series.study.study_uid
-    study_upload_dir = os.path.join(UPLOAD_DIR, study_uid)
+    study_upload_dir = os.path.join(ECHONET_DYNAMIC_UPLOAD_DIR, study_uid)
     os.makedirs(study_upload_dir, exist_ok=True)
     base_name = f"segmented_{Path(dicom_file_path).stem}"
     output_path_mp4 = os.path.join(study_upload_dir, base_name + ".mp4")
@@ -320,7 +320,7 @@ def infer_lv_segmentation(
     if not result_path:
         raise HTTPException(status_code=500, detail="LV segmentation failed: no output path produced.")
 
-    relative_output_path = os.path.relpath(result_path, start=UPLOAD_DIR).replace("\\", "/")
+    relative_output_path = os.path.relpath(result_path, start=ECHONET_DYNAMIC_UPLOAD_DIR).replace("\\", "/")
     relative_output_path = f"echonet_dynamic_LV-segmentation_files/{relative_output_path}"
 
     # --- Step 5: Save DerivedResult in database ---
