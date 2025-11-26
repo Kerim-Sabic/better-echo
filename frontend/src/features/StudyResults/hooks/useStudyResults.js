@@ -103,6 +103,7 @@ export function useStudyResults(studyUid) {
 
     // Fallback
     return "error";
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     studyUid,
     combinedResultsQuery.data,
@@ -132,6 +133,9 @@ export function useStudyResults(studyUid) {
   };
 
   // ---- Individual states for each query -------------------------------------
+  // Note: ESLint wants us to include the entire query objects and computeState function,
+  // but we intentionally only track specific fields for better performance
+  /* eslint-disable react-hooks/exhaustive-deps */
   const panEchoEchoprimeState = useMemo(
     () => computeState(combinedResultsQuery),
     [combinedResultsQuery.data, combinedResultsQuery.isFetching, combinedResultsQuery.isError]
@@ -150,6 +154,7 @@ export function useStudyResults(studyUid) {
     },
     [isLLMEnabled, llmReportResultsQuery.data, llmReportResultsQuery.isFetching, llmReportResultsQuery.isError]
   );
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   // ---- Normalize outputs per resource --------------------------------------
   const panechoEchoprimeResults = useMemo(() => {
@@ -209,6 +214,8 @@ export function useStudyResults(studyUid) {
   const hasMeasurements = Boolean(panechoEchoprimeResults || dynamicMeasurementsResults);
 
   // ---- Compose UI-facing view model ----------------------------------------
+  // Note: Tracking specific values instead of entire query objects for performance
+  /* eslint-disable react-hooks/exhaustive-deps */
   const viewModel = useMemo(
     () => ({
       state: pageState,
@@ -256,6 +263,7 @@ export function useStudyResults(studyUid) {
       llmReportState,
     ]
   );
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   return viewModel;
 }

@@ -12,9 +12,6 @@ import { buildMeasurementsReportHtml } from "../components/Report/buildMeasureme
 
 export function StudyResultsLayout({ navigateBack, viewModel }) {
     const {
-        state,
-        error,
-
         panEchoEchoprimeState,
         dynamicMeasurementsState,
         llmReportState,
