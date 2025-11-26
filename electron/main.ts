@@ -4,6 +4,7 @@ import { registerIpcHandlers } from './ipc';
 import { attemptStartOrthanc, setupOrthancAuth, stopOrthanc } from './orthanc';
 import { startBackend, stopBackend, getBackendPort } from './backend';
 import { createMainWindow, createTray, getMainWindow, getTrayIconPath } from './window';
+import { startLLM, stopLLM, isLLMRunning } from './llm';
 
 const isDev = process.env.NODE_ENV === 'development';
 const REACT_DEV_PORT = 3000;
@@ -64,6 +65,24 @@ app.on('ready', async () => {
         setupOrthancAuth(ORTHANC_CONFIG);
         const resourcesPath = process.resourcesPath || path.join(__dirname, '..');
         await startBackend({ isDev, devPort: BACKEND_DEV_PORT, resourcesPath });
+
+        // Start LLM if enabled and not already running
+        const enableLLM = process.env.ENABLE_LLM === 'true';
+        const llmRunning = await isLLMRunning();
+
+        if (enableLLM && !llmRunning) {
+            console.log('ENABLE_LLM is true and LLM not running, starting LLM in background...');
+            // Don't await - let LLM start in background while window opens
+            startLLM({ resourcesPath }).catch((err) => {
+                console.warn('LLM start warning:', err);
+                // Continue without LLM if startup fails
+            });
+        } else if (llmRunning) {
+            console.log('LLM is already running, skipping startup');
+        } else {
+            console.log('ENABLE_LLM is not set, skipping LLM startup');
+        }
+
         registerIpcHandlers(ipcMain, () => getBackendPort());
         createTray({
             iconPath: trayIconPath,
@@ -97,6 +116,7 @@ app.on('activate', () => {
 app.on('before-quit', () => {
     isQuitting = true;
     stopBackend();
+    stopLLM();
     // Best-effort: stop Orthanc container via docker compose in production
     if (STOP_ORTHANC_ON_QUIT && !isDev) {
         stopOrthanc().catch((e) => console.warn('Failed to stop Orthanc on quit:', e));
@@ -105,11 +125,13 @@ app.on('before-quit', () => {
 
 process.on('SIGTERM', () => {
     stopBackend();
+    stopLLM();
     app.quit();
 });
 
 process.on('SIGINT', () => {
     stopBackend();
+    stopLLM();
     app.quit();
 });
 
