@@ -1,12 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
-import { getPanechoEchoprimeCombinedResults } from "../../../api/orchestration_apis/PanechoEchoprimeResultsApi";
+import { getPanechoEchoprimeCombinedResults } from "../../../api/orchestration_apis/CombinedResultsApi";
 
 /**
  * React Query hook that fetches (and conditionally polls) the
  * PanEcho+EchoPrime combined results for the given study.
  */
 
-export function usePanechoEchoprimeResultsQuery(
+export function useCombinedResultsQuery(
     studyUid,
     { enabled = true, queryKeyPrefix = "combinedResults" } = {}
 ) {
