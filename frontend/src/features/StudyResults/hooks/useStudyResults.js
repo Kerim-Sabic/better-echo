@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useCombinedResultsQuery } from "./useCombinedResultsQuery";
+import { usePanechoEchoprimeResultsQuery } from "./usePanechoEchoprimeResultsQuery";
 import { useDynamicMeasurementsResultsQuery } from "./useDynamicMeasurementsResultsQuery";
 import { useLlmReportResultsQuery } from "./useLlmReportResultsQuery";
 
@@ -28,7 +28,7 @@ export function useStudyResults(studyUid) {
   const isLLMEnabled = process.env.REACT_APP_ENABLE_LLM === 'true';
 
   // ---- Queries --------------------------------------------------------------
-  const combinedResultsQuery = useCombinedResultsQuery(studyUid, {
+  const panechoEchoprimeResultsQuery = usePanechoEchoprimeResultsQuery(studyUid, {
     enabled: Boolean(studyUid),
   });
 
@@ -44,7 +44,7 @@ export function useStudyResults(studyUid) {
   const resources = [
     {
       key: "panechoEchoprime",
-      query: combinedResultsQuery,
+      query: panechoEchoprimeResultsQuery,
       extractResults: (resp) =>
         resp?.results ??
         (resp?.status === 200 && resp?.data?.status === "complete"
@@ -106,9 +106,9 @@ export function useStudyResults(studyUid) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     studyUid,
-    combinedResultsQuery.data,
-    combinedResultsQuery.isFetching,
-    combinedResultsQuery.isError,
+    panechoEchoprimeResultsQuery.data,
+    panechoEchoprimeResultsQuery.isFetching,
+    panechoEchoprimeResultsQuery.isError,
     dynamicMeasurementsResultsQuery.data,
     dynamicMeasurementsResultsQuery.isFetching,
     dynamicMeasurementsResultsQuery.isError,
@@ -137,8 +137,8 @@ export function useStudyResults(studyUid) {
   // but we intentionally only track specific fields for better performance
   /* eslint-disable react-hooks/exhaustive-deps */
   const panEchoEchoprimeState = useMemo(
-    () => computeState(combinedResultsQuery),
-    [combinedResultsQuery.data, combinedResultsQuery.isFetching, combinedResultsQuery.isError]
+    () => computeState(panechoEchoprimeResultsQuery),
+    [panechoEchoprimeResultsQuery.data, panechoEchoprimeResultsQuery.isFetching, panechoEchoprimeResultsQuery.isError]
   );
 
   const dynamicMeasurementsState = useMemo(
@@ -158,7 +158,7 @@ export function useStudyResults(studyUid) {
 
   // ---- Normalize outputs per resource --------------------------------------
   const panechoEchoprimeResults = useMemo(() => {
-    const response = combinedResultsQuery.data;
+    const response = panechoEchoprimeResultsQuery.data;
     if (!response) return null;
     // prefer pre-computed results from select()
     if (response.results) return response.results;
@@ -167,7 +167,7 @@ export function useStudyResults(studyUid) {
       return response.data.panecho_echoprime_results ?? null;
     }
     return null;
-  }, [combinedResultsQuery.data]);
+  }, [panechoEchoprimeResultsQuery.data]);
 
   const dynamicMeasurementsResults = useMemo(() => {
     const response = dynamicMeasurementsResultsQuery.data;
@@ -192,7 +192,7 @@ export function useStudyResults(studyUid) {
   // ---- Derived booleans & controls -----------------------------------------
   const isPolling = useMemo(() => {
     const data = [
-      combinedResultsQuery.data, 
+      panechoEchoprimeResultsQuery.data, 
       dynamicMeasurementsResultsQuery.data,
       llmReportResultsQuery.data,
     ];
@@ -200,13 +200,13 @@ export function useStudyResults(studyUid) {
       (data) => data?.isPending || (data?.status === 202 && data?.data?.status === "pending")
     );
   }, [
-    combinedResultsQuery.data,
+    panechoEchoprimeResultsQuery.data,
     dynamicMeasurementsResultsQuery.data,
     llmReportResultsQuery.data,
   ]);
 
   const firstError =
-    combinedResultsQuery.error ??
+    panechoEchoprimeResultsQuery.error ??
     dynamicMeasurementsResultsQuery.error ??
     llmReportResultsQuery.error ??
     null;
@@ -239,7 +239,7 @@ export function useStudyResults(studyUid) {
       // controls
       isPolling,
       refresh: () => {
-        combinedResultsQuery.refetch();
+        panechoEchoprimeResultsQuery.refetch();
         dynamicMeasurementsResultsQuery.refetch();
         llmReportResultsQuery.refetch();
         // add future refetches here (e.g., reportQuery.refetch())
@@ -254,7 +254,7 @@ export function useStudyResults(studyUid) {
       llmReportResults,
       hasMeasurements,
       isPolling,
-      combinedResultsQuery.refetch,
+      panechoEchoprimeResultsQuery.refetch,
       dynamicMeasurementsResultsQuery.refetch,
       llmReportResultsQuery.refetch,
 
