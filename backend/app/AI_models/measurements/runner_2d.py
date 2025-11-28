@@ -216,7 +216,10 @@ def _load_model(model_key: str) -> torch.nn.Module:
         raise FileNotFoundError(f"Weights not found: {weights_path}")
 
     device = get_device()
-    state = torch.load(weights_path, map_location=device)
+    try:
+        state = torch.load(weights_path, map_location=device, weights_only=True)
+    except TypeError:
+        state = torch.load(weights_path, map_location=device)
     # Remove possible 'm.' prefix
     state = {k.replace("m.", ""): v for k, v in state.items()}
 

@@ -43,7 +43,10 @@ def PanEcho(pretrained=True, image_encoder_only=False, backbone_only=False, task
     # Load pretrained weights
     if pretrained:
         ckpt_path = Path(__file__).parent / "weights" / "panecho.pt"
-        weights = torch.load(ckpt_path, map_location='cpu')['weights']
+        try:
+            weights = torch.load(ckpt_path, map_location='cpu', weights_only=True)['weights']
+        except TypeError:
+            weights = torch.load(ckpt_path, map_location='cpu')['weights']
         del weights['encoder.time_encoder.pe']  # allow for variable clip_len (fixed positional encoding does not need to be loaded from PanEcho)
         msg = model.load_state_dict(weights, strict=False)
 

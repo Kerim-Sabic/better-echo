@@ -48,7 +48,10 @@ def load_model():
             1,
             kernel_size=model.classifier[-1].kernel_size,
         )
-        checkpoint = torch.load(CHECKPOINT_PATH, map_location=device)
+        try:
+            checkpoint = torch.load(CHECKPOINT_PATH, map_location=device, weights_only=True)
+        except TypeError:
+            checkpoint = torch.load(CHECKPOINT_PATH, map_location=device)
         state_dict = checkpoint["state_dict"]
 
         # strip "module." or "model." prefixes

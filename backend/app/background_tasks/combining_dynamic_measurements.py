@@ -1,5 +1,6 @@
 from __future__ import annotations
 import logging
+import os
 from typing import Dict, List, Optional, Any
 
 from sqlalchemy.orm import Session
@@ -11,7 +12,7 @@ from app.database_models.instances import Instance
 from app.database_models.derived_results import DerivedResult, ResultStatus
 from app.api.inference.infer_echonet_dynamic_api import infer_lv_segmentation
 from app.api.inference.infer_measurements_api import infer_measurements_2d
-from app.helpers.view_classifier import view_classifier
+from app.helpers.view_classifier import classify_views_for_study
 from app.core.artifacts import DYNAMIC_MEASUREMENTS_COMBINED_TYPE
 
 logger = logging.getLogger(__name__)
@@ -148,7 +149,7 @@ def combining_dynamic_measurements(study_uid: str) -> None:
 
         # --- Part 1.3 Run view classification (the view and confidence persists to Instance table) ---
         try:
-            _ = view_classifier(study_uid, db)
+            classify_views_for_study(study_uid, db)
         except Exception as err:
             logger.exception(f"[DYNAMIC_MEASUREMENTS_COMBINING] view classification failed for {study_uid}: {err}")
             # Proceed anyway; instances may already have views, or we will mark SKIPPED below.

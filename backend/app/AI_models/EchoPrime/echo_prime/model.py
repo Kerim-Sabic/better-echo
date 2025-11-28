@@ -81,8 +81,8 @@ class EchoPrime:
         # Load candidate reports and embeddings
         candidates_dir = os.path.join(base_dir, "model_data", "candidates_data")
         self.candidate_studies = list(pd.read_csv(os.path.join(candidates_dir, 'candidate_studies.csv'))['Study'])
-        candidate_embeddings_p1 = _load_torch(os.path.join(candidates_dir, "candidate_embeddings_p1.pt"), device, "candidate embeddings p1")
-        candidate_embeddings_p2 = _load_torch(os.path.join(candidates_dir, "candidate_embeddings_p2.pt"), device, "candidate embeddings p2")
+        candidate_embeddings_p1 = _load_torch(os.path.join(candidates_dir, "candidate_embeddings_p1.pt"), device, "candidate embeddings p1").to(device)
+        candidate_embeddings_p2 = _load_torch(os.path.join(candidates_dir, "candidate_embeddings_p2.pt"), device, "candidate embeddings p2").to(device)
         self.candidate_embeddings = torch.cat((candidate_embeddings_p1, candidate_embeddings_p2), dim=0)
         candidate_reports = pd.read_pickle(os.path.join(candidates_dir, "candidate_reports.pkl"))
         self.candidate_reports = [utils.phrase_decode(vec_phr) for vec_phr in tqdm(candidate_reports)]
@@ -323,12 +323,12 @@ class EchoPrime:
             study_embedding - torch tensor of shape num_videos x 572
             original_report - text for original study
         """
-        study_embedding=study_embedding.cpu()
+        study_embedding = study_embedding.to(self.device)
         generated_report=""
         for s_dx, sec in enumerate(self.non_empty_sections):
             # need to multiply it based on what section does the view belong to.
             cur_weights=[self.section_weights[s_dx][torch.where(ten==1)[0]] for ten in study_embedding[:,512:]]
-            no_view_study_embedding = study_embedding[:,:512] * torch.tensor(cur_weights,dtype=torch.float).unsqueeze(1)
+            no_view_study_embedding = study_embedding[:,:512] * torch.tensor(cur_weights,dtype=torch.float, device=self.device).unsqueeze(1)
             # weights by views.
             no_view_study_embedding=torch.mean(no_view_study_embedding,dim=0)
             no_view_study_embedding=torch.nn.functional.normalize(no_view_study_embedding,dim=0)
@@ -353,8 +353,8 @@ class EchoPrime:
         outputs a dictionary for a set of 26 features
         """
         #per_section_study_embedding has shape (15,512)
-        per_section_study_embedding=torch.zeros(len(self.non_empty_sections),512)
-        study_embedding=study_embedding.cpu()
+        per_section_study_embedding = torch.zeros(len(self.non_empty_sections), 512, device=self.device)
+        study_embedding = study_embedding.to(self.device)
         # make per section study embedding
         for s_dx, sec in enumerate(self.non_empty_sections):
             # get section weights
@@ -362,7 +362,7 @@ class EchoPrime:
                         for view_encoding in study_embedding[:,512:]]
             this_section_study_embedding = (study_embedding[:,:512] * \
                                             torch.tensor(this_section_weights,
-                                                        dtype=torch.float).unsqueeze(1))
+                                                        dtype=torch.float, device=self.device).unsqueeze(1))
             
             #weighted average
             this_section_study_embedding=torch.sum(this_section_study_embedding,dim=0)
