@@ -5,6 +5,7 @@ import glob
 import json
 import pickle
 import random
+import warnings
 
 # Third-party library imports
 import torch
@@ -24,6 +25,14 @@ import transformers
 # Local module imports
 from ..utils import utils
 
+def _load_torch(path, map_location, label):
+    try:
+        return torch.load(path, map_location=map_location, weights_only=True)
+    except TypeError:
+        warnings.warn(f"torch.load weights_only not supported for {label}; loading with weights_only=False", RuntimeWarning)
+        return torch.load(path, map_location=map_location)
+
+
 class EchoPrime:
     def __init__(self, device=None):
         self.frames_to_take = 32
@@ -39,7 +48,7 @@ class EchoPrime:
 
         # Load echo encoder
         checkpoint_path = os.path.join(base_dir, "model_data", "weights", "echo_prime_encoder.pt")
-        checkpoint = torch.load(checkpoint_path, map_location=device)
+        checkpoint = _load_torch(checkpoint_path, device, "echo encoder")
         echo_encoder = torchvision.models.video.mvit_v2_s()
         echo_encoder.head[-1] = torch.nn.Linear(echo_encoder.head[-1].in_features, 512)
         echo_encoder.load_state_dict(checkpoint)
@@ -50,7 +59,7 @@ class EchoPrime:
         
         # Load view classifier
         vc_path = os.path.join(base_dir, "model_data", "weights", "view_classifier.pt")
-        vc_state_dict = torch.load(vc_path, map_location=device)
+        vc_state_dict = _load_torch(vc_path, device, "view classifier")
         view_classifier = torchvision.models.convnext_base()
         view_classifier.classifier[-1] = torch.nn.Linear(view_classifier.classifier[-1].in_features, 11)
         view_classifier.load_state_dict(vc_state_dict)
@@ -72,8 +81,8 @@ class EchoPrime:
         # Load candidate reports and embeddings
         candidates_dir = os.path.join(base_dir, "model_data", "candidates_data")
         self.candidate_studies = list(pd.read_csv(os.path.join(candidates_dir, 'candidate_studies.csv'))['Study'])
-        candidate_embeddings_p1 = torch.load(os.path.join(candidates_dir, "candidate_embeddings_p1.pt"))
-        candidate_embeddings_p2 = torch.load(os.path.join(candidates_dir, "candidate_embeddings_p2.pt"))
+        candidate_embeddings_p1 = _load_torch(os.path.join(candidates_dir, "candidate_embeddings_p1.pt"), device, "candidate embeddings p1")
+        candidate_embeddings_p2 = _load_torch(os.path.join(candidates_dir, "candidate_embeddings_p2.pt"), device, "candidate embeddings p2")
         self.candidate_embeddings = torch.cat((candidate_embeddings_p1, candidate_embeddings_p2), dim=0)
         candidate_reports = pd.read_pickle(os.path.join(candidates_dir, "candidate_reports.pkl"))
         self.candidate_reports = [utils.phrase_decode(vec_phr) for vec_phr in tqdm(candidate_reports)]

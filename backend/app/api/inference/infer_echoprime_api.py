@@ -3,6 +3,8 @@ import os
 import tempfile
 import shutil
 import json
+import threading
+from typing import Callable
 
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
@@ -29,28 +31,74 @@ router = APIRouter()
 
 # Lazy loading the EchoPrime model
 _ep: Optional[EchoPrime] = None
+_ep_lock = threading.Lock()
+_preload_thread: Optional[threading.Thread] = None
 
 def get_ep() -> EchoPrime:
     global _ep
-    if _ep is None:
-        try:
-            _ep = EchoPrime()
-        except Exception as e:
-            logging.error(f"Failed to initialize EchoPrime: {e}")
-            raise HTTPException(status_code=500, detail=f"EchoPrime initialization failed: {e}")
+    if _ep is not None:
+        return _ep
+    with _ep_lock:
+        if _ep is None:
+            try:
+                _ep = EchoPrime()
+                device = getattr(_ep, "device", None)
+                logger.info("[EchoPrime] Model initialized on device=%s", device)
+            except Exception as exc:
+                logger.exception("Failed to initialize EchoPrime: %s", exc)
+                raise HTTPException(status_code=500, detail=f"EchoPrime initialization failed: {exc}")
     return _ep
 
-def unload_ep():
+
+def _warmup_ep(ep: EchoPrime) -> None:
+    try:
+        dummy = torch.zeros((1, 3, 16, 224, 224), device=ep.device)
+        with torch.no_grad():
+            _ = ep.echo_encoder(dummy)
+            _ = ep.view_classifier(dummy[:, :, 0, :, :])
+        if torch.cuda.is_available():
+            torch.cuda.synchronize()
+        logger.info("[EchoPrime] Warmup completed")
+    except Exception as exc:
+        logger.warning("[EchoPrime] Warmup skipped due to error: %s", exc)
+
+
+def preload_echoprime(warmup: bool = False) -> Optional[EchoPrime]:
+    try:
+        ep = get_ep()
+        if warmup:
+            _warmup_ep(ep)
+        device = getattr(ep, "device", None)
+        logger.info("[EchoPrime] Preload finished (warmup=%s, device=%s)", warmup, device)
+        return ep
+    except HTTPException as exc:
+        logger.warning("[EchoPrime] Preload failed; will fallback to lazy load: %s", exc.detail)
+        return None
+
+
+def _run_async(task: Callable[[], None]) -> None:
+    global _preload_thread
+    if _preload_thread and _preload_thread.is_alive():
+        return
+    _preload_thread = threading.Thread(target=task, name="echoprime-preload", daemon=True)
+    _preload_thread.start()
+
+
+def start_echoprime_preload_background(warmup: bool = False) -> None:
+    _run_async(lambda: preload_echoprime(warmup))
+
+def unload_ep() -> None:
     """Unload the EchoPrime model and free memory"""
     global _ep
-    if _ep is not None:
-        del _ep
-        _ep = None
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-        import gc
-        gc.collect()
-        logger.info("[EchoPrime] Model unloaded and memory cleared")
+    with _ep_lock:
+        if _ep is not None:
+            del _ep
+            _ep = None
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            import gc
+            gc.collect()
+            logger.info("[EchoPrime] Model unloaded and memory cleared")
 
 
 def download_dicoms_for_study(instance_ids: List[str]) -> str:
@@ -83,11 +131,10 @@ def infer_echoprime(
 
     Steps:
     1. Resolve the study by `study_uid` and log the request.
-    2. Lazily load the EchoPrime model (if not already loaded).
+    2. Load or reuse the resident EchoPrime model (lazy fallback if preload failed).
     3. Fetch all Orthanc instance IDs for the study and download the DICOM files into a temporary folder.
     4. Run the EchoPrime pipeline to encode the study and obtain predictions and a report.
-    5. Persist a DerivedResult row with predictions + report for the study.
-    6. Clean up temporary files, unload the model, and return the results.
+    5. Persist a DerivedResult row with predictions + report for the study, clean up temp files, and return the results.
     """
 
     study_uid = payload.study_uid
@@ -145,5 +192,3 @@ def infer_echoprime(
             shutil.rmtree(study_dir)
         except Exception:
             pass
-        # --- Step 6: unload model to free memory ---
-        unload_ep()

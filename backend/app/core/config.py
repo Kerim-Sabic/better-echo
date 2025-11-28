@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     LLM_HISTORY_MAX_TURNS: int = 2
     # Versioning for prompts/policies
     LLM_PROMPT_VERSION: str = "v1"
+    # Model preload toggles
+    ECHOPRIME_PRELOAD: bool = True
+    ECHOPRIME_WARMUP: bool = False
 
     class Config:
         env_file = ".env"

@@ -7,6 +7,7 @@ from fastapi.staticfiles import StaticFiles
 import uvicorn
 
 from app.api.health.health_api import router as health_router
+from app.api.inference.infer_echoprime_api import start_echoprime_preload_background, unload_ep
 from app.api.upload_dicom import router as upload_dicom_router
 from app.api.studies import router as studies_router
 from app.api.patients import router as patients_router
@@ -55,6 +56,15 @@ app.include_router(inference_router, prefix="/api", tags=["Inference"])
 app.include_router(llm_router, prefix="/api", tags=["LLM"])
 app.include_router(orchestration_router, prefix="/api", tags=["Orchestration APIs"])
 
+@app.on_event("startup")
+def startup_preload_models():
+    if settings.ECHOPRIME_PRELOAD:
+        try:
+            start_echoprime_preload_background(settings.ECHOPRIME_WARMUP)
+            logger.info("Startup preload: EchoPrime loading in background (warmup=%s)", settings.ECHOPRIME_WARMUP)
+        except Exception as exc:
+            logger.warning("Startup preload: EchoPrime preload thread failed to start; will lazy-load on demand: %s", exc)
+
 @app.on_event("shutdown")
 def shutdown_cleanup():
     """
@@ -65,6 +75,11 @@ def shutdown_cleanup():
         logger.info("Shutdown cleanup: terminated tracked ffmpeg processes.")
     except Exception as exc:
         logger.warning("Shutdown cleanup: failed to kill tracked ffmpeg processes: %s", exc)
+    try:
+        unload_ep()
+        logger.info("Shutdown cleanup: unloaded EchoPrime.")
+    except Exception as exc:
+        logger.warning("Shutdown cleanup: failed to unload EchoPrime: %s", exc)
 
 if __name__ == "__main__":
     logger.info("Starting FastAPI server on 0.0.0.0:8000")

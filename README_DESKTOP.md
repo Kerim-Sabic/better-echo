@@ -91,6 +91,9 @@ ORTHANC_USER="orthanc"
 ORTHANC_PASS="orthanc"
 SECRET_KEY=your-secret-key-here
 TOKEN_EXPIRE_HOURS=4
+ECHOPRIME_PRELOAD=true
+ECHOPRIME_WARMUP=false
+# EchoPrime preload runs in the background at startup; logs will note when it finishes.
 ```
 
 #### Frontend Environment
