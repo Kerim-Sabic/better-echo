@@ -1,5 +1,6 @@
 import logging
 import os
+import warnings
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,6 +23,13 @@ from app.core.artifacts import UPLOAD_DIR
 
 os.makedirs("app/logs", exist_ok=True)
 
+# Suppress noisy bcrypt version probe from passlib (harmless)
+warnings.filterwarnings(
+    "ignore",
+    message=".*error reading bcrypt version.*",
+    module="passlib.handlers.bcrypt",
+)
+
 # Configure logging globally
 logging.basicConfig(
     level=logging.INFO,
@@ -33,6 +41,8 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
+# Silence passlib bcrypt version probe warnings (harmless)
+logging.getLogger("passlib.handlers.bcrypt").setLevel(logging.ERROR)
 
 app = FastAPI()
 

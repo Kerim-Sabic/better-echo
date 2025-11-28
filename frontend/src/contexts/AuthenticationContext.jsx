@@ -1,7 +1,10 @@
 import { createContext, useState, useEffect, useCallback } from "react";
 import { checkAuthApi, loginApi, logoutApi } from "../api/AuthenticationApi";
+import { getBackendUrl } from "../config/api";
 
 export const AuthContext = createContext();
+
+const SESSION_HINT_KEY = "authSessionHint";
 
 /**
  * Provides the authenticated user and auth helpers.
@@ -15,17 +18,48 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
+    const waitForHealth = useCallback(async () => {
+        try {
+            const base = await getBackendUrl();
+            const controller = new AbortController();
+            const id = setTimeout(() => controller.abort(), 1200);
+            const res = await fetch(`${base}/health`, { signal: controller.signal });
+            clearTimeout(id);
+            return res.ok;
+        } catch {
+            return false;
+        }
+    }, []);
+
+    const hasSessionHint = useCallback(() => {
+        if (typeof window === "undefined") return false;
+        return localStorage.getItem(SESSION_HINT_KEY) === "1";
+    }, []);
+
+    const hasAuthCookie = useCallback(() => {
+        if (typeof document === "undefined") return false;
+        return document.cookie.includes("auth_token=");
+    }, []);
+
     // Fetch current user from /check-auth (initial auth check)
     const fetchUser = useCallback(async () => {
         try {
-            const response = await checkAuthApi();
-            setUser(response.user);
-        } catch {
+            const healthy = await waitForHealth();
+            if (healthy && hasSessionHint() && hasAuthCookie()) {
+                const response = await checkAuthApi();
+                setUser(response.user);
+            } else {
+                setUser(null);
+            }
+        } catch (error) {
+            if (error?.response?.status === 401) {
+                try { localStorage.removeItem(SESSION_HINT_KEY); } catch {}
+            }
             setUser(null);
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [hasAuthCookie, hasSessionHint, waitForHealth]);
 
     useEffect(() => {
         fetchUser();
@@ -35,6 +69,7 @@ export const AuthProvider = ({ children }) => {
     const login = async (username, password) => {
         const response = await loginApi(username, password);
         setUser(response.user);
+        try { localStorage.setItem(SESSION_HINT_KEY, "1"); } catch {}
         return response;
     };
 
@@ -42,6 +77,7 @@ export const AuthProvider = ({ children }) => {
     const logout = async () => {
         await logoutApi();
         setUser(null);
+        try { localStorage.removeItem(SESSION_HINT_KEY); } catch {}
     };
 
     const value = {
