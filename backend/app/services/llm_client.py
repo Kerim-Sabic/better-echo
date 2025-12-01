@@ -26,7 +26,7 @@ class LLMClient:
         self.api_key = api_key or settings.LLM_API_KEY
         self.model = model or settings.LLM_MODEL
         self.timeout_seconds = timeout_seconds
-        self._health_endpoint = f"{self.base_url}/v1/models"
+        self._health_endpoint = f"{self.base_url}/models"
 
     def wait_until_ready(self, retries: int = 5, delay_seconds: float = 2.0) -> bool:
         """
