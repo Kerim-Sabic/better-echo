@@ -11,6 +11,7 @@ from app.helpers.inference_functions import (fetch_orthanc_instance_ids_from_stu
                         pick_frames_from_instance,
                         stack_to_tensor,
                         get_model_and_device)
+from app.helpers.batch_config import get_batch_size
 from app.schemas.inference.infer_panecho_schemas import (AllTasksPanEchoResponse,
                                             InferPanEchoRequest)
 
@@ -52,42 +53,55 @@ def infer_panecho(
     try:
         model, device = get_model_and_device()
 
-        # --- Part 2: Collect predictions for each instance ---
+        # --- Part 2: Collect predictions (batched) ---
         all_preds = []
-        for orthanc_instance_id in orthanc_instance_ids:
-            try:
-                frames = pick_frames_from_instance(orthanc_instance_id, 16)
-                x = stack_to_tensor(frames) # (1, 3, 16, 224, 224)
-                logger.info(f"[INFER_PANECHO] Running inference on instance {orthanc_instance_id}")
+        batch_size = get_batch_size("panecho")
+        for batch_start in range(0, len(orthanc_instance_ids), batch_size):
+            batch_ids = orthanc_instance_ids[batch_start: batch_start + batch_size]
+            tensors = []
+            valid_ids = []
 
-                # --- Part 2.1: Run inference ---
-                with torch.no_grad():
-                    preds = model(x.to(device))  # PanEcho returns dict of {task: value}
-                if not isinstance(preds, dict):
-                    raise RuntimeError("Model did not return a dict of tasks")
+            for orthanc_instance_id in batch_ids:
+                try:
+                    frames = pick_frames_from_instance(orthanc_instance_id, 16)
+                    x = stack_to_tensor(frames)  # (1, 3, 16, 224, 224)
+                    tensors.append(x)
+                    valid_ids.append(orthanc_instance_id)
+                except Exception as err:
+                    logger.warning(f"[INFER_PANECHO] Skipping instance {orthanc_instance_id}: {err}")
+                    continue
 
-                # --- Part 2.2: Normalize predictions for this instance ---
+            if not tensors:
+                continue
+
+            batch_tensor = torch.cat(tensors, dim=0).to(device)  # (B, 3, 16, 224, 224)
+
+            logger.info(f"[INFER_PANECHO] Running batch inference on {len(valid_ids)} instance(s)")
+            with torch.no_grad():
+                preds_batch = model(batch_tensor)
+            if not isinstance(preds_batch, dict):
+                raise RuntimeError("Model did not return a dict of tasks")
+
+            for idx_in_batch in range(len(valid_ids)):
                 results: Dict[str, Any] = {}
-                for task, val in preds.items():
+                for task, val in preds_batch.items():
                     if torch.is_tensor(val):
-                        if val.numel() == 1:
-                            results[task] = float(val.detach().cpu().item())
+                        slice_val = val[idx_in_batch] if val.dim() > 0 and val.size(0) == len(valid_ids) else val
+                        if slice_val.numel() == 1:
+                            results[task] = float(slice_val.detach().cpu().item())
                         else:
-                            results[task] = val.detach().cpu().flatten().tolist()
+                            results[task] = slice_val.detach().cpu().flatten().tolist()
                     elif isinstance(val, (list, tuple)):
-                        results[task] = [float(v) for v in val]
+                        if len(val) == len(valid_ids):
+                            results[task] = val[idx_in_batch]
+                        else:
+                            results[task] = val
                     else:
                         try:
                             results[task] = float(val)
                         except Exception:
                             results[task] = val
-                
-                # --- Part 2.3: Append to results list ---
                 all_preds.append(results)
-            
-            except Exception as err:
-                logger.warning(f"[INFER_PANECHO] Skipping instance {orthanc_instance_id}: {err}")
-                continue
         
         if not all_preds:
             raise HTTPException(status_code=500, detail="No predictions could be made for this study")

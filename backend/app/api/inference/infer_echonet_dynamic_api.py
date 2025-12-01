@@ -19,13 +19,15 @@ from app.database_models.derived_results import DerivedResult
 from app.helpers.inference_functions import check_instance_exists_in_orthanc
 from app.helpers.DICOM_to_AVI_converter import read_dicom_frames
 from app.helpers.AVI_to_MP4_converter import ffmpeg_write_mp4_from_frames
+from app.helpers.device_selector import get_device_for_model
+from app.helpers.batch_config import get_batch_size
 from app.core.artifacts import BASE_DIR, UPLOAD_DIR
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 model = None
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device: torch.device | None = None
 
 CHECKPOINT_PATH = os.path.normpath(os.path.join(
     BASE_DIR,
@@ -40,8 +42,11 @@ def load_model():
     """
     Lazy load model when first inference request arrives.
     """
-    global model
+    global model, device
     if model is None:
+        if device is None:
+            device = get_device_for_model("echonet")
+
         model = torchvision.models.segmentation.deeplabv3_resnet50(weights=None)
         model.classifier[-1] = torch.nn.Conv2d(
             model.classifier[-1].in_channels,
@@ -189,43 +194,53 @@ def infer_lv_segmentation(
 
         model_instance = load_model()
         logger.info("[Echonet-dynamic] LV-segmentation model loaded on %s", device.type)
+        batch_size = get_batch_size("echonet")
 
         def _overlay_frames():
             start_time = time.time()
-            for idx, frame in enumerate(frames, start=1):
-                img_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                resized_for_model = cv2.resize(img_rgb, (112, 112), interpolation=cv2.INTER_LINEAR)
-                img_tensor = F.to_tensor(resized_for_model).unsqueeze(0).to(device)
+            total = len(frames)
+            for batch_start in range(0, total, batch_size):
+                batch_end = min(batch_start + batch_size, total)
+                batch_frames = frames[batch_start:batch_end]
 
+                tensors = []
+                for frame in batch_frames:
+                    img_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                    resized_for_model = cv2.resize(img_rgb, (112, 112), interpolation=cv2.INTER_LINEAR)
+                    tensors.append(F.to_tensor(resized_for_model))
+
+                batch_tensor = torch.stack(tensors).to(device)  # (B,3,112,112)
                 with torch.no_grad():
-                    output = model_instance(img_tensor)["out"][0, 0]
+                    outputs = model_instance(batch_tensor)["out"][:, 0]  # (B,112,112)
 
-                mask_small = (torch.sigmoid(output) > 0.5).cpu().numpy().astype(np.uint8)
-                mask_resized = cv2.resize(mask_small, frame_size, interpolation=cv2.INTER_NEAREST)
+                for local_idx, output in enumerate(outputs):
+                    frame = batch_frames[local_idx]
+                    mask_small = (torch.sigmoid(output) > 0.5).cpu().numpy().astype(np.uint8)
+                    mask_resized = cv2.resize(mask_small, frame_size, interpolation=cv2.INTER_NEAREST)
 
-                # Build a green outline (transparent fill)
-                mask_binary = (mask_resized > 0).astype(np.uint8)
-                # Soften edges: blur then a gentle open/close with an elliptical kernel
-                mask_smooth = cv2.GaussianBlur(mask_binary * 255, (7, 7), 0)
-                _, mask_binary = cv2.threshold(mask_smooth, 127, 1, cv2.THRESH_BINARY)
-                kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
-                mask_binary = cv2.morphologyEx(mask_binary, cv2.MORPH_OPEN, kernel, iterations=1)
-                mask_binary = cv2.morphologyEx(mask_binary, cv2.MORPH_CLOSE, kernel, iterations=1)
+                    # Build a green outline (transparent fill)
+                    mask_binary = (mask_resized > 0).astype(np.uint8)
+                    # Soften edges: blur then a gentle open/close with an elliptical kernel
+                    mask_smooth = cv2.GaussianBlur(mask_binary * 255, (7, 7), 0)
+                    _, mask_binary = cv2.threshold(mask_smooth, 127, 1, cv2.THRESH_BINARY)
+                    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+                    mask_binary = cv2.morphologyEx(mask_binary, cv2.MORPH_OPEN, kernel, iterations=1)
+                    mask_binary = cv2.morphologyEx(mask_binary, cv2.MORPH_CLOSE, kernel, iterations=1)
 
-                contours, _ = cv2.findContours(mask_binary.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-                if not contours:
-                    yield frame
-                    continue
-                largest = max(contours, key=cv2.contourArea)
-                overlay = frame.copy()
-                # Smooth contour outline
-                approx = cv2.approxPolyDP(largest, 2.5, True)
-                cv2.drawContours(overlay, [approx], -1, (0, 255, 0), 2, lineType=cv2.LINE_AA)
+                    contours, _ = cv2.findContours(mask_binary.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                    if not contours:
+                        yield frame
+                        continue
+                    largest = max(contours, key=cv2.contourArea)
+                    overlay = frame.copy()
+                    approx = cv2.approxPolyDP(largest, 2.5, True)
+                    cv2.drawContours(overlay, [approx], -1, (0, 255, 0), 2, lineType=cv2.LINE_AA)
 
-                if idx <= 5 or idx % 10 == 0:
-                    elapsed = time.time() - start_time
-                    logger.info("[Echonet-dynamic] Processed %d/%d frames (%.1fs elapsed, device=%s)", idx, len(frames), elapsed, device.type)
-                yield overlay
+                    global_idx = batch_start + local_idx + 1
+                    if global_idx <= 5 or global_idx % 10 == 0:
+                        elapsed = time.time() - start_time
+                        logger.info("[Echonet-dynamic] Processed %d/%d frames (%.1fs elapsed, device=%s)", global_idx, total, elapsed, device.type)
+                    yield overlay
 
         try:
             preset = "slow" if device.type == "cuda" else "medium"
@@ -295,26 +310,27 @@ def infer_lv_segmentation(
     result_path = None
     overall_start = time.time()
     try:
-        logger.info("[Echonet-dynamic] Attempting CUDA + ffmpeg encoding path")
-        result_path = encode_on_device(torch.device("cuda"), allow_ffmpeg=True)
+        preferred_device = get_device_for_model("echonet")
+        logger.info("[Echonet-dynamic] Attempting encode on preferred device: %s", preferred_device)
+        result_path = encode_on_device(preferred_device, allow_ffmpeg=preferred_device.type == "cuda")
         overall_duration = time.time() - overall_start
-        logger.info("[Echonet-dynamic] CUDA + ffmpeg path succeeded in %.1fs", overall_duration)
-    except Exception as err_cuda:
+        logger.info("[Echonet-dynamic] Preferred device path succeeded in %.1fs", overall_duration)
+    except Exception as err_primary:
         logger.warning(
-            "[Echonet-dynamic] CUDA + ffmpeg path failed after %.1fs: %s | Falling back to CPU + OpenCV",
+            "[Echonet-dynamic] Preferred path failed after %.1fs: %s | Falling back to CPU",
             time.time() - overall_start,
-            err_cuda,
+            err_primary,
         )
         try:
             fallback_start = time.time()
             result_path = encode_on_device(torch.device("cpu"), allow_ffmpeg=False)
             fallback_duration = time.time() - fallback_start
-            logger.info("[Echonet-dynamic] CPU + OpenCV fallback succeeded in %.1fs", fallback_duration)
+            logger.info("[Echonet-dynamic] CPU fallback succeeded in %.1fs", fallback_duration)
         except Exception as err_cpu:
-            logger.exception("[Echonet-dynamic] CPU + OpenCV fallback also failed")
+            logger.exception("[Echonet-dynamic] CPU fallback also failed")
             if cap is not None:
                 cap.release()
-            raise HTTPException(status_code=500, detail=f"LV segmentation failed on both CUDA and CPU: {err_cpu}")
+            raise HTTPException(status_code=500, detail=f"LV segmentation failed on both preferred device and CPU: {err_cpu}")
 
     if cap is not None:
         cap.release()
