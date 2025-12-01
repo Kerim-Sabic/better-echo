@@ -22,6 +22,9 @@ def generate_llm_report(study_uid: str) -> None:
         logger.info(f"[LLM_REPORT] Generated and persisted for study_uid={study_uid}")
     except Exception as err:
         logger.exception(f"[LLM_REPORT] Generation failed for {study_uid}: {err}")
+        # If LLM not ready, leave status pending for retry on next poll
+        if "LLM service not ready" in str(err):
+            return
         # Mark existing pending row failed
         try:
             study = db.query(Study).filter(Study.study_uid == study_uid).first()

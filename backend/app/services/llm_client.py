@@ -26,6 +26,23 @@ class LLMClient:
         self.api_key = api_key or settings.LLM_API_KEY
         self.model = model or settings.LLM_MODEL
         self.timeout_seconds = timeout_seconds
+        self._health_endpoint = f"{self.base_url}/v1/models"
+
+    def wait_until_ready(self, retries: int = 5, delay_seconds: float = 2.0) -> bool:
+        """
+        Probe the LLM server for readiness. Returns True if ready, False otherwise.
+        """
+        for attempt in range(retries):
+            try:
+                resp = requests.get(self._health_endpoint, timeout=3.0)
+                if resp.ok:
+                    return True
+            except Exception:
+                pass
+            if attempt < retries - 1:
+                import time
+                time.sleep(delay_seconds)
+        return False
 
     def chat_completion(
         self,

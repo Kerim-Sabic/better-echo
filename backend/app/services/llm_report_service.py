@@ -54,6 +54,9 @@ def generate_for_study(study_uid: str, db: Session) -> Dict[str, Any]:
 
     # --- Step 3: Call LLM ---
     client = LLMClient()
+    # If LLM not ready, signal caller to retry later
+    if not client.wait_until_ready():
+        raise RuntimeError("LLM service not ready; retry later")
     report_text = client.chat_completion(
         messages=built["messages"],
         temperature=params.temperature_report,
