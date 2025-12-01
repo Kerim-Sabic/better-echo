@@ -8,6 +8,10 @@ from pathlib import Path
 
 from src.models import FrameTransformer, MultiTaskModel
 
+# NumPy 2.0 compatibility for dependencies that expect np.float_
+if not hasattr(np, "float_"):
+    np.float_ = np.float64
+
 class Task():
     """Echocardiography interpretation task object."""
     def __init__(self, task_name, task_type, class_names, mean=np.nan):
