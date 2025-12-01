@@ -9,6 +9,7 @@ import torch
 from torchvision.models.segmentation import deeplabv3_resnet50
 
 from app.helpers.AVI_to_MP4_converter import ffmpeg_write_mp4_from_frames
+from app.helpers.batch_config import get_batch_size
 
 try:
     import pydicom
@@ -260,16 +261,17 @@ def run_2d_inference(model_weights: str, input_path: str, output_dir: str) -> Tu
 
     model = _load_model(model_weights)
     device = get_device()
+    batch_size = get_batch_size("measurements")
 
     preds: List[np.ndarray] = []
     with torch.no_grad():
-        for i in range(tensor.shape[0]):
-            inp = tensor[i:i+1].to(device)  # (1,3,H,W)
-            logits = model(inp)["out"]  # (1,2,H,W)
+        for batch_start in range(0, tensor.shape[0], batch_size):
+            batch_end = min(batch_start + batch_size, tensor.shape[0])
+            batch_tensor = tensor[batch_start:batch_end].to(device)  # (B,3,H,W)
+            logits = model(batch_tensor)["out"]  # (B,2,H,W)
             probs = torch.sigmoid(logits)
-            # Optional thresholding can be added if needed; keep raw sigmoid
-            coords = _segmentation_to_coordinates(probs, order="XY")[0].detach().cpu().numpy()  # (2,2)
-            preds.append(coords)
+            coords_batch = _segmentation_to_coordinates(probs, order="XY").detach().cpu().numpy()  # (B,2,2)
+            preds.extend(coords_batch)
 
     preds = np.asarray(preds)  # (F, 2, 2)
     if len(frames_bgr) == 0 or preds.shape[0] == 0:

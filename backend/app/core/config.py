@@ -1,17 +1,40 @@
 from functools import lru_cache
+from typing import Optional
 
 from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
     CORS_ORIGIN: list[str]
-    
+
     ORTHANC_URL: str
     ORTHANC_USER: str
     ORTHANC_PASS: str
 
     SECRET_KEY: str
     TOKEN_EXPIRE_HOURS: int
+
+    # Model preload toggles (default on; disable per machine if needed)
+    PANECHO_PRELOAD: bool = True
+    PANECHO_WARMUP: bool = False
+    ECHOPRIME_PRELOAD: bool = True
+    ECHOPRIME_WARMUP: bool = False
+    ECHONET_PRELOAD: bool = True
+    ECHONET_WARMUP: bool = False
+    MEASUREMENTS_PRELOAD: bool = True
+    MEASUREMENTS_WARMUP: bool = False
+
+    # Batch sizes (conservative defaults; adjust per hardware)
+    PANECHO_BATCH: int = 8
+    ECHONET_BATCH: int = 16
+    MEASUREMENTS_BATCH: int = 16
+
+    # Preferred devices (auto | cpu | cuda:<index>)
+    PANECHO_DEVICE: str = "auto"
+    ECHO_PRIME_DEVICE: str = "auto"
+    ECHONET_DEVICE: str = "auto"
+    MEASUREMENTS_DEVICE: str = "auto"
+    RESERVED_LLM_DEVICE: Optional[str] = None
 
     LLM_BASE_URL: str = "http://localhost:8012/v1"
     LLM_API_KEY: str = "local-echo-key"
@@ -28,18 +51,15 @@ class Settings(BaseSettings):
     LLM_HISTORY_MAX_TURNS: int = 2
     # Versioning for prompts/policies
     LLM_PROMPT_VERSION: str = "v1"
-    # Model preload toggles
-    ECHOPRIME_PRELOAD: bool = True
-    ECHOPRIME_WARMUP: bool = False
 
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
 
-@lru_cache() # Caches so Settings object is reused (performance)
+
+@lru_cache()
 def get_settings():
     return Settings()
 
-# This settings object will be used across the whole backend
-# to access any .env data
+
 settings = get_settings()
