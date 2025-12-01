@@ -45,8 +45,8 @@ def get_llm_report(
     1. Resolve the study by `study_uid` and look up any existing LLM report DerivedResult row.
     2. If a complete LLM report exists, convert it to a payload and return a 200 `LLMCompleteResponse`.
     3. If a pending/failed LLM report exists, return a 202 `LLMPendingResponse` with a `Retry-After` header, without enqueuing again.
-    4. If there is no LLM report, check the PanEcho+EchoPrime combined results row; if missing or not complete, return 202 pending without enqueuing.
-    5. When combined results are complete, create a pending LLM report row as an idempotency marker and enqueue the background `generate_llm_report` task.
+    4. If there is no LLM report, check the PanEcho+EchoPrime and the Dynamic+Measurements combined results rows; if missing or not complete, return 202 pending without enqueuing.
+    5. When PanEcho+EchoPrime and the Dynamic+Measurements combined results are complete, create a pending LLM report row as an idempotency marker and enqueue the background `generate_llm_report` task.
     6. Return a 202 `LLMPendingResponse` with a `Retry-After` header so the client can poll for completion.
     """
     # --- Part 1: Lookup study ---
@@ -64,6 +64,12 @@ def get_llm_report(
     # --- Part 3: If LLM report is present and complete -> return payload ---
     if llm_report_row and llm_report_row.status == ResultStatus.complete:
         payload = build_llm_report_from_row(llm_report_row)
+
+        # Mark the study as completed(all inferences finished)
+        if study and study.status != "completed":
+            study.status = "completed"
+            db.commit()
+            logger.info(f"[STUDY_COMPLETE] Marked study as complete")
 
         logger.info(f"[LLM_REPORT] LLM report present for study_uid={study_uid}")
         return LLMCompleteResponse(status="complete", llm_report=payload)

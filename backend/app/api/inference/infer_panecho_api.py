@@ -115,9 +115,6 @@ def infer_panecho(
         # --- Part 4: Save aggregated results to database ---
         study = db.query(Study).filter(Study.study_uid == study_uid).first()
         if study:
-            if hasattr(study, "status"):
-                study.status = "completed"
-
             derived_result = DerivedResult(
                 study_id = study.id,
                 type="PanEcho_AllTasks",

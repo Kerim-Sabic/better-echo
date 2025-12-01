@@ -41,9 +41,11 @@ def get_dynamic_measurements_combined_results(
     1. Resolve the study by `study_uid` and look up any existing Dynamic_Measurements_Combined DerivedResult row.
     2. If a complete combined row exists, convert it to a payload and return a 200 `CompleteResponse`.
     3. If a pending/failed combined row exists, return a 202 `PendingResponse` with a `Retry-After` header, without enqueuing again.
-    4. If no combined row exists, create a pending marker row as an idempotency guard.
-    5. Only when the pending row is successfully created, enqueue `combining_dynamic_measurements` as a background task.
-    6. Return a 202 `PendingResponse` with a `Retry-After` header so the client can poll for completion.
+    4. If no combined row exists, check if PanEcho+EchoPrime combined row exists
+    5. If PanEcho+EchoPrime combined row does not exist return a 202 `PendingResponse` with a `Retry-After` header.
+    6. If PanEcho+EchoPrime combined row does exist, create a pending marker row as an idempotency guard for the Dynamics+Measurements results
+    7. Only when the pending row is successfully created, enqueue `combining_dynamic_measurements` as a background task.
+    8. Return a 202 `PendingResponse` with a `Retry-After` header so the client can poll for completion.
     """
     # --- Part 1: Lookup study + combined row ---
     study: Optional[Study] = db.query(Study).filter(Study.study_uid == study_uid).first()
@@ -89,7 +91,12 @@ def get_dynamic_measurements_combined_results(
     .first()
     )
 
-    if (not panecho_echoprime_combined_row) or (panecho_echoprime_combined_row.status != ResultStatus.complete):
+    is_panecho_echoprime_ready = (
+        panecho_echoprime_combined_row and
+        panecho_echoprime_combined_row.status == ResultStatus.complete
+    )
+
+    if not is_panecho_echoprime_ready:
         logger.info(
         f"[DYNAMIC_MEASUREMENTS_COMBINED] Waiting for PanEcho+EchoPrime combined results for study_uid={study_uid} "
         f"(panecho_echoprime_combined_row_status={getattr(panecho_echoprime_combined_row, 'status', None)})"
