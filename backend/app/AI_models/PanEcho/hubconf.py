@@ -6,9 +6,11 @@ import torch
 
 from pathlib import Path
 
-# NumPy 2.0 compatibility for dependencies that expect np.float_
+# NumPy 2.0 compatibility for dependencies that expect np.float_ / np.complex_
 if not hasattr(np, "float_"):
     np.float_ = np.float64
+if not hasattr(np, "complex_"):
+    np.complex_ = np.complex128
 
 from src.models import FrameTransformer, MultiTaskModel
 
