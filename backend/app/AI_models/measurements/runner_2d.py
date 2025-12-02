@@ -225,11 +225,13 @@ def _load_model(model_key: str) -> torch.nn.Module:
     # Remove possible 'm.' prefix
     state = {k.replace("m.", ""): v for k, v in state.items()}
 
+    start = time.time()
     model = deeplabv3_resnet50(num_classes=2)
     model.load_state_dict(state)
     model.to(device)
     model.eval()
     _loaded_models[model_key] = model
+    logger.info("[Measurements2D] Loaded model '%s' on %s in %.1fs", model_key, device, time.time() - start)
     return model
 
 
@@ -397,7 +399,8 @@ def run_2d_inference(model_weights: str, input_path: str, output_dir: str) -> Tu
 
             yield frame
 
-    fps_to_use = fps if fps > 0 else 30.0
+    from app.core.config import settings
+    fps_to_use = settings.MEASUREMENTS_OUTPUT_FPS if settings.MEASUREMENTS_OUTPUT_FPS > 0 else (fps if fps > 0 else 30.0)
     try:
         preset = "slow" if get_device().type == "cuda" else "medium"
         ffmpeg_write_mp4_from_frames(

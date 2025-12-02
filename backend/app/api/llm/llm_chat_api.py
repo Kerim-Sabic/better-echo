@@ -43,7 +43,7 @@ def chat_about_report(payload: LLMChatRequest, db: Session = Depends(get_db)):
 
     Steps:
     1. Resolve the study by `study_uid` and fetch the combined PanEcho+EchoPrime results row; return 409 if not complete.
-    2. Prefer an existing LLM-generated report; if absent, fall back to the EchoPrime report; otherwise use a generic fallback text.
+    2. Prefer an existing LLM-generated report; otherwise use a generic fallback text (no EchoPrime report available).
     3. Optionally extract `diagnoses_json` from the saved LLM report, if present.
     4. Use `build_chat_messages` to construct the LLM chat messages with report, diagnoses, combined sections, and the question.
     5. Call the LLM via `LLMClient.chat_completion` and return the answer with the model name.
@@ -76,16 +76,6 @@ def chat_about_report(payload: LLMChatRequest, db: Session = Depends(get_db)):
     report_text: Optional[str] = None
     if report_row and report_row.value_json:
         report_text = _json_of(report_row.value_json).get("report")
-
-    # Fallback: EchoPrime report stored in its DerivedResult
-    if not report_text:
-        ep_row: Optional[DerivedResult] = (
-            db.query(DerivedResult)
-            .filter(DerivedResult.study_id == study.id, DerivedResult.type == ECHOPRIME_TYPE)
-            .first()
-        )
-        if ep_row and ep_row.value_json:
-            report_text = _json_of(ep_row.value_json).get("report")
 
     if not report_text:
         report_text = "No prior report available. Use diagnoses JSON only."

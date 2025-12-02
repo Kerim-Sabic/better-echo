@@ -101,24 +101,27 @@ def unload_ep() -> None:
             logger.info("[EchoPrime] Model unloaded and memory cleared")
 
 
-def download_dicoms_for_study(instance_ids: List[str]) -> str:
+def download_dicoms_for_study(instance_ids: List[str]) -> List[Dict[str, str]]:
     """
     Download all DICOMs for a study into a temporary folder.
-    Returns the folder path.
+    Returns a list of dicts with instance_id and local path.
     """
     tmp_dir = tempfile.mkdtemp(prefix="echoprime_study_")
-    for iid in instance_ids:
+    records: List[Dict[str, str]] = []
+    for idx, iid in enumerate(instance_ids):
         r = requests.get(
             f"{orthanc_url}/instances/{iid}/file",
             auth = (orthanc_user, orthanc_pass),
             stream=True
         )
         r.raise_for_status()
-        filepath = os.path.join(tmp_dir, f"{iid}.dcm")
+        # Preserve ordering with zero-padded index to align with glob ordering
+        filepath = os.path.join(tmp_dir, f"{idx:05d}_{iid}.dcm")
         with open(filepath, "wb") as f:
             for chunk in r.iter_content(chunk_size=8192):
                 f.write(chunk)
-    return tmp_dir
+        records.append({"instance_id": iid, "path": filepath})
+    return records
 
 
 @router.post("/infer/echoprime", response_model=EchoPrimeResponse)
@@ -127,14 +130,14 @@ def infer_echoprime(
     db: Session = Depends(get_db)
     ) -> Dict[str, Any]:
     """
-    Run EchoPrime inference for a study (multi-video DICOM input) and return predictions plus a generated report text.
+    Run EchoPrime inference for a study (multi-video DICOM input) and return predictions (metrics only, no text report).
 
     Steps:
     1. Resolve the study by `study_uid` and log the request.
     2. Load or reuse the resident EchoPrime model (lazy fallback if preload failed).
     3. Fetch all Orthanc instance IDs for the study and download the DICOM files into a temporary folder.
-    4. Run the EchoPrime pipeline to encode the study and obtain predictions and a report.
-    5. Persist a DerivedResult row with predictions + report for the study, clean up temp files, and return the results.
+    4. Run the EchoPrime pipeline to encode the study and obtain predictions (no report generation).
+    5. Persist a DerivedResult row with predictions for the study, clean up temp files, and return the results.
     """
 
     study_uid = payload.study_uid
@@ -146,27 +149,59 @@ def infer_echoprime(
     instance_orthanc_ids = fetch_orthanc_instance_ids_from_study(study_uid)
     
     # --- Step 2: download dicoms ---
-    study_dir = download_dicoms_for_study(instance_orthanc_ids)
+    downloaded = download_dicoms_for_study(instance_orthanc_ids)
+    study_dir = os.path.dirname(downloaded[0]["path"]) if downloaded else tempfile.mkdtemp(prefix="echoprime_study_empty_")
 
     try:
         # --- Step 3: run model pipeline ---
         stack_of_videos = ep.process_dicoms(study_dir)
         encoded_study = ep.encode_study(stack_of_videos, visualize=False)
 
-        predictions = ep.predict_metrics(encoded_study) # dict of predictions
-        report_text = ep.generate_report(encoded_study) # report
+        predictions = ep.predict_metrics(encoded_study)  # dict of predictions
+
+        # --- Step 3.1: Persist per-instance views from EchoPrime to Instance rows ---
+        from app.database_models.instances import Instance
+
+        view_list, view_confidence_list = ep.get_views(
+            stack_of_videos,
+            visualize=False,
+            return_view_list=True,
+            return_scores=True,
+        )
+        path_to_instance: Dict[str, str] = {os.path.abspath(rec["path"]): rec["instance_id"] for rec in downloaded}
+        dicom_paths = sorted(path_to_instance.keys())
+        updated = 0
+        for idx, path in enumerate(dicom_paths):
+            if idx >= len(view_list):
+                break
+            orthanc_instance_id = path_to_instance.get(path)
+            if not orthanc_instance_id:
+                continue
+            inst = (
+                db.query(Instance)
+                .filter(Instance.instance_orthanc_id == orthanc_instance_id)
+                .first()
+            )
+            if not inst:
+                continue
+            view_label = view_list[idx]
+            view_conf = float(view_confidence_list[idx]) if idx < len(view_confidence_list) else None
+            inst.predicted_view = str(view_label).upper() if view_label else None
+            inst.predicted_view_confidence = view_conf
+            db.add(inst)
+            updated += 1
+        if updated:
+            db.commit()
 
         # --- Step 4: persist results to DB ---
 
         study = db.query(Study).filter(Study.study_uid == study_uid).first()
         if study:
-            # Store generated report as JSON
             dr_report = DerivedResult(
                 study_id = study.id,
-                type="EchoPrime_AllTasks_and_Report",
+                type="EchoPrime_AllTasks",
                 value_json=json.dumps({
-                    "predictions": predictions,
-                    "report": report_text}),
+                    "predictions": predictions}),
                 model_name="EchoPrime",
                 model_version="v1"
             )
@@ -178,8 +213,7 @@ def infer_echoprime(
         return {
             "study_uid": study_uid,
             "num_instances": len(instance_orthanc_ids),
-            "predictions": predictions,
-            "report": report_text
+            "predictions": predictions
         }
     
     except Exception as e:

@@ -84,8 +84,6 @@ class EchoPrime:
         candidate_embeddings_p1 = _load_torch(os.path.join(candidates_dir, "candidate_embeddings_p1.pt"), device, "candidate embeddings p1").to(device)
         candidate_embeddings_p2 = _load_torch(os.path.join(candidates_dir, "candidate_embeddings_p2.pt"), device, "candidate embeddings p2").to(device)
         self.candidate_embeddings = torch.cat((candidate_embeddings_p1, candidate_embeddings_p2), dim=0)
-        candidate_reports = pd.read_pickle(os.path.join(candidates_dir, "candidate_reports.pkl"))
-        self.candidate_reports = [utils.phrase_decode(vec_phr) for vec_phr in tqdm(candidate_reports)]
         self.candidate_labels = pd.read_pickle(os.path.join(candidates_dir, "candidate_labels.pkl"))
         section_to_phenotypes_path = os.path.join(base_dir, "assets", "section_to_phenotypes.pkl")
         self.section_to_phenotypes = pd.read_pickle(section_to_phenotypes_path)
@@ -315,36 +313,6 @@ class EchoPrime:
         
         return encoded_study
 
-    def generate_report(self, study_embedding: torch.Tensor) -> str:
-        """
-        Given the EchoPrime study embedding generate a report
-        for each section focus on the views weighted
-        Args:
-            study_embedding - torch tensor of shape num_videos x 572
-            original_report - text for original study
-        """
-        study_embedding = study_embedding.to(self.device)
-        generated_report=""
-        for s_dx, sec in enumerate(self.non_empty_sections):
-            # need to multiply it based on what section does the view belong to.
-            cur_weights=[self.section_weights[s_dx][torch.where(ten==1)[0]] for ten in study_embedding[:,512:]]
-            no_view_study_embedding = study_embedding[:,:512] * torch.tensor(cur_weights,dtype=torch.float, device=self.device).unsqueeze(1)
-            # weights by views.
-            no_view_study_embedding=torch.mean(no_view_study_embedding,dim=0)
-            no_view_study_embedding=torch.nn.functional.normalize(no_view_study_embedding,dim=0)
-            similarities=no_view_study_embedding @ self.candidate_embeddings.T
-            
-            extracted_section="Section not found."
-            while extracted_section=="Section not found.":
-                max_id = torch.argmax(similarities)
-                predicted_section = self.candidate_reports[max_id]
-                extracted_section = utils.extract_section(predicted_section,sec)
-                if extracted_section != "Section not found.":
-                    generated_report+= extracted_section
-                similarities[max_id]=float('-inf')
-                
-        return generated_report
-    
     def predict_metrics(self,study_embedding: torch.Tensor,
                     k=50) -> dict:
         """

@@ -47,6 +47,7 @@ def load_model():
         if device is None:
             device = get_device_for_model("echonet")
 
+        start = time.time()
         model = torchvision.models.segmentation.deeplabv3_resnet50(weights=None)
         model.classifier[-1] = torch.nn.Conv2d(
             model.classifier[-1].in_channels,
@@ -72,6 +73,7 @@ def load_model():
         model.load_state_dict(new_state_dict, strict=False)
         model.to(device)
         model.eval()
+        logger.info("[Echonet-dynamic] Model loaded on %s in %.1fs", device, time.time() - start)
     return model
 
 
@@ -91,6 +93,7 @@ def infer_lv_segmentation(
     sop_instance_uid: str = Query(..., description="The DICOM SOPInstanceUID to run segmentation on"),
     db: Session = Depends(get_db),
 ):
+    global device
     """
     Perform LV (Left Ventricle) segmentation using EchoNet-Dynamic and return an annotated MP4 for the frontend.
 
@@ -170,6 +173,9 @@ def infer_lv_segmentation(
     if encode_size != frame_size:
         logger.info("[Echonet-dynamic] Adjusted frame size to even dimensions for H.264: %s -> %s", frame_size, encode_size)
         frame_size = encode_size
+
+    if device is None:
+        device = get_device_for_model("echonet")
 
     logger.info(
         "[Echonet-dynamic] Starting LV segmentation encode | frames=%d size=%s fps=%.2f device=%s",

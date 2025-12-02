@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     PANECHO_BATCH: int = 8
     ECHONET_BATCH: int = 16
     MEASUREMENTS_BATCH: int = 16
+    MEASUREMENTS_OUTPUT_FPS: int = 30
 
     # Preferred devices (auto | cpu | cuda:<index>)
     PANECHO_DEVICE: str = "auto"

@@ -2,6 +2,7 @@ import io
 import os
 import math
 import logging
+import time
 from typing import List, Tuple
 import requests
 from PIL import Image
@@ -160,6 +161,7 @@ def get_model_and_device() -> Tuple[torch.nn.Module, torch.device]:
     if _model is None:
         # pick device explicitly
         _device = get_device_for_model("panecho")
+        start = time.time()
         logger.info(f"[INFERENCE_FUNCTIONS] Loading PanEcho model on device: {_device}")
         
         # Local PanEcho repo path (vendored)
@@ -187,6 +189,6 @@ def get_model_and_device() -> Tuple[torch.nn.Module, torch.device]:
             force_reload=False
         )
         _model.to(_device).eval()
-        logger.info("[INFERENCE_FUNCTIONS] PanEcho (local) loaded successfully")
+        logger.info("[INFERENCE_FUNCTIONS] PanEcho (local) loaded successfully in %.1fs", time.time() - start)
 
     return _model, _device

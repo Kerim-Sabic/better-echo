@@ -73,7 +73,7 @@ def get_dynamic_measurements_combined_results(
     if dynamic_measurements_combined_row and dynamic_measurements_combined_row.status in (ResultStatus.pending, ResultStatus.failed):
         pending = PendingResponse(status="pending", retry_after=3)
 
-        logger.info(f"[DYNAMIC_MEASUREMENTS_COMBINED] inference and orchestration is running for study_uid={study_uid}")
+        logger.debug(f"[DYNAMIC_MEASUREMENTS_COMBINED] inference and orchestration is running for study_uid={study_uid}")
         # HTTP 202 with Retry-After header tells client to poll again
         return JSONResponse(
             status_code=status.HTTP_202_ACCEPTED,

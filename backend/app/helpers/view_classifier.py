@@ -36,6 +36,24 @@ def classify_views_for_study(study_uid: str, db: Session) -> Dict[str, Dict[str,
         .filter(Study.id == study.id)
         .all()
     )
+
+    # If all instances already have predicted views, return cached values
+    if instances and all(inst.predicted_view for inst in instances):
+        result_map: Dict[str, Dict[str, Optional[float | str]]] = {}
+        for inst in instances:
+            result_map[inst.sop_instance_uid] = {
+                "view": inst.predicted_view,
+                "confidence": inst.predicted_view_confidence,
+                "file_path": inst.file_path,
+            }
+        logger.info(
+            "[view_classifier] Using cached views for %d/%d instances in study %s",
+            len(result_map),
+            len(instances),
+            study_uid,
+        )
+        return result_map
+
     instances_by_path: Dict[str, Instance] = {
         os.path.abspath(i.file_path): i for i in instances if i.file_path
     }
