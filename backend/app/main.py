@@ -89,12 +89,12 @@ def startup_preload_models():
 
     # PanEcho
     if settings.PANECHO_PRELOAD:
-        device = get_device_for_model("panecho")
+        device = get_device_for_model("panecho", log_device=False)
         safe_preload("PanEcho", device, required_gb=2.0, loader=_preload_panecho)
 
     # EchoPrime
     if settings.ECHOPRIME_PRELOAD:
-        device = get_device_for_model("echoprime")
+        device = get_device_for_model("echoprime", log_device=False)
         if has_min_vram(device, required_gb=6.0):
             try:
                 start_echoprime_preload_background(settings.ECHOPRIME_WARMUP)
@@ -106,12 +106,12 @@ def startup_preload_models():
 
     # EchoNet-Dynamic
     if settings.ECHONET_PRELOAD:
-        device = get_device_for_model("echonet")
+        device = get_device_for_model("echonet", log_device=False)
         safe_preload("EchoNet-Dynamic", device, required_gb=2.0, loader=_preload_echonet)
 
     # Measurements 2D
     if settings.MEASUREMENTS_PRELOAD:
-        device = get_device_for_model("measurements")
+        device = get_device_for_model("measurements", log_device=False)
         safe_preload("Measurements2D", device, required_gb=2.0, loader=_preload_measurements)
 
 @app.on_event("shutdown")

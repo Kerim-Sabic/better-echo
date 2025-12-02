@@ -49,7 +49,7 @@ def _avoid_reserved(device: torch.device) -> torch.device:
     return device
 
 
-def get_device_for_model(model_name: str) -> torch.device:
+def get_device_for_model(model_name: str, *, log_device: bool = True) -> torch.device:
     pref_map = {
         "panecho": settings.PANECHO_DEVICE,
         "echoprime": settings.ECHO_PRIME_DEVICE,
@@ -59,5 +59,6 @@ def get_device_for_model(model_name: str) -> torch.device:
     pref = pref_map.get(model_name, "auto")
     device = _device_from_pref(pref)
     device = _avoid_reserved(device)
-    logger.info("Model '%s' using device '%s'", model_name, device)
+    if log_device:
+        logger.info("Model '%s' using device '%s'", model_name, device)
     return device

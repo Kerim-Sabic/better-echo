@@ -193,7 +193,7 @@ def infer_lv_segmentation(
             device = target_device
 
         model_instance = load_model()
-        logger.info("[Echonet-dynamic] LV-segmentation model loaded on %s", device.type)
+        logger.info("[Echonet-dynamic] Using batched inference | batch_size=%d device=%s", get_batch_size("echonet"), device)
         batch_size = get_batch_size("echonet")
 
         def _overlay_frames():
@@ -237,7 +237,7 @@ def infer_lv_segmentation(
                     cv2.drawContours(overlay, [approx], -1, (0, 255, 0), 2, lineType=cv2.LINE_AA)
 
                     global_idx = batch_start + local_idx + 1
-                    if global_idx <= 5 or global_idx % 10 == 0:
+                    if global_idx <= 5 or global_idx % max(10, batch_size) == 0 or global_idx == total:
                         elapsed = time.time() - start_time
                         logger.info("[Echonet-dynamic] Processed %d/%d frames (%.1fs elapsed, device=%s)", global_idx, total, elapsed, device.type)
                     yield overlay

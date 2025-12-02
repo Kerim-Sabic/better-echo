@@ -56,6 +56,14 @@ def infer_panecho(
         # --- Part 2: Collect predictions (batched) ---
         all_preds = []
         batch_size = get_batch_size("panecho")
+        logger.info(
+            "[INFER_PANECHO] Starting batched inference | instances=%d batch_size=%d device=%s",
+            len(orthanc_instance_ids),
+            batch_size,
+            device,
+        )
+        total_processed = 0
+
         for batch_start in range(0, len(orthanc_instance_ids), batch_size):
             batch_ids = orthanc_instance_ids[batch_start: batch_start + batch_size]
             tensors = []
@@ -102,6 +110,15 @@ def infer_panecho(
                         except Exception:
                             results[task] = val
                 all_preds.append(results)
+
+            total_processed += len(valid_ids)
+            if total_processed == len(orthanc_instance_ids) or total_processed % max(1, batch_size) == 0:
+                logger.info(
+                    "[INFER_PANECHO] Processed %d/%d instances (device=%s)",
+                    total_processed,
+                    len(orthanc_instance_ids),
+                    device,
+                )
         
         if not all_preds:
             raise HTTPException(status_code=500, detail="No predictions could be made for this study")

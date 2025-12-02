@@ -1,5 +1,6 @@
 import logging
 import os
+import time
 from datetime import datetime
 from typing import Tuple, List, Dict, Optional
 
@@ -264,6 +265,15 @@ def run_2d_inference(model_weights: str, input_path: str, output_dir: str) -> Tu
     batch_size = get_batch_size("measurements")
 
     preds: List[np.ndarray] = []
+    logger.info(
+        "[Measurements2D] Starting batched inference | frames=%d batch_size=%d device=%s",
+        tensor.shape[0],
+        batch_size,
+        device,
+    )
+
+    inference_start = time.time()
+
     with torch.no_grad():
         for batch_start in range(0, tensor.shape[0], batch_size):
             batch_end = min(batch_start + batch_size, tensor.shape[0])
@@ -272,6 +282,18 @@ def run_2d_inference(model_weights: str, input_path: str, output_dir: str) -> Tu
             probs = torch.sigmoid(logits)
             coords_batch = _segmentation_to_coordinates(probs, order="XY").detach().cpu().numpy()  # (B,2,2)
             preds.extend(coords_batch)
+
+            if batch_end == tensor.shape[0] or batch_end % max(1, batch_size * 2) == 0:
+                elapsed = time.time() - inference_start
+                fps = batch_end / elapsed if elapsed > 0 else 0
+                logger.info(
+                    "[Measurements2D] Processed %d/%d frames (%.1fs, %.1f fps, device=%s)",
+                    batch_end,
+                    tensor.shape[0],
+                    elapsed,
+                    fps,
+                    device,
+                )
 
     preds = np.asarray(preds)  # (F, 2, 2)
     if len(frames_bgr) == 0 or preds.shape[0] == 0:
