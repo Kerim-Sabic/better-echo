@@ -43,7 +43,7 @@ def chat_about_report(payload: LLMChatRequest, db: Session = Depends(get_db)):
 
     Steps:
     1. Resolve the study by `study_uid` and fetch the combined PanEcho+EchoPrime results row; return 409 if not complete.
-    2. Prefer an existing LLM-generated report; otherwise use a generic fallback text (no EchoPrime report available).
+    2. Prefer an existing LLM-generated report; otherwise use a generic fallback text.
     3. Optionally extract `diagnoses_json` from the saved LLM report, if present.
     4. Use `build_chat_messages` to construct the LLM chat messages with report, diagnoses, combined sections, and the question.
     5. Call the LLM via `LLMClient.chat_completion` and return the answer with the model name.

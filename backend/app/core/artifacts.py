@@ -2,7 +2,7 @@ import os
 
 # --- Artifact types used in derived_results table, type column ---
 PANECHO_TYPE = "PanEcho_AllTasks"
-ECHOPRIME_TYPE = "EchoPrime_AllTasks"  # metrics only (no report)
+ECHOPRIME_TYPE = "EchoPrime_AllTasks"
 PANECHO_ECHOPRIME_COMBINED_TYPE = "PanEcho_EchoPrime_Combined_Tasks"
 DYNAMIC_MEASUREMENTS_COMBINED_TYPE = "Dynamic_Measurements_Combined_Tasks"
 LLM_REPORT_TYPE = "LLM_Echo_Report"

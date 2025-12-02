@@ -139,7 +139,7 @@ def infer_echoprime(
     1. Resolve the study by `study_uid` and log the request.
     2. Load or reuse the resident EchoPrime model (lazy fallback if preload failed).
     3. Fetch all Orthanc instance IDs for the study and download the DICOM files into a temporary folder.
-    4. Run the EchoPrime pipeline to encode the study and obtain predictions (no report generation).
+    4. Run the EchoPrime pipeline to encode the study and obtain predictions.
     5. Persist a DerivedResult row with predictions for the study, clean up temp files, and return the results.
     """
 

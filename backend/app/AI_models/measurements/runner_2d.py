@@ -11,6 +11,7 @@ from torchvision.models.segmentation import deeplabv3_resnet50
 
 from app.helpers.AVI_to_MP4_converter import ffmpeg_write_mp4_from_frames
 from app.helpers.batch_config import get_batch_size
+from app.core.config import settings
 
 try:
     import pydicom
@@ -399,7 +400,6 @@ def run_2d_inference(model_weights: str, input_path: str, output_dir: str) -> Tu
 
             yield frame
 
-    from app.core.config import settings
     fps_to_use = settings.MEASUREMENTS_OUTPUT_FPS if settings.MEASUREMENTS_OUTPUT_FPS > 0 else (fps if fps > 0 else 30.0)
     try:
         preset = "slow" if get_device().type == "cuda" else "medium"

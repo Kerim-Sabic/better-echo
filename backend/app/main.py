@@ -84,8 +84,9 @@ def startup_preload_models():
         load_model()
 
     def _preload_measurements():
-        from app.AI_models.measurements.runner_2d import _load_model
-        _load_model("lvid")
+        from app.AI_models.measurements.runner_2d import _load_model, VALID_2D_WEIGHTS
+        for w in VALID_2D_WEIGHTS:
+            _load_model(w)
 
     # PanEcho
     if settings.PANECHO_PRELOAD:
