@@ -1,3 +1,4 @@
+import time
 from typing import Optional, Dict, Any, List
 import os
 import tempfile
@@ -41,9 +42,10 @@ def get_ep() -> EchoPrime:
     with _ep_lock:
         if _ep is None:
             try:
+                start = time.time()
                 _ep = EchoPrime()
                 device = getattr(_ep, "device", None)
-                logger.info("[EchoPrime] Model initialized on device=%s", device)
+                logger.info("[EchoPrime] Model initialized on device=%s in %.1fs", device, time.time() - start)
             except Exception as exc:
                 logger.exception("Failed to initialize EchoPrime: %s", exc)
                 raise HTTPException(status_code=500, detail=f"EchoPrime initialization failed: {exc}")
@@ -65,11 +67,12 @@ def _warmup_ep(ep: EchoPrime) -> None:
 
 def preload_echoprime(warmup: bool = False) -> Optional[EchoPrime]:
     try:
+        start = time.time()
         ep = get_ep()
         if warmup:
             _warmup_ep(ep)
         device = getattr(ep, "device", None)
-        logger.info("[EchoPrime] Preload finished (warmup=%s, device=%s)", warmup, device)
+        logger.info("[EchoPrime] Preload finished (warmup=%s, device=%s) in %.1fs", warmup, device, time.time() - start)
         return ep
     except HTTPException as exc:
         logger.warning("[EchoPrime] Preload failed; will fallback to lazy load: %s", exc.detail)
