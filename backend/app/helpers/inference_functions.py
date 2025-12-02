@@ -10,6 +10,7 @@ import torch
 from pathlib import Path
 
 from app.core.config import settings
+from app.helpers.device_selector import get_device_for_model
 
 logger = logging.getLogger(__name__)
 
@@ -158,7 +159,7 @@ def get_model_and_device() -> Tuple[torch.nn.Module, torch.device]:
     global _model, _device
     if _model is None:
         # pick device explicitly
-        _device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        _device = get_device_for_model("panecho")
         logger.info(f"[INFERENCE_FUNCTIONS] Loading PanEcho model on device: {_device}")
         
         # Local PanEcho repo path (vendored)
