@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { usePanechoEchoprimeResultsQuery } from "./usePanechoEchoprimeResultsQuery";
 import { useDynamicMeasurementsResultsQuery } from "./useDynamicMeasurementsResultsQuery";
 import { useLlmReportResultsQuery } from "./useLlmReportResultsQuery";
+import { useStudyMetaQuery } from "./useStudyMetaQuery";
 
 /**
  * @returns {{
@@ -18,6 +19,7 @@ import { useLlmReportResultsQuery } from "./useLlmReportResultsQuery";
  *   dynamicMeasurementsResults: any,      // Dynamic + Measurements combined results
  *   llmReportResults: any,                // LLM report results
  *   hasMeasurements: boolean,
+ *   patientName: string | null,
  *   // controls
  *   isPolling: boolean,
  *   refresh: () => void
@@ -26,6 +28,9 @@ import { useLlmReportResultsQuery } from "./useLlmReportResultsQuery";
 export function useStudyResults(studyUid) {
   // ---- Check if LLM is enabled at build time ------------------------------
   const isLLMEnabled = process.env.REACT_APP_ENABLE_LLM === 'true';
+
+  // ---- Study metadata ------------------------------------------------------
+  const studyMetaQuery = useStudyMetaQuery(studyUid, { enabled: Boolean(studyUid) });
 
   // ---- Queries --------------------------------------------------------------
   const panechoEchoprimeResultsQuery = usePanechoEchoprimeResultsQuery(studyUid, {
@@ -80,10 +85,12 @@ export function useStudyResults(studyUid) {
     const errors = resources.map((resource) => resource.query.isError);
 
     const noDataYet = datas.every((data) => !data);
-    if (noDataYet) return "loading";
+    if (noDataYet || studyMetaQuery.isLoading) return "loading";
 
     const all404 = datas.length > 0 && datas.every((data) => data?.status === 404);
     if (all404) return "not_found";
+
+    if (studyMetaQuery.isError) return "error";
 
     const anyPending = datas.some(
       (data) => data?.isPending || (data?.status === 202 && data?.data?.status === "pending")
@@ -115,6 +122,8 @@ export function useStudyResults(studyUid) {
     llmReportResultsQuery.data,
     llmReportResultsQuery.isFetching,
     llmReportResultsQuery.isError,
+    studyMetaQuery.isLoading,
+    studyMetaQuery.isError,
   ]);
 
   // ---- Helper to compute a per-query state --------------------------------------
@@ -209,6 +218,7 @@ export function useStudyResults(studyUid) {
     panechoEchoprimeResultsQuery.error ??
     dynamicMeasurementsResultsQuery.error ??
     llmReportResultsQuery.error ??
+    studyMetaQuery.error ??
     null;
 
   const hasMeasurements = Boolean(panechoEchoprimeResults || dynamicMeasurementsResults);
@@ -228,6 +238,7 @@ export function useStudyResults(studyUid) {
 
       // identifiers / header bits
       studyUID: studyUid ?? null,
+      patientName: studyMetaQuery.data?.patientName ?? null,
 
       // data buckets
       panechoEchoprimeResults,
@@ -242,6 +253,7 @@ export function useStudyResults(studyUid) {
         panechoEchoprimeResultsQuery.refetch();
         dynamicMeasurementsResultsQuery.refetch();
         llmReportResultsQuery.refetch();
+        studyMetaQuery.refetch();
         // add future refetches here (e.g., reportQuery.refetch())
       },
     }),
@@ -257,6 +269,8 @@ export function useStudyResults(studyUid) {
       panechoEchoprimeResultsQuery.refetch,
       dynamicMeasurementsResultsQuery.refetch,
       llmReportResultsQuery.refetch,
+      studyMetaQuery.refetch,
+      studyMetaQuery.data?.patientName,
 
       panEchoEchoprimeState,
       dynamicMeasurementsState,

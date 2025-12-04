@@ -10,6 +10,7 @@ class Instance(Base):
     sop_instance_uid = Column(String, unique=True, nullable=False)  # DICOM tag (0008,0018)
     file_path = Column(String, nullable=True)  # if stored locally
     instance_orthanc_id = Column(String, unique=True, nullable=True)  # Orthanc's internal UUID
+    instance_number = Column(String, nullable=True)  # DICOM tag (0020,0013)
     predicted_view = Column(String, nullable=True)
     predicted_view_confidence = Column(Float, nullable=True)
 

@@ -6,7 +6,6 @@ import MainFileAiVideoMeasurements from "../components/AiVideoMeasurements/MainF
 import MainFileLlmReport from "../components/LlmReport/MainFileLlmReport";
 import { TITLEBAR_HEIGHT } from "../../../components/TitleBar";
 import { buildAiMeasurementsProps } from "../components/AiMeasurements/buildAiMeasurementsProps";
-import { listStudiesApi } from "../../../api/StudiesApi";
 import { printMeasurementsReport } from "../components/Report/printMeasurementsReport";
 import { buildMeasurementsReportHtml } from "../components/Report/buildMeasurementsReportHtml";
 
@@ -32,26 +31,11 @@ export function StudyResultsLayout({ navigateBack, viewModel }) {
     const [patientName, setPatientName] = useState(providedPatientName || null);
 
     useEffect(() => {
-        let cancel = false;
         if (!studyUID) {
             setPatientName(null);
-            return () => { cancel = true; };
+            return;
         }
-        if (providedPatientName) {
-            setPatientName(providedPatientName);
-            return () => { cancel = true; };
-        }
-        (async () => {
-            try {
-                const studies = await listStudiesApi();
-                if (cancel) return;
-                const match = Array.isArray(studies) ? studies.find((s) => s.study_uid === studyUID) : null;
-                setPatientName(match?.patient?.patient_name || null);
-            } catch {
-                if (!cancel) setPatientName(null);
-            }
-        })();
-        return () => { cancel = true; };
+        setPatientName(providedPatientName || null);
     }, [studyUID, providedPatientName]);
 
     if (!studyUID) {
@@ -166,8 +150,10 @@ export function StudyResultsLayout({ navigateBack, viewModel }) {
                             AI Report
                         </Pill>
 
-                        <div className="ml-auto text-xs text-gray-500">
-                            {anyLoading ? "Updating..." : "Ready"}
+                        <div className="ml-auto text-xs">
+                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full border border-gray-200 bg-white/80 text-gray-600">
+                                {anyLoading ? "Updating..." : "Ready"}
+                            </span>
                         </div>
                     </div>
 

@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "../../../components/ui/button";
-import { listStudiesApi } from "../../../api/StudiesApi";
+import { Copy } from "lucide-react";
 
 export default function Header({
     navigateBack,
@@ -16,33 +16,20 @@ export default function Header({
     const [patientName, setPatientName] = useState(providedPatientName || null);
 
     useEffect(() => {
-        let cancel = false;
-        (async () => {
-            if (providedPatientName) {
-                setPatientName(providedPatientName);
-                return;
-            }
-            try {
-                if (!studyUID) {
-                    if (!cancel) setPatientName(null);
-                    return;
-                }
-                // Note: listStudiesApi is also used in StudyResultsLayout for printing;
-                // consider consolidating if this duplication becomes problematic.
-                const studies = await listStudiesApi();
-                if (cancel) return;
-                const match = Array.isArray(studies)
-                    ? studies.find((s) => s.study_uid === studyUID)
-                    : null;
-                setPatientName(match?.patient?.patient_name || null);
-            } catch (e) {
-                if (!cancel) setPatientName(null);
-            }
-        })();
-        return () => {
-            cancel = true;
-        };
-    }, [studyUID, providedPatientName]);
+        setPatientName(providedPatientName || null);
+    }, [providedPatientName]);
+
+    const [copied, setCopied] = useState(false);
+    const handleCopyStudyUid = async () => {
+        if (!studyUID || !navigator?.clipboard?.writeText) return;
+        try {
+            await navigator.clipboard.writeText(studyUID);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1200);
+        } catch {
+            setCopied(false);
+        }
+    };
 
     const statusChip = (() => {
         if (isPolling) {
@@ -82,16 +69,31 @@ export default function Header({
                 <img
                     src="/horalix-taskbar-app-icon.png"
                     alt="Horalix Logo"
-                    className="w-8 h-8"
+                    className="w-10 h-10"
                 />
 
                 <div className="min-w-0">
                     <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#9333EA] via-[#6366F1] to-[#06B6D4] truncate">
                         Study Results
                     </h1>
-                    <p className="text-xs text-muted-foreground truncate">
-                        Patient: {patientName || "-"} - UID: {studyUID || "-"}
-                    </p>
+                    <div className="flex flex-wrap items-center gap-2 mt-0.5 pb-1 text-xs text-muted-foreground">
+                        <span className="px-2 py-1 rounded-lg border border-gray-200 bg-white/70">
+                            Patient: {patientName || "-"}
+                        </span>
+                        <span className="px-2 py-1 rounded-lg border border-gray-200 bg-white/70 flex items-center gap-1">
+                            UID: <span className="truncate max-w-[180px]">{studyUID || "-"}</span>
+                        </span>
+                        {studyUID && (
+                            <button
+                                type="button"
+                                onClick={handleCopyStudyUid}
+                                className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100 transition-colors"
+                            >
+                                <Copy className="w-3.5 h-3.5" />
+                                <span>{copied ? "Copied" : "Copy UID"}</span>
+                            </button>
+                        )}
+                    </div>
                 </div>
             </div>
 

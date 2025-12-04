@@ -58,6 +58,7 @@ def _clean_for_ui(tags: dict) -> dict:
         "SeriesInstanceUID": _tag(tags, "0020,000e", ""),
         "SOPInstanceUID": _tag(tags, "0008,0018", ""),
         "Modality": _tag(tags, "0008,0060", ""),
+        "InstanceNumber": _tag(tags, "0020,0013", ""),
     }
 
 @router.post("/upload-dicom", response_model=UploadDicomResponseSchema)
@@ -131,6 +132,7 @@ async def upload_dicom(file: UploadFile = File(...),
         study_uid = clean_instance_tags["StudyInstanceUID"]
         series_uid = clean_instance_tags["SeriesInstanceUID"]
         sop_instance_uid = clean_instance_tags["SOPInstanceUID"] # Dicom Instance UID
+        instance_number = clean_instance_tags["InstanceNumber"] or None
 
         logger.info(f"Extracted Patient ID tag: {patient_id_tag}, Study UID: {study_uid}, Series UID: {series_uid}, Dicom Instance UID: {sop_instance_uid}")
 
@@ -184,6 +186,7 @@ async def upload_dicom(file: UploadFile = File(...),
             sop_instance_uid=sop_instance_uid,
             file_path=file_location,
             instance_orthanc_id=instance_orthanc_id,
+            instance_number=instance_number,
             series=series,
         )
         db.add(instance)

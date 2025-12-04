@@ -169,11 +169,13 @@ def combining_dynamic_measurements(study_uid: str) -> None:
             predicted_view = (instance.predicted_view or "").upper()
             predicted_view_confidence = (instance.predicted_view_confidence or None)
             tasks_config = _tasks_for_view(predicted_view)
+            instance_number = instance.instance_number
 
             # --- Part 2.1 If there is no inference for the instance with this view ---
             if not tasks_config:
                 summaries.append({
                     "sop_instance_uid": instance.sop_instance_uid,
+                    "instance_number": instance_number,
                     "predicted_view": instance.predicted_view,
                     "predicted_view_confidence": instance.predicted_view_confidence,
                     "results": [{"task": None, "status": "SKIPPED", "message": "No inference available for this view"}],
@@ -202,6 +204,7 @@ def combining_dynamic_measurements(study_uid: str) -> None:
 
             summaries.append({
                 "sop_instance_uid": instance.sop_instance_uid,
+                "instance_number": instance_number,
                 "predicted_view": instance.predicted_view,
                 "predicted_view_confidence": predicted_view_confidence,
                 "results": results,

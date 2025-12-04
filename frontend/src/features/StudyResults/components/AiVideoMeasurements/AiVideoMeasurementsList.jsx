@@ -2,7 +2,13 @@ import React, { useState } from "react";
 import AiVideoMeasurementsBox from "./AiVideoMeasurementsBox";
 
 export default function AiVideoMeasurementsList({ instance }) {
-    const { predicted_view, predicted_view_confidence, results = [] } = instance;
+    const {
+        predicted_view,
+        predicted_view_confidence,
+        results = [],
+        sop_instance_uid,
+        instance_number,
+    } = instance;
 
     const hasValidMeasurements = results.some((r) => r.status !== "SKIPPED");
     const isSkippedOnly = results.length > 0 && !hasValidMeasurements;
@@ -12,6 +18,13 @@ export default function AiVideoMeasurementsList({ instance }) {
     const toggleExpand = () => {
         if (!isSkippedOnly) setIsExpanded(!isExpanded);
     };
+
+    const shortUid = sop_instance_uid ? sop_instance_uid.slice(-8) : null;
+    const instanceLabel = instance_number
+        ? `Instance #${instance_number}`
+        : shortUid
+            ? `UID …${shortUid}`
+            : null;
 
     return (
         <div
@@ -83,6 +96,14 @@ export default function AiVideoMeasurementsList({ instance }) {
                                 </svg>
                             )}
                         </div>
+
+                        {instanceLabel && (
+                            <div className="flex items-center gap-2 mt-1 text-xs text-gray-600">
+                                <span className="px-2 py-1 rounded-lg border border-gray-200 bg-white/70">
+                                    {instanceLabel}
+                                </span>
+                            </div>
+                        )}
 
                         {predicted_view_confidence && (
                             <div className="flex items-center space-x-2 mt-0.5">

@@ -87,7 +87,10 @@ export default function MainFileAiVideoMeasurements({ state, dynamicMeasurements
             {/* Measurements List */}
             <div className="space-y-5">
                 {instances.map((instance, index) => (
-                    <AiVideoMeasurementsList key={index} instance={instance} />
+                    <AiVideoMeasurementsList
+                        key={instance?.sop_instance_uid || index}
+                        instance={instance}
+                    />
                 ))}
             </div>
         </div>

@@ -5,6 +5,11 @@ export const listStudiesApi = async () => {
     return data;
 };
 
+export const getStudyByUidApi = async (studyUid) => {
+    const { data } = await apiClient.get(`/studies/${encodeURIComponent(studyUid)}`);
+    return data;
+};
+
 export const patchStudyApi = async (id, payload) => {
     const { data } = await apiClient.patch(`/studies/${id}`, payload);
     return data;
