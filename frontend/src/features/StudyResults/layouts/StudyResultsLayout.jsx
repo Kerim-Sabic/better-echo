@@ -5,9 +5,7 @@ import MainFileAiMeasurements from "../components/AiMeasurements/MainFileAiMeasu
 import MainFileAiVideoMeasurements from "../components/AiVideoMeasurements/MainFileAiVideoMeasurements";
 import MainFileLlmReport from "../components/LlmReport/MainFileLlmReport";
 import { TITLEBAR_HEIGHT } from "../../../components/TitleBar";
-import { buildAiMeasurementsProps } from "../components/AiMeasurements/buildAiMeasurementsProps";
-import { printMeasurementsReport } from "../components/Report/printMeasurementsReport";
-import { buildMeasurementsReportHtml } from "../components/Report/buildMeasurementsReportHtml";
+import { printMeasurements } from "../helpers/printMeasurements";
 
 export function StudyResultsLayout({ navigateBack, viewModel }) {
     const {
@@ -51,52 +49,14 @@ export function StudyResultsLayout({ navigateBack, viewModel }) {
         ["loading", "pending"].includes(dynamicMeasurementsState) ||
         ["loading", "pending"].includes(llmReportState);
 
-    async function toDataUrl(src) {
-        try {
-            const res = await fetch(src);
-            if (!res.ok) throw new Error("fetch failed");
-            const blob = await res.blob();
-            return await new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve(reader.result);
-                reader.onerror = reject;
-                reader.readAsDataURL(blob);
-            });
-        } catch {
-            return null;
-        }
-    }
-
     async function handlePrint() {
-        try {
-            const { mainMeasurements = [], Measurements = [] } = buildAiMeasurementsProps(
-                panechoEchoprimeResults || null
-            ) || {};
-
-            const hasAny = (Array.isArray(mainMeasurements) && mainMeasurements.length > 0) ||
-                (Array.isArray(Measurements) && Measurements.some((g) => (g.items || []).length > 0));
-            if (!hasAny) {
+        const result = await printMeasurements({ panechoEchoprimeResults, patientName, studyUID });
+        if (!result?.ok) {
+            if (result?.reason === "no_measurements") {
                 alert("No measurements to print.");
                 return;
             }
-
-            // Try Electron PDF preview if available
-            const logoDataUrl = await toDataUrl("/horalix-taskbar-app-icon.png");
-            const html = buildMeasurementsReportHtml({ logoDataUrl, patientName, studyUID, mainMeasurements, Measurements });
-            const preview = window.electronAPI?.report?.previewPdf;
-            if (typeof preview === "function") {
-                const res = await preview(html, { printBackground: true, pageSize: "A4" });
-                if (!res?.ok) {
-                    console.warn("PDF preview failed", res?.error);
-                    // fallback to browser print
-                    printMeasurementsReport({ patientName, studyUID, mainMeasurements, Measurements });
-                }
-                return;
-            }
-            // fallback to browser print if no Electron API
-            printMeasurementsReport({ patientName, studyUID, mainMeasurements, Measurements });
-        } catch (e) {
-            console.warn("Failed to prepare print", e);
+            console.warn("Failed to prepare print", result?.error);
         }
     }
 
