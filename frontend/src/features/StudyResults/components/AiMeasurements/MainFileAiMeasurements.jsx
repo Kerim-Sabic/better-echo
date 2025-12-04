@@ -102,8 +102,12 @@ export default function MainFileAiMeasurements({ state, panechoEchoprimeResults 
             {hasMainMeasurements && <MainMeasurementsList mainMeasurements={mainMeasurements} />}
 
             {hasMeasurements &&
-                Measurements.map((items) => (
-                    <MeasurementsList key={items.title} section={items.section} items={items.items || []} />
+                Measurements.map((items, idx) => (
+                    <MeasurementsList
+                        key={items.section || `section-${idx}`}
+                        section={items.section}
+                        items={items.items || []}
+                    />
                 ))}
         </div>
     );
