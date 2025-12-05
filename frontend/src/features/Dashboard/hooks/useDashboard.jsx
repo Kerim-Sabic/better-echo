@@ -9,6 +9,8 @@ import { listStudiesApi, patchStudyApi, deleteStudyApi } from "../../../api/Stud
 export function useDashboard() {
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedFilter, setSelectedFilter] = useState("all");
+    const [dateFilters, setDateFilters] = useState([]); // [{from, to}]
+    const [sortBy, setSortBy] = useState("uploaded_desc");
     const [studies, setStudies] = useState([]);
     const [loading, setLoading] = useState(true);
     const [editOpen, setEditOpen] = useState(false);
@@ -81,17 +83,95 @@ export function useDashboard() {
     // Search-only filtering for counts and status derivations
     const searchFiltered = useMemo(() => {
         const q = searchTerm.toLowerCase();
+
+        const normalizeDate = (study) => {
+            if (study?.uploaded_at) {
+                const d = new Date(study.uploaded_at);
+                if (!isNaN(d)) {
+                    const y = d.getFullYear();
+                    const m = String(d.getMonth() + 1).padStart(2, "0");
+                    const day = String(d.getDate()).padStart(2, "0");
+                    return `${y}-${m}-${day}`;
+                }
+            }
+            const sd = study?.study_date;
+            if (sd && /^\d{8}$/.test(sd)) {
+                return `${sd.slice(0, 4)}-${sd.slice(4, 6)}-${sd.slice(6, 8)}`;
+            }
+            if (sd && /^\d{4}-\d{2}-\d{2}$/.test(sd)) {
+                return sd;
+            }
+            return "";
+        };
+
+        const ranges = (dateFilters || []).map((f) => ({
+            from: f.from || "",
+            to: f.to || f.from || "",
+        })).filter((f) => f.from);
+
+        const isWithinDateRange = (study) => {
+            if (!ranges.length) return true;
+            const d = normalizeDate(study);
+            if (!d) return false;
+            return ranges.some((r) => {
+                if (r.from && d < r.from) return false;
+                if (r.to && d > r.to) return false;
+                return true;
+            });
+        };
+
         return studies.filter((s) => {
             const patientName = (s.patient?.patient_name || "").toLowerCase();
             const suid = (s.study_uid || "").toLowerCase();
-            return patientName.includes(q) || suid.includes(q);
+            const dateStr = normalizeDate(s);
+            const diagText = [
+                s?.diagnosis,
+                Array.isArray(s?.diagnoses) ? s.diagnoses.join(" ") : "",
+                s?.diagnosis_text,
+            ].join(" ").toLowerCase();
+            const matchesSearch = patientName.includes(q) || suid.includes(q) || dateStr.includes(q) || diagText.includes(q);
+            if (!matchesSearch) return false;
+            if (!isWithinDateRange(s)) return false;
+            return true;
         });
-    }, [studies, searchTerm]);
+    }, [studies, searchTerm, dateFilters]);
 
     // Apply status filter to search-filtered results for the list
     const filteredStudies = useMemo(() => {
-        return searchFiltered.filter((s) => selectedFilter === "all" || s.status === selectedFilter);
-    }, [searchFiltered, selectedFilter]);
+        const base = searchFiltered.filter((s) => selectedFilter === "all" || s.status === selectedFilter);
+        const comparator = (a, b) => {
+            const dateA = a.uploaded_at ? new Date(a.uploaded_at) : null;
+            const dateB = b.uploaded_at ? new Date(b.uploaded_at) : null;
+            const studyDateA = a.study_date || "";
+            const studyDateB = b.study_date || "";
+            const nameA = (a.patient?.patient_name || "").toLowerCase();
+            const nameB = (b.patient?.patient_name || "").toLowerCase();
+            const uidA = (a.study_uid || "").toLowerCase();
+            const uidB = (b.study_uid || "").toLowerCase();
+
+            switch (sortBy) {
+                case "uploaded_asc":
+                    return (dateA?.getTime() || 0) - (dateB?.getTime() || 0);
+                case "uploaded_desc":
+                    return (dateB?.getTime() || 0) - (dateA?.getTime() || 0);
+                case "study_date_asc":
+                    return studyDateA.localeCompare(studyDateB);
+                case "study_date_desc":
+                    return studyDateB.localeCompare(studyDateA);
+                case "name_asc":
+                    return nameA.localeCompare(nameB);
+                case "name_desc":
+                    return nameB.localeCompare(nameA);
+                case "uid_asc":
+                    return uidA.localeCompare(uidB);
+                case "uid_desc":
+                    return uidB.localeCompare(uidA);
+                default:
+                    return 0;
+            }
+        };
+        return [...base].sort(comparator);
+    }, [searchFiltered, selectedFilter, sortBy]);
 
     // Counts for filter chips (reflect current search)
     const counts = useMemo(() => {
@@ -119,5 +199,9 @@ export function useDashboard() {
         openEdit,          // Function to open modal and set current study
         saveEdit,          // Function to save changes to a study
         onDelete,          // Function to delete a study
+        dateFilters,
+        setDateFilters,
+        sortBy,
+        setSortBy,
     };
 }

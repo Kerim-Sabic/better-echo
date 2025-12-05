@@ -20,15 +20,14 @@ export default function StudyCard({ study, onSelectStudy, onEdit, onDelete }) {
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-3 mb-2">
                             <h3 className="text-lg font-bold text-foreground truncate">
-                                {study?.patient?.patient_id || study?.patient?.patient_name || "Unknown"}
+                                {study?.patient?.patient_name || study?.patient?.patient_id || "Unknown"}
                             </h3>
                             <StatusPill status={study?.status} />
                         </div>
                         <p className="text-sm font-medium text-foreground mb-1 truncate">
-                            {study?.patient?.patient_name || "Unknown patient"}
+                            Study UID: {study?.study_uid || "-"}
                         </p>
-                        <p className="text-sm text-muted-foreground truncate" title={study?.study_uid || ""}>
-                            Study UID: {study?.study_uid || "-"} {"\u00B7 "}
+                        <p className="text-sm text-muted-foreground truncate" title={formatUploadedDate(study)}>
                             {formatUploadedDate(study)}
                         </p>
                     </div>

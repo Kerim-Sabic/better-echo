@@ -33,6 +33,10 @@ export default function Dashboard() {
         openEdit,
         saveEdit,
         onDelete,
+        dateFilters,
+        setDateFilters,
+        sortBy,
+        setSortBy,
     } = useDashboard();
 
     const onNewStudy = () => navigate("/studies/new");
@@ -60,6 +64,10 @@ export default function Dashboard() {
                             selectedFilter={selectedFilter}
                             setSelectedFilter={setSelectedFilter}
                             counts={counts}
+                            sortBy={sortBy}
+                            setSortBy={setSortBy}
+                            dateFilters={dateFilters}
+                            setDateFilters={setDateFilters}
                         />
 
                         <StudyList

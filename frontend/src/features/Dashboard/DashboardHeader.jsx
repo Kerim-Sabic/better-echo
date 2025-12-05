@@ -43,7 +43,7 @@ export default function DashboardHeader({ onNewStudy }) {
                         {/* Show user info */}
                         {user && (
                             <div className="text-right">
-                                <div className="font-medium">{user.username}</div>
+                                <div className="font-medium">{user.full_name || user.username}</div>
                                 <div className="text-xs text-muted-foreground">
                                     {user.role ?? "Doctor"}
                                 </div>

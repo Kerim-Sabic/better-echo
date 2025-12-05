@@ -3,9 +3,10 @@ import { Calendar as CalendarIcon } from "lucide-react";
 import { Input } from "../../components/ui/input";
 import { Button } from "../../components/ui/button";
 
-function ymdToDmy(yyyymmdd) {
-    if (!yyyymmdd || !/^\d{8}$/.test(yyyymmdd)) return "";
-    return `${yyyymmdd.slice(6, 8)}-${yyyymmdd.slice(4, 6)}-${yyyymmdd.slice(0, 4)}`;
+function isoToDmy(iso) {
+    if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return "";
+    const [y, m, d] = iso.split("-");
+    return `${d}-${m}-${y}`;
 }
 
 function isValidDateParts(dd, mm, yyyy) {
@@ -19,20 +20,20 @@ function isValidDateParts(dd, mm, yyyy) {
     );
 }
 
-function dmyToYmd(dmy) {
+function dmyToIso(dmy) {
     if (!dmy || dmy.length < 10) return "";
     const [dd, mm, yyyy] = dmy.split("-");
     if (!/^\d{2}$/.test(dd) || !/^\d{2}$/.test(mm) || !/^\d{4}$/.test(yyyy)) return "";
     if (!isValidDateParts(dd, mm, yyyy)) return "";
-    return `${yyyy}${mm}${dd}`;
+    return `${yyyy}-${mm}-${dd}`;
 }
 
 export default function DateInputWithPicker({ id, value, onChange, label, required }) {
-    const [text, setText] = useState(ymdToDmy(value));
+    const [text, setText] = useState(isoToDmy(value));
 
     // Keep local text in sync with prop value
     useEffect(() => {
-        const next = ymdToDmy(value);
+        const next = isoToDmy(value);
         if (next !== text) setText(next);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [value]);
@@ -47,8 +48,8 @@ export default function DateInputWithPicker({ id, value, onChange, label, requir
         else if (digits.length > 2) pretty = `${digits.slice(0, 2)}-${digits.slice(2)}`;
         setText(pretty);
 
-        const ymd = dmyToYmd(pretty);
-        if (ymd && onChange) onChange(ymd);
+        const iso = dmyToIso(pretty);
+        if (iso && onChange) onChange(iso);
         if (!digits && onChange) onChange("");
     };
 
@@ -60,15 +61,14 @@ export default function DateInputWithPicker({ id, value, onChange, label, requir
             return;
         }
         const [yyyy, mm, dd] = v.split("-");
-        const ymd = `${yyyy}${mm}${dd}`;
         setText(`${dd}-${mm}-${yyyy}`);
-        onChange?.(ymd);
+        onChange?.(v);
     };
 
     // Convert current value to native date value (YYYY-MM-DD)
     const nativeValue = useMemo(() => {
-        if (!value || !/^\d{8}$/.test(value)) return "";
-        return `${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6, 8)}`;
+        if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return "";
+        return value;
     }, [value]);
 
     return (
@@ -91,7 +91,7 @@ export default function DateInputWithPicker({ id, value, onChange, label, requir
                     type="button"
                     variant="outline"
                     size="icon"
-                    className="absolute right-1 top-1/2 -translate-y-1/2"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 rounded-md h-9 w-10"
                     aria-label="Open date picker"
                     tabIndex={-1}
                 >
@@ -103,7 +103,7 @@ export default function DateInputWithPicker({ id, value, onChange, label, requir
                     value={nativeValue}
                     onChange={onNativeChange}
                     aria-label="Pick date"
-                    className="absolute right-1 top-1/2 -translate-y-1/2 transform w-10 h-10 opacity-0 z-10 cursor-pointer"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 transform w-12 h-12 opacity-0 z-10 cursor-pointer rounded-md"
                 />
             </div>
         </div>
