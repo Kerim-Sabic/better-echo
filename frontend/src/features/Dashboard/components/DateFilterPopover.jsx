@@ -6,11 +6,11 @@ import "react-multi-date-picker/styles/layouts/prime.css";
 import "react-multi-date-picker/styles/colors/teal.css";
 
 /**
- * Custom sidebar plugin for DatePicker.
- * Displays selected dates/ranges from the parent state.
+ * Sidebar component for displaying selected dates.
+ * Handles display formatting and item removal.
  */
 const CustomDatePanel = ({ dateFilters, onRemove }) => {
-    // Helper to format YYYY-MM-DD to DD-MM-YYYY
+    // 1 Helper to format ISO strings to DD-MM-YYYY
     const formatDisplay = (isoString) => {
         if (!isoString) return "";
         const [y, m, d] = isoString.split("-");
@@ -24,24 +24,39 @@ const CustomDatePanel = ({ dateFilters, onRemove }) => {
                 display: "grid",
                 gridTemplateRows: "auto 1fr",
                 borderLeft: "1px solid #e5e7eb",
-                minWidth: "140px"
+                minWidth: "140px",
             }}
         >
             <div style={{ padding: "10px", fontWeight: "bold", fontSize: "14px", color: "#374151" }}>
                 Selected
             </div>
 
-            <div style={{ padding: "0 10px 10px 10px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "5px" }}>
+            <div 
+                style={{ 
+                    padding: "0 10px 10px 10px", 
+                    overflowY: "auto", 
+                    display: "flex", 
+                    flexDirection: "column", 
+                    gap: "5px",
+                    maxHeight: "260px",
+                    maskImage: "linear-gradient(to bottom, black 85%, transparent 100%)",
+                    WebkitMaskImage: "linear-gradient(to bottom, black 85%, transparent 100%)",
+                    scrollbarWidth: "none", 
+                    msOverflowStyle: "none" 
+                }}
+            >
                 {dateFilters && dateFilters.length > 0 ? (
                     dateFilters.map((filter, index) => {
                         let label = "";
                         const fromStr = formatDisplay(filter.from);
                         const toStr = formatDisplay(filter.to);
 
-                        // If it's a single date (from == to), or 'to' is missing
+                        // 2 Determine display label
+                        // 2.1 Single date or pending selection -> show 'from' only
                         if (!filter.to || filter.from === filter.to) {
                             label = fromStr;
                         } else {
+                            // 2.2 Complete range -> show 'from - to'
                             label = `${fromStr} - ${toStr}`;
                         }
 
@@ -79,37 +94,35 @@ export default function DateFilterPopover({ dateFilters, setDateFilters }) {
     const [rangeMode, setRangeMode] = useState(false);
     const datePickerRef = useRef();
 
-    // Helper: Convert ISO string to DateObject
+    // 1 Helper: ISO string -> DateObject
     const toDateObj = (isoString) => {
         if (!isoString) return null;
         return new DateObject({ date: isoString, format: "YYYY-MM-DD" });
     };
 
-    // 1. App State -> Picker Value
-    // FIX: Always return arrays [start, end] so the picker (which is always in range mode) 
-    // renders them correctly as closed ranges.
+    // 2 Transform App State -> Picker Value
+    // Forces all values into array format to maintain compatibility with range={true}
     const getPickerValue = () => {
         if (!dateFilters) return [];
 
         return dateFilters.map(f => {
             const start = toDateObj(f.from);
             
-            // If 'to' is missing (selection in progress), pass [start]
+            // 2.1 Pending selection (only start exists)
             if (!f.to) return [start];
             
-            // If it's a "single date" in our data (from == to), pass [start, start]
-            // This forces the picker to see it as a "closed" range of 1 day.
+            // 2.2 Single date (start == end) -> Send as closed range [start, start]
             if (f.from === f.to) {
                 const sameEnd = toDateObj(f.to);
                 return [start, sameEnd];
             }
 
-            // Real range
+            // 2.3 Real range -> Send as [start, end]
             return [start, toDateObj(f.to)];
         });
     };
 
-    // 2. Picker Value -> App State
+    // 3 Handle Date Selection
     const handleDateChange = (dateObjects) => {
         if (!dateObjects) {
             setDateFilters([]);
@@ -118,44 +131,51 @@ export default function DateFilterPopover({ dateFilters, setDateFilters }) {
 
         const values = Array.isArray(dateObjects) ? dateObjects : [dateObjects];
 
-        const newFilters = values.map(val => {
-            if (!val) return null;
-            
-            // Since we enforce range={true}, 'val' will ALWAYS be an array: [start] or [start, end]
-            if (Array.isArray(val)) {
-                const [start, end] = val;
-
-                // SCENARIO 1: We have a start date, but no end date yet.
-                if (start && !end) {
-                    // Logic: If user is in "Single Mode" (rangeMode off), 
-                    // we AUTO-COMPLETE this into a single date immediately.
-                    if (!rangeMode) {
-                        return {
-                            from: start.format("YYYY-MM-DD"),
-                            to: start.format("YYYY-MM-DD") // Force close
-                        };
-                    }
-                    // If in "Range Mode", we leave 'to' null and wait for the second click.
-                    return {
-                        from: start.format("YYYY-MM-DD"),
-                        to: null
-                    };
+        // 4 Range Mode Logic
+        // Allows library to handle start/end selection naturally
+        if (rangeMode) {
+            const normalized = values.map(val => {
+                if (!val) return null;
+                if (Array.isArray(val)) {
+                    const [start, end] = val;
+                    // 4.1 Wait for second click (end) before finalizing
+                    if (start && !end) return { from: start.format("YYYY-MM-DD"), to: null };
+                    return { from: start.format("YYYY-MM-DD"), to: end.format("YYYY-MM-DD") };
                 }
-
-                // SCENARIO 2: We have both start and end.
-                return {
-                    from: start.format("YYYY-MM-DD"),
-                    to: end.format("YYYY-MM-DD")
-                };
-            }
+                return null;
+            }).filter(Boolean);
             
-            // Fallback (shouldn't happen with range={true})
-            return null;
-        }).filter(Boolean);
+            setDateFilters(normalized);
+            return;
+        }
 
-        setDateFilters(newFilters);
+        // 5 Single Mode Logic (Proactive Toggle)
+        // 5.1 Identify the clicked item (last in array)
+        const lastClicked = values[values.length - 1];
+        if (!lastClicked) return;
+
+        // 5.2 Format clicked item to ISO string
+        const clickedStart = Array.isArray(lastClicked) ? lastClicked[0] : lastClicked;
+        const dateStr = clickedStart.format("YYYY-MM-DD");
+
+        // 5.3 Check if date exists in current state
+        const existsIndex = dateFilters.findIndex(f => f.from === dateStr && f.to === dateStr);
+
+        let nextFilters = [...dateFilters];
+
+        if (existsIndex !== -1) {
+            // 5.4 Exists -> Remove (Toggle Off)
+            nextFilters.splice(existsIndex, 1);
+        } else {
+            // 5.5 New -> Add (Toggle On)
+            nextFilters.push({ from: dateStr, to: dateStr });
+        }
+
+        // 5.6 Update state
+        setDateFilters(nextFilters);
     };
 
+    // 6 Remove specific filter via Sidebar
     const handleRemove = (index) => {
         const newFilters = [...dateFilters];
         newFilters.splice(index, 1);
@@ -167,8 +187,8 @@ export default function DateFilterPopover({ dateFilters, setDateFilters }) {
             ref={datePickerRef}
             value={getPickerValue()}
             onChange={handleDateChange}
-            range={true} // FIX: ALWAYS keep library in range mode to preserve mixed data
-            rangeHover={rangeMode} // Only show the range hover effect if logic is in Range Mode
+            range={true} 
+            rangeHover={rangeMode}
             multiple={true}
             numberOfMonths={1}
             format="DD-MM-YYYY"
@@ -194,12 +214,8 @@ export default function DateFilterPopover({ dateFilters, setDateFilters }) {
         >
             <Footer
                 rangeMode={rangeMode}
-                setRangeMode={(newMode) => {
-                    setRangeMode(newMode);
-                    // No need to clear filters anymore; mixed mode is supported.
-                }}
+                setRangeMode={(newMode) => setRangeMode(newMode)}
                 onClear={() => setDateFilters([])}
-                onApply={() => datePickerRef.current?.closeCalendar()}
             />
         </DatePicker>
     );

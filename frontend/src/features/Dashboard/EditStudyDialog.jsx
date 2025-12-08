@@ -6,7 +6,6 @@ import {
 } from "../../components/ui/dialog";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
-import DateInputWithPicker from "./DateInputWithPicker";
 
 export default function EditStudyDialog({
     open,
@@ -31,18 +30,11 @@ export default function EditStudyDialog({
                             onChange={(e) =>
                                 setEditForm((f) => ({ ...f, patient_name: e.target.value }))
                             }
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter") onSave();
+                            }}
                         />
                     </div>
-
-                    <div className="space-y-1">
-                        <DateInputWithPicker
-                            id="study-date"
-                            label="Study Date"
-                            value={editForm.study_date}
-                            onChange={(v) => setEditForm((f) => ({ ...f, study_date: v }))}
-                        />
-                    </div>
-
                     <div className="flex justify-end gap-2 pt-2">
                         <Button variant="outline" onClick={() => setOpen(false)}>
                             Cancel

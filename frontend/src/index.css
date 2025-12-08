@@ -198,6 +198,14 @@ code {
 
 /* --- 2. DATE PICKER OVERRIDES --- */
 
+/* Disable text selection for the whole picker to prevent highlighting on double-click */
+.rmdp-wrapper {
+    -webkit-user-select: none; /* Safari */
+    -moz-user-select: none;    /* Firefox */
+    -ms-user-select: none;     /* IE/Edge */
+    user-select: none;         /* Standard */
+}
+
 /* Override the 'teal' theme to use your Brand Cyan (#06B6D4) */
 .rmdp-wrapper.teal .rmdp-week-day {
     color: var(--primary); /* Cyan headers */
