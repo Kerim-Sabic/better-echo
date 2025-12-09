@@ -1,8 +1,8 @@
 import React, { useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, LogOut } from "lucide-react";
-import { Button } from "../../components/ui/button";
-import { AuthContext } from "../../contexts/AuthenticationContext";
+import { Button } from "../../../../components/ui/button";
+import { AuthContext } from "../../../../contexts/AuthenticationContext";
 
 export default function DashboardHeader({ onNewStudy }) {
     const { user, logout } = useContext(AuthContext);

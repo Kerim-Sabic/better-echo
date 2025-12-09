@@ -1,13 +1,10 @@
 import { Search } from "lucide-react";
-import { Button } from "../../components/ui/button";
-import { Input } from "../../components/ui/input";
-// import { useEffect, useRef, useState } from "react";
-// import DatePicker from "react-multi-date-picker";
-// import DatePanel from "react-multi-date-picker/plugins/date_panel";
-// import Footer from "./components/Footer";
+import { Button } from "../../../../components/ui/button";
+import { Input } from "../../../../components/ui/input";
 import "react-multi-date-picker/styles/layouts/prime.css";
 import "react-multi-date-picker/styles/colors/teal.css";
-import DateFilterPopover from "./components/DateFilterPopover";
+import DateFilterPopover from "./DateFilterPopover";
+import { formatIsoToHuman } from "../../helpers/dashboardHelpers";
 
 export default function SearchAndFilters({
     searchTerm,
@@ -26,58 +23,16 @@ export default function SearchAndFilters({
         { id: "processing", label: "Processing", count: counts?.processing ?? 0 },
     ];
 
-    // const [showDatePicker, setShowDatePicker] = useState(false);
-    // const [rangeMode, setRangeMode] = useState(false);
-    // const [tempFilters, setTempFilters] = useState(dateFilters || []);
-    // const popoverRef = useRef(null);
-
-    // const applyDates = (filters) => {
-    //     setDateFilters(filters || []);
-    //     setTempFilters(filters || []);
-    //     setShowDatePicker(false);
-    // };
-
-    // const clearDates = () => {
-    //     setTempFilters([]);
-    //     setDateFilters([]);
-    //     setShowDatePicker(false);
-    // };
-
-    // useEffect(() => {
-    //     function handleClickOutside(event) {
-    //         if (popoverRef.current && !popoverRef.current.contains(event.target)) {
-    //             setShowDatePicker(false);
-    //         }
-    //     }
-    //     if (showDatePicker) {
-    //         document.addEventListener("mousedown", handleClickOutside);
-    //     }
-    //     return () => {
-    //         document.removeEventListener("mousedown", handleClickOutside);
-    //     };
-    // }, [showDatePicker]);
-
-    // Helper to format ISO date to human-readable format
-    const formatHuman = (iso) => {
-        if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return "";
-        const [y, m, d] = iso.split("-");
-        return `${d}-${m}-${y}`;
-    };
-
     const dateSummary = () => {
         if (!dateFilters || !dateFilters.length) return "";
         if (dateFilters.length > 1) return "Multiple dates applied";
         const first = dateFilters[0];
         if (first.from && first.to && first.from !== first.to) {
-            return `${formatHuman(first.from)} → ${formatHuman(first.to)}`;
+            return `${formatIsoToHuman(first.from)} → ${formatIsoToHuman(first.to)}`;
         }
-        if (first.from) return formatHuman(first.from);
+        if (first.from) return formatIsoToHuman(first.from);
         return "";
     };
-
-    // const pickerValue = rangeMode
-    //     ? tempFilters.flatMap((f) => [f.from, f.to].filter(Boolean))
-    //     : tempFilters.map((f) => f.from).filter(Boolean);
 
     return (
         <div className="flex flex-col gap-4 mb-6 lg:flex-row lg:items-center">

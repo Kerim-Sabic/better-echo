@@ -1,27 +1,5 @@
 import { FileText, CheckCircle2, Clock } from "lucide-react";
-
-function parseStudyDate(study) {
-    if (study?.uploaded_at) {
-        const d = new Date(study.uploaded_at);
-        if (!isNaN(d)) return d;
-    }
-    const sd = study?.study_date;
-    if (sd && /^\d{8}$/.test(sd)) {
-        const y = sd.slice(0, 4), m = sd.slice(4, 6), d = sd.slice(6, 8);
-        const dt = new Date(`${y}-${m}-${d}T00:00:00`);
-        if (!isNaN(dt)) return dt;
-    }
-    return null;
-}
-
-function isSameDay(a, b) {
-    return (
-        a && b &&
-        a.getFullYear() === b.getFullYear() &&
-        a.getMonth() === b.getMonth() &&
-        a.getDate() === b.getDate()
-    );
-}
+import { parseStudyDate, isSameDay } from "../../helpers/dashboardHelpers";
 
 export default function DashboardStats({ studies = [] }) {
     const total = studies.length;

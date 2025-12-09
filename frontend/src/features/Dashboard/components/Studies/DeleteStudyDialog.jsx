@@ -1,5 +1,6 @@
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../components/ui/dialog";
-import { Button } from "../../components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../../../components/ui/dialog";
+import { Button } from "../../../../components/ui/button";
+import { formatStudyDate } from "../../helpers/dashboardHelpers";
 
 export default function DeleteStudyDialog({ open, study, onCancel, onConfirm, busy }) {
     return (
@@ -20,6 +21,10 @@ export default function DeleteStudyDialog({ open, study, onCancel, onConfirm, bu
                         <div className="text-sm">
                             <span className="text-muted-foreground">Study UID:</span>{" "}
                             <span className="font-medium break-all whitespace-normal">{study?.study_uid || "-"}</span>
+                        </div>
+                        <div className="text-sm">
+                            <span className="text-muted-foreground">Date:</span>{" "}
+                            <span className="font-medium break-all whitespace-normal">{formatStudyDate(study) || "-"}</span>
                         </div>
                     </div>
                 )}

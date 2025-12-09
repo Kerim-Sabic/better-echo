@@ -1,7 +1,7 @@
-import { User, Edit, Trash2, CheckCircle2, Clock, AlertCircle } from "lucide-react";
-import { Card } from "../../components/ui/card";
-import { Button } from "../../components/ui/button";
-import { formatEf } from "./utils";
+import { User, Edit, Trash2 } from "lucide-react";
+import { Card } from "../../../../components/ui/card";
+import { Button } from "../../../../components/ui/button";
+import { formatEf, formatStudyDate, getStatusBadge } from "../../helpers/dashboardHelpers";
 
 export default function StudyCard({ study, onSelectStudy, onEdit, onDelete }) {
     return (
@@ -22,13 +22,13 @@ export default function StudyCard({ study, onSelectStudy, onEdit, onDelete }) {
                             <h3 className="text-lg font-bold text-foreground truncate">
                                 {study?.patient?.patient_name || study?.patient?.patient_id || "Unknown"}
                             </h3>
-                            <StatusPill status={study?.status} />
+                            {getStatusBadge(study?.status)}
                         </div>
                         <p className="text-sm font-medium text-foreground mb-1 truncate">
                             Study UID: {study?.study_uid || "-"}
                         </p>
-                        <p className="text-sm text-muted-foreground truncate" title={formatUploadedDate(study)}>
-                            {formatUploadedDate(study)}
+                        <p className="text-sm text-muted-foreground truncate" title={formatStudyDate(study)}>
+                            {formatStudyDate(study)}
                         </p>
                     </div>
                 </div>
@@ -71,48 +71,4 @@ export default function StudyCard({ study, onSelectStudy, onEdit, onDelete }) {
             )}
         </Card>
     );
-}
-
-function StatusPill({ status }) {
-    let cls = "";
-    let label = status || "Unknown";
-    let icon = null;
-    if (status === "completed") {
-        cls = "bg-[#06B6D4]/10 text-[#06B6D4]";
-        icon = <CheckCircle2 className="w-3.5 h-3.5" />;
-        label = "Completed";
-    } else if (status === "processing") {
-        cls = "bg-[#9333EA]/10 text-[#9333EA]";
-        icon = <Clock className="w-3.5 h-3.5 animate-glow" />;
-        label = "Processing";
-    } else if (status === "failed") {
-        cls = "bg-red-50 text-red-600";
-        icon = <AlertCircle className="w-3.5 h-3.5" />;
-        label = "Failed";
-    } else {
-        cls = "bg-muted text-foreground";
-    }
-    return (
-        <span className={["px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1.5", cls].join(" ")}>
-            {icon}
-            {label}
-        </span>
-    );
-}
-
-function formatUploadedDate(study) {
-    if (study?.uploaded_at) {
-        const d = new Date(study.uploaded_at);
-        if (!isNaN(d)) {
-            const y = d.getFullYear();
-            const m = String(d.getMonth() + 1).padStart(2, "0");
-            const day = String(d.getDate()).padStart(2, "0");
-            return `${day}-${m}-${y}`;
-        }
-    }
-    const sd = study?.study_date;
-    if (sd && /^\d{8}$/.test(sd)) {
-        return `${sd.slice(0, 4)}-${sd.slice(4, 6)}-${sd.slice(6, 8)}`;
-    }
-    return "Date unknown";
 }
