@@ -21,6 +21,7 @@ class StudySchema(BaseModel):
     status: Optional[str] = None
     uploaded_at: datetime
     patient: PatientSchema
+    diagnoses: Optional[List[str]] = None
 
     class Config:
         from_attributes = True

@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { patchStudyApi, deleteStudyApi } from "../../../api/StudiesApi";
 import { useStudiesListQuery } from "./useStudiesListQuery";
-import { parseStudyDate } from "../helpers/dashboardHelpers";
+import { parseStudyDate, formatStudyDate } from "../helpers/dashboardHelpers";
 
 /**
  * Dashboard View Model.
@@ -98,8 +98,7 @@ export function useDashboard() {
             const suid = (s.study_uid || "").toLowerCase();
             
             // Re-using parseStudyDate for search text matching
-            const dateObj = parseStudyDate(s);
-            const dateStr = dateObj ? dateObj.toISOString().split('T')[0] : "";
+            const dateStr = formatStudyDate(s).toLowerCase();
             
             const diagText = [
                 s?.diagnosis,

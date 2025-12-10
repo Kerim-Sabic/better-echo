@@ -6,6 +6,8 @@ from app.database.db import get_db
 from app.database_models.studies import Study
 from app.schemas.studies.studies_schemas import (StudyListResponse)
 from app.helpers.authentication_functions import get_current_user_id
+from app.core.artifacts import LLM_REPORT_TYPE
+from app.database_models.derived_results import ResultStatus
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -35,6 +37,24 @@ def list_studies(
     data = []
 
     for study in rows:
+        diagnoses_list = []
+        llm_result = next(
+            (dr for dr in study.derived_results
+             if dr.type == LLM_REPORT_TYPE and dr.status == ResultStatus.complete
+             and dr.value_json is not None),
+            None
+        )
+
+        if llm_result:
+            try:
+                parsed_value = _parse_json(llm_result.value_json)
+                raw_diagnoses = parsed_value.get("diagnoses_json")
+
+                if isinstance(raw_diagnoses, list):
+                    diagnoses_list = [d.get("label") for d in raw_diagnoses if d.get("label")]
+            except Exception as e:
+                logger.warning(f"Failed to parse diagnoses for study {study.id}: {e}")
+
         study_dict = {
             "id": study.id,
             "study_uid": study.study_uid,
@@ -48,7 +68,8 @@ def list_studies(
                 "patient_name": study.patient.patient_name,
                 "patient_sex": study.patient.patient_sex,
                 "patient_birth_date": study.patient.patient_birth_date,
-            }
+            },
+            "diagnoses": diagnoses_list,
         }
         data.append(study_dict)
 
