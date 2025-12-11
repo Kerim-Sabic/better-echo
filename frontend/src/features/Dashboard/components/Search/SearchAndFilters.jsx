@@ -1,6 +1,13 @@
 import { Search } from "lucide-react";
 import { Button } from "../../../../components/ui/button";
 import { Input } from "../../../../components/ui/input";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "../../../../components/ui/select";
 import "react-multi-date-picker/styles/layouts/prime.css";
 import "react-multi-date-picker/styles/colors/teal.css";
 import DateFilterPopover from "./DateFilterPopover";
@@ -90,17 +97,18 @@ export default function SearchAndFilters({
             </div>
 
             {/* Sort Dropdown */}
-            <div className="flex flex-col gap-1 w-full lg:w-52">
-                <select
-                    className="h-12 border rounded-md px-3 text-sm bg-white"
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value)}
-                >
-                    <option value="uploaded_desc">Uploaded (newest)</option>
-                    <option value="uploaded_asc">Uploaded (oldest)</option>
-                    <option value="study_date_desc">Study date (newest)</option>
-                    <option value="study_date_asc">Study date (oldest)</option>
-                </select>
+            <div className="w-full lg:w-52">
+                <Select value={sortBy} onValueChange={setSortBy}>
+                    <SelectTrigger className="h-12 text-sm">
+                        <SelectValue placeholder="Sort by..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="uploaded_desc">Uploaded (newest)</SelectItem>
+                        <SelectItem value="uploaded_asc">Uploaded (oldest)</SelectItem>
+                        <SelectItem value="study_date_desc">Study date (newest)</SelectItem>
+                        <SelectItem value="study_date_asc">Study date (oldest)</SelectItem>
+                    </SelectContent>
+                </Select>
             </div>
         </div>
     );

@@ -1,16 +1,29 @@
+import json
+from typing import List, Dict, Any
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 import logging
 
 from app.database.db import get_db
 from app.database_models.studies import Study
-from app.schemas.studies.studies_schemas import (StudyListResponse)
+from app.schemas.studies.studies_schemas import StudyListResponse
 from app.helpers.authentication_functions import get_current_user_id
 from app.core.artifacts import LLM_REPORT_TYPE
 from app.database_models.derived_results import ResultStatus
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+def _parse_json(value: Any) -> Dict[str, Any]:
+    """Helper to safely parse JSON that might be a string or already a dict."""
+    if not value:
+        return {}
+    if isinstance(value, dict):
+        return value
+    try:
+        return json.loads(value)
+    except Exception:
+        return {}
 
 
 @router.get("/studies", response_model=StudyListResponse)
@@ -40,8 +53,9 @@ def list_studies(
         diagnoses_list = []
         llm_result = next(
             (dr for dr in study.derived_results
-             if dr.type == LLM_REPORT_TYPE and dr.status == ResultStatus.complete
-             and dr.value_json is not None),
+             if dr.type == LLM_REPORT_TYPE
+             and dr.status == ResultStatus.complete
+             and dr.value_json),
             None
         )
 
@@ -51,7 +65,11 @@ def list_studies(
                 raw_diagnoses = parsed_value.get("diagnoses_json")
 
                 if isinstance(raw_diagnoses, list):
-                    diagnoses_list = [d.get("label") for d in raw_diagnoses if d.get("label")]
+                    diagnoses_list = [
+                        d.get("label")
+                        for d in raw_diagnoses
+                        if isinstance(d, dict) and d.get("label")
+                        ]
             except Exception as e:
                 logger.warning(f"Failed to parse diagnoses for study {study.id}: {e}")
 

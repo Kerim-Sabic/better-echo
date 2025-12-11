@@ -69,7 +69,7 @@ export function useDashboard() {
     // --- Derived Data / Filtering ---
 
     const searchFiltered = useMemo(() => {
-        const q = searchTerm.toLowerCase();
+        const q = searchTerm.toLowerCase().trim();
 
         // Helper: Check if study matches currently selected date ranges
         const isWithinDateRange = (study) => {
@@ -97,19 +97,18 @@ export function useDashboard() {
             const patientName = (s.patient?.patient_name || "").toLowerCase();
             const suid = (s.study_uid || "").toLowerCase();
             
-            // Re-using parseStudyDate for search text matching
             const dateStr = formatStudyDate(s).toLowerCase();
-            
-            const diagText = [
-                s?.diagnosis,
-                Array.isArray(s?.diagnoses) ? s.diagnoses.join(" ") : "",
-                s?.diagnosis_text,
-            ].join(" ").toLowerCase();
+
+            const diagList = s.diagnoses || [];
+            const diagText = diagList.join(" ").toLowerCase();
+
+            const descText = (s.description || "").toLowerCase();
 
             const matchesSearch = 
                 patientName.includes(q) || 
                 suid.includes(q) || 
                 dateStr.includes(q) || 
+                descText.includes(q) || 
                 diagText.includes(q);
 
             if (!matchesSearch) return false;
