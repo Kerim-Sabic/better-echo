@@ -105,13 +105,13 @@ export default function SplashScreen({ onComplete }) {
             className={`fixed inset-0 z-50 transition-all duration-500 ease-out pointer-events-none ${
                 isVisible ? "opacity-100" : "opacity-0"
             } ${isZooming ? "scale-105" : "scale-100"}`}
-            style={{ backgroundColor: "#000" }}
+            style={{ backgroundColor: "#fff", overflow: "hidden" }}
             aria-label="Application loading screen"
         >
             {/* Video A: forward */}
             <video
                 ref={videoARef}
-                className={`transition-opacity duration-200 ease-linear absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[50vw] h-[50vh] object-contain ${
+                className={`transition-opacity duration-200 ease-linear absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-screen w-auto max-w-none object-cover ${
                     active === "A" ? "opacity-100" : "opacity-0"
                 }`}
                 playsInline
@@ -121,7 +121,7 @@ export default function SplashScreen({ onComplete }) {
             {/* Video B: reverse */}
             <video
                 ref={videoBRef}
-                className={`transition-opacity duration-200 ease-linear absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[50vw] h-[50vh] object-contain ${
+                className={`transition-opacity duration-200 ease-linear absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-screen w-auto max-w-none object-cover ${
                     active === "B" ? "opacity-100" : "opacity-0"
                 }`}
                 playsInline
