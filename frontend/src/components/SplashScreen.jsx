@@ -71,7 +71,7 @@ export default function SplashScreen({ onComplete }) {
             if (ready) {
                 setIsZooming(true);
                 setIsVisible(false);
-                setTimeout(() => onComplete?.(), 500);
+                setTimeout(() => onComplete?.(), 50);
                 return;
             }
             // Crossfade to B immediately (no delay)
@@ -84,7 +84,7 @@ export default function SplashScreen({ onComplete }) {
             if (ready) {
                 setIsZooming(true);
                 setIsVisible(false);
-                setTimeout(() => onComplete?.(), 500);
+                setTimeout(() => onComplete?.(), 50);
                 return;
             }
             // Crossfade back to A (always muted after first pass)
