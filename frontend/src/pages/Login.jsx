@@ -14,14 +14,20 @@ import {
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../contexts/AuthenticationContext";
 import { TITLEBAR_HEIGHT } from "../components/TitleBar";
+import {
+    completeWebauthnAuthApi,
+    getWebauthnAuthOptionsApi,
+} from "../api/AuthenticationApi";
+import { b64uToBuf, serializePublicKeyCredential } from "../lib/webauthn";
 
 export default function Login() {
     const navigate = useNavigate();
-    const { login } = useContext(AuthContext);
+    const { login, setUser } = useContext(AuthContext);
 
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
     const [isLoading, setIsLoading] = useState(false);
+    const [bioLoading, setBioLoading] = useState(false);
     const [error, setError] = useState("");
 
     const handleSubmit = async (e) => {
@@ -38,6 +44,47 @@ export default function Login() {
             setError(detail || "Login failed. Please try again.");
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const handleBiometricLogin = async () => {
+        setError("");
+        if (!window.PublicKeyCredential) {
+            setError("Biometric login is not supported in this browser.");
+            return;
+        }
+
+        setBioLoading(true);
+        try {
+            const options = await getWebauthnAuthOptionsApi("");
+            const pk = options.publicKey;
+            const publicKey = {
+                ...pk,
+                challenge: b64uToBuf(pk.challenge),
+                allowCredentials: (pk.allowCredentials || []).map((cred) => ({
+                    ...cred,
+                    id: b64uToBuf(cred.id),
+                })),
+            };
+
+            const assertion = await navigator.credentials.get({ publicKey });
+            const serialized = serializePublicKeyCredential(assertion);
+            const authResponse = await completeWebauthnAuthApi({
+                username: "",
+                credential: serialized,
+            });
+            setUser(authResponse.user);
+            navigate("/dashboard");
+        } catch (err) {
+            console.error("Biometric login error:", err);
+            if (err?.response?.status === 404) {
+                setError("Biometrics are not set up yet. Sign in with your username/password, then enroll biometrics from the Dashboard.");
+                return;
+            }
+            const detail = err?.response?.data?.detail;
+            setError(detail || "Biometric login failed. Please try again.");
+        } finally {
+            setBioLoading(false);
         }
     };
 
@@ -101,9 +148,17 @@ export default function Login() {
 
                     {/* Biometric only, centered */}
                     <div className="mt-6 pt-6 border-t border-border/50 flex items-center justify-center">
-                        <button className="group flex items-center gap-2 text-sm text-muted-foreground hover:text-primary smooth-transition" aria-label="Biometric login">
+                        <button
+                            type="button"
+                            onClick={handleBiometricLogin}
+                            disabled={bioLoading}
+                            className="group flex items-center gap-2 text-sm text-muted-foreground hover:text-primary smooth-transition disabled:cursor-not-allowed disabled:opacity-60"
+                            aria-label="Biometric login"
+                        >
                             <Fingerprint className="w-5 h-5 group-hover-animate-glow group-hover:drop-shadow-[0_0_12px_rgba(147,51,234,0.55)]" />
-                            <span className="text-xs">Biometric</span>
+                            <span className="text-xs">
+                                {bioLoading ? "Connecting..." : "Biometric"}
+                            </span>
                         </button>
                     </div>
                 </div>
