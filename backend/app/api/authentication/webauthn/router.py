@@ -1,10 +1,5 @@
-import base64
 import logging
-from collections.abc import Mapping
 from datetime import timedelta
-from enum import Enum
-from typing import Dict, List, Optional, Tuple
-from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy.orm import Session
@@ -27,106 +22,22 @@ from app.schemas.authentication.webauthn_schemas import (
 )
 
 from fido2 import cbor
-from fido2.cose import CoseKey
-from fido2.server import Fido2Server
 from fido2.webauthn import (
-    AttestedCredentialData,
     AuthenticatorAttachment,
     AuthenticatorData,
     PublicKeyCredentialDescriptor,
-    PublicKeyCredentialRpEntity,
     PublicKeyCredentialUserEntity,
     UserVerificationRequirement,
 )
 
+from .credentials import attested_credential_from_record, load_credentials
+from .encoding import b64url, b64url_to_bytes, serialize_options
+from .fido import server_for_request
+from .state import pending_auth, pending_register
+
+
 router = APIRouter()
 logger = logging.getLogger(__name__)
-
-# Pending states keyed by user id (register) or username/"*" (auth)
-_pending_register: Dict[int, Tuple] = {}
-_pending_auth: Dict[str, Tuple] = {}
-
-
-def _b64url(data: bytes) -> str:
-    return base64.urlsafe_b64encode(data).decode("utf-8").rstrip("=")
-
-
-def _b64url_to_bytes(data: str) -> bytes:
-    padding = "=" * (-len(data) % 4)
-    return base64.urlsafe_b64decode(data + padding)
-
-
-def _origin_from_request(request: Request) -> str:
-    origin = request.headers.get("origin")
-    if origin:
-        return origin
-    scheme = request.url.scheme or "https"
-    host = request.url.hostname or "localhost"
-    port = request.url.port
-    if port and port not in (80, 443):
-        return f"{scheme}://{host}:{port}"
-    return f"{scheme}://{host}"
-
-
-def _rp_entity(request: Request) -> PublicKeyCredentialRpEntity:
-    parsed = urlparse(_origin_from_request(request))
-    host = parsed.hostname or "localhost"
-    return PublicKeyCredentialRpEntity(id=host, name="Horalix")
-
-
-def _server_for_request(request: Request) -> Fido2Server:
-    origin = _origin_from_request(request)
-
-    def verify_origin(candidate: str) -> bool:
-        try:
-            parsed = urlparse(candidate)
-            base = f"{parsed.scheme}://{parsed.hostname}"
-            return origin.startswith(base)
-        except Exception:
-            return False
-
-    return Fido2Server(_rp_entity(request), verify_origin=verify_origin, attestation="none")
-
-
-def _serialize_options(options) -> dict:
-    data = getattr(options, "public_key", None) or options
-
-    def enc(val):
-        if isinstance(val, Enum):
-            return val.value
-        if isinstance(val, (bytes, bytearray, memoryview)):
-            return _b64url(bytes(val))
-        if isinstance(val, list):
-            return [enc(v) for v in val]
-        if isinstance(val, Mapping):
-            return {k: enc(v) for k, v in val.items()}
-        return val
-
-    return enc(data)
-
-def _load_credentials(user_id: Optional[int], db: Session) -> List[AttestedCredentialData]:
-    query = db.query(WebAuthnCredential)
-    if user_id is not None:
-        query = query.filter(WebAuthnCredential.user_id == user_id)
-    creds: List[AttestedCredentialData] = []
-    for rec in query.all():
-        try:
-            cred_id = bytes(rec.credential_id) if rec.credential_id else None
-            pub_key = bytes(rec.public_key) if rec.public_key else None
-            aaguid = bytes(rec.aaguid) if rec.aaguid else b"\x00" * 16
-            if not cred_id or not pub_key:
-                logger.warning("Skipping credential for user %s due to missing id/public_key", rec.user_id)
-                continue
-            if len(aaguid) < 16:
-                aaguid = aaguid.ljust(16, b"\x00")
-            elif len(aaguid) > 16:
-                aaguid = aaguid[:16]
-            cose_key = CoseKey.parse(cbor.decode(pub_key))
-            creds.append(AttestedCredentialData.create(aaguid, cred_id, cose_key))
-        except Exception as exc:
-            logger.warning("Failed to load credential for user %s: %s", rec.user_id, exc)
-    logger.info("Loaded %s webauthn credentials for user=%s", len(creds), user_id if user_id is not None else "<any>")
-    return creds
 
 
 @router.get("/auth/webauthn/status", response_model=WebAuthnStatusResponse)
@@ -134,12 +45,25 @@ def get_webauthn_status(
     current_user_id: int = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
+    """
+    Return whether the current user has biometrics enrolled.
+
+    Steps:
+    1. Query WebAuthnCredential rows for the current user.
+    2. Encode credential ids as base64url strings for the frontend.
+    3. Return enrollment status + credential ids.
+    """
+    # --- Step 1: Load stored credentials for this user ---
     records = (
         db.query(WebAuthnCredential)
         .filter(WebAuthnCredential.user_id == current_user_id)
         .all()
     )
-    credential_ids = [_b64url(bytes(rec.credential_id)) for rec in records if rec.credential_id]
+
+    # --- Step 2: Encode credential ids for the UI ---
+    credential_ids = [b64url(bytes(rec.credential_id)) for rec in records if rec.credential_id]
+
+    # --- Step 3: Return status payload ---
     return WebAuthnStatusResponse(
         enrolled=bool(credential_ids),
         credential_count=len(credential_ids),
@@ -153,16 +77,28 @@ def get_register_options(
     current_user_id: int = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
+    """
+    Start a WebAuthn registration ceremony for the current (already-authenticated) user.
+
+    Steps:
+    1. Load the current user and any existing credential ids.
+    2. Ask FIDO2 server for registration options (platform + UV required).
+    3. Store the pending state server-side.
+    4. Return the publicKey options for `navigator.credentials.create()`.
+    """
+    # --- Step 1: Validate current user and gather existing credential ids ---
     user = db.query(User).filter(User.id == current_user_id).first()
     if not user:
         raise HTTPException(status_code=401, detail="Invalid user")
 
-    server = _server_for_request(request)
+    server = server_for_request(request)
     existing = [
         PublicKeyCredentialDescriptor(id=rec.credential_id, type="public-key")
         for rec in db.query(WebAuthnCredential).filter(WebAuthnCredential.user_id == current_user_id).all()
         if rec.credential_id
     ]
+
+    # --- Step 2: Create registration options (Windows Hello / platform authenticator) ---
     options, state = server.register_begin(
         PublicKeyCredentialUserEntity(
             id=str(user.id).encode("utf-8"),
@@ -173,8 +109,12 @@ def get_register_options(
         user_verification=UserVerificationRequirement.REQUIRED,
         authenticator_attachment=AuthenticatorAttachment.PLATFORM,
     )
-    _pending_register[current_user_id] = state
-    return RegisterOptionsResponse(publicKey=_serialize_options(options))
+
+    # --- Step 3: Persist pending registration state (challenge) ---
+    pending_register[current_user_id] = state
+
+    # --- Step 4: Return options for the browser ---
+    return RegisterOptionsResponse(publicKey=serialize_options(options))
 
 
 @router.post("/auth/webauthn/register", response_model=RegisterCompleteResponse)
@@ -184,12 +124,24 @@ def complete_register(
     current_user_id: int = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
-    state = _pending_register.pop(current_user_id, None)
+    """
+    Complete a WebAuthn registration ceremony and persist the credential for the user.
+
+    Steps:
+    1. Pop pending registration state (challenge) for this user.
+    2. Verify the WebAuthn attestation response via FIDO2.
+    3. Store the credential id + COSE public key (CBOR bytes) in the DB.
+    4. Return the credential id for UI state updates.
+    """
+    # --- Step 1: Load pending registration state ---
+    state = pending_register.pop(current_user_id, None)
     if not state:
         raise HTTPException(status_code=400, detail="No pending registration")
 
     credential = payload.credential or {}
-    server = _server_for_request(request)
+    server = server_for_request(request)
+
+    # --- Step 2: Verify registration with FIDO2 ---
     try:
         auth_data = server.register_complete(state, credential)
     except Exception as exc:
@@ -200,6 +152,7 @@ def complete_register(
     if credential_data is None:
         raise HTTPException(status_code=400, detail="Registration failed: missing credential data")
 
+    # --- Step 3: Persist credential (COSE key stored as CBOR bytes) ---
     try:
         pubkey_bytes = cbor.encode(dict(credential_data.public_key))
     except Exception as exc:
@@ -230,9 +183,10 @@ def complete_register(
         raise HTTPException(status_code=400, detail="Registration failed: unable to save credential")
     logger.info("WebAuthn register complete: stored credential for user_id=%s (pubkey_len=%s)", current_user_id, len(pubkey_bytes))
 
+    # --- Step 4: Return new credential id ---
     return RegisterCompleteResponse(
         message="Biometric credential registered",
-        credential_id=_b64url(credential_data.credential_id),
+        credential_id=b64url(credential_data.credential_id),
     )
 
 
@@ -242,6 +196,19 @@ def get_auth_options(
     request: Request,
     db: Session = Depends(get_db),
 ):
+    """
+    Start a WebAuthn authentication ceremony.
+
+    Notes:
+    - Username-less login passes `username=""` and we return allowCredentials across all users.
+
+    Steps:
+    1. If a username is provided, validate it and limit allowed credentials to that user.
+    2. Load matching stored credentials (attested credential data).
+    3. Ask FIDO2 server for authentication options (UV required).
+    4. Store pending state server-side and return publicKey options for `navigator.credentials.get()`.
+    """
+    # --- Step 1: Resolve optional username filter ---
     username = (payload.username or "").strip()
     user = None
     if username:
@@ -249,15 +216,20 @@ def get_auth_options(
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
 
-    creds = _load_credentials(user.id if user else None, db)
+    # --- Step 2: Load matching stored credentials ---
+    creds = load_credentials(user.id if user else None, db)
     if not creds:
         raise HTTPException(status_code=404, detail="No biometric credential available")
 
-    server = _server_for_request(request)
+    server = server_for_request(request)
+
+    # --- Step 3: Create authentication options ---
     options, state = server.authenticate_begin(creds, user_verification=UserVerificationRequirement.REQUIRED)
+
+    # --- Step 4: Persist pending auth state and return options ---
     key = username or "*"
-    _pending_auth[key] = (state, user.id if user else None)
-    return AuthOptionsResponse(publicKey=_serialize_options(options))
+    pending_auth[key] = (state, user.id if user else None)
+    return AuthOptionsResponse(publicKey=serialize_options(options))
 
 
 @router.post("/auth/webauthn/authenticate", response_model=AuthResponse)
@@ -267,14 +239,26 @@ def complete_authenticate(
     request: Request,
     db: Session = Depends(get_db),
 ):
+    """
+    Complete a WebAuthn authentication ceremony and issue the normal auth cookie.
+
+    Steps:
+    1. Parse the credential id from the WebAuthn response.
+    2. Pop pending auth state (challenge) and load the stored credential + user.
+    3. Verify the assertion via FIDO2 using the stored public key.
+    4. (Best-effort) update the signature counter.
+    5. Issue the JWT auth cookie and return the same AuthResponse shape as password login.
+    """
+    # --- Step 1: Parse credential id ---
     credential = payload.credential or {}
     raw_id_b64 = credential.get("rawId") or credential.get("id")
     if not raw_id_b64:
         raise HTTPException(status_code=400, detail="Missing credential id")
-    credential_id = _b64url_to_bytes(raw_id_b64)
+    credential_id = b64url_to_bytes(raw_id_b64)
 
+    # --- Step 2: Load pending auth state + stored credential record ---
     key = (payload.username or "").strip() or "*"
-    state_entry = _pending_auth.pop(key, None)
+    state_entry = pending_auth.pop(key, None)
     if not state_entry:
         raise HTTPException(status_code=400, detail="No pending authentication")
     state, _user_hint = state_entry
@@ -293,35 +277,31 @@ def complete_authenticate(
     if not stored_cred.public_key:
         raise HTTPException(status_code=404, detail="Credential not found")
 
-    aaguid = bytes(stored_cred.aaguid) if stored_cred.aaguid else b"\x00" * 16
-    if len(aaguid) < 16:
-        aaguid = aaguid.ljust(16, b"\x00")
-    elif len(aaguid) > 16:
-        aaguid = aaguid[:16]
-
+    # --- Step 3: Verify assertion against stored public key ---
     try:
-        cose_key = CoseKey.parse(cbor.decode(bytes(stored_cred.public_key)))
-        creds = [AttestedCredentialData.create(aaguid, bytes(stored_cred.credential_id), cose_key)]
+        creds = [attested_credential_from_record(stored_cred)]
     except Exception as exc:
         logger.warning("WebAuthn auth failed to load stored key for user_id=%s: %s", stored_cred.user_id, exc)
         raise HTTPException(status_code=400, detail="Credential is not usable")
 
-    server = _server_for_request(request)
+    server = server_for_request(request)
     try:
         server.authenticate_complete(state, creds, credential)
     except Exception as exc:
         logger.warning("WebAuthn authentication failed for user_id=%s: %s", user.id, exc)
         raise HTTPException(status_code=400, detail=f"Authentication failed: {exc}")
 
+    # --- Step 4: Best-effort counter update ---
     try:
         auth_data_b64 = credential.get("response", {}).get("authenticatorData")
         if auth_data_b64:
-            counter = AuthenticatorData(_b64url_to_bytes(auth_data_b64)).counter
+            counter = AuthenticatorData(b64url_to_bytes(auth_data_b64)).counter
             stored_cred.sign_count = int(counter)
             db.commit()
     except Exception:
         pass
 
+    # --- Step 5: Issue auth cookie and return user info ---
     token_payload = {
         "sub": str(user.id),
         "username": user.username,
@@ -355,11 +335,21 @@ def delete_credential(
     current_user_id: int = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
+    """
+    Remove a stored WebAuthn credential for the current user.
+
+    Steps:
+    1. Decode the base64url credential id.
+    2. Look up the credential row belonging to the current user.
+    3. Delete it and return a confirmation payload.
+    """
+    # --- Step 1: Decode credential id ---
     try:
-        credential_id_bytes = _b64url_to_bytes(credential_id)
+        credential_id_bytes = b64url_to_bytes(credential_id)
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid credential id")
 
+    # --- Step 2: Load credential row scoped to current user ---
     record = (
         db.query(WebAuthnCredential)
         .filter(
@@ -371,6 +361,7 @@ def delete_credential(
     if not record:
         raise HTTPException(status_code=404, detail="Credential not found")
 
+    # --- Step 3: Delete and return confirmation ---
     db.delete(record)
     db.commit()
     logger.info("Removed WebAuthn credential for user_id=%s", current_user_id)
