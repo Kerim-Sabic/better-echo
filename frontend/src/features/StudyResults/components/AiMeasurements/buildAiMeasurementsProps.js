@@ -149,7 +149,7 @@ export function buildAiMeasurementsProps(panechoEchoprimeResults, overrides = nu
         value,
         units: units ?? null,
         status: isClassification ? integratedLabel : null,
-        discrepancy: hasOverride ? null : discrepancy,
+        discrepancy: hasOverride ? false : discrepancy,
         color,
         isOverridden: hasOverride,
         overrideMeta: hasOverride ? {
