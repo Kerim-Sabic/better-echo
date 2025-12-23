@@ -3,13 +3,15 @@ from typing import Any, Dict, Optional, Tuple
 def _safe_dict(value: Any) -> Dict[str, Any]:
     return value if isinstance(value, dict) else {}
 
-def _extract_payload(value_json: Any) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+def _extract_payload(value_json: Any) -> Tuple[Dict[str, Any], Dict[str, Any], Optional[str]]:
     payload = _safe_dict(value_json)
     if "integrated_tasks" in payload:
         integrated = _safe_dict(payload.get("integrated_tasks"))
         overrides = _safe_dict(payload.get("overrides"))
-        return integrated, overrides
-    return payload, {}
+        overrides_updated_at = payload.get("overrides_updated_at")
+        overrides_updated_at = overrides_updated_at if isinstance(overrides_updated_at, str) else None
+        return integrated, overrides, overrides_updated_at
+    return payload, {}, None
 
 def _apply_overrides(integrated_tasks: Dict[str, Any], overrides: Dict[str, Any]) -> Dict[str, Any]:
     if not integrated_tasks or not overrides:
@@ -32,10 +34,11 @@ def _apply_overrides(integrated_tasks: Dict[str, Any], overrides: Dict[str, Any]
     return merged
 
 def build_combined_sections_payload(value_json: Optional[Any]) -> Dict[str, Any]:
-    integrated_tasks, overrides = _extract_payload(value_json)
+    integrated_tasks, overrides, overrides_updated_at = _extract_payload(value_json)
     return {
         "integrated_tasks": integrated_tasks,
         "overrides": overrides,
+        "overrides_updated_at": overrides_updated_at,
     }
 
 def build_combined_sections_from_row(derived_results) -> Dict[str, Any]:
@@ -43,6 +46,7 @@ def build_combined_sections_from_row(derived_results) -> Dict[str, Any]:
         return {
             "integrated_tasks": {},
             "overrides": {},
+            "overrides_updated_at": None,
         }
     return build_combined_sections_payload(getattr(derived_results, "value_json", None))
 
@@ -51,7 +55,9 @@ def build_combined_sections_for_llm(derived_results) -> Dict[str, Any]:
         return {
             "integrated_tasks": {},
         }
-    integrated_tasks, overrides = _extract_payload(getattr(derived_results, "value_json", None))
+    integrated_tasks, overrides, _overrides_updated_at = _extract_payload(
+        getattr(derived_results, "value_json", None)
+    )
     return {
         "integrated_tasks": _apply_overrides(integrated_tasks, overrides),
     }

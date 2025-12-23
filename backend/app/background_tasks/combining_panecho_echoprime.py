@@ -109,12 +109,18 @@ def combining_panecho_echoprime(study_uid: str):
         )
 
         existing_overrides: Dict[str, Any] = {}
+        existing_overrides_updated_at = None
         if combined_row and isinstance(combined_row.value_json, dict):
             existing_overrides = combined_row.value_json.get("overrides") or {}
+            overrides_updated_at = combined_row.value_json.get("overrides_updated_at")
+            existing_overrides_updated_at = (
+                overrides_updated_at if isinstance(overrides_updated_at, str) else None
+            )
 
         payload = {
             "integrated_tasks": combined_results["integrated_tasks"],
             "overrides": existing_overrides,
+            "overrides_updated_at": existing_overrides_updated_at,
         }
 
         if combined_row:

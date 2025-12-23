@@ -18,7 +18,6 @@ export function StudyResultsLayout({ navigateBack, viewModel }) {
         panechoEchoprimeResults,
         dynamicMeasurementsResults,
         llmReportResults,
-        hasOverrides,
         latestOverrideAt,
 
         hasMeasurements,
@@ -145,7 +144,6 @@ export function StudyResultsLayout({ navigateBack, viewModel }) {
                                     state={llmReportState}
                                     llmReportResults={llmReportResults}
                                     studyUID={studyUID}
-                                    hasOverrides={hasOverrides}
                                     latestOverrideAt={latestOverrideAt}
                                     onRefresh={refresh}
                                 />

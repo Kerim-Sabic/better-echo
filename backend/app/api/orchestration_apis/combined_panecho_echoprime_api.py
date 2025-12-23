@@ -156,6 +156,9 @@ def update_combined_overrides(
 
     overrides = value_json.get("overrides") if isinstance(value_json, dict) else {}
     overrides = dict(overrides) if isinstance(overrides, dict) else {}
+    existing_overrides_updated_at = (
+        value_json.get("overrides_updated_at") if isinstance(value_json, dict) else None
+    )
 
     user = db.query(User).filter(User.id == current_user_id).first()
     editor_name = (user.full_name or user.username) if user else None
@@ -199,9 +202,12 @@ def update_combined_overrides(
 
         overrides.pop(key, None)
 
+    overrides_updated_at = edited_at if incoming_overrides else existing_overrides_updated_at
+
     combined_row.value_json = {
         "integrated_tasks": integrated_tasks,
         "overrides": overrides,
+        "overrides_updated_at": overrides_updated_at,
     }
     flag_modified(combined_row, "value_json")
     db.commit()

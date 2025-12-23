@@ -1,10 +1,11 @@
-from typing import Any, Dict, Union, Annotated, Literal
+from typing import Any, Dict, Optional, Union, Annotated, Literal
 from pydantic import BaseModel, Field
 
 class CombinedSections(BaseModel):
     """Structured payload built by build_combined_sections_from_row()"""
     integrated_tasks: Dict[str, Any] = Field(default_factory=dict)
     overrides: Dict[str, Any] = Field(default_factory=dict)
+    overrides_updated_at: Optional[str] = None
 
 class CompleteResponse(BaseModel):
     status: Literal["complete"]

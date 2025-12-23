@@ -226,17 +226,28 @@ export function useStudyResults(studyUid) {
   const hasMeasurements = Boolean(panechoEchoprimeResults || dynamicMeasurementsResults);
   const overrideMeta = useMemo(() => {
     const overrides = panechoEchoprimeResults?.overrides || {};
-    const entries = Object.values(overrides);
-    if (!entries.length) {
-      return { hasOverrides: false, latestOverrideAt: null };
+    const overridesUpdatedAt = panechoEchoprimeResults?.overrides_updated_at;
+    const hasOverrides = Object.keys(overrides).length > 0;
+    let latestOverrideAt = null;
+
+    if (overridesUpdatedAt) {
+      const overrideTs = new Date(overridesUpdatedAt).getTime();
+      if (Number.isFinite(overrideTs)) {
+        latestOverrideAt = new Date(overrideTs).toISOString();
+      }
     }
-    const timestamps = entries
-      .map((entry) => entry?.edited_at)
-      .filter(Boolean)
-      .map((ts) => new Date(ts).getTime())
-      .filter((ts) => Number.isFinite(ts));
-    const latest = timestamps.length > 0 ? new Date(Math.max(...timestamps)).toISOString() : null;
-    return { hasOverrides: true, latestOverrideAt: latest };
+
+    if (!latestOverrideAt) {
+      const entries = Object.values(overrides);
+      const timestamps = entries
+        .map((entry) => entry?.edited_at)
+        .filter(Boolean)
+        .map((ts) => new Date(ts).getTime())
+        .filter((ts) => Number.isFinite(ts));
+      latestOverrideAt = timestamps.length > 0 ? new Date(Math.max(...timestamps)).toISOString() : null;
+    }
+
+    return { hasOverrides, latestOverrideAt };
   }, [panechoEchoprimeResults]);
 
   // ---- Compose UI-facing view model ----------------------------------------

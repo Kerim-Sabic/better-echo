@@ -7,7 +7,6 @@ export default function MainFileLlmReport({
     state,
     llmReportResults,
     studyUID,
-    hasOverrides,
     latestOverrideAt,
     onRefresh,
 }) {
@@ -117,22 +116,21 @@ export default function MainFileLlmReport({
             </p>
             </div>
 
-            {hasOverrides && (
-                <div className="flex items-center gap-2">
-                    {isOutOfDate && (
-                        <span className="rounded-full border bg-yellow-50 px-2 py-1 text-xs text-yellow-700">
-                            Out of date
-                        </span>
-                    )}
-                    <button
-                        className="rounded-xl border bg-white px-3 py-1.5 text-sm text-gray-700"
-                        onClick={handleRegenerate}
-                        disabled={isRegenerating}
-                    >
-                        {isRegenerating ? "Regenerating..." : "Regenerate report"}
-                    </button>
-                </div>
-            )}
+            <div className="flex items-center gap-2">
+                {isOutOfDate && (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800 shadow-sm">
+                        <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                        Out of date
+                    </span>
+                )}
+                <button
+                    className="inline-flex items-center gap-2 rounded-xl border border-purple-100 bg-white px-3.5 py-1.5 text-sm font-semibold text-gray-700 shadow-sm transition hover:border-purple-200 hover:text-gray-900 hover:shadow disabled:cursor-not-allowed disabled:opacity-60"
+                    onClick={handleRegenerate}
+                    disabled={isRegenerating}
+                >
+                    {isRegenerating ? "Regenerating..." : "Regenerate report"}
+                </button>
+            </div>
         </div>
 
         {regenerateError && (
