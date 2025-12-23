@@ -46,6 +46,15 @@ export default function MeasurementBox({
 
     const colorTheme = colorThemes[color] || colorThemes.default;
     const { bg, border, text, bar } = colorTheme;
+    const iconButtonClasses =
+        "absolute right-3 top-3 inline-flex h-7 w-7 items-center justify-center rounded-full border bg-white/80 text-gray-500 opacity-0 transition-opacity group-hover:opacity-100 hover:text-gray-700";
+    const actionButtonClasses =
+        "rounded-lg border border-gray-200 bg-white/90 px-2 py-1 text-xs text-gray-700 shadow-sm transition hover:border-gray-300 hover:bg-white";
+    const primaryButtonClasses =
+        "rounded-lg border border-gray-900 bg-gray-900 px-2 py-1 text-xs text-white shadow-sm transition hover:bg-gray-800";
+    const overrideRingClass = isOverridden
+        ? "ring-2 ring-emerald-300/70 ring-offset-2 ring-offset-white/70"
+        : "";
 
     // ------------------------------------------------------------
     // PART 2 - Identify classification tasks
@@ -74,23 +83,32 @@ export default function MeasurementBox({
             shadow-md hover:shadow-xl hover:scale-[1.02]
             transition-all duration-300
             w-full max-w-[260px]
+            ${overrideRingClass}
         `}
         >
         {onStartEdit && (
             <button
-                className="absolute right-3 top-3 rounded-full border bg-white/80 px-2 py-0.5 text-xs text-gray-500 opacity-0 transition-opacity group-hover:opacity-100"
+                className={iconButtonClasses}
                 onClick={onStartEdit}
                 type="button"
+                aria-label="Edit"
+                title="Edit"
             >
-                Edit
+                <svg
+                    className="h-4 w-4"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                >
+                    <path d="M12 20h9" />
+                    <path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+                </svg>
             </button>
         )}
 
-        {isOverridden && (
-            <div className="absolute left-3 top-3 rounded-full border bg-white/80 px-2 py-0.5 text-[10px] text-gray-600">
-                Edited
-            </div>
-        )}
         {/* Label (up to 2 lines with ellipsis; full text on hover) */}
         <div
             className="text-sm font-semibold text-gray-800 tracking-wide text-center"
@@ -128,6 +146,12 @@ export default function MeasurementBox({
                             className="w-28 rounded-lg border px-2 py-1 text-center text-sm text-gray-800"
                             value={draftValue ?? ""}
                             onChange={(e) => onChangeValue?.(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    onStopEdit?.();
+                                }
+                            }}
                         />
                         {units && <span className="text-xs text-gray-500">{units}</span>}
                     </div>
@@ -138,7 +162,7 @@ export default function MeasurementBox({
                 {error && <div className="text-xs text-red-600">{error}</div>}
                 <div className="flex items-center justify-center gap-2">
                     <button
-                        className="rounded-lg border px-2 py-1 text-xs text-gray-600"
+                        className={primaryButtonClasses}
                         onClick={onStopEdit}
                         type="button"
                     >
@@ -146,11 +170,11 @@ export default function MeasurementBox({
                     </button>
                     {isOverridden && (
                         <button
-                            className="rounded-lg border px-2 py-1 text-xs text-gray-600"
+                            className={actionButtonClasses}
                             onClick={onClearOverride}
                             type="button"
                         >
-                            Reset to AI
+                            Reset
                         </button>
                     )}
                 </div>
