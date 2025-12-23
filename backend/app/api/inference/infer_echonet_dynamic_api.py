@@ -354,7 +354,7 @@ def infer_lv_segmentation(
             study_id=instance.series.study.id,
             instance_id=instance.id,
             type="EchonetDynamic_LV_Segmentation",
-            value_json=f'{{"outputfile": "{relative_output_path}"}}',
+            value_json={"outputfile": relative_output_path},
             model_name="EchonetDynamic",
             model_version="v1",
         )

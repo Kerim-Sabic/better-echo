@@ -83,10 +83,9 @@ def infer_measurements_2d(
         .order_by(DerivedResult.id.desc())
         .first()
     )
-    if (not force) and existing and existing.value_json:
+    if (not force) and existing and isinstance(existing.value_json, dict):
         try:
-            import json
-            payload = json.loads(existing.value_json)
+            payload = existing.value_json
             out_mp4_rel = payload.get("outputfile")
             # Validate artifact exists under uploads
             if not out_mp4_rel:
@@ -186,7 +185,6 @@ def infer_measurements_2d(
 
     # --- Step 9: Persist DerivedResult for reuse ---
     try:
-        import json as _json
         payload = {
             "outputfile": _rel_uploads(out_mp4) if out_mp4 else None,
             "min_length_cm": min_len_cm,
@@ -197,7 +195,7 @@ def infer_measurements_2d(
             study_id=instance.series.study.id,
             instance_id=instance.id,
             type=dr_type,
-            value_json=_json.dumps(payload),
+            value_json=payload,
             model_name="EchoNetMeasurements2D",
             model_version="v1",
         )

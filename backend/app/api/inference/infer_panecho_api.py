@@ -1,5 +1,4 @@
 from typing import Optional, Dict, Any
-import json
 
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
@@ -149,7 +148,7 @@ def infer_panecho(
             derived_result = DerivedResult(
                 study_id = study.id,
                 type="PanEcho_AllTasks",
-                value_json=json.dumps(aggregated),
+                value_json=aggregated,
                 model_name="PanEcho",
                 model_version="v1",
             )

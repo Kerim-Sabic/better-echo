@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import logging
 import os
 from typing import Optional, Dict, Any
@@ -82,13 +81,13 @@ def generate_for_study(study_uid: str, db: Session) -> Dict[str, Any]:
             .first()
         )
         if existing:
-            existing.value_json = json.dumps(payload, ensure_ascii=False)
+            existing.value_json = payload
             existing.status = ResultStatus.complete
         else:
             dr = DerivedResult(
                 study_id=study.id,
                 type=LLM_REPORT_TYPE,
-                value_json=json.dumps(payload, ensure_ascii=False),
+                value_json=payload,
                 model_name="LLM_Report_Generator",
                 model_version="v1",
                 status=ResultStatus.complete,

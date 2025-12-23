@@ -1,5 +1,4 @@
 from __future__ import annotations
-import json
 import logging
 from typing import Dict, Any, Optional, List
 
@@ -23,18 +22,6 @@ from app.prompting.builder import build_chat_messages
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-
-
-def _json_of(value: Any) -> Dict[str, Any]:
-    """Best-effort JSON parser that returns an empty dict on falsy or invalid input."""
-    if not value:
-        return {}
-    if isinstance(value, dict):
-        return value
-    try:
-        return json.loads(value)
-    except Exception:
-        return {}
 
 @router.post("/llm/chat", response_model=LLMChatResponse)
 def chat_about_report(payload: LLMChatRequest, db: Session = Depends(get_db)):
@@ -74,8 +61,9 @@ def chat_about_report(payload: LLMChatRequest, db: Session = Depends(get_db)):
     )
 
     report_text: Optional[str] = None
-    if report_row and report_row.value_json:
-        report_text = _json_of(report_row.value_json).get("report")
+    report_payload = report_row.value_json if report_row and isinstance(report_row.value_json, dict) else {}
+    if report_payload:
+        report_text = report_payload.get("report_md") or report_payload.get("raw_text")
 
     if not report_text:
         report_text = "No prior report available. Use diagnoses JSON only."
@@ -84,14 +72,9 @@ def chat_about_report(payload: LLMChatRequest, db: Session = Depends(get_db)):
     params = LLMParams()
     # Extract diagnoses_json from saved LLM report if present
     diagnoses_json: Optional[List[Dict[str, Any]]] = None
-    if report_row and report_row.value_json:
-        try:
-            parsed = _json_of(report_row.value_json)
-            dj = parsed.get("diagnoses_json")
-            if isinstance(dj, list):
-                diagnoses_json = dj
-        except Exception:
-            diagnoses_json = None
+    dj = report_payload.get("diagnoses_json")
+    if isinstance(dj, list):
+        diagnoses_json = dj
     built = build_chat_messages(
         study_uid=study_uid,
         report_md=report_text,

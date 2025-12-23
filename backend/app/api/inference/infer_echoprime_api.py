@@ -3,7 +3,6 @@ from typing import Optional, Dict, Any, List
 import os
 import tempfile
 import shutil
-import json
 import threading
 from typing import Callable
 
@@ -203,8 +202,9 @@ def infer_echoprime(
             dr_report = DerivedResult(
                 study_id = study.id,
                 type="EchoPrime_AllTasks",
-                value_json=json.dumps({
-                    "predictions": predictions}),
+                value_json={
+                    "predictions": predictions,
+                },
                 model_name="EchoPrime",
                 model_version="v1"
             )

@@ -1,4 +1,3 @@
-import json
 from typing import List, Dict, Any
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
@@ -15,15 +14,8 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 def _parse_json(value: Any) -> Dict[str, Any]:
-    """Helper to safely parse JSON that might be a string or already a dict."""
-    if not value:
-        return {}
-    if isinstance(value, dict):
-        return value
-    try:
-        return json.loads(value)
-    except Exception:
-        return {}
+    """Return a dict payload when value_json is already structured JSON."""
+    return value if isinstance(value, dict) else {}
 
 
 @router.get("/studies", response_model=StudyListResponse)

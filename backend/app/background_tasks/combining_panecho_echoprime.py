@@ -2,7 +2,6 @@ from __future__ import annotations
 from typing import Optional, Dict, Any
 import logging
 import time
-import json
 
 from app.database.db import SessionLocal
 from app.database_models.studies import Study
@@ -19,15 +18,10 @@ from app.helpers.combine_panecho_echoprime_predictions import combine_results
 logger = logging.getLogger(__name__)
 
 def _json_to_dict_converter(derived_result: Optional[DerivedResult]) -> Dict[str, Any]:
-    """Helper function that safely parses value_json to dict."""
+    """Return value_json when it is already a dict; otherwise return empty."""
     if not derived_result or derived_result.value_json is None:
         return {}
-    if isinstance(derived_result.value_json, (dict, list)):
-        return derived_result.value_json
-    try:
-        return json.loads(derived_result.value_json)
-    except Exception:
-        return {}
+    return derived_result.value_json if isinstance(derived_result.value_json, dict) else {}
 
 
 def combining_panecho_echoprime(study_uid: str):
