@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import Optional
+import os
 import logging
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
@@ -73,6 +74,11 @@ def get_llm_report(
 
         logger.info(f"[LLM_REPORT] LLM report present for study_uid={study_uid}")
         return LLMCompleteResponse(status="complete", llm_report=payload)
+
+    enable_llm = os.getenv("ENABLE_LLM", "true").lower() == "true"
+    if not enable_llm:
+        logger.info(f"[LLM_REPORT] LLM disabled; skipping generation for study_uid={study_uid}")
+        raise HTTPException(status_code=404, detail="LLM report disabled")
     
     # --- Part 4: If LLM report present but pending/failed -> pending (don't enqueue) ---
     if llm_report_row and llm_report_row.status in (ResultStatus.pending, ResultStatus.failed):

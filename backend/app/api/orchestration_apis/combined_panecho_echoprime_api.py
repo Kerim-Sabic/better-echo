@@ -1,21 +1,26 @@
 from __future__ import annotations
 from typing import Optional
 import logging
+from datetime import datetime
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy.exc import IntegrityError
 
 from app.database.db import get_db
+from app.database_models.users import User
 from app.database_models.studies import Study
 from app.database_models.derived_results import DerivedResult, ResultStatus
 from app.core.artifacts import PANECHO_ECHOPRIME_COMBINED_TYPE
 from app.background_tasks.combining_panecho_echoprime import combining_panecho_echoprime
 from app.helpers.row_to_dict.combined_results_row_to_dict import build_combined_sections_from_row
+from app.helpers.authentication_functions import get_current_user_id
 from app.schemas.orchestration_apis.combined_panecho_echoprime_schemas import (
     CombinedResultsResponse, CompleteResponse, PendingResponse
 )
+from app.schemas.orchestration_apis.panecho_echoprime_overrides_schemas import OverridesUpdateRequest
 
 logger = logging.getLogger(__name__)
 
@@ -110,3 +115,96 @@ def get_combined_results(
         content=pending.model_dump(),
         headers={"retry-after": "3"}
     )
+
+
+@router.patch(
+    "/studies/{study_uid}/PanEcho-EchoPrime-overrides",
+    response_model=CombinedResultsResponse,
+)
+def update_combined_overrides(
+    study_uid: str,
+    payload: OverridesUpdateRequest,
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user_id),
+):
+    """
+    Persist doctor overrides for PanEcho+EchoPrime combined results.
+
+    Steps:
+    1. Resolve the study by `study_uid` and find the combined results row.
+    2. Validate override payloads against task types (numeric vs. label).
+    3. Merge overrides into the combined row and return the updated payload.
+    """
+    study: Optional[Study] = db.query(Study).filter(Study.study_uid == study_uid).first()
+    if not study:
+        raise HTTPException(status_code=404, detail="Study not found")
+
+    incoming_overrides = payload.overrides or {}
+
+    combined_row = (
+        db.query(DerivedResult)
+        .filter(DerivedResult.study_id == study.id, DerivedResult.type == PANECHO_ECHOPRIME_COMBINED_TYPE)
+        .first()
+    )
+    if not combined_row or combined_row.status != ResultStatus.complete:
+        raise HTTPException(status_code=409, detail="Combined results are not ready")
+
+    value_json = combined_row.value_json if isinstance(combined_row.value_json, dict) else {}
+    integrated_tasks = value_json.get("integrated_tasks") if "integrated_tasks" in value_json else value_json
+    if not isinstance(integrated_tasks, dict):
+        raise HTTPException(status_code=500, detail="Combined results payload is invalid")
+
+    overrides = value_json.get("overrides") if isinstance(value_json, dict) else {}
+    overrides = dict(overrides) if isinstance(overrides, dict) else {}
+
+    user = db.query(User).filter(User.id == current_user_id).first()
+    editor_name = (user.full_name or user.username) if user else None
+    edited_at = datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+
+    for key, item in incoming_overrides.items():
+        if item is None:
+            overrides.pop(key, None)
+            continue
+
+        task = integrated_tasks.get(key)
+        if not isinstance(task, dict):
+            raise HTTPException(status_code=400, detail=f"Unknown task key: {key}")
+
+        units = task.get("units")
+        has_value = item.value is not None
+        has_label = item.label is not None
+
+        if has_value and has_label:
+            raise HTTPException(status_code=400, detail=f"Override for '{key}' must specify value or label, not both")
+
+        if has_value:
+            if units is None:
+                raise HTTPException(status_code=400, detail=f"Override for '{key}' must be a label")
+            overrides[key] = {
+                "value": float(item.value),
+                "edited_by": {"id": current_user_id, "name": editor_name},
+                "edited_at": edited_at,
+            }
+            continue
+
+        if has_label:
+            if units is not None:
+                raise HTTPException(status_code=400, detail=f"Override for '{key}' must be a numeric value")
+            overrides[key] = {
+                "label": item.label,
+                "edited_by": {"id": current_user_id, "name": editor_name},
+                "edited_at": edited_at,
+            }
+            continue
+
+        overrides.pop(key, None)
+
+    combined_row.value_json = {
+        "integrated_tasks": integrated_tasks,
+        "overrides": overrides,
+    }
+    flag_modified(combined_row, "value_json")
+    db.commit()
+
+    payload = build_combined_sections_from_row(combined_row)
+    return CompleteResponse(status="complete", panecho_echoprime_results=payload)

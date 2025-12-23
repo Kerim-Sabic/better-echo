@@ -22,3 +22,11 @@ export const getPanechoEchoprimeCombinedResults = async (studyUid) => {
         retryAfter: parseRetryAfter(response),
     };
 };
+
+export const updatePanechoEchoprimeOverrides = async (studyUid, overrides) => {
+    const response = await apiClient.patch(
+        `/studies/${encodeURIComponent(studyUid)}/PanEcho-EchoPrime-overrides`,
+        { overrides }
+    );
+    return response.data;
+};

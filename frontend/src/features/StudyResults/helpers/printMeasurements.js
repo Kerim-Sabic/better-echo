@@ -20,7 +20,8 @@ async function toDataUrl(src) {
 
 export async function printMeasurements({ panechoEchoprimeResults, patientName, studyUID }) {
     const { mainMeasurements = [], Measurements = [] } = buildAiMeasurementsProps(
-        panechoEchoprimeResults || null
+        panechoEchoprimeResults || null,
+        panechoEchoprimeResults?.overrides || null
     ) || {};
 
     const hasAny = (Array.isArray(mainMeasurements) && mainMeasurements.length > 0) ||

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-import os
+from datetime import datetime
 from typing import Optional, Dict, Any
 
 from sqlalchemy.orm import Session
@@ -10,7 +10,7 @@ from app.core.config import settings
 from app.core.artifacts import PANECHO_ECHOPRIME_COMBINED_TYPE, LLM_REPORT_TYPE
 from app.database_models.studies import Study
 from app.database_models.derived_results import DerivedResult, ResultStatus
-from app.helpers.row_to_dict.combined_results_row_to_dict import build_combined_sections_from_row
+from app.helpers.row_to_dict.combined_results_row_to_dict import build_combined_sections_for_llm
 from app.services.llm_client import LLMClient
 from app.prompting.params import LLMParams
 from app.prompting.builder import build_report_messages, extract_report_blocks
@@ -39,7 +39,7 @@ def generate_for_study(study_uid: str, db: Session) -> Dict[str, Any]:
     if not combined_row or combined_row.status != ResultStatus.complete:
         raise RuntimeError("Combined results not ready for report generation")
 
-    combined_sections = build_combined_sections_from_row(combined_row)
+    combined_sections = build_combined_sections_for_llm(combined_row)
 
     # --- Step 2: Build messages ---
     params = LLMParams()
@@ -72,6 +72,7 @@ def generate_for_study(study_uid: str, db: Session) -> Dict[str, Any]:
         "raw_text": blocks.get("raw_text") or report_text,
         "model": settings.LLM_MODEL,
         "prompt_version": params.prompt_version,
+        "report_generated_at": datetime.utcnow().replace(microsecond=0).isoformat() + "Z",
     }
 
     try:
@@ -102,4 +103,5 @@ def generate_for_study(study_uid: str, db: Session) -> Dict[str, Any]:
         "model": settings.LLM_MODEL,
         "report": report_md,
         "diagnoses_json": diagnoses_json,
+        "report_generated_at": payload.get("report_generated_at"),
     }

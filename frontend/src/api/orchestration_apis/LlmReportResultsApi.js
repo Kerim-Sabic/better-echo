@@ -22,3 +22,14 @@ export const getLlmReportResults = async (studyUid) => {
         retryAfter: parseRetryAfter(response),
     };
 };
+
+export const generateLlmReport = async (studyUid) => {
+    const response = await apiClient.post(
+        `/studies/${encodeURIComponent(studyUid)}/llm/report/generate`,
+        {},
+        {
+            validateStatus: (s) => (s >= 200 && s < 300) || s === 409 || s === 502,
+        }
+    );
+    return response;
+};

@@ -1,7 +1,18 @@
 import React, { useState } from "react";
 import MeasurementBox from "./MeasurementBox";
 
-export default function MeasurementsList({ section, items }) {
+export default function MeasurementsList({
+    section,
+    items,
+    editingKey,
+    draftOverrides,
+    fieldErrors,
+    onStartEdit,
+    onStopEdit,
+    onChangeValue,
+    onChangeLabel,
+    onClearOverride,
+}) {
     const [isExpanded, setIsExpanded] = useState(true);
 
     if (!items || items.length === 0) return null;
@@ -119,7 +130,19 @@ export default function MeasurementsList({ section, items }) {
           "
                 >
                     {items.map((item) => (
-                        <MeasurementBox key={item.key} item={item} />
+                        <MeasurementBox
+                            key={item.key}
+                            item={item}
+                            isEditing={editingKey === item.key}
+                            draftValue={draftOverrides?.[item.key]?.value ?? ""}
+                            draftLabel={draftOverrides?.[item.key]?.label ?? ""}
+                            error={fieldErrors?.[item.key]}
+                            onStartEdit={() => onStartEdit?.(item)}
+                            onStopEdit={onStopEdit}
+                            onChangeValue={(val) => onChangeValue?.(item.key, val)}
+                            onChangeLabel={(val) => onChangeLabel?.(item.key, val)}
+                            onClearOverride={() => onClearOverride?.(item.key)}
+                        />
                     ))}
                 </div>
             </div>

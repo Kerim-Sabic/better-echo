@@ -18,6 +18,8 @@ export function StudyResultsLayout({ navigateBack, viewModel }) {
         panechoEchoprimeResults,
         dynamicMeasurementsResults,
         llmReportResults,
+        hasOverrides,
+        latestOverrideAt,
 
         hasMeasurements,
         isPolling,
@@ -123,6 +125,8 @@ export function StudyResultsLayout({ navigateBack, viewModel }) {
                             <MainFileAiMeasurements
                                 state={panEchoEchoprimeState}
                                 panechoEchoprimeResults={panechoEchoprimeResults}
+                                studyUID={studyUID}
+                                onRefresh={refresh}
                             />
                         )}
                         {activeTab === "segmentation" && (
@@ -140,6 +144,10 @@ export function StudyResultsLayout({ navigateBack, viewModel }) {
                                 <MainFileLlmReport
                                     state={llmReportState}
                                     llmReportResults={llmReportResults}
+                                    studyUID={studyUID}
+                                    hasOverrides={hasOverrides}
+                                    latestOverrideAt={latestOverrideAt}
+                                    onRefresh={refresh}
                                 />
                             )
                         )}

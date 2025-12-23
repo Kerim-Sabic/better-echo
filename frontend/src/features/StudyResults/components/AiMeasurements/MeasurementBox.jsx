@@ -1,7 +1,18 @@
 import React from "react";
 
-export default function MeasurementBox({ item }) {
-    const { label, value, discrepancy, color } = item;
+export default function MeasurementBox({
+    item,
+    isEditing,
+    draftValue,
+    draftLabel,
+    error,
+    onStartEdit,
+    onStopEdit,
+    onChangeValue,
+    onChangeLabel,
+    onClearOverride,
+}) {
+    const { label, value, discrepancy, color, units, isOverridden, editType, editOptions } = item;
 
     // ------------------------------------------------------------
     // PART 1 - Define ALL color themes first
@@ -57,7 +68,7 @@ export default function MeasurementBox({ item }) {
     return (
         <div
         className={`
-            group p-5 rounded-3xl 
+            group relative p-5 rounded-3xl 
             bg-gradient-to-br ${bg}
             backdrop-blur-md border ${border}
             shadow-md hover:shadow-xl hover:scale-[1.02]
@@ -65,6 +76,21 @@ export default function MeasurementBox({ item }) {
             w-full max-w-[260px]
         `}
         >
+        {onStartEdit && (
+            <button
+                className="absolute right-3 top-3 rounded-full border bg-white/80 px-2 py-0.5 text-xs text-gray-500 opacity-0 transition-opacity group-hover:opacity-100"
+                onClick={onStartEdit}
+                type="button"
+            >
+                Edit
+            </button>
+        )}
+
+        {isOverridden && (
+            <div className="absolute left-3 top-3 rounded-full border bg-white/80 px-2 py-0.5 text-[10px] text-gray-600">
+                Edited
+            </div>
+        )}
         {/* Label (up to 2 lines with ellipsis; full text on hover) */}
         <div
             className="text-sm font-semibold text-gray-800 tracking-wide text-center"
@@ -83,7 +109,53 @@ export default function MeasurementBox({ item }) {
         {/* ------------------------------------------------------------
             CASE 1 - VALUE NOT AVAILABLE
             ------------------------------------------------------------ */}
-        {isMissing ? (
+        {isEditing ? (
+            <div className="mt-4 space-y-2 text-center">
+                {editType === "label" ? (
+                    <select
+                        className="w-full rounded-lg border px-2 py-1 text-sm text-gray-800"
+                        value={draftLabel ?? ""}
+                        onChange={(e) => onChangeLabel?.(e.target.value)}
+                    >
+                        <option value="">Select label</option>
+                        {(editOptions || []).map((opt) => (
+                            <option key={opt} value={opt}>{opt}</option>
+                        ))}
+                    </select>
+                ) : (
+                    <div className="flex items-center justify-center gap-2">
+                        <input
+                            className="w-28 rounded-lg border px-2 py-1 text-center text-sm text-gray-800"
+                            value={draftValue ?? ""}
+                            onChange={(e) => onChangeValue?.(e.target.value)}
+                        />
+                        {units && <span className="text-xs text-gray-500">{units}</span>}
+                    </div>
+                )}
+                {editType !== "label" && (
+                    <div className="text-[11px] text-gray-500">Units auto-applied</div>
+                )}
+                {error && <div className="text-xs text-red-600">{error}</div>}
+                <div className="flex items-center justify-center gap-2">
+                    <button
+                        className="rounded-lg border px-2 py-1 text-xs text-gray-600"
+                        onClick={onStopEdit}
+                        type="button"
+                    >
+                        Done
+                    </button>
+                    {isOverridden && (
+                        <button
+                            className="rounded-lg border px-2 py-1 text-xs text-gray-600"
+                            onClick={onClearOverride}
+                            type="button"
+                        >
+                            Reset to AI
+                        </button>
+                    )}
+                </div>
+            </div>
+        ) : isMissing ? (
             <div className="mt-4 text-center">
             <div className="text-sm italic text-gray-500">
                 This measurement is not available for this study.

@@ -108,14 +108,23 @@ def combining_panecho_echoprime(study_uid: str):
             .first()
         )
 
+        existing_overrides: Dict[str, Any] = {}
+        if combined_row and isinstance(combined_row.value_json, dict):
+            existing_overrides = combined_row.value_json.get("overrides") or {}
+
+        payload = {
+            "integrated_tasks": combined_results["integrated_tasks"],
+            "overrides": existing_overrides,
+        }
+
         if combined_row:
-            combined_row.value_json = combined_results["integrated_tasks"]
+            combined_row.value_json = payload
             combined_row.status = ResultStatus.complete
         else:
             combined_row = DerivedResult(
                 study_id = study.id,
                 type=PANECHO_ECHOPRIME_COMBINED_TYPE,
-                value_json = combined_results["integrated_tasks"],
+                value_json = payload,
                 model_name = "PanEcho_EchoPrime_Combined",
                 model_version = "v1",
                 status = ResultStatus.complete

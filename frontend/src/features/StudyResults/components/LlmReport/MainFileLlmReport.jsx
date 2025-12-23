@@ -1,8 +1,26 @@
-import React from "react";
+import React, { useMemo, useState } from "react";
 import LoadingScreen from "../LoadingScreen";
 import LlmReportBox from "./LlmReportBox";
+import { generateLlmReport } from "../../../../api/orchestration_apis/LlmReportResultsApi";
 
-export default function MainFileLlmReport({ state, llmReportResults }) {
+export default function MainFileLlmReport({
+    state,
+    llmReportResults,
+    studyUID,
+    hasOverrides,
+    latestOverrideAt,
+    onRefresh,
+}) {
+    const [isRegenerating, setIsRegenerating] = useState(false);
+    const [regenerateError, setRegenerateError] = useState(null);
+    const reportGeneratedAt = llmReportResults?.report_generated_at ?? null;
+    const isOutOfDate = useMemo(() => {
+        if (!latestOverrideAt || !reportGeneratedAt) return false;
+        const overrideTs = new Date(latestOverrideAt).getTime();
+        const reportTs = new Date(reportGeneratedAt).getTime();
+        if (!Number.isFinite(overrideTs) || !Number.isFinite(reportTs)) return false;
+        return overrideTs > reportTs;
+    }, [latestOverrideAt, reportGeneratedAt]);
 
     if (state !== "ready") {
         return <LoadingScreen state={state} />;
@@ -27,7 +45,7 @@ export default function MainFileLlmReport({ state, llmReportResults }) {
                     </linearGradient>
                 </defs>
                 <path
-                    d="M6 4h12a2 2 0 012 2v12a2 2 0 01-2 2H8l-4-4V6a2 2 0 012-2z"
+                    d="M6 4h12a2 2 0 012 2v12a2 2 0 01-2 2H8l-4-4V6a2 2 0 012-2z"git 
                     stroke="url(#reportGradient)"
                     strokeWidth="2"
                 />
@@ -43,6 +61,25 @@ export default function MainFileLlmReport({ state, llmReportResults }) {
         </div>
         );
     }
+
+    const handleRegenerate = async () => {
+        if (!studyUID || isRegenerating) return;
+        setIsRegenerating(true);
+        setRegenerateError(null);
+        try {
+            const resp = await generateLlmReport(studyUID);
+            if (resp.status >= 400) {
+                throw new Error("Failed to regenerate report");
+            }
+            if (onRefresh) {
+                onRefresh();
+            }
+        } catch (err) {
+            setRegenerateError("Failed to regenerate report.");
+        } finally {
+            setIsRegenerating(false);
+        }
+    };
 
     return (
         <div className="space-y-6 p-6">
@@ -70,7 +107,7 @@ export default function MainFileLlmReport({ state, llmReportResults }) {
             </svg>
             </div>
 
-            <div>
+            <div className="flex-1">
             <h2 className="text-lg font-semibold text-gray-800 tracking-tight">
                 AI Echocardiography Report
             </h2>
@@ -79,7 +116,28 @@ export default function MainFileLlmReport({ state, llmReportResults }) {
                 {llmReportResults?.diagnoses_json?.length !== 1 ? "s" : ""}
             </p>
             </div>
+
+            {hasOverrides && (
+                <div className="flex items-center gap-2">
+                    {isOutOfDate && (
+                        <span className="rounded-full border bg-yellow-50 px-2 py-1 text-xs text-yellow-700">
+                            Out of date
+                        </span>
+                    )}
+                    <button
+                        className="rounded-xl border bg-white px-3 py-1.5 text-sm text-gray-700"
+                        onClick={handleRegenerate}
+                        disabled={isRegenerating}
+                    >
+                        {isRegenerating ? "Regenerating..." : "Regenerate report"}
+                    </button>
+                </div>
+            )}
         </div>
+
+        {regenerateError && (
+            <div className="text-sm text-red-600">{regenerateError}</div>
+        )}
 
         {/* Actual Report Box */}
         <LlmReportBox llmReportResults={llmReportResults} />

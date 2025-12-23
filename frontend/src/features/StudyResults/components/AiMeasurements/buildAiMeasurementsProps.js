@@ -48,9 +48,12 @@ function getCategoricalColor(key, integratedLabel) {
 // ------------------------------------------------------------
 // PART 2 — Core transformation logic
 // ------------------------------------------------------------
-export function buildAiMeasurementsProps(panechoEchoprimeResults) {
+export function buildAiMeasurementsProps(panechoEchoprimeResults, overrides = null) {
     const tasks = panechoEchoprimeResults?.integrated_tasks;
     if (!tasks) return { mainMeasurements: [], Measurements: [] };
+    const overrideMap = (overrides && typeof overrides === "object")
+        ? overrides
+        : (panechoEchoprimeResults?.overrides || {});
 
     // ------------------------------------------------------------
     // PART 3 — Transformer for each task
@@ -59,13 +62,18 @@ export function buildAiMeasurementsProps(panechoEchoprimeResults) {
         const task = tasks[key];
         if (!task) return null;
 
-        const integratedLabel = task?.integrated_label;
+        const override = overrideMap?.[key];
+        const hasOverride = Boolean(override && (override.label !== undefined || override.value !== undefined));
+        const overrideLabel = override?.label ?? null;
+        const overrideValue = override?.value ?? null;
+
+        const integratedLabel = overrideLabel ?? task?.integrated_label;
         const units = task?.units;
         const discrepancy = task?.discrepancy ?? null;
 
         // Determine if classification task
         const isClassification = units == null;
-        const rawValue = task?.integrated_value;
+        const rawValue = overrideValue !== null ? Number(overrideValue) : task?.integrated_value;
 
         // ------------------------------------------------------------
         // PART 3.1 — Determine color
@@ -91,7 +99,7 @@ export function buildAiMeasurementsProps(panechoEchoprimeResults) {
         // REGRESSION TASKS
         // ---------------------------
 
-        if (RANGE_KEYS.has(key)) {
+        if (RANGE_KEYS.has(key) && overrideValue === null) {
             // RANGE regression task
             const vals = [
             task?.panecho_value_or_prob,
@@ -109,8 +117,8 @@ export function buildAiMeasurementsProps(panechoEchoprimeResults) {
             }
         } else {
             // Simple regression → return integrated_value + units
-            if (isFiniteNumber(task.integrated_value)) {
-            value = `${formatNumber(task.integrated_value)} ${units}`;
+            if (isFiniteNumber(rawValue)) {
+            value = `${formatNumber(rawValue)} ${units}`;
             }
         }
         } else {
@@ -141,8 +149,15 @@ export function buildAiMeasurementsProps(panechoEchoprimeResults) {
         value,
         units: units ?? null,
         status: isClassification ? integratedLabel : null,
-        discrepancy,
+        discrepancy: hasOverride ? null : discrepancy,
         color,
+        isOverridden: hasOverride,
+        overrideMeta: hasOverride ? {
+            edited_by: override?.edited_by ?? null,
+            edited_at: override?.edited_at ?? null,
+        } : null,
+        editType: isClassification ? "label" : "value",
+        editOptions: isClassification ? buildLabelOptions(key, integratedLabel) : null,
         };
     };
 
@@ -176,4 +191,21 @@ function isFiniteNumber(val) {
 function formatNumber(val) {
     if (!isFiniteNumber(val)) return null;
     return Number(val).toFixed(2);
+}
+
+function buildLabelOptions(key, currentLabel) {
+    const def = NORMAL_RANGES[key];
+    const categories = def?.categories;
+    const options = new Set();
+    if (categories) {
+        Object.values(categories).forEach((vals) => {
+            if (Array.isArray(vals)) {
+                vals.forEach((v) => options.add(v));
+            }
+        });
+    }
+    if (currentLabel) {
+        options.add(currentLabel);
+    }
+    return Array.from(options);
 }

@@ -19,6 +19,8 @@ import { useStudyMetaQuery } from "./useStudyMetaQuery";
  *   dynamicMeasurementsResults: any,      // Dynamic + Measurements combined results
  *   llmReportResults: any,                // LLM report results
  *   hasMeasurements: boolean,
+ *   hasOverrides: boolean,
+ *   latestOverrideAt: string | null,
  *   patientName: string | null,
  *   // controls
  *   isPolling: boolean,
@@ -222,6 +224,20 @@ export function useStudyResults(studyUid) {
     null;
 
   const hasMeasurements = Boolean(panechoEchoprimeResults || dynamicMeasurementsResults);
+  const overrideMeta = useMemo(() => {
+    const overrides = panechoEchoprimeResults?.overrides || {};
+    const entries = Object.values(overrides);
+    if (!entries.length) {
+      return { hasOverrides: false, latestOverrideAt: null };
+    }
+    const timestamps = entries
+      .map((entry) => entry?.edited_at)
+      .filter(Boolean)
+      .map((ts) => new Date(ts).getTime())
+      .filter((ts) => Number.isFinite(ts));
+    const latest = timestamps.length > 0 ? new Date(Math.max(...timestamps)).toISOString() : null;
+    return { hasOverrides: true, latestOverrideAt: latest };
+  }, [panechoEchoprimeResults]);
 
   // ---- Compose UI-facing view model ----------------------------------------
   // Note: Tracking specific values instead of entire query objects for performance
@@ -246,13 +262,17 @@ export function useStudyResults(studyUid) {
       llmReportResults,
 
       hasMeasurements,
+      hasOverrides: overrideMeta.hasOverrides,
+      latestOverrideAt: overrideMeta.latestOverrideAt,
 
       // controls
       isPolling,
       refresh: () => {
         panechoEchoprimeResultsQuery.refetch();
         dynamicMeasurementsResultsQuery.refetch();
-        llmReportResultsQuery.refetch();
+        if (isLLMEnabled) {
+          llmReportResultsQuery.refetch();
+        }
         studyMetaQuery.refetch();
         // add future refetches here (e.g., reportQuery.refetch())
       },
@@ -265,12 +285,15 @@ export function useStudyResults(studyUid) {
       dynamicMeasurementsResults,
       llmReportResults,
       hasMeasurements,
+      overrideMeta.hasOverrides,
+      overrideMeta.latestOverrideAt,
       isPolling,
       panechoEchoprimeResultsQuery.refetch,
       dynamicMeasurementsResultsQuery.refetch,
       llmReportResultsQuery.refetch,
       studyMetaQuery.refetch,
       studyMetaQuery.data?.patientName,
+      isLLMEnabled,
 
       panEchoEchoprimeState,
       dynamicMeasurementsState,

@@ -1,7 +1,16 @@
 import React from "react";
 import MainMeasurementBox from "./MainMeasurementBox";
 
-export default function MainMeasurementsList({ mainMeasurements }) {
+export default function MainMeasurementsList({
+    mainMeasurements,
+    editingKey,
+    draftOverrides,
+    fieldErrors,
+    onStartEdit,
+    onStopEdit,
+    onChangeValue,
+    onClearOverride,
+}) {
     if (!Array.isArray(mainMeasurements) || mainMeasurements.length === 0) {
         return null;
     }
@@ -93,7 +102,17 @@ export default function MainMeasurementsList({ mainMeasurements }) {
         "
             >
                 {mainMeasurements.map((m) => (
-                    <MainMeasurementBox key={m.key} mainMeasurement={m} />
+                    <MainMeasurementBox
+                        key={m.key}
+                        mainMeasurement={m}
+                        isEditing={editingKey === m.key}
+                        draftValue={draftOverrides?.[m.key]?.value ?? ""}
+                        error={fieldErrors?.[m.key]}
+                        onStartEdit={() => onStartEdit?.(m)}
+                        onStopEdit={onStopEdit}
+                        onChangeValue={(val) => onChangeValue?.(m.key, val)}
+                        onClearOverride={() => onClearOverride?.(m.key)}
+                    />
                 ))}
             </div>
         </div>

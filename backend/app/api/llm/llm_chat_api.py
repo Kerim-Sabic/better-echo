@@ -10,7 +10,7 @@ from app.core.artifacts import PANECHO_ECHOPRIME_COMBINED_TYPE, ECHOPRIME_TYPE, 
 from app.database.db import get_db
 from app.database_models.studies import Study
 from app.database_models.derived_results import DerivedResult, ResultStatus
-from app.helpers.row_to_dict.combined_results_row_to_dict import build_combined_sections_from_row
+from app.helpers.row_to_dict.combined_results_row_to_dict import build_combined_sections_for_llm
 from app.schemas.llm.llm_schemas import (
     LLMChatRequest,
     LLMChatResponse,
@@ -50,7 +50,7 @@ def chat_about_report(payload: LLMChatRequest, db: Session = Depends(get_db)):
     )
     if not combined_row or combined_row.status != ResultStatus.complete:
         raise HTTPException(status_code=409, detail="Combined results not ready for chat context")
-    combined_sections = build_combined_sections_from_row(combined_row)
+    combined_sections = build_combined_sections_for_llm(combined_row)
 
     # Prefer LLM-generated report if available
     report_row: Optional[DerivedResult] = (

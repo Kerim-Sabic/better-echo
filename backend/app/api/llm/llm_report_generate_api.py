@@ -56,4 +56,5 @@ def generate_llm_report(study_uid: str, db: Session = Depends(get_db)):
         model=result.get("model", settings.LLM_MODEL),
         report=result.get("report", ""),
         diagnoses_json=result.get("diagnoses_json"),
+        report_generated_at=result.get("report_generated_at"),
     )

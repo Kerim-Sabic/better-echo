@@ -13,6 +13,7 @@ class LLMReportResponse(BaseModel):
     model: str
     report: str
     diagnoses_json: list | None = None
+    report_generated_at: str | None = None
 
 
 class ChatTurn(BaseModel):
