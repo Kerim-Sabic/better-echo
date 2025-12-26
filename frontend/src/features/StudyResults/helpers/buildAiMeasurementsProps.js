@@ -1,4 +1,4 @@
-import { MAIN_KEYS, RANGE_KEYS, SECTION_MAP, NORMAL_RANGES } from "./AiMeasurementsConstants"
+import { MAIN_KEYS, RANGE_KEYS, SECTION_MAP, NORMAL_RANGES } from "./aiMeasurementsConstants"
 
 // ------------------------------------------------------------
 // PART 1.1 — Measurement (regression tasks) Color helper

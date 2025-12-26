@@ -1,6 +1,6 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import MeasurementsReport from "./MeasurementsReport";
+import MeasurementsReport from "../components/Report/MeasurementsReport";
 
 export function printMeasurementsReport({ patientName, studyUID, mainMeasurements, Measurements }) {
     try {

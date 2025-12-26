@@ -1,114 +1,32 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { buildAiMeasurementsProps } from "./buildAiMeasurementsProps";
+import React from "react";
 import MainMeasurementsList from "./MainMeasurementsList";
 import MeasurementsList from "./MeasurementsList";
 import LoadingScreen from "../LoadingScreen";
-import { updatePanechoEchoprimeOverrides } from "../../../../api/orchestration_apis/PanechoEchoprimeResultsApi";
 
-/**
- * Dumb UI entry. Accepts raw results, maps them via buildAiProps,
- * then renders presentational lists.
- *
- * Props:
- * - state: string (loading state)
- * - panechoEchoprimeResults: object (raw results)
- */
-const EMPTY_OBJ = {};
-
-export default function MainFileAiMeasurements({ state, panechoEchoprimeResults, studyUID, onRefresh }) {
-    const [editingKey, setEditingKey] = useState(null);
-    const [draftOverrides, setDraftOverrides] = useState({});
-    const [fieldErrors, setFieldErrors] = useState({});
-    const [savingKey, setSavingKey] = useState(null);
-    const [cachedResults, setCachedResults] = useState(null);
-
-    useEffect(() => {
-        if (panechoEchoprimeResults) {
-            setCachedResults(panechoEchoprimeResults);
-        }
-    }, [panechoEchoprimeResults]);
-
-    const activeResults = panechoEchoprimeResults || cachedResults;
-
-    const savedOverrides = useMemo(
-        () => activeResults?.overrides || EMPTY_OBJ,
-        [activeResults?.overrides]
-    );
-    const integratedTasks = useMemo(
-        () => activeResults?.integrated_tasks || EMPTY_OBJ,
-        [activeResults?.integrated_tasks]
-    );
-
-    const parseNumericInput = (rawValue) => {
-        const cleaned = String(rawValue ?? "").replace(/[^\d.-]/g, "");
-        const parsed = Number.parseFloat(cleaned);
-        return Number.isFinite(parsed) ? parsed : null;
-    };
-
-    const pendingOverrides = useMemo(() => {
-        const pending = {};
-        Object.entries(draftOverrides).forEach(([key, entry]) => {
-            if (entry === null) {
-                if (savedOverrides?.[key]) {
-                    pending[key] = null;
-                }
-                return;
-            }
-            const task = integratedTasks[key];
-            if (!task) return;
-            if (entry?.label !== undefined) {
-                const nextLabel = String(entry.label || "").trim();
-                const baseline = savedOverrides?.[key]?.label ?? task.integrated_label ?? "";
-                if (nextLabel && nextLabel !== baseline) {
-                    pending[key] = { label: nextLabel };
-                }
-                return;
-            }
-            if (entry?.value !== undefined) {
-                const parsed = parseNumericInput(entry.value);
-                const baseline = savedOverrides?.[key]?.value ?? task.integrated_value ?? null;
-                if (parsed === null || baseline === null || Number(parsed) !== Number(baseline)) {
-                    pending[key] = { value: entry.value };
-                }
-            }
-        });
-        return pending;
-    }, [draftOverrides, savedOverrides, integratedTasks]);
-
-    const effectiveOverrides = useMemo(() => {
-        const merged = { ...savedOverrides };
-        Object.entries(pendingOverrides).forEach(([key, entry]) => {
-            if (entry === null) {
-                delete merged[key];
-                return;
-            }
-            if (entry?.label !== undefined) {
-                merged[key] = { ...(merged[key] || {}), label: entry.label };
-                return;
-            }
-            if (entry?.value !== undefined) {
-                const parsed = parseNumericInput(entry.value);
-                if (parsed !== null) {
-                    merged[key] = { ...(merged[key] || {}), value: parsed };
-                }
-            }
-        });
-        return merged;
-    }, [savedOverrides, pendingOverrides]);
-
-    const { mainMeasurements, Measurements } = buildAiMeasurementsProps(
-        activeResults,
-        effectiveOverrides
-    );
-
-    const hasMainMeasurements = Array.isArray(mainMeasurements) && mainMeasurements.length > 0;
-    const hasMeasurements = Array.isArray(Measurements) && Measurements.length > 0;
-
-    if (state !== "ready" && !activeResults) {
+export default function MainFileAiMeasurements({
+    state,
+    showLoading,
+    isEmpty,
+    totalMeasurements,
+    mainMeasurements,
+    Measurements,
+    hasMainMeasurements,
+    hasMeasurements,
+    editingKey,
+    draftOverrides,
+    fieldErrors,
+    savingKey,
+    onStartEdit,
+    onStopEdit,
+    onChangeValue,
+    onChangeLabel,
+    onClearOverride,
+}) {
+    if (showLoading) {
         return <LoadingScreen state={state} />;
     }
 
-    if (!hasMainMeasurements && !hasMeasurements) {
+    if (isEmpty) {
         return (
             <div className="flex flex-col items-center justify-center p-12 space-y-6">
                 <div className="relative">
@@ -142,124 +60,6 @@ export default function MainFileAiMeasurements({ state, panechoEchoprimeResults,
             </div>
         );
     }
-
-    const totalMeasurements =
-        (hasMainMeasurements ? mainMeasurements.length : 0) +
-        (hasMeasurements
-            ? Measurements.reduce((sum, m) => sum + (m.items?.length || 0), 0)
-            : 0);
-
-    const handleStartEdit = (item) => {
-        if (!item || !item.key) return;
-        setEditingKey(item.key);
-        setFieldErrors((prev) => ({ ...prev, [item.key]: null }));
-        setDraftOverrides((prev) => {
-            if (prev[item.key] !== undefined) return prev;
-            const task = integratedTasks[item.key];
-            if (!task) return prev;
-            if (item.editType === "label") {
-                const currentLabel = effectiveOverrides?.[item.key]?.label ?? task.integrated_label ?? "";
-                return { ...prev, [item.key]: { label: currentLabel } };
-            }
-            const currentValue = effectiveOverrides?.[item.key]?.value ?? task.integrated_value;
-            return { ...prev, [item.key]: { value: currentValue !== null && currentValue !== undefined ? String(currentValue) : "" } };
-        });
-    };
-
-    const handleChangeValue = (key, nextValue) => {
-        setDraftOverrides((prev) => ({ ...prev, [key]: { value: nextValue } }));
-        setFieldErrors((prev) => ({ ...prev, [key]: null }));
-    };
-
-    const handleChangeLabel = (key, nextLabel) => {
-        setDraftOverrides((prev) => ({ ...prev, [key]: { label: nextLabel } }));
-        setFieldErrors((prev) => ({ ...prev, [key]: null }));
-    };
-
-    const clearDraftForKey = (key) => {
-        setDraftOverrides((prev) => {
-            if (!Object.prototype.hasOwnProperty.call(prev, key)) return prev;
-            const next = { ...prev };
-            delete next[key];
-            return next;
-        });
-    };
-
-    const persistOverride = async (key, payload) => {
-        if (!studyUID) return;
-        setSavingKey(key);
-        setFieldErrors((prev) => ({ ...prev, [key]: null }));
-        try {
-            await updatePanechoEchoprimeOverrides(studyUID, { [key]: payload });
-            clearDraftForKey(key);
-            setEditingKey(null);
-            if (onRefresh) {
-                onRefresh();
-            }
-        } catch (err) {
-            setFieldErrors((prev) => ({ ...prev, [key]: "Failed to save override." }));
-        } finally {
-            setSavingKey(null);
-        }
-    };
-
-    const handleStopEdit = (key) => {
-        if (!key) {
-            setEditingKey(null);
-            return;
-        }
-
-        const draft = draftOverrides?.[key];
-        if (draft?.label !== undefined) {
-            const label = String(draft.label || "").trim();
-            if (!label) {
-                setFieldErrors((prev) => ({ ...prev, [key]: "Select a label." }));
-                return;
-            }
-        }
-
-        const pending = pendingOverrides?.[key];
-        if (!pending) {
-            clearDraftForKey(key);
-            setEditingKey(null);
-            setFieldErrors((prev) => ({ ...prev, [key]: null }));
-            return;
-        }
-
-        if (pending === null) {
-            persistOverride(key, null);
-            return;
-        }
-
-        if (pending?.label !== undefined) {
-            const label = String(pending.label || "").trim();
-            if (!label) {
-                setFieldErrors((prev) => ({ ...prev, [key]: "Select a label." }));
-                return;
-            }
-            persistOverride(key, { label });
-            return;
-        }
-
-        if (pending?.value !== undefined) {
-            const parsed = parseNumericInput(pending.value);
-            if (parsed === null) {
-                setFieldErrors((prev) => ({ ...prev, [key]: "Enter a valid number." }));
-                return;
-            }
-            persistOverride(key, { value: parsed });
-            return;
-        }
-
-        persistOverride(key, null);
-    };
-
-    const handleClearOverride = (key) => {
-        if (!key) return;
-        setDraftOverrides((prev) => ({ ...prev, [key]: null }));
-        setFieldErrors((prev) => ({ ...prev, [key]: null }));
-        persistOverride(key, null);
-    };
 
     return (
         <div className="space-y-6 p-6">
@@ -303,10 +103,10 @@ export default function MainFileAiMeasurements({ state, panechoEchoprimeResults,
                     editingKey={editingKey}
                     draftOverrides={draftOverrides}
                     fieldErrors={fieldErrors}
-                    onStartEdit={handleStartEdit}
-                    onStopEdit={handleStopEdit}
-                    onChangeValue={handleChangeValue}
-                    onClearOverride={handleClearOverride}
+                    onStartEdit={onStartEdit}
+                    onStopEdit={onStopEdit}
+                    onChangeValue={onChangeValue}
+                    onClearOverride={onClearOverride}
                     savingKey={savingKey}
                 />
             )}
@@ -320,11 +120,11 @@ export default function MainFileAiMeasurements({ state, panechoEchoprimeResults,
                         editingKey={editingKey}
                         draftOverrides={draftOverrides}
                         fieldErrors={fieldErrors}
-                        onStartEdit={handleStartEdit}
-                        onStopEdit={handleStopEdit}
-                        onChangeValue={handleChangeValue}
-                        onChangeLabel={handleChangeLabel}
-                        onClearOverride={handleClearOverride}
+                        onStartEdit={onStartEdit}
+                        onStopEdit={onStopEdit}
+                        onChangeValue={onChangeValue}
+                        onChangeLabel={onChangeLabel}
+                        onClearOverride={onClearOverride}
                         savingKey={savingKey}
                     />
                 ))}

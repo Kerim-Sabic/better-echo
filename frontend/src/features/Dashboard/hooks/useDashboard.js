@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { patchStudyApi, deleteStudyApi } from "../../../api/StudiesApi";
 import { useStudiesListQuery } from "./useStudiesListQuery";
 import { parseStudyDate, formatStudyDate } from "../helpers/dashboardHelpers";
@@ -12,6 +13,7 @@ import { parseStudyDate, formatStudyDate } from "../helpers/dashboardHelpers";
 export function useDashboard() {
     // --- Data Layer ---
     const { studies, loading, refresh, setStudies } = useStudiesListQuery();
+    const queryClient = useQueryClient();
 
     // --- UI State ---
     const [searchTerm, setSearchTerm] = useState("");
@@ -51,6 +53,17 @@ export function useDashboard() {
 
     const onDelete = async (row) => {
         await deleteStudyApi(row.id);
+        if (row?.study_uid) {
+            const keys = [
+                "combinedResults",
+                "dynamicMeasurementsResults",
+                "llmReportResults",
+                "studyMeta",
+            ];
+            keys.forEach((key) => {
+                queryClient.removeQueries({ queryKey: [key, row.study_uid], exact: true });
+            });
+        }
         // Optimistic update
         setStudies((prev) => prev.filter((s) => s.id !== row.id));
     };

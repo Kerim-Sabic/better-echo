@@ -1,6 +1,6 @@
-import { buildAiMeasurementsProps } from "../components/AiMeasurements/buildAiMeasurementsProps";
-import { buildMeasurementsReportHtml } from "../components/Report/buildMeasurementsReportHtml";
-import { printMeasurementsReport } from "../components/Report/printMeasurementsReport";
+import { buildAiMeasurementsProps } from "./buildAiMeasurementsProps";
+import { buildMeasurementsReportHtml } from "./buildMeasurementsReportHtml";
+import { printMeasurementsReport } from "./printMeasurementsReport";
 
 async function toDataUrl(src) {
     try {

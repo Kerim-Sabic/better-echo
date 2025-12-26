@@ -1,21 +1,18 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import EchocardiogramViewer from "../components/EchocardiogramViewer";
 import Header from "../components/Header";
 import MainFileAiMeasurements from "../components/AiMeasurements/MainFileAiMeasurements";
 import MainFileAiVideoMeasurements from "../components/AiVideoMeasurements/MainFileAiVideoMeasurements";
 import MainFileLlmReport from "../components/LlmReport/MainFileLlmReport";
 import { TITLEBAR_HEIGHT } from "../../../components/TitleBar";
-import { printMeasurements } from "../helpers/printMeasurements";
 
 export function StudyResultsLayout({ navigateBack, viewModel }) {
     const {
-        panEchoEchoprimeState,
         dynamicMeasurementsState,
         llmReportState,
 
         studyUID,
 
-        panechoEchoprimeResults,
         dynamicMeasurementsResults,
         llmReportResults,
         latestOverrideAt,
@@ -23,19 +20,13 @@ export function StudyResultsLayout({ navigateBack, viewModel }) {
         hasMeasurements,
         isPolling,
         refresh,
-        patientName: providedPatientName,
+        patientName,
+        aiMeasurements = {},
+        activeTab = "measurements",
+        setActiveTab = () => {},
+        anyLoading = false,
+        onPrint,
     } = viewModel ?? {};
-
-    const [activeTab, setActiveTab] = useState("measurements");
-    const [patientName, setPatientName] = useState(providedPatientName || null);
-
-    useEffect(() => {
-        if (!studyUID) {
-            setPatientName(null);
-            return;
-        }
-        setPatientName(providedPatientName || null);
-    }, [studyUID, providedPatientName]);
 
     if (!studyUID) {
         return (
@@ -43,22 +34,6 @@ export function StudyResultsLayout({ navigateBack, viewModel }) {
                 No study selected.
             </div>
         );
-    }
-
-    const anyLoading =
-        ["loading", "pending"].includes(panEchoEchoprimeState) ||
-        ["loading", "pending"].includes(dynamicMeasurementsState) ||
-        ["loading", "pending"].includes(llmReportState);
-
-    async function handlePrint() {
-        const result = await printMeasurements({ panechoEchoprimeResults, patientName, studyUID });
-        if (!result?.ok) {
-            if (result?.reason === "no_measurements") {
-                alert("No measurements to print.");
-                return;
-            }
-            console.warn("Failed to prepare print", result?.error);
-        }
     }
 
     return (
@@ -74,7 +49,7 @@ export function StudyResultsLayout({ navigateBack, viewModel }) {
                         hasMeasurements={hasMeasurements}
                         isPolling={isPolling}
                         onRefresh={refresh}
-                        onPrint={handlePrint}
+                        onPrint={onPrint}
                     />
                 </div>
             </header>
@@ -122,10 +97,7 @@ export function StudyResultsLayout({ navigateBack, viewModel }) {
                     <div className="flex-1 overflow-y-auto mt-3 rounded-2xl border bg-white p-4">
                         {activeTab === "measurements" && (
                             <MainFileAiMeasurements
-                                state={panEchoEchoprimeState}
-                                panechoEchoprimeResults={panechoEchoprimeResults}
-                                studyUID={studyUID}
-                                onRefresh={refresh}
+                                {...aiMeasurements}
                             />
                         )}
                         {activeTab === "segmentation" && (
