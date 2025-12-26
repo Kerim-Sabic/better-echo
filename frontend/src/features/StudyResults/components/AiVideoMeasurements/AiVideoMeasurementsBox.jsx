@@ -79,7 +79,7 @@ export default function AiVideoMeasurementsBox({ result }) {
     const statusStyle = getStatusStyle();
 
     return (
-        <div className="group relative p-5 rounded-2xl bg-gradient-to-br from-white/80 via-white/60 to-purple-50/20 backdrop-blur-md border border-white/50 shadow-md">
+        <div className="group relative p-5 rounded-2xl bg-white/90 backdrop-blur-md border border-border shadow-md">
             {/* Header */}
             <div className="flex items-start justify-between mb-4 gap-3">
                 <div className="flex-1 min-w-0">
@@ -126,7 +126,7 @@ export default function AiVideoMeasurementsBox({ result }) {
             {/* Video Player */}
             {status === "DONE" && output_path && (
                 <div
-                    className="relative overflow-hidden rounded-xl border border-purple-200/30 shadow-md cursor-pointer group/video"
+                    className="relative overflow-hidden rounded-xl border border-border shadow-md cursor-pointer group/video"
                     onClick={handleTogglePlay}
                 >
                     <video

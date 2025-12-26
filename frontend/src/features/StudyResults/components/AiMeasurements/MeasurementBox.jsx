@@ -11,6 +11,7 @@ export default function MeasurementBox({
     onChangeValue,
     onChangeLabel,
     onClearOverride,
+    isSaving,
 }) {
     const { label, value, discrepancy, color, units, isOverridden, editType, editOptions } = item;
 
@@ -49,12 +50,13 @@ export default function MeasurementBox({
     const iconButtonClasses =
         "absolute right-3 top-3 inline-flex h-7 w-7 items-center justify-center rounded-full border bg-white/80 text-gray-500 opacity-0 transition-opacity group-hover:opacity-100 hover:text-gray-700";
     const actionButtonClasses =
-        "rounded-lg border border-gray-200 bg-white/90 px-2 py-1 text-xs text-gray-700 shadow-sm transition hover:border-gray-300 hover:bg-white";
+        "rounded-lg border border-gray-200 bg-white/90 px-2 py-1 text-xs text-gray-700 shadow-sm transition hover:border-gray-300 hover:bg-white disabled:cursor-not-allowed disabled:opacity-60";
     const primaryButtonClasses =
-        "rounded-lg border border-gray-900 bg-gray-900 px-2 py-1 text-xs text-white shadow-sm transition hover:bg-gray-800";
+        "rounded-lg border border-gray-900 bg-gray-900 px-2 py-1 text-xs text-white shadow-sm transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60";
     const overrideRingClass = isOverridden
         ? "ring-2 ring-emerald-300/70 ring-offset-2 ring-offset-white/70"
         : "";
+    const glowClass = color ? `measurement-glow-${color}` : "measurement-glow-neutral";
 
     // ------------------------------------------------------------
     // PART 2 - Identify classification tasks
@@ -80,10 +82,9 @@ export default function MeasurementBox({
             group relative p-5 rounded-3xl 
             bg-gradient-to-br ${bg}
             backdrop-blur-md border ${border}
-            shadow-md hover:shadow-xl hover:scale-[1.02]
-            transition-all duration-300
+            shadow-md transition-all duration-300
             w-full max-w-[260px]
-            ${overrideRingClass}
+            measurement-card ${glowClass} ${overrideRingClass}
         `}
         >
         {onStartEdit && (
@@ -165,14 +166,16 @@ export default function MeasurementBox({
                         className={primaryButtonClasses}
                         onClick={onStopEdit}
                         type="button"
+                        disabled={isSaving}
                     >
-                        Done
+                        {isSaving ? "Saving..." : "Done"}
                     </button>
                     {isOverridden && (
                         <button
                             className={actionButtonClasses}
                             onClick={onClearOverride}
                             type="button"
+                            disabled={isSaving}
                         >
                             Reset
                         </button>

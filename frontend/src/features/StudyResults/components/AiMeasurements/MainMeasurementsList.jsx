@@ -10,6 +10,7 @@ export default function MainMeasurementsList({
     onStopEdit,
     onChangeValue,
     onClearOverride,
+    savingKey,
 }) {
     if (!Array.isArray(mainMeasurements) || mainMeasurements.length === 0) {
         return null;
@@ -21,8 +22,8 @@ export default function MainMeasurementsList({
         <div
             className="
         p-6 rounded-3xl
-        bg-gradient-to-br from-white via-white to-purple-50/30
-        backdrop-blur-sm shadow-lg border border-white/40
+        bg-white backdrop-blur-sm
+        shadow-lg border border-border
         transition-all duration-300
         hover:shadow-xl
       "
@@ -109,9 +110,10 @@ export default function MainMeasurementsList({
                         draftValue={draftOverrides?.[m.key]?.value ?? ""}
                         error={fieldErrors?.[m.key]}
                         onStartEdit={() => onStartEdit?.(m)}
-                        onStopEdit={onStopEdit}
+                        onStopEdit={() => onStopEdit?.(m.key)}
                         onChangeValue={(val) => onChangeValue?.(m.key, val)}
                         onClearOverride={() => onClearOverride?.(m.key)}
+                        isSaving={savingKey === m.key}
                     />
                 ))}
             </div>

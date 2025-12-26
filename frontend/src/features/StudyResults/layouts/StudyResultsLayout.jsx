@@ -185,10 +185,10 @@ function Pill({ isActive, onClick, children }) {
             role="tab"
             aria-selected={isActive}
             className={[
-                "px-3 py-1.5 rounded-full text-sm border",
+                "px-3 py-1.5 rounded-full text-sm border transition-colors",
                 isActive
-                    ? "bg-gray-900 text-white border-gray-900"
-                    : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50",
+                    ? "bg-muted text-foreground border-border"
+                    : "bg-card text-foreground border-border hover:bg-muted/60",
             ].join(" ")}
         >
             {children}

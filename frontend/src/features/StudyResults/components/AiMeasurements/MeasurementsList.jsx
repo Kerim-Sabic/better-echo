@@ -12,6 +12,7 @@ export default function MeasurementsList({
     onChangeValue,
     onChangeLabel,
     onClearOverride,
+    savingKey,
 }) {
     const [isExpanded, setIsExpanded] = useState(true);
 
@@ -24,8 +25,8 @@ export default function MeasurementsList({
         <div
             className="
         p-6 rounded-3xl
-        bg-gradient-to-br from-white via-white to-purple-50/30
-        backdrop-blur-sm shadow-lg border border-white/40
+        bg-white backdrop-blur-sm
+        shadow-lg border border-border
         transition-all duration-300
         hover:shadow-xl
       "
@@ -117,8 +118,7 @@ export default function MeasurementsList({
             <div
                 className={`
           transition-all duration-300
-          ${isExpanded ? "opacity-100 max-h-[5000px] mt-5" : "opacity-0 max-h-0"}
-          overflow-hidden
+          ${isExpanded ? "opacity-100 max-h-[5000px] mt-5 overflow-visible" : "opacity-0 max-h-0 overflow-hidden"}
           pb-4
         `}
             >
@@ -138,10 +138,11 @@ export default function MeasurementsList({
                             draftLabel={draftOverrides?.[item.key]?.label ?? ""}
                             error={fieldErrors?.[item.key]}
                             onStartEdit={() => onStartEdit?.(item)}
-                            onStopEdit={onStopEdit}
+                            onStopEdit={() => onStopEdit?.(item.key)}
                             onChangeValue={(val) => onChangeValue?.(item.key, val)}
                             onChangeLabel={(val) => onChangeLabel?.(item.key, val)}
                             onClearOverride={() => onClearOverride?.(item.key)}
+                            isSaving={savingKey === item.key}
                         />
                     ))}
                 </div>

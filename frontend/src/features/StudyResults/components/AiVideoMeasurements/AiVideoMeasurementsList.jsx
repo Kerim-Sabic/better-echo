@@ -28,7 +28,7 @@ export default function AiVideoMeasurementsList({ instance }) {
 
     return (
         <div
-            className={`p-6 rounded-3xl bg-gradient-to-br from-white via-white to-purple-50/30 backdrop-blur-sm shadow-lg border border-white/40 transition-all duration-300 ${
+            className={`p-6 rounded-3xl bg-white backdrop-blur-sm shadow-lg border border-border transition-all duration-300 ${
                 isSkippedOnly ? "opacity-70 cursor-not-allowed" : "hover:shadow-xl"
             }`}
         >

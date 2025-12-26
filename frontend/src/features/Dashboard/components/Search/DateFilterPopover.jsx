@@ -23,11 +23,11 @@ const CustomDatePanel = ({ dateFilters, onRemove }) => {
             style={{
                 display: "grid",
                 gridTemplateRows: "auto 1fr",
-                borderLeft: "1px solid #e5e7eb",
+                borderLeft: "1px solid var(--border)",
                 minWidth: "140px",
             }}
         >
-            <div style={{ padding: "10px", fontWeight: "bold", fontSize: "14px", color: "#374151" }}>
+            <div className="rmdp-panel-title">
                 Selected
             </div>
 

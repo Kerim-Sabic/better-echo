@@ -71,8 +71,7 @@ export default function LlmReportBox({ llmReportResults }) {
     return (
         <div className="space-y-6">
             <div
-                className="p-6 rounded-3xl bg-gradient-to-br from-white via-white to-purple-50/30 
-        backdrop-blur-sm shadow-lg border border-white/40"
+                className="p-6 rounded-3xl bg-white backdrop-blur-sm shadow-lg border border-border"
             >
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">
                     Diagnoses Summary
@@ -98,7 +97,7 @@ export default function LlmReportBox({ llmReportResults }) {
                 )}
             </div>
 
-            <div className="p-6 rounded-3xl bg-white shadow-md border border-gray-200">
+            <div className="p-6 rounded-3xl bg-white shadow-md border border-border">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">
                     {mainTitle}
                 </h3>

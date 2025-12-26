@@ -10,6 +10,7 @@ import {
     deleteWebauthnCredentialApi,
 } from "../../../../api/AuthenticationApi";
 import { b64uToBuf, serializePublicKeyCredential } from "../../../../lib/webauthn";
+import { getStoredTheme, setStoredTheme } from "../../../../lib/theme";
 
 export default function DashboardHeader({ onNewStudy }) {
     const { user, logout } = useContext(AuthContext);
@@ -20,6 +21,7 @@ export default function DashboardHeader({ onNewStudy }) {
     const [bioLoading, setBioLoading] = useState(false);
     const [bioRemoving, setBioRemoving] = useState(false);
     const [bioError, setBioError] = useState("");
+    const [theme, setTheme] = useState(() => getStoredTheme());
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -132,12 +134,19 @@ export default function DashboardHeader({ onNewStudy }) {
 
     const displayName = user?.full_name || user?.username || "User";
     const roleLabel = user?.role || "Doctor";
+    const isDark = theme === "dark";
     const initials = displayName
         .split(" ")
         .map((part) => part[0])
         .join("")
         .slice(0, 2)
         .toUpperCase();
+
+    const handleThemeToggle = () => {
+        const nextTheme = isDark ? "light" : "dark";
+        setTheme(nextTheme);
+        setStoredTheme(nextTheme);
+    };
 
     return (
         <header className="border-b border-border bg-card">
@@ -219,6 +228,19 @@ export default function DashboardHeader({ onNewStudy }) {
                                                 {bioError}
                                             </div>
                                         )}
+                                        <div className="h-px bg-border" />
+                                        <div className="flex items-center justify-between px-3 py-2 text-sm text-foreground">
+                                            <span>Dark mode</span>
+                                            <button
+                                                type="button"
+                                                onClick={handleThemeToggle}
+                                                aria-pressed={isDark}
+                                                aria-label="Toggle dark mode"
+                                                className={`toggle ${isDark ? "toggle-on" : ""}`}
+                                            >
+                                                <span className="toggle-thumb" />
+                                            </button>
+                                        </div>
                                         <div className="h-px bg-border" />
                                         <button
                                             type="button"

@@ -78,7 +78,9 @@ export default function TitleBar({ variant = "light" }) {
 function WinButton({ children, onClick, hover, splash, ...rest }) {
     const base = "inline-flex items-center justify-center h-8 w-8 rounded focus:outline-none focus:ring-2 transition-colors duration-200";
     const focusRing = splash ? "focus:ring-white/60" : "focus:ring-blue-300";
-    const hoverBg = hover === "close" ? (splash ? "hover:bg-red-500/20" : "hover:bg-red-50") : (splash ? "hover:bg-white/10" : "hover:bg-slate-100");
+    const hoverBg = hover === "close"
+        ? (splash ? "hover:bg-red-500/20" : "hover:bg-destructive/10")
+        : (splash ? "hover:bg-white/10" : "hover:bg-muted/60");
     return (
         <button type="button" onClick={onClick} className={`${base} ${focusRing} ${hoverBg}`} {...rest}>
         {children}
