@@ -1,32 +1,25 @@
-import React, { useMemo, useState } from "react";
+import React from "react";
 import LoadingScreen from "../LoadingScreen";
 import LlmReportBox from "./LlmReportBox";
-import { generateLlmReport } from "../../../../api/orchestration_apis/LlmReportResultsApi";
 
 export default function MainFileLlmReport({
     state,
+    showLoading,
+    isEmpty,
     llmReportResults,
-    studyUID,
-    latestOverrideAt,
-    onRefresh,
+    diagnosesCount,
+    isOutOfDate,
+    isRegenerating,
+    regenerateError,
+    canRegenerate,
+    onRegenerate,
 }) {
-    const [isRegenerating, setIsRegenerating] = useState(false);
-    const [regenerateError, setRegenerateError] = useState(null);
-    const reportGeneratedAt = llmReportResults?.report_generated_at ?? null;
-    const isOutOfDate = useMemo(() => {
-        if (!latestOverrideAt || !reportGeneratedAt) return false;
-        const overrideTs = new Date(latestOverrideAt).getTime();
-        const reportTs = new Date(reportGeneratedAt).getTime();
-        if (!Number.isFinite(overrideTs) || !Number.isFinite(reportTs)) return false;
-        return overrideTs > reportTs;
-    }, [latestOverrideAt, reportGeneratedAt]);
-
-    if (state !== "ready") {
+    if (showLoading) {
         return <LoadingScreen state={state} />;
     }
 
     // No results
-    if (!llmReportResults) {
+    if (isEmpty) {
         return (
         <div className="flex flex-col items-center justify-center p-12 space-y-6">
             <div className="relative">
@@ -44,7 +37,7 @@ export default function MainFileLlmReport({
                     </linearGradient>
                 </defs>
                 <path
-                    d="M6 4h12a2 2 0 012 2v12a2 2 0 01-2 2H8l-4-4V6a2 2 0 012-2z"git 
+                    d="M6 4h12a2 2 0 012 2v12a2 2 0 01-2 2H8l-4-4V6a2 2 0 012-2z"
                     stroke="url(#reportGradient)"
                     strokeWidth="2"
                 />
@@ -60,25 +53,6 @@ export default function MainFileLlmReport({
         </div>
         );
     }
-
-    const handleRegenerate = async () => {
-        if (!studyUID || isRegenerating) return;
-        setIsRegenerating(true);
-        setRegenerateError(null);
-        try {
-            const resp = await generateLlmReport(studyUID);
-            if (resp.status >= 400) {
-                throw new Error("Failed to regenerate report");
-            }
-            if (onRefresh) {
-                onRefresh();
-            }
-        } catch (err) {
-            setRegenerateError("Failed to regenerate report.");
-        } finally {
-            setIsRegenerating(false);
-        }
-    };
 
     return (
         <div className="space-y-6 p-6">
@@ -111,8 +85,8 @@ export default function MainFileLlmReport({
                 AI Echocardiography Report
             </h2>
             <p className="text-xs text-gray-500 font-medium">
-                {llmReportResults?.diagnoses_json?.length || 0} diagnosis finding
-                {llmReportResults?.diagnoses_json?.length !== 1 ? "s" : ""}
+                {diagnosesCount} diagnosis finding
+                {diagnosesCount !== 1 ? "s" : ""}
             </p>
             </div>
 
@@ -124,9 +98,9 @@ export default function MainFileLlmReport({
                     </span>
                 )}
                 <button
-                    className="inline-flex items-center gap-2 rounded-xl border border-purple-100 bg-white px-3.5 py-1.5 text-sm font-semibold text-gray-700 shadow-sm transition hover:border-purple-200 hover:text-gray-900 hover:shadow disabled:cursor-not-allowed disabled:opacity-60"
-                    onClick={handleRegenerate}
-                    disabled={isRegenerating}
+                    className="inline-flex items-center gap-2 rounded-xl border border-purple-100 bg-white px-3.5 py-1.5 text-sm font-semibold text-gray-700 shadow-sm transition hover:border-purple-200 hover:bg-muted/60 hover:shadow disabled:cursor-not-allowed disabled:opacity-60"
+                    onClick={onRegenerate}
+                    disabled={!canRegenerate}
                 >
                     {isRegenerating ? "Regenerating..." : "Regenerate report"}
                 </button>

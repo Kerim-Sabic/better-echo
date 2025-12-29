@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { patchStudyApi, deleteStudyApi } from "../../../api/StudiesApi";
-import { useStudiesListQuery } from "./useStudiesListQuery";
+import { useStudiesListQuery } from "./queries/useStudiesListQuery";
 import { parseStudyDate, formatStudyDate } from "../helpers/dashboardHelpers";
 
 /**

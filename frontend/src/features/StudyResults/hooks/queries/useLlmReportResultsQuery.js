@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { getLlmReportResults } from "../../../api/orchestration_apis/LlmReportResultsApi";
+import { getLlmReportResults } from "../../../../api/orchestration_apis/LlmReportResultsApi";
 
 /**
  * React Query hook that fetches (and conditionally polls) the
@@ -45,6 +45,7 @@ export function useLlmReportResultsQuery(
             }
             return false; // stop polling
         },
+        refetchIntervalInBackground: true,
     });
 }
 

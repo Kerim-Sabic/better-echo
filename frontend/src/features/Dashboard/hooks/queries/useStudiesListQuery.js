@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { listStudiesApi } from "../../../api/StudiesApi";
+import { listStudiesApi } from "../../../../api/StudiesApi";
 
 /**
  * Hook to manage fetching and polling of the studies list.

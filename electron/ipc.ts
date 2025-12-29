@@ -1,4 +1,5 @@
 import { IpcMain, app, BrowserWindow, shell } from 'electron';
+import axios from 'axios';
 import * as path from 'path';
 import * as fs from 'fs';
 import { pathToFileURL } from 'url';
@@ -10,6 +11,16 @@ export function registerIpcHandlers(
   ipcMain.handle('get-backend-url', () => {
     const port = getBackendPort();
     return `http://127.0.0.1:${port}`;
+  });
+
+  ipcMain.handle('backend:isHealthy', async () => {
+    try {
+      const port = getBackendPort();
+      const response = await axios.get(`http://127.0.0.1:${port}/api/health`, { timeout: 1000 });
+      return response.status === 200;
+    } catch {
+      return false;
+    }
   });
 
   ipcMain.handle('get-app-version', () => {

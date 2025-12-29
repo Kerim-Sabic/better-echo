@@ -4,6 +4,8 @@ import { getBackendUrl } from "../config/api";
 export default function SplashScreen({ onComplete }) {
     const videoARef = useRef(null); // forward
     const videoBRef = useRef(null); // reverse
+    const backendReadyRef = useRef(false);
+    const hasCompletedRef = useRef(false);
     const [isVisible, setIsVisible] = useState(true);
     const [isZooming, setIsZooming] = useState(false);
     const [active, setActive] = useState("A"); // "A" | "B"
@@ -12,6 +14,10 @@ export default function SplashScreen({ onComplete }) {
   // Helper: check backend health
     async function checkHealth() {
         try {
+            const ipcHealth = window?.electronAPI?.checkBackendHealth;
+            if (ipcHealth) {
+                return await ipcHealth();
+            }
             const base = await getBackendUrl(); // e.g., http://127.0.0.1:8000/api
             const controller = new AbortController();
             const id = setTimeout(() => controller.abort(), 1200);
@@ -23,6 +29,14 @@ export default function SplashScreen({ onComplete }) {
         }
     }
 
+    function completeSplash() {
+        if (hasCompletedRef.current) return;
+        hasCompletedRef.current = true;
+        setIsZooming(true);
+        setIsVisible(false);
+        setTimeout(() => onComplete?.(), 50);
+    }
+
     function playVideo(el, muted) {
         if (!el) return;
         el.muted = !!muted;
@@ -31,6 +45,28 @@ export default function SplashScreen({ onComplete }) {
         } catch {}
         el.play().catch(() => {});
     }
+
+    // Background health checks (IPC) to allow exit while app is unfocused
+    useEffect(() => {
+        let isActive = true;
+
+        const pollHealth = async () => {
+            if (backendReadyRef.current) return;
+            const ready = await checkHealth();
+            if (!isActive || !ready) return;
+            backendReadyRef.current = true;
+            if (document.hidden) {
+                completeSplash();
+            }
+        };
+
+        pollHealth();
+        const id = setInterval(pollHealth, 2000);
+        return () => {
+            isActive = false;
+            clearInterval(id);
+        };
+    }, []);
 
     // Initialize both videos and start forward pass
     useEffect(() => {
@@ -67,11 +103,14 @@ export default function SplashScreen({ onComplete }) {
                 try { localStorage.setItem("splashAudioPlayed", "true"); } catch {}
                 setAudioAllowed(false);
             }
+            if (backendReadyRef.current) {
+                completeSplash();
+                return;
+            }
             const ready = await checkHealth();
             if (ready) {
-                setIsZooming(true);
-                setIsVisible(false);
-                setTimeout(() => onComplete?.(), 50);
+                backendReadyRef.current = true;
+                completeSplash();
                 return;
             }
             // Crossfade to B immediately (no delay)
@@ -80,11 +119,14 @@ export default function SplashScreen({ onComplete }) {
         };
 
         const onEndedB = async () => {
+            if (backendReadyRef.current) {
+                completeSplash();
+                return;
+            }
             const ready = await checkHealth();
             if (ready) {
-                setIsZooming(true);
-                setIsVisible(false);
-                setTimeout(() => onComplete?.(), 50);
+                backendReadyRef.current = true;
+                completeSplash();
                 return;
             }
             // Crossfade back to A (always muted after first pass)

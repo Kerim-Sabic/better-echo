@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 
 export interface ElectronAPI {
   getBackendUrl: () => Promise<string>;
+  checkBackendHealth: () => Promise<boolean>;
   getAppVersion: () => Promise<string>;
   getAppPaths: () => Promise<{
     userData: string;
@@ -22,6 +23,7 @@ export interface ElectronAPI {
 
 const electronAPI: ElectronAPI = {
   getBackendUrl: () => ipcRenderer.invoke('get-backend-url'),
+  checkBackendHealth: () => ipcRenderer.invoke('backend:isHealthy'),
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),
   getAppPaths: () => ipcRenderer.invoke('get-app-paths'),
   windowControls: {

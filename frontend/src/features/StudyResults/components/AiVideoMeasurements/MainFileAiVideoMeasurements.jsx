@@ -2,15 +2,19 @@ import React from "react";
 import AiVideoMeasurementsList from "./AiVideoMeasurementsList";
 import LoadingScreen from "../LoadingScreen";
 
-export default function MainFileAiVideoMeasurements({ state, dynamicMeasurementsResults }) {
+export default function MainFileAiVideoMeasurements({
+    state,
+    showLoading,
+    isEmpty,
+    instances = [],
+    totalInstances = 0,
+}) {
 
-    if (state !== "ready") {
+    if (showLoading) {
         return <LoadingScreen state={state} />;
     }
 
-    const instances = dynamicMeasurementsResults?.instances || [];
-
-    if (!Array.isArray(instances) || instances.length === 0) {
+    if (isEmpty) {
         return (
             <div className="flex flex-col items-center justify-center p-12 space-y-6">
                 <div className="relative">
@@ -80,7 +84,7 @@ export default function MainFileAiVideoMeasurements({ state, dynamicMeasurements
                 </div>
                 <div>
                     <h2 className="text-lg font-semibold text-gray-800 tracking-tight">AI Video Analysis</h2>
-                    <p className="text-xs text-gray-500 font-medium">{instances.length} dicom file{instances.length !== 1 ? "s" : ""} analyzed</p>
+                    <p className="text-xs text-gray-500 font-medium">{totalInstances} dicom file{totalInstances !== 1 ? "s" : ""} analyzed</p>
                 </div>
             </div>
 

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { getDynamicMeasurementsCombinedResults } from "../../../api/orchestration_apis/DynamicMeasurementsResultsApi";
+import { getDynamicMeasurementsCombinedResults } from "../../../../api/orchestration_apis/DynamicMeasurementsResultsApi";
 
 /**
  * React Query hook that fetches (and conditionally polls) the
@@ -45,6 +45,7 @@ export function useDynamicMeasurementsResultsQuery(
             }
             return false; // stop polling
         },
+        refetchIntervalInBackground: true,
     });
 }
 

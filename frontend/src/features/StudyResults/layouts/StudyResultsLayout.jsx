@@ -8,20 +8,14 @@ import { TITLEBAR_HEIGHT } from "../../../components/TitleBar";
 
 export function StudyResultsLayout({ navigateBack, viewModel }) {
     const {
-        dynamicMeasurementsState,
-        llmReportState,
-
         studyUID,
-
-        dynamicMeasurementsResults,
-        llmReportResults,
-        latestOverrideAt,
-
         hasMeasurements,
         isPolling,
         refresh,
         patientName,
         aiMeasurements = {},
+        aiVideoMeasurements = {},
+        llmReport = {},
         activeTab = "measurements",
         setActiveTab = () => {},
         anyLoading = false,
@@ -101,24 +95,15 @@ export function StudyResultsLayout({ navigateBack, viewModel }) {
                             />
                         )}
                         {activeTab === "segmentation" && (
-                            <MainFileAiVideoMeasurements
-                                state={dynamicMeasurementsState}
-                                dynamicMeasurementsResults={dynamicMeasurementsResults}
-                            />
+                            <MainFileAiVideoMeasurements {...aiVideoMeasurements} />
                         )}
                         {activeTab === "report" && (
-                            llmReportState === undefined ? (
+                            llmReport.state === undefined ? (
                                 <div className="p-8 text-center text-sm text-gray-600">
                                     LLM reports are disabled in this build.
                                 </div>
                             ) : (
-                                <MainFileLlmReport
-                                    state={llmReportState}
-                                    llmReportResults={llmReportResults}
-                                    studyUID={studyUID}
-                                    latestOverrideAt={latestOverrideAt}
-                                    onRefresh={refresh}
-                                />
+                                <MainFileLlmReport {...llmReport} />
                             )
                         )}
                     </div>
