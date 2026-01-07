@@ -169,6 +169,7 @@ export function useStudyResultsData(studyUid) {
   }, [studyMetaQuery.data]);
 
   const patientName = studyMetaQuery.data?.patientName ?? null;
+  const patientSex = studyMetaQuery.data?.patientSex ?? null;
 
   // ---- Refresh / print ------------------------------------------------------
   const panechoEchoprimeRefetch = panechoEchoprimeResultsQuery.refetch;
@@ -193,7 +194,12 @@ export function useStudyResultsData(studyUid) {
 
   const handlePrint = useCallback(async () => {
     if (!studyUid) return;
-    const result = await printMeasurements({ panechoEchoprimeResults, patientName, studyUID: studyUid });
+    const result = await printMeasurements({
+      panechoEchoprimeResults,
+      patientName,
+      patientSex,
+      studyUID: studyUid,
+    });
     if (!result?.ok) {
       if (result?.reason === "no_measurements") {
         alert("No measurements to print.");
@@ -201,7 +207,7 @@ export function useStudyResultsData(studyUid) {
       }
       console.warn("Failed to prepare print", result?.error);
     }
-  }, [panechoEchoprimeResults, patientName, studyUid]);
+  }, [panechoEchoprimeResults, patientName, patientSex, studyUid]);
 
   // ---- Derived booleans & controls -----------------------------------------
   const isPolling = useMemo(() => {
@@ -275,6 +281,7 @@ export function useStudyResultsData(studyUid) {
     hasOverrides: overrideMeta.hasOverrides,
     latestOverrideAt: overrideMeta.latestOverrideAt,
     patientName,
+    patientSex,
     studyInstanceKey,
     isPolling,
     anyLoading,

@@ -16,6 +16,7 @@ export function useStudyMetaQuery(studyUid, { enabled = true, queryKeyPrefix = "
         select: (data) => ({
             data,
             patientName: data?.patient?.patient_name || null,
+            patientSex: data?.patient?.patient_sex || null,
         }),
     });
 }
@@ -23,7 +24,7 @@ export function useStudyMetaQuery(studyUid, { enabled = true, queryKeyPrefix = "
 // useQuery(...) returns a Query Result object with many fields.
 /**
 {
-  data?: { data, patientName }, // transformed by select
+  data?: { data, patientName, patientSex }, // transformed by select
   isLoading: boolean,
   isFetching: boolean,
   isError: boolean,

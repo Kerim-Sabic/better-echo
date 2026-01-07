@@ -32,6 +32,16 @@ function formatDicomTime(s) {
     return s;
 }
 
+function formatDicomSex(s) {
+    if (typeof s !== "string") return s;
+    const cleaned = s.trim().toUpperCase();
+    if (cleaned === "M") return "Male";
+    if (cleaned === "F") return "Female";
+    if (cleaned === "O") return "Other";
+    if (cleaned === "U") return "Unknown";
+    return s;
+}
+
 export default function MetadataPreview({ tags }) {
     if (!tags) return null;
     return (
@@ -49,6 +59,7 @@ export default function MetadataPreview({ tags }) {
                         <MetadataRow label="Patient Name" value={tags.PatientName} />
                         <MetadataRow label="Patient ID / MRN" value={tags.PatientID} />
                         <MetadataRow label="Date of Birth" value={formatDicomDate(tags.PatientBirthDate)} />
+                        <MetadataRow label="Sex" value={formatDicomSex(tags.PatientSex)} />
                         <MetadataRow label="Study Date" value={formatDicomDate(tags.StudyDate)} />
                         <MetadataRow label="Study Time" value={formatDicomTime(tags.StudyTime)} />
                         <MetadataRow label="Accession #" value={tags.AccessionNumber} />

@@ -7,6 +7,7 @@ export function pickTags(meta) {
         PatientName: t.PatientName || t["0010,0010"] || "",
         PatientID: t.PatientID || t["0010,0020"] || "",
         PatientBirthDate: t.PatientBirthDate || t["0010,0030"] || "",
+        PatientSex: t.PatientSex || t["0010,0040"] || "",
         StudyDate: t.StudyDate || t["0008,0020"] || "",
         StudyTime: t.StudyTime || t["0008,0030"] || "",
         AccessionNumber: t.AccessionNumber || t["0008,0050"] || "",

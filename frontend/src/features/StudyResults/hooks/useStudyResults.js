@@ -23,6 +23,7 @@ import { useStudyResultsTabs } from "./useStudyResultsTabs";
  *   hasOverrides: boolean,
  *   latestOverrideAt: string | null,
  *   patientName: string | null,
+ *   patientSex: string | null,
  *   activeTab: string,
  *   setActiveTab: (tab: string) => void,
  *   anyLoading: boolean,
@@ -49,6 +50,7 @@ export function useStudyResults(studyUid) {
     hasOverrides,
     latestOverrideAt,
     patientName,
+    patientSex,
     studyInstanceKey,
     isPolling,
     anyLoading,
@@ -64,6 +66,7 @@ export function useStudyResults(studyUid) {
     panechoEchoprimeResults,
     panEchoEchoprimeState,
     studyInstanceKey,
+    patientSex,
     refresh: refreshAll,
   });
 
@@ -98,6 +101,7 @@ export function useStudyResults(studyUid) {
       // identifiers / header bits
       studyUID: studyUid ?? null,
       patientName,
+      patientSex,
       studyInstanceKey,
       activeTab,
       setActiveTab,
@@ -140,6 +144,7 @@ export function useStudyResults(studyUid) {
       isPolling,
       refreshAll,
       patientName,
+      patientSex,
       studyInstanceKey,
 
       panEchoEchoprimeState,

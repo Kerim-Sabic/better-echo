@@ -8,6 +8,7 @@ export default function Header({
     navigateBack,
     studyUID,
     patientName: providedPatientName,
+    patientSex,
     hasMeasurements,
     isPolling,
     onRefresh,
@@ -53,6 +54,16 @@ export default function Header({
         );
     })();
 
+    const displaySex = (() => {
+        if (!patientSex) return null;
+        const cleaned = String(patientSex).trim().toUpperCase();
+        if (cleaned === "M") return "Male";
+        if (cleaned === "F") return "Female";
+        if (cleaned === "O") return "Other";
+        if (cleaned === "U") return "Unknown";
+        return patientSex;
+    })();
+
     return (
         <div className="w-full flex items-center justify-between gap-4">
             {/* Left section: Back + Logo + Title */}
@@ -80,6 +91,11 @@ export default function Header({
                         <span className="px-2 py-1 rounded-lg border border-gray-200 bg-white/70">
                             Patient: {patientName || "-"}
                         </span>
+                        {displaySex && (
+                            <span className="px-2 py-1 rounded-lg border border-gray-200 bg-white/70">
+                                Sex: {displaySex}
+                            </span>
+                        )}
                         <span className="px-2 py-1 rounded-lg border border-gray-200 bg-white/70 flex items-center gap-1">
                             UID: <span className="truncate max-w-[180px]">{studyUID || "-"}</span>
                         </span>

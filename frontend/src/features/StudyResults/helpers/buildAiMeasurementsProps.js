@@ -1,31 +1,123 @@
 import { MAIN_KEYS, RANGE_KEYS, SECTION_MAP, NORMAL_RANGES } from "./aiMeasurementsConstants"
 
+const normalizeSex = (rawSex) => {
+    if (!rawSex) return null;
+    const cleaned = String(rawSex).trim().toLowerCase();
+    if (cleaned === "m" || cleaned === "male") return "male";
+    if (cleaned === "f" || cleaned === "female") return "female";
+    return null;
+};
+
+const normalizeRanges = (ranges) => {
+    if (!ranges) return [];
+    return Array.isArray(ranges) ? ranges : [ranges];
+};
+
+const mergeBandRanges = (ranges, options = {}) => {
+    const normalized = normalizeRanges(ranges).filter(
+        (range) => range && (range.min !== undefined || range.max !== undefined)
+    );
+    if (!normalized.length) return [];
+
+    const minStrategy = options.minStrategy ?? "min";
+    const maxStrategy = options.maxStrategy ?? "max";
+
+    const mins = normalized
+        .map((range) => range.min)
+        .filter((value) => value !== undefined);
+    const maxes = normalized
+        .map((range) => range.max)
+        .filter((value) => value !== undefined);
+
+    const min = mins.length
+        ? (minStrategy === "max" ? Math.max(...mins) : Math.min(...mins))
+        : null;
+    const max = maxes.length
+        ? (maxStrategy === "min" ? Math.min(...maxes) : Math.max(...maxes))
+        : null;
+
+    const exclusiveMin = min === null
+        ? false
+        : normalized
+            .filter((range) => range.min === min)
+            .every((range) => range.exclusiveMin);
+    const exclusiveMax = max === null
+        ? false
+        : normalized
+            .filter((range) => range.max === max)
+            .every((range) => range.exclusiveMax);
+
+    const merged = {};
+    if (min !== null) merged.min = min;
+    if (max !== null) merged.max = max;
+    if (exclusiveMin) merged.exclusiveMin = true;
+    if (exclusiveMax) merged.exclusiveMax = true;
+
+    return [merged];
+};
+
+const deriveUnisexBands = (bands) => {
+    if (!bands?.male && !bands?.female) return null;
+
+    return {
+        normal: mergeBandRanges([
+            ...normalizeRanges(bands?.male?.normal),
+            ...normalizeRanges(bands?.female?.normal),
+        ], { minStrategy: "min", maxStrategy: "max" }),
+        borderline: mergeBandRanges([
+            ...normalizeRanges(bands?.male?.borderline),
+            ...normalizeRanges(bands?.female?.borderline),
+        ], { minStrategy: "max", maxStrategy: "max" }),
+        abnormal: mergeBandRanges([
+            ...normalizeRanges(bands?.male?.abnormal),
+            ...normalizeRanges(bands?.female?.abnormal),
+        ], { minStrategy: "max", maxStrategy: "min" }),
+    };
+};
+
+const resolveBandsForKey = (key, patientSex) => {
+    const def = NORMAL_RANGES[key];
+    if (!def?.bands) return { bands: null, preferNormal: false };
+    const sexKey = normalizeSex(patientSex);
+    if (sexKey && def.bands[sexKey]) return { bands: def.bands[sexKey], preferNormal: false };
+    if (def.bands.unisex) return { bands: def.bands.unisex, preferNormal: false };
+    return { bands: deriveUnisexBands(def.bands), preferNormal: true };
+};
+
+const matchesRange = (value, range) => {
+    if (range.min !== undefined) {
+        const tooLow = range.exclusiveMin ? value <= range.min : value < range.min;
+        if (tooLow) return false;
+    }
+    if (range.max !== undefined) {
+        const tooHigh = range.exclusiveMax ? value >= range.max : value > range.max;
+        if (tooHigh) return false;
+    }
+    return true;
+};
+
+const matchesAnyRange = (value, ranges) => normalizeRanges(ranges).some((range) => matchesRange(value, range));
+
 // ------------------------------------------------------------
-// PART 1.1 — Measurement (regression tasks) Color helper
+// PART 1.1 – Measurement (regression tasks) Color helper
 // ------------------------------------------------------------
-function getMeasurementColor(key, value) {
+function getMeasurementColor(key, value, patientSex) {
     if (!isFiniteNumber(value)) return null;
-    const range = NORMAL_RANGES[key];
-    if (!range) return null;
+    const { bands, preferNormal } = resolveBandsForKey(key, patientSex);
+    if (!bands) return null;
 
-    const { min, max } = range
-
-    // Convert GLS to positive if your dataset uses negative numbers
-    if (key === "gls") {
-        const absVal = Math.abs(value);
-        if (absVal <= Math.abs(min) && absVal >= Math.abs(max)) return "green";
-        if (
-        absVal <= Math.abs(min) + 1 &&
-        absVal >= Math.abs(max) - 1
-        )
-        return "yellow";
-        return "red";
+    if (preferNormal) {
+        if (matchesAnyRange(value, bands.normal)) return "green";
+        if (matchesAnyRange(value, bands.abnormal)) return "red";
+        if (matchesAnyRange(value, bands.borderline)) return "yellow";
+    } else {
+        if (matchesAnyRange(value, bands.abnormal)) return "red";
+        if (matchesAnyRange(value, bands.borderline)) return "yellow";
+        if (matchesAnyRange(value, bands.normal)) return "green";
     }
 
-    // For all other numeric measurements
-    if (value >= min && value <= max) return "green";
-    if (value >= min - 5 && value <= max + 5) return "yellow";
-    return "red";
+    if (normalizeRanges(bands.normal).length) return "yellow";
+    return null;
 }
 
 // ------------------------------------------------------------
@@ -48,7 +140,7 @@ function getCategoricalColor(key, integratedLabel) {
 // ------------------------------------------------------------
 // PART 2 — Core transformation logic
 // ------------------------------------------------------------
-export function buildAiMeasurementsProps(panechoEchoprimeResults, overrides = null) {
+export function buildAiMeasurementsProps(panechoEchoprimeResults, overrides = null, patientSex = null) {
     const tasks = panechoEchoprimeResults?.integrated_tasks;
     if (!tasks) return { mainMeasurements: [], Measurements: [] };
     const overrideMap = (overrides && typeof overrides === "object")
@@ -83,7 +175,7 @@ export function buildAiMeasurementsProps(panechoEchoprimeResults, overrides = nu
 
         if (!isClassification && isFiniteNumber(rawValue)) {
         // REGRESSION TASKS
-        color = getMeasurementColor(key, rawValue);
+        color = getMeasurementColor(key, rawValue, patientSex);
         } else if (isClassification && integratedLabel) {
         // CLASSIFICATION TASKS
         color = getCategoricalColor(key, integratedLabel)

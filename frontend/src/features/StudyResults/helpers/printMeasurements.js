@@ -18,10 +18,11 @@ async function toDataUrl(src) {
     }
 }
 
-export async function printMeasurements({ panechoEchoprimeResults, patientName, studyUID }) {
+export async function printMeasurements({ panechoEchoprimeResults, patientName, patientSex, studyUID }) {
     const { mainMeasurements = [], Measurements = [] } = buildAiMeasurementsProps(
         panechoEchoprimeResults || null,
-        panechoEchoprimeResults?.overrides || null
+        panechoEchoprimeResults?.overrides || null,
+        patientSex
     ) || {};
 
     const hasAny = (Array.isArray(mainMeasurements) && mainMeasurements.length > 0) ||

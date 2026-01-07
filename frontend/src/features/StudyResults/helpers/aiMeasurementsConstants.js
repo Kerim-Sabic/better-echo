@@ -1,3 +1,5 @@
+import numericRanges from "./measurementRanges.json";
+
 // Keys for the main (hero) metrics shown at the top of the UI.
 export const MAIN_KEYS = [
     { key: "ejection_fraction", label: "Ejection Fraction (EF)" },
@@ -44,7 +46,7 @@ export const SECTION_MAP = {
     },
     "Atria": {
         lavol: "LA Volume",
-        laids2d: "LA Indexed Volume (2D)",
+        laids2d: "LA Internal Diameter at Systole (LAIDs2D)",
         e_eavg: "E/E′ Ratio (Avg)",
         elevated_left_atrial_pressure: "Elevated LA Pressure",
         left_atrium_dilation: "Left Atrial Dilation",
@@ -86,41 +88,8 @@ export const NORMAL_RANGES = {
     // NUMERIC (REGRESSION) TASKS
     // -----------------------------
 
-    // LV size & function
-    ejection_fraction: { min: 53, max: 73 }, // % – normal EF (roughly 53–73%) 
-    gls: { min: -22, max: -18 },             // % – more negative = better LV systolic function
-    lvidd: { min: 4.2, max: 5.8 },           // cm – LV internal diameter diastole (adult men range)
-    lvids: { min: 2.5, max: 4.0 },           // cm – LV internal diameter systole
-    lvedv: { min: 62, max: 150 },            // mL – LV end-diastolic volume
-    lvesv: { min: 21, max: 60 },             // mL – LV end-systolic volume
-    lvsv:  { min: 60, max: 120 },            // mL – stroke volume (approx physiologic range)
-
-    ivsd:  { min: 0.6, max: 1.0 },           // cm – septal wall thickness
-    lvpwd: { min: 0.6, max: 1.0 },           // cm – posterior wall thickness
-
-    // Atria
-    lavol:   { min: 18, max: 58 },           // mL – LA volume (absolute range for adults)
-    laids2d: { min: 1.6, max: 3.4 },           // "index" – conceptually ml/m² normal ≤34
-
-    e_eavg: { min: 5, max: 14 },             // dimensionless – E/E’ avg; >14 suggests ↑ filling pressures
-
-    // Right heart & PA pressure
-    pulmonary_artery_pressure: { min: 15, max: 30 }, // mmHg – normal PASP ~15–30
-    rvidd:  { min: 2.0, max: 4.1 },          // cm – basal RV diameter
-    tapse:  { min: 1.7, max: 3.0 },          // cm – TAPSE ≥1.7 normal, upper bound just practical
-    rv_s_vel: { min: 10, max: 20 },          // cm/s – tissue Doppler S’ ≥10 normal
-
-    tvpkgrad: { min: 0, max: 30 },           // mmHg – TR gradient corresponding to normal RVSP/PASP
-    radimension_ml: { min: 2.9, max: 4.5 },  // cm – RA dimension (approx range)
-
-    // Aorta
-    aortic_root_diameter: { min: 2.0, max: 3.7 }, // cm – typical normal root diameter
-
-    // LVOT / others
-    lvotdiam: { min: 1.8, max: 2.4 },        // cm – LVOT diameter
-    avpkvel: { min: 0.0, max: 2.0 },         // m/s – normal AV peak velocity <2.0 m/s
-    // (If you later have a numeric LVOT gradient instead of lvot20mmhg flag,
-    // you could add a gradient range here too.)
+    // Numeric ranges live in measurementRanges.json.
+    ...numericRanges,
 
     // -----------------------------
     // CATEGORICAL (CLASSIFICATION) TASKS

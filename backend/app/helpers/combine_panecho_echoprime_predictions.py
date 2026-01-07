@@ -14,6 +14,17 @@ except Exception as e:
     TASK_CONFIG = {}
     logger.warning(f"[combine_results] Could not load config: {e}")
 
+
+def _build_regression_task_set(config: Dict[str, Any], name_key: str) -> set:
+    names = set()
+    for cfg in (config or {}).values():
+        if cfg.get("units") is None:
+            continue
+        name = cfg.get(name_key)
+        if name:
+            names.add(name)
+    return names
+
 # Part 1. PanEcho task metadata (class orders, positive labels, units)
 # These control how we interpret raw PanEcho outputs
 PANECHO_MULTICLASS_LABELS = {
@@ -46,6 +57,8 @@ PANECHO_REGRESSION_UNITS = {
     "LAIDs2D": "cm", "LAVol": "cm^3", "RADimensionM-L(cm)": "cm", "AVPkVel(m|s)": "m/s",
     "TVPkGrad": "mmHg", "AORoot": "cm",
 }
+PANECHO_REGRESSION_TASKS = _build_regression_task_set(TASK_CONFIG, "panecho_name")
+ECHOPRIME_REGRESSION_TASKS = _build_regression_task_set(TASK_CONFIG, "echoprime_name")
 PANECHO_POSITIVE_CLASSES = {
     "MVRegurgitation": ["Moderate or Severe"],
     "TVRegurgitation": ["Moderate or Severe"],
@@ -188,6 +201,16 @@ def normalize_panecho_predictions(panecho_raw: Dict[str, Any]) -> Dict[str, Dict
             normalized[task_name] = _normalize_panecho_multiclass(task_name, raw_val)
             continue
 
+        if task_name in PANECHO_REGRESSION_TASKS:
+            val = _to_float_or_none(raw_val)
+            if val is None:
+                normalized[task_name] = {"raw": raw_val, "kind": "unknown"}
+            else:
+                if task_name == "GLS":
+                    val = -1.0 * val
+                normalized[task_name] = {"value": val, "kind": "regression_like"}
+            continue
+
         val = _to_float_or_none(raw_val)
         if val is None:
             normalized[task_name] = {"raw": raw_val, "kind": "unknown"}
@@ -210,6 +233,20 @@ def normalize_echoprime_predictions(echoprime_raw: Dict[str, Any]) -> Dict[str, 
     normalized: Dict[str, Dict[str, Any]] = {}
 
     for task_name, raw_value in echoprime_raw.items():
+        if task_name in ECHOPRIME_REGRESSION_TASKS:
+            numeric_value = _to_float_or_none(raw_value)
+            if numeric_value is None:
+                normalized[task_name] = {
+                    "raw": raw_value,
+                    "kind": "unknown",
+                }
+            else:
+                normalized[task_name] = {
+                    "value": numeric_value,
+                    "kind": "regression_like",
+                }
+            continue
+
         numeric_value = _to_float_or_none(raw_value)
         if numeric_value is None:
             normalized[task_name] = {

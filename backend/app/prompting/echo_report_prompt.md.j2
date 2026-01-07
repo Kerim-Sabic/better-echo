@@ -15,6 +15,7 @@ You are given `Structured_Results_JSON`, which is a JSON object with this shape:
       "units": "%",
       "label": null,
       "confidence": null,
+      "range_status": "normal",
       "discrepancy": false,
       "overridden": true
     }
@@ -26,6 +27,7 @@ Notes:
 - "type" tells you how to interpret the task.
 - For measurements, use "value" + "units".
 - For classifications, use "label" and ignore "confidence" in report text.
+- "range_status" is optional and only provided for numeric measurements.
 
 Interpret this as follows:
 
@@ -33,7 +35,8 @@ Interpret this as follows:
 - If `type` is "measurement":
   - `value` is the actual numeric measurement and `units` is the unit.
   - Use `value` + `units` as the numeric measurement in the report.
-  - You may describe the value qualitatively (e.g. "normal" vs "elevated") if such interpretation is clinically standard, but DO NOT invent numeric thresholds. If in doubt, just state the number and unit without over-interpreting.
+  - If `range_status` is present, you may describe the value as normal, borderline, or abnormal using that tag.
+  - If `range_status` is missing, DO NOT invent numeric thresholds. If in doubt, just state the number and unit without over-interpreting.
 
 1.2 CLASSIFICATION TASKS (BINARY OR MULTICLASS)
 - If `type` is "classification":

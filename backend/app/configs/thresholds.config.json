@@ -20,8 +20,8 @@
     "pericardial_effusion": {
         "panecho_name": "pericardial-effusion",
         "echoprime_name": "pericardial_effusion",
-        "panecho_threshold": 0.15,
-        "echoprime_threshold": 0.20,
+        "panecho_threshold": 0.50,
+        "echoprime_threshold": 0.50,
         "combine_rule": "prefer_model:PanEcho",
         "units": null,
         "expected_direction": "higher_is_worse",
@@ -30,7 +30,7 @@
     "left_atrium_dilation": {
         "panecho_name": "LASize",
         "echoprime_name": "left_atrium_dilation",
-        "panecho_threshold": 0.30,
+        "panecho_threshold": 0.50,
         "echoprime_threshold": 0.16,
         "combine_rule": "prefer_model:PanEcho",
         "units": null,
@@ -40,7 +40,7 @@
     "right_atrium_dilation": {
         "panecho_name": "RASize",
         "echoprime_name": "right_atrium_dilation",
-        "panecho_threshold": 0.30,
+        "panecho_threshold": 0.50,
         "echoprime_threshold": 0.50,
         "combine_rule": "prefer_model:PanEcho",
         "units": null,
@@ -50,7 +50,7 @@
     "right_ventricle_dilation": {
         "panecho_name": "RVSize",
         "echoprime_name": "right_ventricle_dilation",
-        "panecho_threshold": 0.30,
+        "panecho_threshold": 0.50,
         "echoprime_threshold": 0.14,
         "combine_rule": "prefer_model:PanEcho",
         "units": null,
@@ -60,7 +60,7 @@
     "rv_systolic_function_depressed": {
         "panecho_name": "RVSystolicFunction",
         "echoprime_name": "rv_systolic_function_depressed",
-        "panecho_threshold": 0.40,
+        "panecho_threshold": 0.50,
         "echoprime_threshold": 0.04,
         "combine_rule": "prefer_model:PanEcho",
         "units": null,
@@ -70,7 +70,7 @@
     "mitral_regurgitation": {
         "panecho_name": "MVRegurgitation",
         "echoprime_name": "mitral_regurgitation",
-        "panecho_threshold": 0.80,
+        "panecho_threshold": 0.50,
         "echoprime_threshold": 0.06,
         "combine_rule": "prefer_model:PanEcho",
         "units": null,
@@ -80,7 +80,7 @@
     "tricuspid_valve_regurgitation": {
         "panecho_name": "TVRegurgitation",
         "echoprime_name": "tricuspid_valve_regurgitation",
-        "panecho_threshold": 0.80,
+        "panecho_threshold": 0.50,
         "echoprime_threshold": 0.26,
         "combine_rule": "prefer_model:PanEcho",
         "units": null,
@@ -90,7 +90,7 @@
     "aortic_regurgitation": {
         "panecho_name": "AVRegurg",
         "echoprime_name": "aortic_regurgitation",
-        "panecho_threshold": 0.80,
+        "panecho_threshold": 0.50,
         "echoprime_threshold": 0.16,
         "combine_rule": "prefer_model:PanEcho",
         "units": null,
@@ -100,7 +100,7 @@
     "aortic_stenosis": {
         "panecho_name": "AVStenosis",
         "echoprime_name": "aortic_stenosis",
-        "panecho_threshold": 0.90,
+        "panecho_threshold": 0.50,
         "echoprime_threshold": 0.78,
         "combine_rule": "prefer_model:PanEcho",
         "units": null,

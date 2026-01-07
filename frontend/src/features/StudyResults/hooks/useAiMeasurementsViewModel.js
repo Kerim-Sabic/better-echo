@@ -15,6 +15,7 @@ export function useAiMeasurementsViewModel({
   panechoEchoprimeResults,
   panEchoEchoprimeState,
   studyInstanceKey,
+  patientSex,
   refresh,
 }) {
   // ---- Local UI state ------------------------------------------------------
@@ -108,8 +109,8 @@ export function useAiMeasurementsViewModel({
   }, [pendingOverrides, savedOverrides]);
 
   const { mainMeasurements, Measurements: measurementSections } = useMemo(
-    () => buildAiMeasurementsProps(activeResults, effectiveOverrides),
-    [activeResults, effectiveOverrides]
+    () => buildAiMeasurementsProps(activeResults, effectiveOverrides, patientSex),
+    [activeResults, effectiveOverrides, patientSex]
   );
 
   const hasMainMeasurements = Array.isArray(mainMeasurements) && mainMeasurements.length > 0;

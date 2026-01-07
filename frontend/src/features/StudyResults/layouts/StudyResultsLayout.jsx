@@ -13,6 +13,7 @@ export function StudyResultsLayout({ navigateBack, viewModel }) {
         isPolling,
         refresh,
         patientName,
+        patientSex,
         aiMeasurements = {},
         aiVideoMeasurements = {},
         llmReport = {},
@@ -40,6 +41,7 @@ export function StudyResultsLayout({ navigateBack, viewModel }) {
                         navigateBack={navigateBack}
                         studyUID={studyUID}
                         patientName={patientName}
+                        patientSex={patientSex}
                         hasMeasurements={hasMeasurements}
                         isPolling={isPolling}
                         onRefresh={refresh}
