@@ -74,6 +74,12 @@ def build_combined_sections_for_llm(derived_results) -> Dict[str, Any]:
         patient_sex = getattr(patient, "patient_sex", None)
     except Exception:
         patient_sex = None
+    if isinstance(patient_sex, str):
+        patient_sex = patient_sex.strip().lower()
+        if patient_sex == "m":
+            patient_sex = "male"
+        elif patient_sex == "f":
+            patient_sex = "female"
 
     integrated_tasks, overrides, _overrides_updated_at = _extract_payload(
         getattr(derived_results, "value_json", None)
@@ -119,4 +125,7 @@ def build_combined_sections_for_llm(derived_results) -> Dict[str, Any]:
             "range_status": range_status if is_measurement else None,
         }
 
-    return {"tasks": tasks_payload}
+    return {
+        "patient": {"sex": patient_sex},
+        "tasks": tasks_payload,
+    }

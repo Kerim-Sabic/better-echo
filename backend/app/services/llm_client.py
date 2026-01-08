@@ -49,6 +49,8 @@ class LLMClient:
         messages: List[Dict[str, str]],
         temperature: float = 0.2,
         max_tokens: int = 1024,
+        top_p: Optional[float] = None,
+        seed: Optional[int] = None,
     ) -> str:
         """
         Calls POST {base_url}/chat/completions and returns assistant content.
@@ -64,6 +66,8 @@ class LLMClient:
             "messages": messages,
             "temperature": temperature,
             "max_tokens": max_tokens,
+            "top_p": top_p,
+            "seed": seed,
         }
 
         try:

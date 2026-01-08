@@ -43,7 +43,11 @@ class Settings(BaseSettings):
 
     LLM_PROMPT_TEMPLATE_PATH: str = "app/prompting/echo_report_prompt.md.j2"
     LLM_TEMPERATURE_REPORT: float = 0.0
+    LLM_TOP_P_REPORT: float = 1.0
+    LLM_SEED_REPORT: int = 0
     LLM_TEMPERATURE_CHAT: float = 0.2
+    LLM_TOP_P_CHAT: float = 1.0
+    LLM_SEED_CHAT: int = 0
     LLM_DESIRED_OUTPUT_TOKENS_REPORT: int = 1400
     LLM_DESIRED_OUTPUT_TOKENS_CHAT: int = 512
     # Keep aligned with vLLM --max-model-len

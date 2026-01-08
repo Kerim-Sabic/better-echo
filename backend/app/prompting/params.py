@@ -6,10 +6,14 @@ from app.core.config import settings
 class LLMParams:
     # Report generation
     temperature_report: float = settings.LLM_TEMPERATURE_REPORT
+    top_p_report: float = settings.LLM_TOP_P_REPORT
+    seed_report: int = settings.LLM_SEED_REPORT
     desired_output_tokens_report: int = settings.LLM_DESIRED_OUTPUT_TOKENS_REPORT
 
     # Chat
     temperature_chat: float = settings.LLM_TEMPERATURE_CHAT
+    top_p_chat: float = settings.LLM_TOP_P_CHAT
+    seed_chat: int = settings.LLM_SEED_CHAT
     desired_output_tokens_chat: int = settings.LLM_DESIRED_OUTPUT_TOKENS_CHAT
     history_max_turns: int = settings.LLM_HISTORY_MAX_TURNS
 

@@ -91,6 +91,8 @@ def chat_about_report(payload: LLMChatRequest, db: Session = Depends(get_db)):
         answer = client.chat_completion(
             messages=built["messages"],
             temperature=params.temperature_chat,
+            top_p=params.top_p_chat,
+            seed=params.seed_chat,
             max_tokens=built["max_tokens"],
         )
     except Exception as e:

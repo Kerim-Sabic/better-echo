@@ -7,6 +7,9 @@ Follow these internal reasoning rules, but DO NOT reveal this section to the use
 You are given `Structured_Results_JSON`, which is a JSON object with this shape:
 
 {
+  "patient": {
+    "sex": "male"
+  },
   "tasks": {
     "<task_key>": {
       "name": "EF",
@@ -23,6 +26,7 @@ You are given `Structured_Results_JSON`, which is a JSON object with this shape:
 }
 
 Notes:
+- "patient.sex" is optional. When present, it will be "male" or "female".
 - "name" is a short human label for the task.
 - "type" tells you how to interpret the task.
 - For measurements, use "value" + "units".
@@ -35,6 +39,7 @@ Interpret this as follows:
 - If `type` is "measurement":
   - `value` is the actual numeric measurement and `units` is the unit.
   - Use `value` + `units` as the numeric measurement in the report.
+  - If `patient.sex` is present, you may reference that the range is normal/borderline/abnormal for that sex.
   - If `range_status` is present, you may describe the value as normal, borderline, or abnormal using that tag.
   - If `range_status` is missing, DO NOT invent numeric thresholds. If in doubt, just state the number and unit without over-interpreting.
 

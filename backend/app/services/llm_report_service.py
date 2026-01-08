@@ -56,6 +56,8 @@ def generate_for_study(study_uid: str, db: Session) -> Dict[str, Any]:
     report_text = client.chat_completion(
         messages=built["messages"],
         temperature=params.temperature_report,
+        top_p=params.top_p_report,
+        seed=params.seed_report,
         max_tokens=built["max_tokens"],
     )
 
