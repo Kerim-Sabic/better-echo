@@ -22,6 +22,11 @@ export function StudyResultsLayout({ navigateBack, viewModel }) {
         anyLoading = false,
         onPrint,
     } = viewModel ?? {};
+    const {
+        canIndex = false,
+        isIndexedMode = false,
+        onSetIndexedMode = () => {},
+    } = aiMeasurements ?? {};
 
     if (!studyUID) {
         return (
@@ -82,8 +87,36 @@ export function StudyResultsLayout({ navigateBack, viewModel }) {
                             AI Report
                         </Pill>
 
-                        <div className="ml-auto text-xs">
-                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full border border-gray-200 bg-white/80 text-gray-600">
+                        <div className="ml-auto flex items-center gap-2">
+                            {canIndex && (
+                                <div className="inline-flex items-center rounded-full border border-border bg-card p-1">
+                                    <button
+                                        type="button"
+                                        onClick={() => onSetIndexedMode(true)}
+                                        className={[
+                                            "px-3 py-1.5 rounded-full text-xs border transition-colors",
+                                            isIndexedMode
+                                                ? "bg-muted text-foreground border-border"
+                                                : "bg-card text-foreground border-border hover:bg-muted/60",
+                                        ].join(" ")}
+                                    >
+                                        Indexed
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => onSetIndexedMode(false)}
+                                        className={[
+                                            "px-3 py-1.5 rounded-full text-xs border transition-colors",
+                                            !isIndexedMode
+                                                ? "bg-muted text-foreground border-border"
+                                                : "bg-card text-foreground border-border hover:bg-muted/60",
+                                        ].join(" ")}
+                                    >
+                                        Raw
+                                    </button>
+                                </div>
+                            )}
+                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full border border-gray-200 bg-white/80 text-gray-600 text-xs">
                                 {anyLoading ? "Updating..." : "Ready"}
                             </span>
                         </div>

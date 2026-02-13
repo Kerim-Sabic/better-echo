@@ -24,7 +24,7 @@ export default function AiVideoMeasurementsBox({ result }) {
         switch (status) {
             case "DONE":
                 return {
-                    bgColor: "from-green-500/10 to-emerald-500/10",
+                    bgColor: "bg-green-50",
                     textColor: "text-green-600",
                     borderColor: "border-green-200/50",
                     icon: (
@@ -41,7 +41,7 @@ export default function AiVideoMeasurementsBox({ result }) {
                 };
             case "SKIPPED":
                 return {
-                    bgColor: "from-gray-400/10 to-gray-500/10",
+                    bgColor: "bg-gray-100",
                     textColor: "text-gray-600",
                     borderColor: "border-gray-200/50",
                     icon: (
@@ -58,7 +58,7 @@ export default function AiVideoMeasurementsBox({ result }) {
                 };
             default:
                 return {
-                    bgColor: "from-blue-500/10 to-indigo-500/10",
+                    bgColor: "bg-accent-soft",
                     textColor: "text-blue-600",
                     borderColor: "border-blue-200/50",
                     icon: (
@@ -90,7 +90,7 @@ export default function AiVideoMeasurementsBox({ result }) {
 
                 {/* Status Badge */}
                 <div
-                    className={`flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl bg-gradient-to-br ${statusStyle.bgColor} backdrop-blur-sm border ${statusStyle.borderColor} shadow-sm`}
+                    className={`flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl ${statusStyle.bgColor} backdrop-blur-sm border ${statusStyle.borderColor} shadow-sm`}
                 >
                     <span className={statusStyle.textColor}>{statusStyle.icon}</span>
                     <span
@@ -103,7 +103,7 @@ export default function AiVideoMeasurementsBox({ result }) {
 
             {/* Skipped State */}
             {status === "SKIPPED" && (
-                <div className="flex items-center space-x-3 py-6 px-4 rounded-xl bg-gradient-to-br from-gray-50 to-gray-100/50 border border-gray-200/50">
+                <div className="flex items-center space-x-3 py-6 px-4 rounded-xl bg-gray-100 border border-gray-200/50">
                     <svg
                         className="w-10 h-10 text-gray-400 flex-shrink-0"
                         viewBox="0 0 24 24"

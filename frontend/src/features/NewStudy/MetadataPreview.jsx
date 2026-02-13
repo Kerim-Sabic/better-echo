@@ -42,6 +42,13 @@ function formatDicomSex(s) {
     return s;
 }
 
+function formatDicomNumber(s, options = {}) {
+    const value = Number.parseFloat(String(s ?? ""));
+    if (!Number.isFinite(value)) return s;
+    const decimals = options.decimals ?? 2;
+    return value.toFixed(decimals);
+}
+
 export default function MetadataPreview({ tags }) {
     if (!tags) return null;
     return (
@@ -60,6 +67,9 @@ export default function MetadataPreview({ tags }) {
                         <MetadataRow label="Patient ID / MRN" value={tags.PatientID} />
                         <MetadataRow label="Date of Birth" value={formatDicomDate(tags.PatientBirthDate)} />
                         <MetadataRow label="Sex" value={formatDicomSex(tags.PatientSex)} />
+                        <MetadataRow label="Height (m)" value={formatDicomNumber(tags.PatientSize)} />
+                        <MetadataRow label="Weight (kg)" value={formatDicomNumber(tags.PatientWeight)} />
+                        <MetadataRow label="Heart Rate (bpm)" value={formatDicomNumber(tags.HeartRate, { decimals: 0 })} />
                         <MetadataRow label="Study Date" value={formatDicomDate(tags.StudyDate)} />
                         <MetadataRow label="Study Time" value={formatDicomTime(tags.StudyTime)} />
                         <MetadataRow label="Accession #" value={tags.AccessionNumber} />

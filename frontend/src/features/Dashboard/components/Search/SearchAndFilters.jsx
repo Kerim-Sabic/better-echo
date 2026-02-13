@@ -80,7 +80,7 @@ export default function SearchAndFilters({
                     return (
                         <Button
                             key={f.id}
-                            variant={active ? "gradient" : "outline"}
+                            variant={active ? "clinical" : "outline"}
                             onClick={() => setSelectedFilter(f.id)}
                             className="rounded-full px-5 py-2.5"
                         >

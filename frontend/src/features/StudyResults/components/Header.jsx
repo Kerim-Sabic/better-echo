@@ -35,14 +35,14 @@ export default function Header({
     const statusChip = (() => {
         if (isPolling) {
             return (
-                <span className="px-2 py-1 text-xs rounded-full bg-[#9333EA]/10 text-[#9333EA]">
+                <span className="px-2 py-1 text-xs rounded-full badge-accent-soft">
                     Processing
                 </span>
             );
         }
         if (hasMeasurements) {
             return (
-                <span className="px-2 py-1 text-xs rounded-full bg-[#06B6D4]/10 text-[#06B6D4]">
+                <span className="px-2 py-1 text-xs rounded-full badge-accent-soft">
                     Ready
                 </span>
             );
@@ -84,7 +84,7 @@ export default function Header({
                 />
 
                 <div className="min-w-0">
-                    <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#9333EA] via-[#6366F1] to-[#06B6D4] truncate">
+                    <h1 className="text-2xl font-bold heading-accent truncate">
                         Study Results
                     </h1>
                     <div className="flex flex-wrap items-center gap-2 mt-0.5 pb-1 text-xs text-muted-foreground">

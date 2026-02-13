@@ -170,6 +170,9 @@ export function useStudyResultsData(studyUid) {
 
   const patientName = studyMetaQuery.data?.patientName ?? null;
   const patientSex = studyMetaQuery.data?.patientSex ?? null;
+  const patientHeightCm = studyMetaQuery.data?.patientHeightCm ?? null;
+  const patientWeightKg = studyMetaQuery.data?.patientWeightKg ?? null;
+  const heartRateBpm = studyMetaQuery.data?.heartRateBpm ?? null;
 
   // ---- Refresh / print ------------------------------------------------------
   const panechoEchoprimeRefetch = panechoEchoprimeResultsQuery.refetch;
@@ -192,13 +195,15 @@ export function useStudyResultsData(studyUid) {
     isLLMEnabled,
   ]);
 
-  const handlePrint = useCallback(async () => {
+  const handlePrint = useCallback(async (options = {}) => {
     if (!studyUid) return;
     const result = await printMeasurements({
       panechoEchoprimeResults,
       patientName,
       patientSex,
       studyUID: studyUid,
+      heartRateBpm,
+      ...options,
     });
     if (!result?.ok) {
       if (result?.reason === "no_measurements") {
@@ -207,7 +212,7 @@ export function useStudyResultsData(studyUid) {
       }
       console.warn("Failed to prepare print", result?.error);
     }
-  }, [panechoEchoprimeResults, patientName, patientSex, studyUid]);
+  }, [panechoEchoprimeResults, patientName, patientSex, studyUid, heartRateBpm]);
 
   // ---- Derived booleans & controls -----------------------------------------
   const isPolling = useMemo(() => {
@@ -282,6 +287,9 @@ export function useStudyResultsData(studyUid) {
     latestOverrideAt: overrideMeta.latestOverrideAt,
     patientName,
     patientSex,
+    patientHeightCm,
+    patientWeightKg,
+    heartRateBpm,
     studyInstanceKey,
     isPolling,
     anyLoading,

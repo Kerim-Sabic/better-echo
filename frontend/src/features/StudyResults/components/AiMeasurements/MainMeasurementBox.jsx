@@ -63,7 +63,7 @@ export default function MainMeasurementBox({
             measurement-card ${glowClass} ${overrideRingClass}
         `}
         >
-        {onStartEdit && (
+        {onStartEdit && mainMeasurement?.editable !== false && (
             <button
                 className={iconButtonClasses}
                 onClick={onStartEdit}

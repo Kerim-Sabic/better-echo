@@ -17,6 +17,9 @@ export function useStudyMetaQuery(studyUid, { enabled = true, queryKeyPrefix = "
             data,
             patientName: data?.patient?.patient_name || null,
             patientSex: data?.patient?.patient_sex || null,
+            patientHeightCm: data?.patient_height_cm ?? null,
+            patientWeightKg: data?.patient_weight_kg ?? null,
+            heartRateBpm: data?.heart_rate_bpm ?? null,
         }),
     });
 }

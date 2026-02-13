@@ -41,33 +41,21 @@ export default function AiVideoMeasurementsList({ instance }) {
             >
                 <div className="flex items-center space-x-3">
                     {/* Eye-like icon */}
-                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-500/20 to-cyan-500/20 backdrop-blur-sm flex items-center justify-center border border-white/30 shadow-sm">
+                    <div className="w-12 h-12 rounded-2xl icon-chip-accent backdrop-blur-sm flex items-center justify-center shadow-sm">
                         <svg
-                            className="w-6 h-6"
+                            className="w-6 h-6 text-accent-main"
                             viewBox="0 0 24 24"
                             fill="none"
                             xmlns="http://www.w3.org/2000/svg"
                         >
-                            <defs>
-                                <linearGradient
-                                    id={`viewGradient-${predicted_view}`}
-                                    x1="0%"
-                                    y1="0%"
-                                    x2="100%"
-                                    y2="100%"
-                                >
-                                    <stop offset="0%" stopColor="#9333EA" />
-                                    <stop offset="100%" stopColor="#06B6D4" />
-                                </linearGradient>
-                            </defs>
                             <path
                                 d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                                fill={`url(#viewGradient-${predicted_view})`}
+                                fill="currentColor"
                                 opacity="0.8"
                             />
                             <path
                                 d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                                stroke={`url(#viewGradient-${predicted_view})`}
+                                stroke="currentColor"
                                 strokeWidth="2"
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
@@ -79,7 +67,7 @@ export default function AiVideoMeasurementsList({ instance }) {
                     {/* Title and confidence */}
                     <div>
                         <div className="flex items-center space-x-2">
-                            <div className="text-lg font-semibold text-gray-800 tracking-tight">
+                            <div className="text-lg font-semibold text-foreground tracking-tight">
                                 {predicted_view || "Unknown View"}
                             </div>
                             {!isSkippedOnly && (
@@ -109,7 +97,7 @@ export default function AiVideoMeasurementsList({ instance }) {
                             <div className="flex items-center space-x-2 mt-0.5">
                                 <div className="h-1.5 w-24 bg-gray-200 rounded-full overflow-hidden">
                                     <div
-                                        className="h-full bg-gradient-to-r from-purple-600 to-cyan-500 rounded-full transition-all duration-500"
+                                        className="h-full progress-accent rounded-full transition-all duration-500"
                                         style={{ width: `${predicted_view_confidence * 100}%` }}
                                     />
                                 </div>
@@ -126,14 +114,14 @@ export default function AiVideoMeasurementsList({ instance }) {
                     className={`px-3 py-1.5 rounded-xl backdrop-blur-sm border border-white/30 ${
                         isSkippedOnly
                             ? "bg-gray-100"
-                            : "bg-gradient-to-br from-purple-500/10 to-cyan-500/10"
+                            : "badge-accent-soft"
                     }`}
                 >
                     <span
                         className={`text-sm font-semibold ${
                             isSkippedOnly
                                 ? "text-gray-500"
-                                : "bg-gradient-to-r from-purple-600 to-cyan-600 bg-clip-text text-transparent"
+                                : "text-accent-main"
                         }`}
                     >
                         {isSkippedOnly
@@ -156,7 +144,7 @@ export default function AiVideoMeasurementsList({ instance }) {
                         <>
                             {results.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-8 space-y-3">
-                                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-gray-100 to-gray-50 flex items-center justify-center border border-gray-200/50">
+                                    <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center border border-gray-200/50">
                                         <svg
                                             className="w-8 h-8 text-gray-400"
                                             viewBox="0 0 24 24"

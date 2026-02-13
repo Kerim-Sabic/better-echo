@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { buildAiMeasurementsProps } from "../helpers/buildAiMeasurementsProps";
+import { INDEXABLE_KEYS } from "../helpers/aiMeasurementsConstants";
 import { updatePanechoEchoprimeOverrides } from "../../../api/orchestration_apis/PanechoEchoprimeResultsApi";
 
 const EMPTY_OBJ = {};
@@ -16,6 +17,9 @@ export function useAiMeasurementsViewModel({
   panEchoEchoprimeState,
   studyInstanceKey,
   patientSex,
+  patientHeightCm,
+  patientWeightKg,
+  heartRateBpm,
   refresh,
 }) {
   // ---- Local UI state ------------------------------------------------------
@@ -24,6 +28,8 @@ export function useAiMeasurementsViewModel({
   const [fieldErrors, setFieldErrors] = useState({});
   const [savingKey, setSavingKey] = useState(null);
   const [cachedResults, setCachedResults] = useState(null);
+  const [isIndexedMode, setIsIndexedMode] = useState(false);
+  const indexedInitializedRef = useRef(false);
   const cacheKeyRef = useRef(null);
   const activeCacheKey = studyInstanceKey ?? studyUid ?? null;
 
@@ -36,6 +42,8 @@ export function useAiMeasurementsViewModel({
     setEditingKey(null);
     setFieldErrors({});
     setSavingKey(null);
+    setIsIndexedMode(false);
+    indexedInitializedRef.current = false;
   }, [activeCacheKey]);
 
   useEffect(() => {
@@ -45,6 +53,41 @@ export function useAiMeasurementsViewModel({
   }, [panechoEchoprimeResults]);
 
   const activeResults = panechoEchoprimeResults || cachedResults;
+
+  const bsa = useMemo(() => {
+    const height = Number(patientHeightCm);
+    const weight = Number(patientWeightKg);
+    if (!Number.isFinite(height) || !Number.isFinite(weight) || height <= 0 || weight <= 0) {
+      return null;
+    }
+    return Math.sqrt((height * weight) / 3600);
+  }, [patientHeightCm, patientWeightKg]);
+
+  const canIndex = Boolean(bsa);
+
+  useEffect(() => {
+    if (!canIndex) {
+      setIsIndexedMode(false);
+      return;
+    }
+    if (!indexedInitializedRef.current) {
+      setIsIndexedMode(true);
+      indexedInitializedRef.current = true;
+    }
+  }, [canIndex]);
+
+  const handleSetIndexedMode = useCallback((nextMode) => {
+    if (!canIndex) {
+      setIsIndexedMode(false);
+      return;
+    }
+    setIsIndexedMode(Boolean(nextMode));
+  }, [canIndex]);
+
+  const handleToggleIndexed = useCallback(() => {
+    if (!canIndex) return;
+    setIsIndexedMode((prev) => !prev);
+  }, [canIndex]);
 
   // ---- Derived overrides / display ----------------------------------------
   const savedOverrides = useMemo(
@@ -78,14 +121,17 @@ export function useAiMeasurementsViewModel({
       }
       if (entry?.value !== undefined) {
         const parsed = parseNumericInput(entry.value);
-        const baseline = savedOverrides?.[key]?.value ?? task.integrated_value ?? null;
+        const baselineRaw = savedOverrides?.[key]?.value ?? task.integrated_value ?? null;
+        const baseline = (isIndexedMode && bsa && INDEXABLE_KEYS.has(key) && baselineRaw !== null)
+          ? Number(baselineRaw) / bsa
+          : baselineRaw;
         if (parsed === null || baseline === null || Number(parsed) !== Number(baseline)) {
           pending[key] = { value: entry.value };
         }
       }
     });
     return pending;
-  }, [draftOverrides, integratedTasks, savedOverrides]);
+  }, [draftOverrides, integratedTasks, savedOverrides, isIndexedMode, bsa]);
 
   const effectiveOverrides = useMemo(() => {
     const merged = { ...savedOverrides };
@@ -101,16 +147,24 @@ export function useAiMeasurementsViewModel({
       if (entry?.value !== undefined) {
         const parsed = parseNumericInput(entry.value);
         if (parsed !== null) {
+          const rawValue = (isIndexedMode && bsa && INDEXABLE_KEYS.has(key))
+            ? parsed * bsa
+            : parsed;
           merged[key] = { ...(merged[key] || {}), value: parsed };
+          merged[key].value = rawValue;
         }
       }
     });
     return merged;
-  }, [pendingOverrides, savedOverrides]);
+  }, [pendingOverrides, savedOverrides, isIndexedMode, bsa]);
 
   const { mainMeasurements, Measurements: measurementSections } = useMemo(
-    () => buildAiMeasurementsProps(activeResults, effectiveOverrides, patientSex),
-    [activeResults, effectiveOverrides, patientSex]
+    () => buildAiMeasurementsProps(activeResults, effectiveOverrides, patientSex, {
+      isIndexedMode,
+      bsa,
+      heartRateBpm,
+    }),
+    [activeResults, effectiveOverrides, patientSex, isIndexedMode, bsa, heartRateBpm]
   );
 
   const hasMainMeasurements = Array.isArray(mainMeasurements) && mainMeasurements.length > 0;
@@ -130,12 +184,12 @@ export function useAiMeasurementsViewModel({
     setDraftOverrides((prev) => {
       if (prev[item.key] !== undefined) return prev;
       const task = integratedTasks[item.key];
-      if (!task) return prev;
+      if (!task && item.rawNumericValue === undefined) return prev;
       if (item.editType === "label") {
         const currentLabel = effectiveOverrides?.[item.key]?.label ?? task.integrated_label ?? "";
         return { ...prev, [item.key]: { label: currentLabel } };
       }
-      const currentValue = effectiveOverrides?.[item.key]?.value ?? task.integrated_value;
+      const currentValue = item.editValue ?? effectiveOverrides?.[item.key]?.value ?? task?.integrated_value;
       return {
         ...prev,
         [item.key]: {
@@ -224,12 +278,16 @@ export function useAiMeasurementsViewModel({
         setFieldErrors((prev) => ({ ...prev, [key]: "Enter a valid number." }));
         return;
       }
-      persistOverride(key, { value: parsed });
+      let valueToPersist = parsed;
+      if (isIndexedMode && bsa && INDEXABLE_KEYS.has(key)) {
+        valueToPersist = parsed * bsa;
+      }
+      persistOverride(key, { value: valueToPersist });
       return;
     }
 
     persistOverride(key, null);
-  }, [clearDraftForKey, draftOverrides, pendingOverrides, persistOverride]);
+  }, [bsa, clearDraftForKey, draftOverrides, isIndexedMode, pendingOverrides, persistOverride]);
 
   const handleClearOverride = useCallback((key) => {
     if (!key) return;
@@ -253,10 +311,15 @@ export function useAiMeasurementsViewModel({
     Measurements: measurementSections,
     hasMainMeasurements,
     hasMeasurements,
+    isIndexedMode,
+    canIndex,
+    bsa,
     editingKey,
     draftOverrides,
     fieldErrors,
     savingKey,
+    onSetIndexedMode: handleSetIndexedMode,
+    onToggleIndexed: handleToggleIndexed,
     onStartEdit: handleStartEdit,
     onStopEdit: handleStopEdit,
     onChangeValue: handleChangeValue,

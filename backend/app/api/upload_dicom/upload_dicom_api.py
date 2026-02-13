@@ -42,6 +42,13 @@ def _tag(tags: dict, key: str, default=""):
     obj = tags.get(key, {})
     return _first(obj.get("Value"), default)
 
+def _to_float_or_none(value):
+    try:
+        if value is None:
+            return None
+        return float(str(value))
+    except Exception:
+        return None
 
 def _clean_for_ui(tags: dict) -> dict:
     """Build a friendly dict the frontend can use to prefill fields."""
@@ -50,6 +57,9 @@ def _clean_for_ui(tags: dict) -> dict:
         "PatientID": _tag(tags, "0010,0020", ""),
         "PatientBirthDate": _tag(tags, "0010,0030", ""),
         "PatientSex": _tag(tags, "0010,0040", ""),
+        "PatientSize": _tag(tags, "0010,1020", ""),       # meters
+        "PatientWeight": _tag(tags, "0010,1030", ""),     # kg
+        "HeartRate": _tag(tags, "0018,1088", ""),         # bpm
         "StudyDate": _tag(tags, "0008,0020", ""),
         "StudyTime": _tag(tags, "0008,0030", ""),
         "AccessionNumber": _tag(tags, "0008,0050", ""),
@@ -136,6 +146,10 @@ async def upload_dicom(file: UploadFile = File(...),
 
         logger.info(f"Extracted Patient ID tag: {patient_id_tag}, Study UID: {study_uid}, Series UID: {series_uid}, Dicom Instance UID: {sop_instance_uid}")
 
+        height_m = _to_float_or_none(clean_instance_tags.get("PatientSize"))
+        weight_kg = _to_float_or_none(clean_instance_tags.get("PatientWeight"))
+        heart_rate_bpm = _to_float_or_none(clean_instance_tags.get("HeartRate"))
+
         # --- Step 7: Insert/Fetch Patient ---
         patient = db.query(Patient).filter_by(patient_id=patient_id_tag).first()
         if not patient:
@@ -158,7 +172,10 @@ async def upload_dicom(file: UploadFile = File(...),
                 description=None,
                 patient=patient,
                 study_orthanc_id = upload_response["ParentStudy"],
-                user_id = current_user_id
+                user_id = current_user_id,
+                patient_height_cm = height_m * 100 if height_m else None,
+                patient_weight_kg = weight_kg,
+                heart_rate_bpm = heart_rate_bpm
 
             )
             db.add(study)

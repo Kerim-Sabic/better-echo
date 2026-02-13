@@ -94,7 +94,7 @@ export default function Login() {
             style={{ minHeight: `calc(100vh - ${TITLEBAR_HEIGHT}px)` }}
         >
             {/* Subtle radial background pattern */}
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(147,51,234,0.05),transparent_55%)] pointer-events-none" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(85,137,247,0.07),transparent_55%)] pointer-events-none" />
 
             <div className="relative w-full max-w-md px-2 animate-fade-in">
                 {/* Logo + title */}
@@ -155,7 +155,7 @@ export default function Login() {
                             className="group flex items-center gap-2 text-sm text-muted-foreground hover:text-primary smooth-transition disabled:cursor-not-allowed disabled:opacity-60"
                             aria-label="Biometric login"
                         >
-                            <Fingerprint className="w-5 h-5 group-hover-animate-glow group-hover:drop-shadow-[0_0_12px_rgba(147,51,234,0.55)]" />
+                            <Fingerprint className="w-5 h-5 group-hover-animate-glow group-hover:drop-shadow-[0_0_12px_rgba(85,137,247,0.55)]" />
                             <span className="text-xs">
                                 {bioLoading ? "Connecting..." : "Biometric"}
                             </span>

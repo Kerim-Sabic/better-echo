@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useCallback } from "react";
 import { useStudyResultsData } from "./useStudyResultsData";
 import { useAiMeasurementsViewModel } from "./useAiMeasurementsViewModel";
 import { useAiSegmentationsViewModel } from "./useAiSegmentationsViewModel";
@@ -51,6 +51,9 @@ export function useStudyResults(studyUid) {
     latestOverrideAt,
     patientName,
     patientSex,
+    patientHeightCm,
+    patientWeightKg,
+    heartRateBpm,
     studyInstanceKey,
     isPolling,
     anyLoading,
@@ -67,6 +70,9 @@ export function useStudyResults(studyUid) {
     panEchoEchoprimeState,
     studyInstanceKey,
     patientSex,
+    patientHeightCm,
+    patientWeightKg,
+    heartRateBpm,
     refresh: refreshAll,
   });
 
@@ -85,6 +91,13 @@ export function useStudyResults(studyUid) {
     onRefresh: refreshAll,
   });
 
+  const handlePrintWithMode = useCallback(() => {
+    handlePrint({
+      isIndexedMode: aiMeasurements?.isIndexedMode,
+      bsa: aiMeasurements?.bsa,
+    });
+  }, [handlePrint, aiMeasurements?.isIndexedMode, aiMeasurements?.bsa]);
+
   // ---- Compose UI-facing view model ----------------------------------------
   // Note: Tracking specific values instead of entire query objects for performance
   /* eslint-disable react-hooks/exhaustive-deps */
@@ -102,6 +115,9 @@ export function useStudyResults(studyUid) {
       studyUID: studyUid ?? null,
       patientName,
       patientSex,
+      patientHeightCm,
+      patientWeightKg,
+      heartRateBpm,
       studyInstanceKey,
       activeTab,
       setActiveTab,
@@ -123,7 +139,7 @@ export function useStudyResults(studyUid) {
       // controls
       isPolling,
       refresh: refreshAll,
-      onPrint: handlePrint,
+      onPrint: handlePrintWithMode,
     }),
     [
       pageState,
@@ -140,11 +156,14 @@ export function useStudyResults(studyUid) {
       llmReport,
       activeTab,
       anyLoading,
-      handlePrint,
+      handlePrintWithMode,
       isPolling,
       refreshAll,
       patientName,
       patientSex,
+      patientHeightCm,
+      patientWeightKg,
+      heartRateBpm,
       studyInstanceKey,
 
       panEchoEchoprimeState,

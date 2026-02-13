@@ -12,8 +12,8 @@ export default function StudyCard({ study, onSelectStudy, onEdit, onDelete }) {
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-6 flex-1 overflow-hidden">
                     {/* Avatar */}
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-[#9333EA] via-[#6366F1] to-[#06B6D4] flex items-center justify-center flex-shrink-0">
-                        <User className="w-6 h-6 text-white" />
+                    <div className="w-12 h-12 rounded-xl icon-chip-accent flex items-center justify-center flex-shrink-0">
+                        <User className="w-6 h-6" />
                     </div>
 
                     {/* Study info */}

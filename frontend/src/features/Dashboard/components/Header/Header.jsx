@@ -160,7 +160,7 @@ export default function DashboardHeader({ onNewStudy }) {
                             className="w-8 h-8"
                         />
                         <div>
-                            <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#9333EA] via-[#6366F1] to-[#06B6D4]">
+                            <h1 className="text-2xl font-bold heading-accent">
                                 Patient Studies
                             </h1>
                             <p className="text-sm text-muted-foreground">
@@ -185,7 +185,7 @@ export default function DashboardHeader({ onNewStudy }) {
                                     aria-expanded={menuOpen}
                                     className="flex items-center gap-2 rounded-full border border-border bg-white/90 px-3 py-[9px] shadow-sm backdrop-blur transition hover:-translate-y-[1px] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                                 >
-                                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-r from-[#9333EA] via-[#6366F1] to-[#06B6D4] text-sm font-semibold text-white">
+                                    <div className="flex h-9 w-9 items-center justify-center rounded-full icon-chip-accent text-sm font-semibold">
                                         {initials}
                                     </div>
                                     <div className="text-left">

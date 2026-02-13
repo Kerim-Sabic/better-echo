@@ -25,7 +25,7 @@ export default function NewStudyHeader({ status }) {
                         className="w-8 h-8"
                     />
                     <div>
-                        <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#9333EA] via-[#6366F1] to-[#06B6D4]">New Study</h1>
+                        <h1 className="text-2xl font-bold heading-accent">New Study</h1>
                         <p className="text-sm text-muted-foreground">Upload and analyze echocardiogram</p>
                     </div>
                 </div>

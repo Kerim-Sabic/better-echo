@@ -10,12 +10,12 @@ export function getStatusBadge(status) {
 
     switch (status) {
         case "completed":
-            cls = "bg-[#06B6D4]/10 text-[#06B6D4]";
+            cls = "badge-accent-soft";
             icon = <CheckCircle2 className="w-3.5 h-3.5" />;
             label = "Completed";
             break;
         case "processing":
-            cls = "bg-[#9333EA]/10 text-[#9333EA]";
+            cls = "bg-muted text-foreground";
             icon = <Clock className="w-3.5 h-3.5 animate-glow" />;
             label = "Processing";
             break;
