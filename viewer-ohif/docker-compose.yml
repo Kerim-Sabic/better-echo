@@ -1,0 +1,12 @@
+services:
+  ohif-viewer:
+    image: ohif/viewer:v4.12.51.21579
+    container_name: ohif-viewer
+    ports:
+      - "3005:80"
+    volumes:
+      - ./app-config.js:/usr/share/nginx/html/app-config.js:ro
+      - ./orthanc-standalone.json:/usr/share/nginx/html/orthanc-standalone.json:ro
+      - ./start-ohif.sh:/start-ohif.sh:ro
+    command: ["/bin/sh", "/start-ohif.sh"]
+    restart: unless-stopped
