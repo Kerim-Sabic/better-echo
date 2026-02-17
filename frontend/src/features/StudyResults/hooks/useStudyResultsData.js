@@ -58,6 +58,11 @@ export function useStudyResultsData(studyUid) {
 
     if (studyMetaQuery.isError) return "error";
 
+    const anyFailed = datas.some(
+      (data) => data?.isFailed || (data?.status === 200 && data?.data?.status === "failed")
+    );
+    if (anyFailed) return "error";
+
     const anyPending = datas.some(
       (data) => data?.isPending || (data?.status === 202 && data?.data?.status === "pending")
     );
@@ -98,6 +103,7 @@ export function useStudyResultsData(studyUid) {
     if (!studyUid) return "not_found";
     if (!data) return "loading";
     if (data.status === 404) return "not_found";
+    if (data.isFailed || (data.status === 200 && data.data?.status === "failed")) return "error";
     if (query.isFetching) return "loading";
     if (data.isPending || (data.status === 202 && data.data?.status === "pending")) return "pending";
     if (data.isComplete || (data.status === 200 && data.data?.status === "complete")) return "ready";

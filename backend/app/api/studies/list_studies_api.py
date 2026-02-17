@@ -9,6 +9,7 @@ from app.schemas.studies.studies_schemas import StudyListResponse
 from app.helpers.authentication_functions import get_current_user_id
 from app.core.artifacts import LLM_REPORT_TYPE
 from app.database_models.derived_results import ResultStatus
+from app.helpers.study_status import sync_study_status
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -40,8 +41,12 @@ def list_studies(
         .all()
     )
     data = []
+    changed_any = False
 
     for study in rows:
+        _, changed = sync_study_status(study)
+        changed_any = changed_any or changed
+
         diagnoses_list = []
         llm_result = next(
             (dr for dr in study.derived_results
@@ -82,5 +87,8 @@ def list_studies(
             "diagnoses": diagnoses_list,
         }
         data.append(study_dict)
+
+    if changed_any:
+        db.commit()
 
     return data

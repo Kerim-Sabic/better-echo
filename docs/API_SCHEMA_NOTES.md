@@ -1,6 +1,6 @@
 # API Schema Notes
 
-Last Updated: 2026-02-16  
+Last Updated: 2026-02-17  
 Owner: Backend/API
 
 ## Scope
@@ -104,14 +104,16 @@ Frontend polling expects these semantics:
 
 1. `200` + `{ status: "complete", ...results }`
 2. `202` + `{ status: "pending", retry_after }`
-3. `404` for missing/study-not-found or disabled path
+3. `200` + `{ status: "failed", detail? }`
+4. `404` for missing/study-not-found or disabled path
 
 Frontend query wrappers normalize this into:
 
 1. `isPending`
 2. `isComplete`
-3. `results`
-4. `retryAfter`
+3. `isFailed`
+4. `results`
+5. `retryAfter`
 
 Reference implementations:
 
@@ -142,6 +144,15 @@ Not included in list payload:
 Frontend entrypoint:
 
 1. [`listStudiesApi`](../frontend/src/api/StudiesApi.js) in [`StudiesApi.js`](../frontend/src/api/StudiesApi.js#L3)
+
+Status semantics:
+
+1. `processing`: one or more required orchestration artifacts are missing or pending.
+2. `completed`: all required orchestration artifacts are complete.
+3. `failed`: one or more required orchestration artifacts failed.
+4. Required artifact set is environment-dependent:
+1. `ENABLE_LLM=false`: PanEcho+EchoPrime combined + Dynamic+Measurements combined.
+2. `ENABLE_LLM=true`: PanEcho+EchoPrime combined + Dynamic+Measurements combined + LLM report.
 
 ### Study Detail (`GET /api/studies/{study_uid}`)
 

@@ -9,7 +9,11 @@ class LLMPendingResponse(BaseModel):
     status: Literal["pending"]
     retry_after: int
 
+class LLMFailedResponse(BaseModel):
+    status: Literal["failed"]
+    detail: str | None = None
+
 LLMReportResponse = Annotated[
-    Union[LLMCompleteResponse, LLMPendingResponse],
+    Union[LLMCompleteResponse, LLMPendingResponse, LLMFailedResponse],
     Field(discriminator="status"),
 ]

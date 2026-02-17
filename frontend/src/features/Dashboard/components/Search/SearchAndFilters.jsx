@@ -28,6 +28,7 @@ export default function SearchAndFilters({
         { id: "all", label: "All", count: counts?.all ?? 0 },
         { id: "completed", label: "Completed", count: counts?.completed ?? 0 },
         { id: "processing", label: "Processing", count: counts?.processing ?? 0 },
+        { id: "failed", label: "Failed", count: counts?.failed ?? 0 },
     ];
 
     const dateSummary = () => {

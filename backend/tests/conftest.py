@@ -11,6 +11,7 @@ from sqlalchemy.orm import sessionmaker
 from app.api.orchestration_apis.combined_dynamic_measurements_api import router as dynamic_router
 from app.api.orchestration_apis.combined_panecho_echoprime_api import router as panecho_router
 from app.api.orchestration_apis.llm_report_get_api import router as llm_results_router
+from app.api.studies import router as studies_router
 from app.api.orchestration_apis import combined_dynamic_measurements_api as dynamic_api
 from app.api.orchestration_apis import combined_panecho_echoprime_api as panecho_api
 from app.api.orchestration_apis import llm_report_get_api as llm_api
@@ -91,11 +92,12 @@ def seeded_study(db_session_factory):
 
 
 @pytest.fixture()
-def app(db_session_factory, monkeypatch):
+def app(db_session_factory, seeded_study, monkeypatch):
     app = FastAPI()
     app.include_router(panecho_router, prefix="/api")
     app.include_router(dynamic_router, prefix="/api")
     app.include_router(llm_results_router, prefix="/api")
+    app.include_router(studies_router, prefix="/api")
 
     def override_get_db() -> Generator:
         db = db_session_factory()
@@ -105,7 +107,7 @@ def app(db_session_factory, monkeypatch):
             db.close()
 
     app.dependency_overrides[get_db] = override_get_db
-    app.dependency_overrides[get_current_user_id] = lambda: 1
+    app.dependency_overrides[get_current_user_id] = lambda: seeded_study["user_id"]
 
     # Prevent background task execution of heavy inference/LLM paths in integration tests.
     monkeypatch.setattr(panecho_api, "combining_panecho_echoprime", lambda study_uid: None)

@@ -18,20 +18,6 @@ export function pickTags(meta) {
     };
 }
 
-export function upsertStudyToLocalStorage(study) {
-    try {
-        const raw = localStorage.getItem("studies");
-        const list = raw ? JSON.parse(raw) : [];
-        const idx = list.findIndex((s) => s.id === study.id);
-        if (idx >= 0) list[idx] = { ...list[idx], ...study };
-        else list.unshift(study);
-        localStorage.setItem("studies", JSON.stringify(list));
-    } catch {
-        // ignore storage errors
-    }
-}
-
-
 // Function to retrieve StudyUID from a dicom instance file
 export function getStudyUID(file) {
     return new Promise((resolve, reject) => {

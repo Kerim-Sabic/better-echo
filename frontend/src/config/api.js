@@ -25,18 +25,3 @@ export const getBackendUrl = async () => {
     console.log('Using environment uploads URL:', uploadsUrl);
     return backendUrl;
 };
-
-export const getUploadsUrl = async () => {
-    if (uploadsUrl) {
-        return uploadsUrl;
-    }
-    await getBackendUrl();
-    return uploadsUrl;
-};
-
-export const API_CONFIG = {
-    get: async () => {
-        const url = await getBackendUrl();
-        return { API_URL: url };
-    }
-};

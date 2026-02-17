@@ -1,6 +1,6 @@
 # Backend Architecture
 
-Last Updated: 2026-02-16  
+Last Updated: 2026-02-17  
 Owner: Backend
 
 ## Scope
@@ -121,6 +121,16 @@ Persistence:
 
 1. Artifacts are stored in `DerivedResult` ([`derived_results.py`](../../backend/app/database_models/derived_results.py#L12))
 2. Combined/orchestration rows drive frontend polling via orchestration APIs.
+3. Study-level dashboard status is derived from orchestration artifacts via [`study_status.py`](../../backend/app/helpers/study_status.py#L1)
+
+Study status policy:
+
+1. If any required artifact is `failed`, study status is `failed`.
+2. Else if all required artifacts are `complete`, study status is `completed`.
+3. Else study status is `processing`.
+4. Required artifacts depend on backend `ENABLE_LLM`:
+    1. Disabled: PanEcho+EchoPrime combined + Dynamic+Measurements combined.
+    2. Enabled: PanEcho+EchoPrime combined + Dynamic+Measurements combined + LLM report.
 
 ## Error Handling and Observability
 
