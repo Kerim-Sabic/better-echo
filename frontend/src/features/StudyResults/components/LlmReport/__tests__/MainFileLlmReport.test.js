@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import MainFileLlmReport from "../features/StudyResults/components/LlmReport/MainFileLlmReport";
+import MainFileLlmReport from "../MainFileLlmReport";
 
 describe("MainFileLlmReport", () => {
     it("renders empty state", () => {

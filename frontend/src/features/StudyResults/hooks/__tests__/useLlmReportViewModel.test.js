@@ -1,8 +1,8 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { useLlmReportViewModel } from "../features/StudyResults/hooks/useLlmReportViewModel";
-import { generateLlmReport } from "../api/orchestration_apis/LlmReportResultsApi";
+import { useLlmReportViewModel } from "../useLlmReportViewModel";
+import { generateLlmReport } from "../../../../api/orchestration_apis/LlmReportResultsApi";
 
-jest.mock("../api/orchestration_apis/LlmReportResultsApi", () => ({
+jest.mock("../../../../api/orchestration_apis/LlmReportResultsApi", () => ({
     generateLlmReport: jest.fn(),
 }));
 

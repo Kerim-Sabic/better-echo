@@ -1,24 +1,24 @@
 import { renderHook } from "@testing-library/react";
-import { useStudyResultsData } from "../features/StudyResults/hooks/useStudyResultsData";
-import { printMeasurements } from "../features/StudyResults/helpers/printMeasurements";
-import { usePanechoEchoprimeResultsQuery } from "../features/StudyResults/hooks/queries/usePanechoEchoprimeResultsQuery";
-import { useDynamicMeasurementsResultsQuery } from "../features/StudyResults/hooks/queries/useDynamicMeasurementsResultsQuery";
-import { useLlmReportResultsQuery } from "../features/StudyResults/hooks/queries/useLlmReportResultsQuery";
-import { useStudyMetaQuery } from "../features/StudyResults/hooks/queries/useStudyMetaQuery";
+import { useStudyResultsData } from "../useStudyResultsData";
+import { printMeasurements } from "../../helpers/printMeasurements";
+import { usePanechoEchoprimeResultsQuery } from "../queries/usePanechoEchoprimeResultsQuery";
+import { useDynamicMeasurementsResultsQuery } from "../queries/useDynamicMeasurementsResultsQuery";
+import { useLlmReportResultsQuery } from "../queries/useLlmReportResultsQuery";
+import { useStudyMetaQuery } from "../queries/useStudyMetaQuery";
 
-jest.mock("../features/StudyResults/helpers/printMeasurements", () => ({
+jest.mock("../../helpers/printMeasurements", () => ({
     printMeasurements: jest.fn(),
 }));
-jest.mock("../features/StudyResults/hooks/queries/usePanechoEchoprimeResultsQuery", () => ({
+jest.mock("../queries/usePanechoEchoprimeResultsQuery", () => ({
     usePanechoEchoprimeResultsQuery: jest.fn(),
 }));
-jest.mock("../features/StudyResults/hooks/queries/useDynamicMeasurementsResultsQuery", () => ({
+jest.mock("../queries/useDynamicMeasurementsResultsQuery", () => ({
     useDynamicMeasurementsResultsQuery: jest.fn(),
 }));
-jest.mock("../features/StudyResults/hooks/queries/useLlmReportResultsQuery", () => ({
+jest.mock("../queries/useLlmReportResultsQuery", () => ({
     useLlmReportResultsQuery: jest.fn(),
 }));
-jest.mock("../features/StudyResults/hooks/queries/useStudyMetaQuery", () => ({
+jest.mock("../queries/useStudyMetaQuery", () => ({
     useStudyMetaQuery: jest.fn(),
 }));
 

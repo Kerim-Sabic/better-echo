@@ -26,7 +26,10 @@
     "dist:linux": "npm run build && npm run build:backend && electron-builder build --linux",
     "watch:electron": "tsc -p electron/tsconfig.json --watch",
     "clean": "rimraf dist && rimraf frontend/build && rimraf backend/dist",
-    "typecheck": "tsc -p electron/tsconfig.json --noEmit"
+    "typecheck": "tsc -p electron/tsconfig.json --noEmit",
+    "test:backend": "cd backend && python -m pytest -q",
+    "test:frontend": "cd frontend && cross-env CI=true npm test -- --watchAll=false",
+    "test:all": "npm run test:backend && npm run test:frontend"
   },
   "dependencies": {
     "axios": "^1.7.2"
