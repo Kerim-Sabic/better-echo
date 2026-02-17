@@ -2,7 +2,6 @@ export default function Viewer({ studyUID }) {
   if (!studyUID) return null;
 
   const base = String(process.env.REACT_APP_OHIF_BASE_URL || "").replace(/\/+$/, "");
-  console.log("base", base)
   if (!base) {
     return (
       <div className="flex h-full w-full items-center justify-center bg-black text-sm text-white/80">
