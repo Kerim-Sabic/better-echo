@@ -12,12 +12,19 @@ server {
   listen 80;
   root /usr/share/nginx/html;
   index index.html index.htm;
+  gzip_static always;
+  gzip_proxied expired no-cache no-store private auth;
+  gunzip on;
 
-  # Ensure .mjs modules are served as JavaScript.
-  types { application/javascript mjs; }
+  # Serve module files with JS MIME and avoid rewriting missing files to index.html.
+  location ~* \.mjs$ {
+    default_type application/javascript;
+    try_files $uri =404;
+  }
 
-  location / {
-    try_files $uri $uri/ /index.html;
+  # Static assets should 404 when missing (not return index.html).
+  location ~* \.(?:js|css|map|json|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf)$ {
+    try_files $uri =404;
   }
 
   location /dicom-web/ {
@@ -34,6 +41,10 @@ server {
     proxy_set_header Host host.docker.internal:8042;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
+  }
+
+  location / {
+    try_files $uri $uri/ /index.html;
   }
 
   error_page 500 502 503 504 /50x.html;
