@@ -23,7 +23,7 @@ export default function Viewer({ studyUID }) {
   return (
     <iframe
       title="OHIF Viewer"
-      src={src}
+      src={base}
       allow="cross-origin-isolated"
       className="w-full h-full border-none"
     />

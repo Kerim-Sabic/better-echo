@@ -7,9 +7,9 @@ window.config = {
     dicomWeb: [
       {
         name: "Orthanc",
-        wadoUriRoot: "http://localhost:3005/dicom-web",
-        qidoRoot: "http://localhost:3005/dicom-web",
-        wadoRoot: "http://localhost:3005/dicom-web",
+        wadoUriRoot: "http://localhost:3001/dicom-web",
+        qidoRoot: "http://localhost:3001/dicom-web",
+        wadoRoot: "http://localhost:3001/dicom-web",
         qidoSupportsIncludeField: false,
         imageRendering: "wadors",
         thumbnailRendering: "wadors",

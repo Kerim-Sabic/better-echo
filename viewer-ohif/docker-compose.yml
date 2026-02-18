@@ -1,12 +1,8 @@
 services:
-  ohif-viewer:
-    image: ohif/viewer:v4.12.51.21579
-    container_name: ohif-viewer
+  horalix-viewer:
+    container_name: horalix-viewer
+    image: affan88888/horalix-viewer:1.0
+    pull_policy: always
     ports:
-      - "3005:80"
-    volumes:
-      - ./app-config.js:/usr/share/nginx/html/app-config.js:ro
-      - ./orthanc-standalone.json:/usr/share/nginx/html/orthanc-standalone.json:ro
-      - ./start-ohif.sh:/start-ohif.sh:ro
-    command: ["/bin/sh", "/start-ohif.sh"]
+      - "3001:80"
     restart: unless-stopped
