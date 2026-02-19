@@ -162,7 +162,8 @@ export function useDashboard() {
         const all = searchFiltered.length;
         const completed = searchFiltered.filter((s) => s.status === "completed").length;
         const processing = searchFiltered.filter((s) => s.status === "processing").length;
-        return { all, completed, processing };
+        const failed = searchFiltered.filter((s) => s.status === "failed").length;
+        return { all, completed, processing, failed };
     }, [searchFiltered]);
 
     return {

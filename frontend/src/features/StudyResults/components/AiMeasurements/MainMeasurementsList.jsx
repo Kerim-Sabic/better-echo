@@ -16,8 +16,6 @@ export default function MainMeasurementsList({
         return null;
     }
 
-    const safeId = "main_measurements";
-
     return (
         <div
             className="
@@ -32,63 +30,31 @@ export default function MainMeasurementsList({
             <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center space-x-3">
                     {/* Icon box */}
-                    <div
-                        className="
-              w-12 h-12 rounded-2xl 
-              bg-gradient-to-br from-purple-500/20 to-cyan-500/20
-              backdrop-blur-sm flex items-center justify-center 
-              border border-white/30 shadow-sm
-            "
-                    >
+                    <div className="w-12 h-12 rounded-2xl icon-chip-accent backdrop-blur-sm flex items-center justify-center shadow-sm">
                         <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
-                            <defs>
-                                <linearGradient
-                                    id={`grad-${safeId}`}
-                                    x1="0%"
-                                    y1="0%"
-                                    x2="100%"
-                                    y2="100%"
-                                >
-                                    <stop offset="0%" stopColor="#9333EA" />
-                                    <stop offset="100%" stopColor="#06B6D4" />
-                                </linearGradient>
-                            </defs>
-
                             <path
                                 d="M3 7h5l2 2h11v9a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z"
-                                fill={`url(#grad-${safeId})`}
+                                fill="currentColor"
                                 opacity="0.7"
                             />
 
                             <path
                                 d="M3 7h5l2 2h11v9a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z"
-                                stroke={`url(#grad-${safeId})`}
+                                stroke="currentColor"
                                 strokeWidth="1.5"
                             />
                         </svg>
                     </div>
 
                     {/* Section title */}
-                    <div className="text-lg font-semibold text-gray-800 tracking-tight">
+                    <div className="text-lg font-semibold text-foreground tracking-tight">
                         Key Measurements
                     </div>
                 </div>
 
                 {/* Optional: measurement count badge */}
-                <div
-                    className="
-            px-3 py-1.5 rounded-xl
-            bg-gradient-to-br from-purple-500/10 to-cyan-500/10
-            backdrop-blur-sm border border-white/30 shadow-sm
-          "
-                >
-                    <span
-                        className="
-              text-sm font-semibold
-              bg-gradient-to-r from-purple-600 to-cyan-600
-              bg-clip-text text-transparent
-            "
-                    >
+                <div className="px-3 py-1.5 rounded-xl badge-accent-soft backdrop-blur-sm shadow-sm">
+                    <span className="text-sm font-semibold text-accent-main">
                         {mainMeasurements.length} values
                     </span>
                 </div>

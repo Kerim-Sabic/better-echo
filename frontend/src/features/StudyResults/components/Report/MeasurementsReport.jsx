@@ -5,6 +5,15 @@ export default function MeasurementsReport({ patientName, studyUID, mainMeasurem
 
     const renderValue = (item) => {
         if (item == null) return "-";
+        if (item.displayVariant === "dual_numeric") {
+            const trv = typeof item.primaryValue === "number" && Number.isFinite(item.primaryValue)
+                ? item.primaryValue.toFixed(2)
+                : "-";
+            const trpg = typeof item.secondaryValue === "number" && Number.isFinite(item.secondaryValue)
+                ? item.secondaryValue.toFixed(2)
+                : "-";
+            return `TRV ${trv} m/s | TRPG ${trpg} mmHg`;
+        }
         if (typeof item.value === "object" && item.value) {
             const label = item.value.integrated_label || "-";
             return String(label);

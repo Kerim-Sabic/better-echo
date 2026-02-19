@@ -14,6 +14,7 @@ from app.api.inference.infer_echonet_dynamic_api import infer_lv_segmentation
 from app.api.inference.infer_measurements_api import infer_measurements_2d
 from app.helpers.view_classifier import classify_views_for_study
 from app.core.artifacts import DYNAMIC_MEASUREMENTS_COMBINED_TYPE
+from app.helpers.study_status import sync_study_status
 
 logger = logging.getLogger(__name__)
 
@@ -228,6 +229,7 @@ def combining_dynamic_measurements(study_uid: str) -> None:
         combined_results_row.value_json = {"instances": summaries}
         combined_results_row.status = ResultStatus.complete
         db.add(combined_results_row)
+        sync_study_status(study)
         db.commit()
 
         logger.info(f"[DYNAMIC_MEASUREMENTS_COMBINING] Combined results persisted for study {study_uid} (instances={len(summaries)})")
@@ -250,6 +252,7 @@ def combining_dynamic_measurements(study_uid: str) -> None:
                 if row:
                     row.status = ResultStatus.failed
                     db.add(row)
+                    sync_study_status(study)
                     db.commit()
         except Exception:
             db.rollback()

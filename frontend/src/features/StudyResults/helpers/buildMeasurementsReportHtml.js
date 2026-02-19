@@ -14,7 +14,7 @@ export function buildMeasurementsReportHtml({
             <div className="left">
                 {logoDataUrl ? <img className="logo" src={logoDataUrl} alt="Horalix Logo" /> : null}
                 <div className="titles">
-                    <div className="title gradient">Study Results</div>
+                    <div className="title">Study Results</div>
                     <div className="subtitle">AI Measurements Report</div>
                 </div>
             </div>
@@ -53,7 +53,6 @@ export function buildMeasurementsReportHtml({
     .brand-header .title { font-size: 20px; font-weight: 800; line-height: 1.1; }
     .brand-header .subtitle { font-size: 12px; color: #6b7280; }
     .brand-header .right { text-align: right; font-size: 12px; color: #374151; }
-    .gradient { background: linear-gradient(90deg, #9333EA 0%, #6366F1 50%, #06B6D4 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
     /* MeasurementsReport base styles (tables) */
     .report-root { }
     .report-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; margin-bottom: 10px; }

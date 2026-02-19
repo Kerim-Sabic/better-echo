@@ -1,8 +1,8 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { useAiMeasurementsViewModel } from "../features/StudyResults/hooks/useAiMeasurementsViewModel";
-import { updatePanechoEchoprimeOverrides } from "../api/orchestration_apis/PanechoEchoprimeResultsApi";
+import { useAiMeasurementsViewModel } from "../useAiMeasurementsViewModel";
+import { updatePanechoEchoprimeOverrides } from "../../../../api/orchestration_apis/PanechoEchoprimeResultsApi";
 
-jest.mock("../api/orchestration_apis/PanechoEchoprimeResultsApi", () => ({
+jest.mock("../../../../api/orchestration_apis/PanechoEchoprimeResultsApi", () => ({
     updatePanechoEchoprimeOverrides: jest.fn(),
 }));
 

@@ -1,6 +1,6 @@
 import requests
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from app.core.config import settings
 
@@ -55,17 +55,6 @@ def get_instance_tags(instance_id: str) -> Dict[str, Any]:
     except requests.RequestException as e:
         logger.error(f"Failed to fetch tags from Orthanc for instance {instance_id}: {str(e)}")
         raise RuntimeError(f"Failed to fetch tags from Orthanc: {e}")
-
-# Currently unused; reserved for future series-level operations.
-def get_series_id_from_instance(instance_id: str) -> Optional[str]:
-    """
-    Return the Orthanc internal series ID (ParentSeries) for a given instance ID.
-    """
-    # GET /instances/{id}
-    r = requests.get(f"{orthanc_url}/instances/{instance_id}", auth=AUTH, timeout=30)
-    r.raise_for_status()
-    data = r.json()
-    return data.get("ParentSeries")  # <- Orthanc series internal ID (UUID-like)
 
 def delete_study_from_orthanc(study_orthanc_id: str) -> bool:
     """

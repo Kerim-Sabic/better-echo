@@ -32,8 +32,8 @@ dist/electron/
 backend/dist/api/
 backend/panecho_gradcam_overlay.py
 
-# Docs
-docs/
+# Personal docs
+noomys-docs/
 
 # PyInstaller
 *.spec.orig

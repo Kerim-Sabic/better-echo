@@ -20,6 +20,9 @@ class StudySchema(BaseModel):
     description: Optional[str] = None
     status: Optional[str] = None
     uploaded_at: datetime
+    patient_height_cm: Optional[float] = None
+    patient_weight_kg: Optional[float] = None
+    heart_rate_bpm: Optional[float] = None
     patient: PatientSchema
     diagnoses: Optional[List[str]] = None
 

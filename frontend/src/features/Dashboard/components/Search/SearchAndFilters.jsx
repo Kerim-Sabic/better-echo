@@ -28,6 +28,7 @@ export default function SearchAndFilters({
         { id: "all", label: "All", count: counts?.all ?? 0 },
         { id: "completed", label: "Completed", count: counts?.completed ?? 0 },
         { id: "processing", label: "Processing", count: counts?.processing ?? 0 },
+        { id: "failed", label: "Failed", count: counts?.failed ?? 0 },
     ];
 
     const dateSummary = () => {
@@ -80,7 +81,7 @@ export default function SearchAndFilters({
                     return (
                         <Button
                             key={f.id}
-                            variant={active ? "gradient" : "outline"}
+                            variant={active ? "clinical" : "outline"}
                             onClick={() => setSelectedFilter(f.id)}
                             className="rounded-full px-5 py-2.5"
                         >

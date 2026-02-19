@@ -1,4 +1,4 @@
-from sqlalchemy import ( Column, Integer, String, DateTime, ForeignKey)
+from sqlalchemy import ( Column, Integer, String, DateTime, ForeignKey, Float)
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.database.db import Base
@@ -13,6 +13,9 @@ class Study(Base):
     study_orthanc_id = Column(String, unique=True, nullable=False)
     status = Column(String, default="processing")
     uploaded_at = Column(DateTime, default=datetime.utcnow)
+    patient_height_cm = Column(Float, nullable=True)          # DICOM tag (0010,1020) meters -> cm
+    patient_weight_kg = Column(Float, nullable=True)          # DICOM tag (0010,1030) kg
+    heart_rate_bpm = Column(Float, nullable=True)             # DICOM tag (0018,1088) bpm
 
     patient_id = Column(Integer, ForeignKey("patients.id", ondelete="CASCADE"), nullable=False)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)

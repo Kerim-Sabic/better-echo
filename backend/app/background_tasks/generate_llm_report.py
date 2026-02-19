@@ -9,6 +9,7 @@ from app.database_models.derived_results import DerivedResult, ResultStatus
 from app.core.artifacts import LLM_REPORT_TYPE
 from app.services.llm_report_service import generate_for_study
 from app.services.llm_client import LLMClient
+from app.helpers.study_status import sync_study_status
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +51,10 @@ def generate_llm_report(study_uid: str) -> None:
             return
 
         _ = generate_for_study(study_uid=study_uid, db=db)
+        study = db.query(Study).filter(Study.study_uid == study_uid).first()
+        if study:
+            sync_study_status(study)
+            db.commit()
         logger.info(f"[LLM_REPORT] Generated and persisted for study_uid={study_uid}")
     except Exception as err:
         logger.exception(f"[LLM_REPORT] Generation failed for {study_uid}: {err}")
@@ -64,6 +69,7 @@ def generate_llm_report(study_uid: str) -> None:
                 )
                 if row:
                     row.status = ResultStatus.failed
+                    sync_study_status(study)
                     db.commit()
         except Exception:
             db.rollback()

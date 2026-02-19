@@ -17,7 +17,7 @@ from app.core.artifacts import (
 from app.background_tasks.combining_dynamic_measurements import combining_dynamic_measurements
 from app.helpers.row_to_dict.dynamic_measurements_combined_results_row_to_dict import combined_results_row_to_dict
 from app.schemas.orchestration_apis.combined_dynamic_measurements_schemas import (
-    CombinedResultsResponse, CompleteResponse, PendingResponse
+    CombinedResultsResponse, CompleteResponse, PendingResponse, FailedResponse
 )
 
 logger = logging.getLogger(__name__)
@@ -69,8 +69,8 @@ def get_dynamic_measurements_combined_results(
             dynamic_measurements_results=payload
         )
     
-    # --- Part 1.2 If present but not complete -> pending (DON'T enqueue again) ---
-    if dynamic_measurements_combined_row and dynamic_measurements_combined_row.status in (ResultStatus.pending, ResultStatus.failed):
+    # --- Part 1.2 If present and pending -> pending (DON'T enqueue again) ---
+    if dynamic_measurements_combined_row and dynamic_measurements_combined_row.status == ResultStatus.pending:
         pending = PendingResponse(status="pending", retry_after=3)
 
         logger.debug(f"[DYNAMIC_MEASUREMENTS_COMBINED] inference and orchestration is running for study_uid={study_uid}")
@@ -79,6 +79,17 @@ def get_dynamic_measurements_combined_results(
             status_code=status.HTTP_202_ACCEPTED,
             content=pending.model_dump(),
             headers={"retry-after": "3"}
+        )
+
+    # --- Part 1.3 If present and failed -> failed (DO NOT keep polling) ---
+    if dynamic_measurements_combined_row and dynamic_measurements_combined_row.status == ResultStatus.failed:
+        detail = None
+        if isinstance(dynamic_measurements_combined_row.value_json, dict):
+            detail = dynamic_measurements_combined_row.value_json.get("error")
+        failed = FailedResponse(status="failed", detail=detail or "Dynamic measurements orchestration failed")
+        return JSONResponse(
+            status_code=200,
+            content=failed.model_dump(),
         )
     
     # --- Part 2. If dynamic_measurements_row is missing: check PanEcho+EchoPrime combined results pre-requisite ---

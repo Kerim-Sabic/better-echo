@@ -18,7 +18,7 @@ from app.background_tasks.combining_panecho_echoprime import combining_panecho_e
 from app.helpers.row_to_dict.combined_results_row_to_dict import build_combined_sections_from_row
 from app.helpers.authentication_functions import get_current_user_id
 from app.schemas.orchestration_apis.combined_panecho_echoprime_schemas import (
-    CombinedResultsResponse, CompleteResponse, PendingResponse
+    CombinedResultsResponse, CompleteResponse, PendingResponse, FailedResponse
 )
 from app.schemas.orchestration_apis.panecho_echoprime_overrides_schemas import OverridesUpdateRequest
 
@@ -69,10 +69,8 @@ def get_combined_results(
         )
         
     
-    # --- Part 1.2: If present but not complete -> pending (DON'T enqueue again) ---
-    if combined_results_row and combined_results_row.status in (
-        ResultStatus.pending, ResultStatus.failed
-    ):
+    # --- Part 1.2: If present and pending -> pending (DON'T enqueue again) ---
+    if combined_results_row and combined_results_row.status == ResultStatus.pending:
         pending = PendingResponse(status="pending", retry_after=3)
 
         logger.info(f"[COMBINED_RESULTS] inferences and orchestration is running for study_uid: {study_uid}")
@@ -82,6 +80,17 @@ def get_combined_results(
             status_code=202,
             content=pending.model_dump(),
             headers={"retry-after": "3"}
+        )
+
+    # --- Part 1.3: If present and failed -> failed (DO NOT keep polling) ---
+    if combined_results_row and combined_results_row.status == ResultStatus.failed:
+        detail = None
+        if isinstance(combined_results_row.value_json, dict):
+            detail = combined_results_row.value_json.get("error")
+        failed = FailedResponse(status="failed", detail=detail or "PanEcho+EchoPrime orchestration failed")
+        return JSONResponse(
+            status_code=200,
+            content=failed.model_dump(),
         )
     
     # --- Part 2: Not found -> try to create pending marker and trigger background task ---

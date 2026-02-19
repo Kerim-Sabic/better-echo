@@ -8,26 +8,15 @@ export function pickTags(meta) {
         PatientID: t.PatientID || t["0010,0020"] || "",
         PatientBirthDate: t.PatientBirthDate || t["0010,0030"] || "",
         PatientSex: t.PatientSex || t["0010,0040"] || "",
+        PatientSize: t.PatientSize || t["0010,1020"] || "",
+        PatientWeight: t.PatientWeight || t["0010,1030"] || "",
+        HeartRate: t.HeartRate || t["0018,1088"] || "",
         StudyDate: t.StudyDate || t["0008,0020"] || "",
         StudyTime: t.StudyTime || t["0008,0030"] || "",
         AccessionNumber: t.AccessionNumber || t["0008,0050"] || "",
         ReferringPhysicianName: t.ReferringPhysicianName || t["0008,0090"] || "",
     };
 }
-
-export function upsertStudyToLocalStorage(study) {
-    try {
-        const raw = localStorage.getItem("studies");
-        const list = raw ? JSON.parse(raw) : [];
-        const idx = list.findIndex((s) => s.id === study.id);
-        if (idx >= 0) list[idx] = { ...list[idx], ...study };
-        else list.unshift(study);
-        localStorage.setItem("studies", JSON.stringify(list));
-    } catch {
-        // ignore storage errors
-    }
-}
-
 
 // Function to retrieve StudyUID from a dicom instance file
 export function getStudyUID(file) {

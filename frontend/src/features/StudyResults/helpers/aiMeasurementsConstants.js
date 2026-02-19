@@ -7,6 +7,9 @@ export const MAIN_KEYS = [
     { key: "pulmonary_artery_pressure", label: "Pulmonary Artery Pressure" },
 ];
 
+// Metrics that should support BSA indexing (volumes in cm^3 -> mL/m^2).
+export const INDEXABLE_KEYS = new Set(["lvedv", "lvesv", "lvsv", "lavol"]);
+
 
 // For these keys, present a RANGE (min->max) from PanEcho & EchoPrime values (not the integrated value).
 export const RANGE_KEYS = new Set(["ejection_fraction", "pulmonary_artery_pressure"]);
@@ -23,6 +26,7 @@ export const SECTION_MAP = {
         pulmonic_valve_regurgitation: "Pulmonic Regurgitation",
         lvot20mmhg: "LVOT Gradient (20 mmHg)",
         avpkvel: "Aortic Valve Peak Velocity",
+        max_aortic_gradient: "Max Aortic Gradient",
         lvotdiam: "LVOT Diameter",
         mitral_annular_calcification: "Mitral Annular Calcification",
     },
@@ -34,8 +38,10 @@ export const SECTION_MAP = {
         lvedv: "LV End-Diastolic Volume (LVEDV)",
         lvesv: "LV End-Systolic Volume (LVESV)",
         lvsv: "LV Stroke Volume (LVSV)",
+        cardiac_output: "Cardiac Output (CO)",
         ivsd: "Interventricular Septum Thickness (IVSd)",
         lvpwd: "LV Posterior Wall Thickness (LVPWd)",
+        relative_wall_thickness: "Relative Wall Thickness (RWT)",
         lvsize: "LV Size",
         lvsystolicfunction: "LV Systolic Function",
         lvwallmotionabnormalities: "LV Wall Motion Abnormalities",
@@ -58,7 +64,7 @@ export const SECTION_MAP = {
         rvidd: "RV Internal Diameter (Diastole)",
         tapse: "TAPSE",
         rv_s_vel: "RV S′ Velocity",
-        tvpkgrad: "Tricuspid Valve Peak Gradient",
+        tvpkgrad: "Tricuspid Regurgitation Velocity & Pressure Gradient",
         radimension_ml: "RA Dimension (M/L)",
         right_ventricle_dilation: "Right Ventricular Dilation",
         rv_systolic_function_depressed: "RV Systolic Function Depressed",

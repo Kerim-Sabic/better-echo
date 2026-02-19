@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import MainFileAiVideoMeasurements from "../features/StudyResults/components/AiVideoMeasurements/MainFileAiVideoMeasurements";
+import MainFileAiVideoMeasurements from "../MainFileAiVideoMeasurements";
 
 describe("MainFileAiVideoMeasurements", () => {
     it("renders empty state", () => {

@@ -24,8 +24,8 @@ export default function UploadDicomCard({ files, setFiles, studyUID, isUploading
                     className={[
                         "relative border-2 border-dashed border-border rounded-2xl p-16 text-center smooth-transition group",
                         isActive
-                            ? "border-[#9333EA] shadow-[0_0_30px_rgba(147,51,234,0.18)]"
-                            : "hover:border-[#9333EA] hover:shadow-[0_0_30px_rgba(147,51,234,0.18)]",
+                            ? "border-accent-soft shadow-[0_0_30px_rgba(85,137,247,0.18)]"
+                            : "hover:border-primary hover:shadow-[0_0_30px_rgba(85,137,247,0.18)]",
                     ].join(" ")}
                     onDragEnter={(e) => { e.preventDefault(); setIsActive(true); }}
                     onDragOver={(e) => { e.preventDefault(); setIsActive(true); }}
@@ -51,7 +51,7 @@ export default function UploadDicomCard({ files, setFiles, studyUID, isUploading
                     />
                     <label htmlFor="dicom-upload" className="cursor-pointer flex flex-col items-center gap-6">
                         <div className="w-24 h-24 flex items-center justify-center group-hover:scale-110 smooth-transition">
-                            <Upload className="w-12 h-12 text-[#9333EA] group-hover:scale-110 smooth-transition" />
+                            <Upload className="w-12 h-12 text-accent-main group-hover:scale-110 smooth-transition" />
                         </div>
                         <div>
                             <p className="text-lg font-semibold text-foreground mb-1">Click to upload or drag and drop</p>
@@ -71,8 +71,8 @@ export default function UploadDicomCard({ files, setFiles, studyUID, isUploading
                                     className="glass-card p-5 flex items-center justify-between group hover:bg-muted/30 hover:shadow-lg smooth-transition"
                                 >
                                     <div className="flex items-center gap-4 min-w-0">
-                                        <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-[#9333EA]/20 via-[#6366F1]/20 to-[#06B6D4]/20 flex items-center justify-center">
-                                            <FileText className="w-6 h-6 text-primary" />
+                                        <div className="w-12 h-12 rounded-xl icon-chip-accent flex items-center justify-center">
+                                            <FileText className="w-6 h-6 text-accent-main" />
                                         </div>
                                         <div className="min-w-0">
                                             <p className="text-sm font-semibold text-foreground truncate" title={f.name}>{f.name}</p>

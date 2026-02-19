@@ -43,9 +43,9 @@ function Shell() {
         overflow: "auto",
     };
     return (
-        <div className="app-shell" style={{ height: "100vh", overflow: "hidden"}}>
+        <div style={{ height: "100vh", overflow: "hidden"}}>
         <TitleBar variant={onSplash ? "splash" : "light"} />
-        <div className="app-viewport" style={contentStyle}>
+        <div style={contentStyle}>
             <AuthProvider> {/* Authentication context */}
             <RoutePersistence />
             <Routes>

@@ -26,6 +26,7 @@ from app.schemas.orchestration_apis.llm_report_get_api_schemas import (
     LLMReportResponse,
     LLMCompleteResponse,
     LLMPendingResponse,
+    LLMFailedResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -66,12 +67,6 @@ def get_llm_report(
     if llm_report_row and llm_report_row.status == ResultStatus.complete:
         payload = build_llm_report_from_row(llm_report_row)
 
-        # Mark the study as completed(all inferences finished)
-        if study and study.status != "completed":
-            study.status = "completed"
-            db.commit()
-            logger.info(f"[STUDY_COMPLETE] Marked study as complete")
-
         logger.info(f"[LLM_REPORT] LLM report present for study_uid={study_uid}")
         return LLMCompleteResponse(status="complete", llm_report=payload)
 
@@ -80,8 +75,8 @@ def get_llm_report(
         logger.info(f"[LLM_REPORT] LLM disabled; skipping generation for study_uid={study_uid}")
         raise HTTPException(status_code=404, detail="LLM report disabled")
     
-    # --- Part 4: If LLM report present but pending/failed -> pending (don't enqueue) ---
-    if llm_report_row and llm_report_row.status in (ResultStatus.pending, ResultStatus.failed):
+    # --- Part 4: If LLM report present and pending -> pending (don't enqueue) ---
+    if llm_report_row and llm_report_row.status == ResultStatus.pending:
         pending = LLMPendingResponse(status="pending", retry_after=3)
 
         logger.info(
@@ -92,6 +87,17 @@ def get_llm_report(
             status_code=202,
             content=pending.model_dump(),
             headers={"retry-after": "3"},
+        )
+
+    # --- Part 4.1: If LLM report present and failed -> failed (DO NOT keep polling) ---
+    if llm_report_row and llm_report_row.status == ResultStatus.failed:
+        detail = None
+        if isinstance(llm_report_row.value_json, dict):
+            detail = llm_report_row.value_json.get("error")
+        failed = LLMFailedResponse(status="failed", detail=detail or "LLM report generation failed")
+        return JSONResponse(
+            status_code=200,
+            content=failed.model_dump(),
         )
     
     # --- Part 5 If LLM report is missing: check PanEcho+EchoPrime combined results pre-requisite

@@ -63,8 +63,8 @@ const CustomDatePanel = ({ dateFilters, onRemove }) => {
                         return (
                             <div
                                 key={index}
-                                className="bg-teal-600 text-white text-xs rounded px-2 py-1.5 flex items-center justify-between shadow-sm"
-                                style={{ backgroundColor: "#009688", marginBottom: "5px" }}
+                                className="bg-accent-main text-primary-foreground text-xs rounded px-2 py-1.5 flex items-center justify-between shadow-sm"
+                                style={{ marginBottom: "5px" }}
                             >
                                 <span className="whitespace-nowrap">{label}</span>
                                 <button

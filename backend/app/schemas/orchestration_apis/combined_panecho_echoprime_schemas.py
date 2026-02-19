@@ -15,7 +15,11 @@ class PendingResponse(BaseModel):
     status: Literal["pending"]
     retry_after: int = Field(..., ge=1)
 
+class FailedResponse(BaseModel):
+    status: Literal["failed"]
+    detail: Optional[str] = None
+
 CombinedResultsResponse = Annotated[
-    Union[CompleteResponse, PendingResponse],
+    Union[CompleteResponse, PendingResponse, FailedResponse],
     Field(discriminator="status"),
 ]

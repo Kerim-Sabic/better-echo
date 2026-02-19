@@ -1,4 +1,4 @@
-import { MAIN_KEYS, RANGE_KEYS, SECTION_MAP, NORMAL_RANGES } from "./aiMeasurementsConstants"
+import { MAIN_KEYS, RANGE_KEYS, SECTION_MAP, NORMAL_RANGES, INDEXABLE_KEYS } from "./aiMeasurementsConstants"
 
 const normalizeSex = (rawSex) => {
     if (!rawSex) return null;
@@ -140,18 +140,82 @@ function getCategoricalColor(key, integratedLabel) {
 // ------------------------------------------------------------
 // PART 2 — Core transformation logic
 // ------------------------------------------------------------
-export function buildAiMeasurementsProps(panechoEchoprimeResults, overrides = null, patientSex = null) {
+export function buildAiMeasurementsProps(
+    panechoEchoprimeResults,
+    overrides = null,
+    patientSex = null,
+    options = {}
+) {
+    const { isIndexedMode = false, bsa = null, heartRateBpm = null } = options || {};
     const tasks = panechoEchoprimeResults?.integrated_tasks;
     if (!tasks) return { mainMeasurements: [], Measurements: [] };
     const overrideMap = (overrides && typeof overrides === "object")
         ? overrides
         : (panechoEchoprimeResults?.overrides || {});
 
+    const getRawNumericValue = (key) => {
+        const override = overrideMap?.[key];
+        if (override && override.value !== undefined && isFiniteNumber(override.value)) {
+            return Number(override.value);
+        }
+        const task = tasks[key];
+        if (task && isFiniteNumber(task.integrated_value)) {
+            return Number(task.integrated_value);
+        }
+        return null;
+    };
+
+    const getDisplayValue = (key, rawValue, units) => {
+        if (!isFiniteNumber(rawValue) || !units) {
+            return { displayValue: rawValue, displayUnits: units, isIndexed: false };
+        }
+        if (isIndexedMode && bsa && INDEXABLE_KEYS.has(key)) {
+            const displayValue = rawValue / bsa;
+            return { displayValue, displayUnits: "mL/m^2", isIndexed: true };
+        }
+        return { displayValue: rawValue, displayUnits: units, isIndexed: false };
+    };
+
+    const lvedvRaw = getRawNumericValue("lvedv");
+    const lvesvRaw = getRawNumericValue("lvesv");
+    const lvpwdRaw = getRawNumericValue("lvpwd");
+    const lviddRaw = getRawNumericValue("lvidd");
+    const avpkvelRaw = getRawNumericValue("avpkvel");
+    const strokeVolumeRaw = isFiniteNumber(lvedvRaw) && isFiniteNumber(lvesvRaw)
+        ? lvedvRaw - lvesvRaw
+        : null;
+
+    const derivedTasks = {
+        relative_wall_thickness: {
+            integrated_value:
+                isFiniteNumber(lvpwdRaw) && isFiniteNumber(lviddRaw) && lviddRaw !== 0
+                    ? (2 * lvpwdRaw) / lviddRaw
+                    : null,
+            units: null,
+        },
+        max_aortic_gradient: {
+            integrated_value: isFiniteNumber(avpkvelRaw) ? 4 * Math.pow(avpkvelRaw, 2) : null,
+            units: "mmHg",
+        },
+        cardiac_output: {
+            integrated_value:
+                isFiniteNumber(strokeVolumeRaw) && isFiniteNumber(heartRateBpm)
+                    ? (strokeVolumeRaw * Number(heartRateBpm)) / 1000
+                    : null,
+            units: "L/min",
+        },
+    };
+
+    const EF_DISCREPANCY_THRESHOLD = 8.0;
+    const hasVolumeOverride = Boolean(
+        overrideMap?.lvedv?.value !== undefined || overrideMap?.lvesv?.value !== undefined
+    );
+
     // ------------------------------------------------------------
     // PART 3 — Transformer for each task
     // ------------------------------------------------------------
     const asItem = (key, label) => {
-        const task = tasks[key];
+        const task = tasks[key] || derivedTasks[key];
         if (!task) return null;
 
         const override = overrideMap?.[key];
@@ -160,12 +224,14 @@ export function buildAiMeasurementsProps(panechoEchoprimeResults, overrides = nu
         const overrideValue = override?.value ?? null;
 
         const integratedLabel = overrideLabel ?? task?.integrated_label;
-        const units = task?.units;
+        let units = task?.units;
         const discrepancy = task?.discrepancy ?? null;
+        const isDerived = Boolean(derivedTasks[key]);
 
         // Determine if classification task
-        const isClassification = units == null;
-        const rawValue = overrideValue !== null ? Number(overrideValue) : task?.integrated_value;
+        const isClassification = units == null && !isDerived;
+        let rawValue = overrideValue !== null ? Number(overrideValue) : task?.integrated_value;
+        let useRange = RANGE_KEYS.has(key) && overrideValue === null;
 
         // ------------------------------------------------------------
         // PART 3.1 — Determine color
@@ -182,74 +248,129 @@ export function buildAiMeasurementsProps(panechoEchoprimeResults, overrides = nu
         }
 
         // ------------------------------------------------------------
-        // PART 3.2 — VALUE LOGIC
+        // PART 3.2 - VALUE LOGIC
         // ------------------------------------------------------------
         let value = null;
+        let editValue = null;
+        let rawNumericValue = isFiniteNumber(rawValue) ? Number(rawValue) : null;
+        let isIndexed = false;
+        let displayVariant = "default";
+        let primaryLabel = null;
+        let primaryValue = null;
+        let primaryUnits = null;
+        let secondaryLabel = null;
+        let secondaryValue = null;
+        let secondaryUnits = null;
 
         if (!isClassification) {
-        // ---------------------------
-        // REGRESSION TASKS
-        // ---------------------------
+            // ---------------------------
+            // REGRESSION TASKS
+            // ---------------------------
 
-        if (RANGE_KEYS.has(key) && overrideValue === null) {
-            // RANGE regression task
-            const vals = [
-            task?.panecho_value_or_prob,
-            task?.echoprime_value_or_prob,
-            ]
-            .map((v) => (isFiniteNumber(v) ? Number(v) : null))
-            .filter((v) => v !== null);
+            if (key === "ejection_fraction" && hasVolumeOverride && isFiniteNumber(rawNumericValue)) {
+                const mathEf = isFiniteNumber(lvedvRaw) && isFiniteNumber(lvesvRaw) && lvedvRaw !== 0
+                    ? ((lvedvRaw - lvesvRaw) / lvedvRaw) * 100
+                    : null;
+                if (isFiniteNumber(mathEf) && Math.abs(mathEf - rawNumericValue) >= EF_DISCREPANCY_THRESHOLD) {
+                    rawNumericValue = mathEf;
+                    useRange = false;
+                }
+            }
 
-            if (vals.length >= 2) {
-            const min = Math.min(...vals);
-            const max = Math.max(...vals);
-            value = `${formatNumber(min)}-${formatNumber(max)} ${units}`;
-            } else if (vals.length === 1) {
-            value = `${formatNumber(vals[0])} ${units}`;
+            if (useRange) {
+                // RANGE regression task
+                const vals = [
+                    task?.panecho_value_or_prob,
+                    task?.echoprime_value_or_prob,
+                ]
+                    .map((v) => (isFiniteNumber(v) ? Number(v) : null))
+                    .filter((v) => v !== null);
+                const unitSuffix = units ? ` ${units}` : "";
+
+                if (vals.length >= 2) {
+                    const min = Math.min(...vals);
+                    const max = Math.max(...vals);
+                    value = `${formatNumber(min)}-${formatNumber(max)}${unitSuffix}`;
+                } else if (vals.length === 1) {
+                    value = `${formatNumber(vals[0])}${unitSuffix}`;
+                }
+            } else {
+                // Simple regression -> return integrated_value + units
+                if (isFiniteNumber(rawNumericValue)) {
+                    const display = getDisplayValue(key, rawNumericValue, units);
+                    units = display.displayUnits;
+                    isIndexed = display.isIndexed;
+                    value = units ? `${formatNumber(display.displayValue)} ${units}` : `${formatNumber(display.displayValue)}`;
+                    editValue = formatNumber(display.displayValue);
+                }
             }
         } else {
-            // Simple regression → return integrated_value + units
-            if (isFiniteNumber(rawValue)) {
-            value = `${formatNumber(rawValue)} ${units}`;
+            // ---------------------------
+            // CLASSIFICATION TASKS
+            // ---------------------------
+
+            const peProb = task?.panecho_value_or_prob;
+
+            if (peProb && typeof peProb === "object") {
+                // Return full probability map + final label
+                value = {
+                    probs: peProb,
+                    integrated_label: integratedLabel,
+                };
+            } else {
+                // Fallback -> return just the integrated label
+                value = integratedLabel ?? null;
             }
         }
-        } else {
-        // ---------------------------
-        // CLASSIFICATION TASKS
-        // ---------------------------
 
-        const peProb = task?.panecho_value_or_prob;
+        if (!isClassification && isFiniteNumber(rawNumericValue)) {
+            color = getMeasurementColor(key, rawNumericValue, patientSex);
+        } else if (isClassification && integratedLabel) {
+            color = getCategoricalColor(key, integratedLabel);
+        }
 
-        if (peProb && typeof peProb === "object") {
-            // Return full probability map + final label
-            value = {
-            probs: peProb,
-            integrated_label: integratedLabel,
-            };
-        } else {
-            // Fallback → return just the integrated label
-            value = integratedLabel ?? null;
+        if (!isClassification && !useRange && key === "tvpkgrad" && isFiniteNumber(rawNumericValue)) {
+            const trpg = Number(rawNumericValue);
+            const trv = trpg >= 0 ? Math.sqrt(trpg / 4) : null;
+            displayVariant = "dual_numeric";
+            primaryLabel = "TRV";
+            primaryValue = isFiniteNumber(trv) ? Number(trv) : null;
+            primaryUnits = "m/s";
+            secondaryLabel = "TRPG";
+            secondaryValue = trpg;
+            secondaryUnits = "mmHg";
         }
-        }
+
 
         // ------------------------------------------------------------
         // PART 3.3 — Build final item payload
         // ------------------------------------------------------------
         return {
-        key,
-        label,
-        value,
-        units: units ?? null,
-        status: isClassification ? integratedLabel : null,
-        discrepancy: hasOverride ? false : discrepancy,
-        color,
-        isOverridden: hasOverride,
-        overrideMeta: hasOverride ? {
-            edited_by: override?.edited_by ?? null,
-            edited_at: override?.edited_at ?? null,
-        } : null,
-        editType: isClassification ? "label" : "value",
-        editOptions: isClassification ? buildLabelOptions(key, integratedLabel) : null,
+            key,
+            label,
+            value,
+            units: units ?? null,
+            status: isClassification ? integratedLabel : null,
+            discrepancy: hasOverride ? false : discrepancy,
+            color,
+            isOverridden: hasOverride,
+            editable: !isDerived,
+            rawNumericValue,
+            editValue,
+            isIndexed,
+            displayVariant,
+            primaryLabel,
+            primaryValue,
+            primaryUnits,
+            secondaryLabel,
+            secondaryValue,
+            secondaryUnits,
+            overrideMeta: hasOverride ? {
+                edited_by: override?.edited_by ?? null,
+                edited_at: override?.edited_at ?? null,
+            } : null,
+            editType: isClassification ? "label" : "value",
+            editOptions: isClassification ? buildLabelOptions(key, integratedLabel) : null,
         };
     };
 

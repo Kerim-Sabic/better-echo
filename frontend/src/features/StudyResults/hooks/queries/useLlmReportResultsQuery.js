@@ -24,12 +24,15 @@ export function useLlmReportResultsQuery(
                 response?.status === 202 && response?.data?.status === "pending";
             const isComplete =
                 response?.status === 200 && response?.data?.status === "complete";
+            const isFailed =
+                response?.status === 200 && response?.data?.status === "failed";
             const results = isComplete ? response.data.llm_report : null;
 
             return {
                 ...response, // {status, data, retryAfter}
                 isPending, // true while server is "pending"
                 isComplete, // true while server is "complete"
+                isFailed, // true while server returned failed orchestration state
                 results, // convenience: combined results or null
             };
         },

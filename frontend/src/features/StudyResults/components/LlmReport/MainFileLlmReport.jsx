@@ -23,22 +23,15 @@ export default function MainFileLlmReport({
         return (
         <div className="flex flex-col items-center justify-center p-12 space-y-6">
             <div className="relative">
-            <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-purple-500/10 to-cyan-500/10 
-                backdrop-blur-sm flex items-center justify-center shadow-lg border border-white/20">
+            <div className="w-24 h-24 rounded-3xl icon-chip-accent backdrop-blur-sm flex items-center justify-center shadow-lg">
                 <svg
-                className="w-12 h-12 text-gray-400"
+                className="w-12 h-12 text-accent-main"
                 viewBox="0 0 24 24"
                 fill="none"
                 >
-                <defs>
-                    <linearGradient id="reportGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#9333EA" />
-                    <stop offset="100%" stopColor="#06B6D4" />
-                    </linearGradient>
-                </defs>
                 <path
                     d="M6 4h12a2 2 0 012 2v12a2 2 0 01-2 2H8l-4-4V6a2 2 0 012-2z"
-                    stroke="url(#reportGradient)"
+                    stroke="currentColor"
                     strokeWidth="2"
                 />
                 </svg>
@@ -59,29 +52,22 @@ export default function MainFileLlmReport({
         
         {/* Header Section */}
         <div className="flex items-center space-x-3 mb-2">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-purple-500/10 to-cyan-500/10 
-            backdrop-blur-sm flex items-center justify-center border border-white/20 shadow-sm">
+            <div className="w-10 h-10 rounded-2xl icon-chip-accent backdrop-blur-sm flex items-center justify-center shadow-sm">
             <svg
-                className="w-5 h-5"
+                className="w-5 h-5 text-accent-main"
                 viewBox="0 0 24 24"
                 fill="none"
             >
-                <defs>
-                <linearGradient id="headerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#9333EA" />
-                    <stop offset="100%" stopColor="#06B6D4" />
-                </linearGradient>
-                </defs>
                 <path
                 d="M6 4h12a2 2 0 012 2v12a2 2 0 01-2 2H8l-4-4V6a2 2 0 012-2z"
-                stroke="url(#headerGradient)"
+                stroke="currentColor"
                 strokeWidth="2"
                 />
             </svg>
             </div>
 
             <div className="flex-1">
-            <h2 className="text-lg font-semibold text-gray-800 tracking-tight">
+            <h2 className="text-lg font-semibold text-foreground tracking-tight">
                 AI Echocardiography Report
             </h2>
             <p className="text-xs text-gray-500 font-medium">
@@ -98,7 +84,7 @@ export default function MainFileLlmReport({
                     </span>
                 )}
                 <button
-                    className="inline-flex items-center gap-2 rounded-xl border border-purple-100 bg-white px-3.5 py-1.5 text-sm font-semibold text-gray-700 shadow-sm transition hover:border-purple-200 hover:bg-muted/60 hover:shadow disabled:cursor-not-allowed disabled:opacity-60"
+                    className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3.5 py-1.5 text-sm font-semibold text-foreground shadow-sm transition hover:bg-muted/60 hover:shadow disabled:cursor-not-allowed disabled:opacity-60"
                     onClick={onRegenerate}
                     disabled={!canRegenerate}
                 >
