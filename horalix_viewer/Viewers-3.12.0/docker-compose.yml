@@ -1,0 +1,14 @@
+services:
+  horalix-viewer:
+    container_name: horalix-viewer
+    image: horalix-viewer:local
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_CONFIG: config/default.js
+        PUBLIC_URL: /
+        PORT: 80
+    ports:
+      - "3001:80"
+    restart: unless-stopped
