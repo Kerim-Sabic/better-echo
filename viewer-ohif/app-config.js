@@ -1,7 +1,11 @@
 window.config = {
   routerBasename: "/",
-  extensions: [],
-  modes: [],
+  extensions: ["@horalix/extension-ai-panel"],
+  modes: ["@horalix/mode-ai-results"],
+  horalixAiBridge: {
+    allowedParentOrigins: ["http://localhost:3000"],
+    channel: "horalix-ai"
+  },
   showStudyList: true,
   filterQueryParam: false,
   disableServersCache: false,

@@ -1,8 +1,14 @@
 services:
   horalix-viewer:
     container_name: horalix-viewer
-    image: affan88888/horalix-viewer:1.0
-    pull_policy: always
+    image: horalix-viewer:local-dev
+    build:
+      context: ../horalix_viewer/Viewers-3.12.0
+      dockerfile: Dockerfile
+      args:
+        APP_CONFIG: config/default.js
+        PUBLIC_URL: /
+        PORT: 80
     ports:
       - "3001:80"
     volumes:

@@ -1,6 +1,10 @@
 #!/bin/sh
 set -eu
 
+# Ensure mounted runtime config files are used instead of stale precompressed build artifacts.
+rm -f /usr/share/nginx/html/app-config.js.gz /usr/share/nginx/html/app-config.js.br
+rm -f /usr/share/nginx/html/orthanc-standalone.json.gz /usr/share/nginx/html/orthanc-standalone.json.br
+
 # Avoid service worker MIME issues in Electron/dev runtime.
 cat >/usr/share/nginx/html/init-service-worker.js <<'EOF'
 export {};
