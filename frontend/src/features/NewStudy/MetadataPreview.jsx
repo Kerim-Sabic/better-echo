@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../general_components/ui/card";
 import MetadataRow from "./MetadataRow";
 
 function formatDicomDate(s) {

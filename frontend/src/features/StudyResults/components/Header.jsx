@@ -1,7 +1,7 @@
 // src/features/StudyResults/components/Header.jsx
 import React, { useEffect, useState } from "react";
 import { ArrowLeft } from "lucide-react";
-import { Button } from "../../../components/ui/button";
+import { Button } from "../../../general_components/ui/button";
 import { Copy } from "lucide-react";
 
 export default function Header({

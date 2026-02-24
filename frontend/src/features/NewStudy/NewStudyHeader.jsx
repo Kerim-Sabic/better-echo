@@ -1,7 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
-import { Button } from "../../components/ui/button";
+import { Button } from "../../general_components/ui/button";
 
 export default function NewStudyHeader({ status }) {
     const navigate = useNavigate();

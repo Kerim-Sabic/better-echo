@@ -1,11 +1,11 @@
-import { Button } from "../components/ui/button";
+import { Button } from "../general_components/ui/button";
 import UploadDicomCard from "../features/NewStudy/UploadDicomCard";
 import MetadataPreview from "../features/NewStudy/MetadataPreview";
 
 import { useNewStudy } from "../features/NewStudy/hooks/useNewStudy";
 import NewStudyHeader from "../features/NewStudy/NewStudyHeader";
 import { DuplicateFilesList } from "../features/NewStudy/DuplicateFilesList";
-import { TITLEBAR_HEIGHT } from "../components/TitleBar";
+import { TITLEBAR_HEIGHT } from "../general_components/TitleBar";
 
 export default function NewStudy() {
     const {

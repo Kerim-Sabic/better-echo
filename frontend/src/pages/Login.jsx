@@ -1,8 +1,8 @@
 import { useContext, useState } from "react";
 import { Fingerprint, Info } from "lucide-react";
-import { Button } from "../components/ui/button";
-import { Input } from "../components/ui/input";
-import { Label } from "../components/ui/label";
+import { Button } from "../general_components/ui/button";
+import { Input } from "../general_components/ui/input";
+import { Label } from "../general_components/ui/label";
 import {
     Dialog,
     DialogContent,
@@ -10,10 +10,10 @@ import {
     DialogHeader,
     DialogTitle,
     DialogTrigger,
-} from "../components/ui/dialog";
+} from "../general_components/ui/dialog";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../contexts/AuthenticationContext";
-import { TITLEBAR_HEIGHT } from "../components/TitleBar";
+import { TITLEBAR_HEIGHT } from "../general_components/TitleBar";
 import {
     completeWebauthnAuthApi,
     getWebauthnAuthOptionsApi,

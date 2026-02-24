@@ -4,8 +4,8 @@ import Header from "../components/Header";
 import MainFileAiMeasurements from "../components/AiMeasurements/MainFileAiMeasurements";
 import MainFileAiVideoMeasurements from "../components/AiVideoMeasurements/MainFileAiVideoMeasurements";
 import MainFileLlmReport from "../components/LlmReport/MainFileLlmReport";
-import Viewer from "../../../components/Viewer";
-import { TITLEBAR_HEIGHT } from "../../../components/TitleBar";
+import Viewer from "../../../general_components/Viewer";
+import { TITLEBAR_HEIGHT } from "../../../general_components/TitleBar";
 
 export function StudyResultsLayout({
   navigateBack,

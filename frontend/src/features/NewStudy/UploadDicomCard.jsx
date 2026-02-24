@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Upload, FileCheck2, X, FileText } from "lucide-react";
-import { Button } from "../../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card";
+import { Button } from "../../general_components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../general_components/ui/card";
 
 export default function UploadDicomCard({ files, setFiles, studyUID, isUploading, onUpload, onReparse }) {
     const [isActive, setIsActive] = useState(false);

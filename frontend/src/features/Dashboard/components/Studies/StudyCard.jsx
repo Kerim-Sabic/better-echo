@@ -1,6 +1,6 @@
 import { User, Edit, Trash2 } from "lucide-react";
-import { Card } from "../../../../components/ui/card";
-import { Button } from "../../../../components/ui/button";
+import { Card } from "../../../../general_components/ui/card";
+import { Button } from "../../../../general_components/ui/button";
 import { formatEf, formatStudyDate, getStatusBadge } from "../../helpers/dashboardHelpers";
 
 export default function StudyCard({ study, onSelectStudy, onEdit, onDelete }) {

@@ -1,6 +1,6 @@
 import React from "react";
-import { Card, CardContent, CardTitle } from "../../../components/ui/card";
-import Viewer from "../../../components/Viewer";
+import { Card, CardContent, CardTitle } from "../../../general_components/ui/card";
+import Viewer from "../../../general_components/Viewer";
 
 export default function EchocardiogramViewer({ studyUID }) {
     return (

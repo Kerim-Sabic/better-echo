@@ -1,7 +1,7 @@
 import React, { useContext, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, LogOut } from "lucide-react";
-import { Button } from "../../../../components/ui/button";
+import { Button } from "../../../../general_components/ui/button";
 import { AuthContext } from "../../../../contexts/AuthenticationContext";
 import {
     getWebauthnStatusApi,

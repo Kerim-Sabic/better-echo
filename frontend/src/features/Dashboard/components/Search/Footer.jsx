@@ -1,4 +1,4 @@
-import { Button } from "../../../../components/ui/button";
+import { Button } from "../../../../general_components/ui/button";
 
 export function Footer({ rangeMode, setRangeMode, onClear }) {
     return (

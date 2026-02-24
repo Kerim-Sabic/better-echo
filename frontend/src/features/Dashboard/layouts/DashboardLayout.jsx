@@ -7,7 +7,7 @@ import DashboardStats from "../components/Stats/DashboardStats";
 import StudyList from "../components/Studies/StudyList";
 import EditStudyDialog from "../components/Studies/EditStudyDialog";
 import DeleteStudyDialog from "../components/Studies/DeleteStudyDialog";
-import { TITLEBAR_HEIGHT } from "../../../components/TitleBar";
+import { TITLEBAR_HEIGHT } from "../../../general_components/TitleBar";
 
 export default function DashboardLayout({ viewModel, onNewStudy, onSelectStudy }) {
     const {

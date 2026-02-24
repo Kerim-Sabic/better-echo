@@ -1,5 +1,5 @@
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../../../components/ui/dialog";
-import { Button } from "../../../../components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../../../general_components/ui/dialog";
+import { Button } from "../../../../general_components/ui/button";
 import { formatStudyDate } from "../../helpers/dashboardHelpers";
 
 export default function DeleteStudyDialog({ open, study, onCancel, onConfirm, busy }) {
