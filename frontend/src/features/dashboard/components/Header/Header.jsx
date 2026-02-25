@@ -8,7 +8,7 @@ import {
     getWebauthnRegisterOptionsApi,
     completeWebauthnRegisterApi,
     deleteWebauthnCredentialApi,
-} from "../../../../api/AuthenticationApi";
+} from "@/api/webauthn";
 import { b64uToBuf, serializePublicKeyCredential } from "../../../../lib/webauthn";
 import { getStoredTheme, setStoredTheme } from "../../../../lib/theme";
 

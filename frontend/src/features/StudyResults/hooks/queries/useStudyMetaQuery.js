@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { getStudyByUidApi } from "../../../../api/StudiesApi";
+import { getStudyByUidApi } from "@/api/studies";
 
 /**
  * React Query hook that fetches the

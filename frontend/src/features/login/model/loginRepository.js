@@ -1,8 +1,8 @@
+import { loginApi } from "@/api/authentication";
 import {
-  loginApi,
   getWebauthnAuthOptionsApi,
   completeWebauthnAuthApi,
-} from "@/api/AuthenticationApi";
+} from "@/api/webauthn";
 import {
   formatLoginResponseDto,
   formatWebauthnAuthOptionsDto,

@@ -1,4 +1,4 @@
-import { apiClient } from "./shared/client";
+import { apiClient } from "../client";
 
 export const uploadDicomApi = async (file) => {
     const formData = new FormData();

@@ -1,5 +1,5 @@
 import { createContext, useState, useEffect, useCallback } from "react";
-import { checkAuthApi, loginApi, logoutApi } from "../api/AuthenticationApi";
+import { checkAuthApi, loginApi, logoutApi } from "@/api/authentication";
 import { getBackendUrl } from "../config/api";
 
 export const AuthContext = createContext();

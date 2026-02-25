@@ -1,4 +1,4 @@
-import { uploadDicomApi } from "@/api/UploadDicomApi";
+import { uploadDicomApi } from "@/api/upload_dicom/uploadDicomApi";
 import { formatUploadDicomResponseDto } from "./newStudy.dto";
 
 export const newStudyRepository = {

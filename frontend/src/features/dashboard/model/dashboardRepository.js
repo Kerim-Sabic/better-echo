@@ -1,4 +1,4 @@
-import { listStudiesApi, patchStudyApi, deleteStudyApi } from "@/api/StudiesApi";
+import { listStudiesApi, patchStudyApi, deleteStudyApi } from "@/api/studies";
 import { formatStudiesListDto, formatStudyListItemDto } from "./dashboard.dto";
 
 export const dashboardRepository = {
