@@ -21,7 +21,8 @@ Canonical engineering documentation lives under `docs/`.
 2. [Frontend Architecture](./frontend/ARCHITECTURE.md)
 3. [Electron Architecture](./electron/ARCHITECTURE.md)
 4. [AI Orchestration](./ai-pipelines/ORCHESTRATION.md)
-5. [Testing Strategy](./testing/TESTING_STRATEGY.md)
+5. [Backend Queue Redesign Plan](./ai-pipelines/BACKEND_QUEUE_REWORK_PLAN.md)
+6. [Testing Strategy](./testing/TESTING_STRATEGY.md)
 
 ## Decision Records
 

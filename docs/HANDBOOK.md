@@ -36,6 +36,7 @@ Architecture and contracts:
 8. [AI Orchestration Pipeline](./ai-pipelines/ORCHESTRATION.md#pipeline-stages)
 9. [LLM Context Enrichment Contract](./ai-pipelines/ORCHESTRATION.md#llm-context-enrichment-contract)
 10. [Deterministic LLM Report Controls](./ai-pipelines/ORCHESTRATION.md#deterministic-llm-report-controls)
+11. [Backend Queue Redesign Plan](./ai-pipelines/BACKEND_QUEUE_REWORK_PLAN.md)
 
 Quality and planning:
 

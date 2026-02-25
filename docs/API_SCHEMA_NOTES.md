@@ -73,6 +73,17 @@ Key endpoints:
 2. `POST /api/infer/echoprime` ([`infer_echoprime_api.py`](../backend/app/api/inference/infer_echoprime_api.py#L129))
 3. `POST /api/infer/echonet-dynamic/LV-segmentation` ([`infer_echonet_dynamic_api.py`](../backend/app/api/inference/infer_echonet_dynamic_api.py#L91))
 4. `POST /api/infer/measurements/2d` ([`infer_measurements_api.py`](../backend/app/api/inference/infer_measurements_api.py#L35))
+5. `GET /api/infer/measurements/doppler/tag-check` ([`infer_doppler_api.py`](../backend/app/api/inference/infer_doppler_api.py#L54))
+6. `GET /api/infer/measurements/doppler/tag-audit/{study_uid}` ([`infer_doppler_api.py`](../backend/app/api/inference/infer_doppler_api.py#L78))
+7. `POST /api/infer/measurements/doppler` ([`infer_doppler_api.py`](../backend/app/api/inference/infer_doppler_api.py#L139))
+
+Doppler identification contract:
+
+1. Spectral Doppler candidate detection is tag-based only.
+2. Required spectral identifiers:
+1. `(0018,6012) Region Spatial Format == 3`
+2. `(0018,6014) Region Data Type in {3,4}`
+3. Numeric conversion tags (`reference_line`, `physical_delta_y`, and model-dependent `physical_delta_x`) are validated before inference execution.
 
 ### Orchestration Endpoints
 

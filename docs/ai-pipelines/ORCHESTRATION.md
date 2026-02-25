@@ -32,6 +32,12 @@ Backend behavior:
 2. Enqueues background tasks only when marker creation succeeds.
 3. Returns `202 pending` until completion.
 
+Planned redesign:
+
+1. Backend-owned queue progression (start once, server chains all stages).
+2. Upload-batch kickoff and observer-only frontend polling/events.
+3. Detailed plan: [`BACKEND_QUEUE_REWORK_PLAN.md`](./BACKEND_QUEUE_REWORK_PLAN.md).
+
 Implementation references:
 
 1. PanEcho+EchoPrime route: [`combined_panecho_echoprime_api.py`](../../backend/app/api/orchestration_apis/combined_panecho_echoprime_api.py#L29)
