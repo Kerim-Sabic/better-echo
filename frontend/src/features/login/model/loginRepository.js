@@ -4,14 +4,17 @@ import {
   completeWebauthnAuthApi,
 } from "@/api/webauthn";
 import {
-  formatLoginResponseDto,
+  formatLoginUser,
   formatWebauthnAuthOptionsDto,
 } from "./login.dto";
 
 export const loginRepository = {
   async loginWithPassword({ username, password }) {
     const rawLoginResponse = await loginApi(username, password);
-    const formattedLoginResponse = formatLoginResponseDto(rawLoginResponse);
+    console.log("RAW LOGIN RESPONSE", rawLoginResponse)
+    const formattedLoginResponse = formatLoginUser(rawLoginResponse);
+    console.log("FORMATTED LOGIN RESPONSE", formattedLoginResponse)
+
     return formattedLoginResponse;
   },
 
@@ -23,7 +26,7 @@ export const loginRepository = {
 
   async completeBiometricLogin(payload) {
     const rawLoginResponse = await completeWebauthnAuthApi(payload);
-    const formattedLoginResponse = formatLoginResponseDto(rawLoginResponse);
+    const formattedLoginResponse = formatLoginUser(rawLoginResponse);
     return formattedLoginResponse;
   },
 };

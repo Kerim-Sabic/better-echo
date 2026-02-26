@@ -132,7 +132,7 @@ export default function DashboardHeader({ onNewStudy }) {
         }
     };
 
-    const displayName = user?.full_name || user?.username || "User";
+    const displayName = user?.fullName || user?.full_name || user?.username || "User";
     const roleLabel = user?.role || "Doctor";
     const isDark = theme === "dark";
     const initials = displayName

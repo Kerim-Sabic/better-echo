@@ -2,7 +2,7 @@ import LoginLayout from "@/features/login/views/LoginLayout";
 import { useLoginPageViewModel } from "@/features/login/viewmodels/useLoginPageViewModel";
 
 export default function LoginPage() {
-  const loginPageViewModel = useLoginPageViewModel();
+  const loginPageVM = useLoginPageViewModel();
 
-  return <LoginLayout viewModel={loginPageViewModel} />;
+  return <LoginLayout loginPageVM={loginPageVM} />;
 }

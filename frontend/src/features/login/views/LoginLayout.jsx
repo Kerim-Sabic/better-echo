@@ -6,7 +6,7 @@ import {
   LoginHeader,
 } from "@/features/login/components";
 
-export default function LoginLayout({ viewModel }) {
+export default function LoginLayout({ loginPageVM }) {
   const {
     username,
     password,
@@ -17,7 +17,8 @@ export default function LoginLayout({ viewModel }) {
     setPassword,
     handleSubmit,
     handleBiometricLogin,
-  } = viewModel;
+  } = loginPageVM;
+  console.log("LOGIN PAGE VM", loginPageVM)
 
   return (
     <div
