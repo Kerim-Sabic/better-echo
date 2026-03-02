@@ -1,6 +1,6 @@
 # Backend Queue Redesign Plan (Server-Owned Orchestration)
 
-Last Updated: 2026-02-24  
+Last Updated: 2026-02-25  
 Owner: Backend/AI
 
 ## Scope
@@ -20,21 +20,24 @@ Goals:
 
 ## Current Behavior (Code Reality)
 
-Current orchestration is still endpoint-triggered by frontend polling:
+Queue endpoints are now the backend orchestration control path:
 
-1. Combined stage is triggered by [`combined_panecho_echoprime_api.py`](../../backend/app/api/orchestration_apis/combined_panecho_echoprime_api.py).
-2. Dynamic+Measurements stage is triggered by [`combined_dynamic_measurements_api.py`](../../backend/app/api/orchestration_apis/combined_dynamic_measurements_api.py).
-3. LLM stage is triggered by [`llm_report_get_api.py`](../../backend/app/api/orchestration_apis/llm_report_get_api.py).
-4. StudyResults polling in [`useStudyResultsData.js`](../../frontend/src/features/StudyResults/hooks/useStudyResultsData.js) currently causes stage progression as a side effect.
+1. `POST /pipeline/start` creates/reuses queue jobs.
+2. Scheduler runs stages server-side.
+3. `GET /pipeline/status` is observer-only telemetry.
+4. Legacy orchestration GET routes are observer-only readers:
+   1. [`combined_panecho_echoprime_api.py`](../../backend/app/api/orchestration_apis/results/combined_panecho_echoprime_api.py)
+   2. [`combined_dynamic_measurements_api.py`](../../backend/app/api/orchestration_apis/results/combined_dynamic_measurements_api.py)
+   3. [`llm_report_get_api.py`](../../backend/app/api/orchestration_apis/results/llm_report_get_api.py)
 5. Upload endpoint stores DICOM/study data but does not enqueue autonomous pipeline work:
    1. [`upload_dicom_api.py`](../../backend/app/api/upload_dicom/upload_dicom_api.py)
 6. NewStudy cancel is navigation-only today and does not perform backend cleanup.
 
 Main limitation:
 
-1. Progress can depend on page activity.
-2. There is no draft/active result boundary during upload-phase processing.
-3. Regeneration semantics are not isolated from existing active artifacts.
+1. Current frontend still needs explicit queue-start wiring from upload flow.
+2. NewStudy cancel is not wired to backend queue cancel/cleanup yet.
+3. Frontend still needs promote/cancel/regenerate mutations and status-first orchestration UX wiring.
 
 ## Why Change Is Required
 
@@ -234,9 +237,9 @@ Planned changes:
 
 Keep existing endpoints during transition:
 
-1. [`combined_panecho_echoprime_api.py`](../../backend/app/api/orchestration_apis/combined_panecho_echoprime_api.py)
-2. [`combined_dynamic_measurements_api.py`](../../backend/app/api/orchestration_apis/combined_dynamic_measurements_api.py)
-3. [`llm_report_get_api.py`](../../backend/app/api/orchestration_apis/llm_report_get_api.py)
+1. [`combined_panecho_echoprime_api.py`](../../backend/app/api/orchestration_apis/results/combined_panecho_echoprime_api.py)
+2. [`combined_dynamic_measurements_api.py`](../../backend/app/api/orchestration_apis/results/combined_dynamic_measurements_api.py)
+3. [`llm_report_get_api.py`](../../backend/app/api/orchestration_apis/results/llm_report_get_api.py)
 
 Final target behavior:
 
@@ -336,8 +339,9 @@ backend/app/
 |- background_tasks/
 |  `- pipeline_worker.py                  (new)
 |- services/
-|  |- pipeline_scheduler.py               (new)
-|  `- pipeline_state_machine.py           (new)
+|  `- pipeline/
+|     |- scheduler.py                     (new)
+|     `- service.py                       (new)
 |- helpers/
 |  `- study_instance_routing.py           (new)
 |- database_models/
@@ -372,17 +376,17 @@ backend/app/
 
 ### C) Queue APIs
 
-1. `backend/app/api/orchestration_apis/pipeline_start_api.py` (new)
-2. `backend/app/api/orchestration_apis/pipeline_status_api.py` (new)
-3. `backend/app/api/orchestration_apis/pipeline_promote_api.py` (new)
-4. `backend/app/api/orchestration_apis/pipeline_cancel_api.py` (new)
-5. `backend/app/api/orchestration_apis/pipeline_regenerate_api.py` (new)
+1. `backend/app/api/orchestration_apis/pipeline/pipeline_start_api.py` (new)
+2. `backend/app/api/orchestration_apis/pipeline/pipeline_status_api.py` (new)
+3. `backend/app/api/orchestration_apis/pipeline/pipeline_promote_api.py` (new)
+4. `backend/app/api/orchestration_apis/pipeline/pipeline_cancel_api.py` (new)
+5. `backend/app/api/orchestration_apis/pipeline/pipeline_regenerate_api.py` (new)
 6. `backend/app/api/orchestration_apis/__init__.py`
 
 ### D) Scheduler and worker
 
-1. `backend/app/services/pipeline_scheduler.py` (new)
-2. `backend/app/services/pipeline_state_machine.py` (new)
+1. `backend/app/services/pipeline/scheduler.py` (new)
+2. `backend/app/services/pipeline/service.py` (new)
 3. `backend/app/background_tasks/pipeline_worker.py` (new)
 
 ### E) Stage integrations
@@ -390,17 +394,17 @@ backend/app/
 1. `backend/app/background_tasks/combining_panecho_echoprime.py`
 2. `backend/app/background_tasks/combining_dynamic_measurements.py`
 3. `backend/app/background_tasks/generate_llm_report.py`
-4. `backend/app/helpers/study_status.py`
+4. `backend/app/helpers/pipeline/study_status.py`
 
 ### F) Pre-filter/routing
 
 1. `backend/app/helpers/study_instance_routing.py` (new)
-2. `backend/app/helpers/view_classifier.py`
-3. `backend/app/helpers/doppler_tags.py`
+2. `backend/app/helpers/ensemble/view_classifier.py`
+3. `backend/app/helpers/doppler/doppler_tags.py`
 
 ### G) Performance/IO cleanup
 
-1. `backend/app/helpers/inference_functions.py`
+1. `backend/app/helpers/inference_runtime/inference_functions.py`
 2. `backend/app/api/inference/infer_echoprime_api.py`
 3. `backend/app/api/inference/infer_panecho_api.py`
 4. `backend/app/api/inference/infer_echonet_dynamic_api.py`
@@ -479,18 +483,19 @@ Acceptance:
 1. Regenerate updates raw AI values.
 2. Existing clinician overrides remain intact.
 
-### Iteration 6: Legacy Trigger Neutralization (Backend Side)
+### Iteration 6: Legacy Trigger Neutralization (Backend Side) [Implemented]
 
 Focus:
 
 1. Convert legacy orchestration GETs to read-only behavior.
-2. Keep temporary compatibility flag only if needed for frontend transition.
-3. Expand integration tests for multi-user and failure propagation.
+2. Add active artifact-set first reads with safe legacy fallback.
+3. Expand integration tests for failure propagation and active-vs-draft read path.
 
 Acceptance:
 
-1. No stage progression side effects on GET routes when feature flag is off.
+1. No stage progression side effects on GET routes.
 2. Queue start path is explicit and deterministic.
+3. Observer endpoints return failed when queue stage state reports failure.
 
 ### Iteration 7: Frontend Tie-In + Final Cleanup (Deferred)
 
@@ -557,11 +562,7 @@ Track temporary compatibility paths and remove them before release.
 
 Current known paths:
 
-1. Side-effect stage triggering in:
-   1. [`combined_panecho_echoprime_api.py`](../../backend/app/api/orchestration_apis/combined_panecho_echoprime_api.py)
-   2. [`combined_dynamic_measurements_api.py`](../../backend/app/api/orchestration_apis/combined_dynamic_measurements_api.py)
-   3. [`llm_report_get_api.py`](../../backend/app/api/orchestration_apis/llm_report_get_api.py)
-2. Frontend queries that currently assume GET routes can drive progression:
+1. Frontend queries that currently assume legacy result endpoints are enough to represent full orchestration control:
    1. [`usePanechoEchoprimeResultsQuery.js`](../../frontend/src/features/StudyResults/hooks/queries/usePanechoEchoprimeResultsQuery.js)
    2. [`useDynamicMeasurementsResultsQuery.js`](../../frontend/src/features/StudyResults/hooks/queries/useDynamicMeasurementsResultsQuery.js)
    3. [`useLlmReportResultsQuery.js`](../../frontend/src/features/StudyResults/hooks/queries/useLlmReportResultsQuery.js)
@@ -582,3 +583,4 @@ Cleanup gate (all required):
 5. Combined regenerate preserves clinician overrides.
 6. Filtering/routing rules (`>=0.75`, spectral short-circuit, hard compatibility) are active and auditable.
 7. Works on low-vram and server systems via `.env` controls.
+

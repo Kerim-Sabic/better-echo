@@ -16,31 +16,31 @@ export const checkAuthApi = async () => {
 };
 
 export const getWebauthnStatusApi = async () => {
-    const { data } = await apiClient.get("/auth/webauthn/status");
+    const { data } = await apiClient.get("/webauthn/status");
     return data;
 };
 
 export const getWebauthnRegisterOptionsApi = async () => {
-    const { data } = await apiClient.post("/auth/webauthn/options/register");
+    const { data } = await apiClient.post("/webauthn/registration/start");
     return data;
 };
 
 export const completeWebauthnRegisterApi = async (payload) => {
-    const { data } = await apiClient.post("/auth/webauthn/register", payload);
+    const { data } = await apiClient.post("/webauthn/registration/complete", payload);
     return data;
 };
 
 export const deleteWebauthnCredentialApi = async (credentialId) => {
-    const { data } = await apiClient.delete(`/auth/webauthn/credentials/${credentialId}`);
+    const { data } = await apiClient.delete(`/webauthn/credentials/${credentialId}`);
     return data;
 };
 
 export const getWebauthnAuthOptionsApi = async (username) => {
-    const { data } = await apiClient.post("/auth/webauthn/options/authenticate", { username });
+    const { data } = await apiClient.post("/webauthn/authentication/start", { username });
     return data;
 };
 
 export const completeWebauthnAuthApi = async (payload) => {
-    const { data } = await apiClient.post("/auth/webauthn/authenticate", payload);
+    const { data } = await apiClient.post("/webauthn/authentication/complete", payload);
     return data;
 };

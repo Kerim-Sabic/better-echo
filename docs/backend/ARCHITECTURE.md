@@ -1,6 +1,6 @@
 # Backend Architecture
 
-Last Updated: 2026-02-17  
+Last Updated: 2026-02-27  
 Owner: Backend
 
 ## Scope
@@ -43,13 +43,13 @@ backend/app/
 Registered in [`main.py`](../../backend/app/main.py#L62):
 
 1. Health: [`health_api.py`](../../backend/app/api/health/health_api.py#L5)
-2. Authentication: [`login_api.py`](../../backend/app/api/authentication/login_api.py#L16) and [`webauthn/router.py`](../../backend/app/api/authentication/webauthn/router.py#L43)
+2. Authentication: [`login_api.py`](../../backend/app/api/authentication/login_api.py#L16) and [`webauthn/router.py`](../../backend/app/api/authentication/webauthn/router.py#L46)
 3. Upload DICOM: [`upload_dicom_api.py`](../../backend/app/api/upload_dicom/upload_dicom_api.py#L74)
 4. Studies: [`list_studies_api.py`](../../backend/app/api/studies/list_studies_api.py#L21) and [`retrieve_study_api.py`](../../backend/app/api/studies/retrieve_study_api.py#L18)
 5. Patients: [`get_patient_by_study_uid_api.py`](../../backend/app/api/patients/get_patient_by_study_uid_api.py#L10)
 6. Inference: [`infer_panecho_api.py`](../../backend/app/api/inference/infer_panecho_api.py#L24)
 7. LLM: [`llm_report_generate_api.py`](../../backend/app/api/llm/llm_report_generate_api.py#L21)
-8. Orchestration APIs: [`combined_panecho_echoprime_api.py`](../../backend/app/api/orchestration_apis/combined_panecho_echoprime_api.py#L29)
+8. Orchestration APIs: [`combined_panecho_echoprime_api.py`](../../backend/app/api/orchestration_apis/results/combined_panecho_echoprime_api.py#L29)
 
 ## Data Model Highlights
 
@@ -112,16 +112,16 @@ Direct inference routes:
 
 Orchestration routes:
 
-1. PanEcho+EchoPrime combined: [`combined_panecho_echoprime_api.py`](../../backend/app/api/orchestration_apis/combined_panecho_echoprime_api.py#L29)
-2. PanEcho+EchoPrime overrides: [`combined_panecho_echoprime_api.py`](../../backend/app/api/orchestration_apis/combined_panecho_echoprime_api.py#L120)
-3. Dynamic+Measurements combined: [`combined_dynamic_measurements_api.py`](../../backend/app/api/orchestration_apis/combined_dynamic_measurements_api.py#L28)
-4. LLM report results: [`llm_report_get_api.py`](../../backend/app/api/orchestration_apis/llm_report_get_api.py#L35)
+1. PanEcho+EchoPrime combined: [`combined_panecho_echoprime_api.py`](../../backend/app/api/orchestration_apis/results/combined_panecho_echoprime_api.py#L29)
+2. PanEcho+EchoPrime overrides: [`combined_panecho_echoprime_api.py`](../../backend/app/api/orchestration_apis/results/combined_panecho_echoprime_api.py#L120)
+3. Dynamic+Measurements combined: [`combined_dynamic_measurements_api.py`](../../backend/app/api/orchestration_apis/results/combined_dynamic_measurements_api.py#L28)
+4. LLM report results: [`llm_report_get_api.py`](../../backend/app/api/orchestration_apis/results/llm_report_get_api.py#L35)
 
 Persistence:
 
 1. Artifacts are stored in `DerivedResult` ([`derived_results.py`](../../backend/app/database_models/derived_results.py#L12))
 2. Combined/orchestration rows drive frontend polling via orchestration APIs.
-3. Study-level dashboard status is derived from orchestration artifacts via [`study_status.py`](../../backend/app/helpers/study_status.py#L1)
+3. Study-level dashboard status is derived from orchestration artifacts via [`study_status.py`](../../backend/app/helpers/pipeline/study_status.py#L1)
 
 Study status policy:
 
@@ -131,6 +131,26 @@ Study status policy:
 4. Required artifacts depend on backend `ENABLE_LLM`:
     1. Disabled: PanEcho+EchoPrime combined + Dynamic+Measurements combined.
     2. Enabled: PanEcho+EchoPrime combined + Dynamic+Measurements combined + LLM report.
+
+## Canonical Pipeline Services
+
+Canonical runtime service modules now live under `backend/app/services/pipeline/`:
+
+1. Queue service: [`service.py`](../../backend/app/services/pipeline/service.py#L1)
+2. Scheduler lifecycle: [`scheduler.py`](../../backend/app/services/pipeline/scheduler.py#L1)
+3. Result readers: [`read.py`](../../backend/app/services/pipeline/read.py#L1)
+4. Cleanup semantics: [`cleanup.py`](../../backend/app/services/pipeline/cleanup.py#L1)
+5. Stage handlers: [`stages/`](../../backend/app/services/pipeline/stages/)
+6. Internal queue helpers: [`internal/`](../../backend/app/services/pipeline/internal/)
+
+## Canonical Integration and Reporting Services
+
+Canonical non-pipeline services now live in domain folders:
+
+1. LLM client: [`integrations/llm_client.py`](../../backend/app/services/integrations/llm_client.py)
+2. Orthanc client: [`integrations/orthanc_client.py`](../../backend/app/services/integrations/orthanc_client.py)
+3. LLM report service: [`reporting/llm_report_service.py`](../../backend/app/services/reporting/llm_report_service.py)
+4. WebAuthn support modules: [`auth/webauthn/`](../../backend/app/services/auth/webauthn/)
 
 ## Error Handling and Observability
 
@@ -146,3 +166,4 @@ Current diagnostics:
 1. Local schema drift requires reset flow in local dev (see [`RUNBOOK.md`](../RUNBOOK.md#sqlite-schema-drift)).
 2. Orthanc availability is an external dependency for upload/inference.
 3. Batch/preload settings should be tuned per machine hardware in [`config.py`](../../backend/app/core/config.py#L18).
+

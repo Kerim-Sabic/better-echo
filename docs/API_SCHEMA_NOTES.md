@@ -1,6 +1,6 @@
 # API Schema Notes
 
-Last Updated: 2026-02-17  
+Last Updated: 2026-02-25  
 Owner: Backend/API
 
 ## Scope
@@ -32,12 +32,12 @@ Core:
 
 WebAuthn:
 
-1. `GET /api/auth/webauthn/status` ([`webauthn/router.py`](../backend/app/api/authentication/webauthn/router.py#L43))
-2. `POST /api/auth/webauthn/options/register` ([`webauthn/router.py`](../backend/app/api/authentication/webauthn/router.py#L74))
-3. `POST /api/auth/webauthn/register` ([`webauthn/router.py`](../backend/app/api/authentication/webauthn/router.py#L120))
-4. `POST /api/auth/webauthn/options/authenticate` ([`webauthn/router.py`](../backend/app/api/authentication/webauthn/router.py#L193))
-5. `POST /api/auth/webauthn/authenticate` ([`webauthn/router.py`](../backend/app/api/authentication/webauthn/router.py#L235))
-6. `DELETE /api/auth/webauthn/credentials/{credential_id}` ([`webauthn/router.py`](../backend/app/api/authentication/webauthn/router.py#L332))
+1. `GET /api/webauthn/status` ([`webauthn/router.py`](../backend/app/api/authentication/webauthn/router.py#L46))
+2. `POST /api/webauthn/registration/start` ([`webauthn/router.py`](../backend/app/api/authentication/webauthn/router.py#L77))
+3. `POST /api/webauthn/registration/complete` ([`webauthn/router.py`](../backend/app/api/authentication/webauthn/router.py#L123))
+4. `POST /api/webauthn/authentication/start` ([`webauthn/router.py`](../backend/app/api/authentication/webauthn/router.py#L196))
+5. `POST /api/webauthn/authentication/complete` ([`webauthn/router.py`](../backend/app/api/authentication/webauthn/router.py#L238))
+6. `DELETE /api/webauthn/credentials/{credential_id}` ([`webauthn/router.py`](../backend/app/api/authentication/webauthn/router.py#L335))
 
 ### Study and Upload Endpoints
 
@@ -93,10 +93,41 @@ Router:
 
 Key endpoints:
 
-1. `GET /api/studies/{study_uid}/PanEcho-EchoPrime-combined-results` ([`combined_panecho_echoprime_api.py`](../backend/app/api/orchestration_apis/combined_panecho_echoprime_api.py#L29))
-2. `PATCH /api/studies/{study_uid}/PanEcho-EchoPrime-overrides` ([`combined_panecho_echoprime_api.py`](../backend/app/api/orchestration_apis/combined_panecho_echoprime_api.py#L120))
-3. `GET /api/studies/{study_uid}/Dynamic-Measurements-combined-results` ([`combined_dynamic_measurements_api.py`](../backend/app/api/orchestration_apis/combined_dynamic_measurements_api.py#L28))
-4. `GET /api/studies/{study_uid}/llm-report-results` ([`llm_report_get_api.py`](../backend/app/api/orchestration_apis/llm_report_get_api.py#L35))
+1. `GET /api/studies/{study_uid}/PanEcho-EchoPrime-combined-results` ([`combined_panecho_echoprime_api.py`](../backend/app/api/orchestration_apis/results/combined_panecho_echoprime_api.py#L29))
+2. `PATCH /api/studies/{study_uid}/PanEcho-EchoPrime-overrides` ([`combined_panecho_echoprime_api.py`](../backend/app/api/orchestration_apis/results/combined_panecho_echoprime_api.py#L120))
+3. `GET /api/studies/{study_uid}/Dynamic-Measurements-combined-results` ([`combined_dynamic_measurements_api.py`](../backend/app/api/orchestration_apis/results/combined_dynamic_measurements_api.py#L28))
+4. `GET /api/studies/{study_uid}/llm-report-results` ([`llm_report_get_api.py`](../backend/app/api/orchestration_apis/results/llm_report_get_api.py#L35))
+5. `POST /api/studies/{study_uid}/pipeline/start` ([`pipeline_start_api.py`](../backend/app/api/orchestration_apis/pipeline/pipeline_start_api.py#L16))
+6. `GET /api/studies/{study_uid}/pipeline/status` ([`pipeline_status_api.py`](../backend/app/api/orchestration_apis/pipeline/pipeline_status_api.py#L15))
+7. `POST /api/studies/{study_uid}/pipeline/promote` ([`pipeline_promote_api.py`](../backend/app/api/orchestration_apis/pipeline/pipeline_promote_api.py#L14))
+8. `POST /api/studies/{study_uid}/pipeline/cancel` ([`pipeline_cancel_api.py`](../backend/app/api/orchestration_apis/pipeline/pipeline_cancel_api.py#L14))
+9. `POST /api/studies/{study_uid}/pipeline/regenerate-combined` ([`pipeline_regenerate_api.py`](../backend/app/api/orchestration_apis/pipeline/pipeline_regenerate_api.py#L16))
+
+Pipeline queue note (Iterations 1-5):
+
+1. `pipeline/start` and `pipeline/status` are implemented as the backend queue foundation.
+2. Queue worker executes server-owned stage progression (`prefilter`, `combined`, `dynamic_measurements`, optional `llm`).
+3. Existing orchestration GET routes are observer-only in Iteration 6:
+1. they read active/draft-derived results and status
+2. they do not enqueue jobs or create pending marker rows
+4. Iteration 2 draft boundary is active:
+1. queue start creates a `draft` artifact set per job
+2. status returns `artifact_sets.draft` and `artifact_sets.active`
+3. legacy study-level results are backfilled into an `active` artifact set on queue start
+5. Iteration 3 promote/cancel semantics are active:
+1. `pipeline/promote` atomically swaps draft to active
+2. `pipeline/cancel` supports queued/completed immediate cancel and running cooperative cancel request
+3. cancel cleanup uses `cleanup_scope` (`none`, `append_delta`, `new_study`)
+6. Iteration 4 routing gate is active:
+1. hard DICOM compatibility checks
+2. Doppler tag short-circuit
+3. global confidence gate via `PIPELINE_VIEW_CONFIDENCE_MIN` (default `0.75`)
+7. Iteration 5 regenerate flow is active:
+1. `pipeline/regenerate-combined` enqueues regenerate mode explicitly
+2. regenerate requires an active combined baseline
+3. successful regenerate auto-promotes draft artifact set
+4. failed regenerate leaves active artifact set unchanged
+5. clinician overrides are preserved while raw AI values are refreshed
 
 ### LLM Endpoints
 
@@ -236,15 +267,18 @@ Caveats:
 
 Goal:
 
-1. Start or continue orchestration and stop polling when complete.
+1. Start backend queue orchestration, then poll observer-only result/status endpoints.
 
 Use:
 
+1. Start endpoint:
+1. `POST /api/studies/{study_uid}/pipeline/start`
+2. Legacy result observers:
 1. API wrappers:
 1. [`getPanechoEchoprimeCombinedResults`](../frontend/src/api/orchestration_apis/PanechoEchoprimeResultsApi.js#L10)
 2. [`getDynamicMeasurementsCombinedResults`](../frontend/src/api/orchestration_apis/DynamicMeasurementsResultsApi.js#L10)
 3. [`getLlmReportResults`](../frontend/src/api/orchestration_apis/LlmReportResultsApi.js#L10)
-2. Query hooks:
+3. Query hooks:
 1. [`usePanechoEchoprimeResultsQuery`](../frontend/src/features/StudyResults/hooks/queries/usePanechoEchoprimeResultsQuery.js#L9)
 2. [`useDynamicMeasurementsResultsQuery`](../frontend/src/features/StudyResults/hooks/queries/useDynamicMeasurementsResultsQuery.js#L9)
 3. [`useLlmReportResultsQuery`](../frontend/src/features/StudyResults/hooks/queries/useLlmReportResultsQuery.js#L9)
@@ -260,6 +294,104 @@ Returns:
 Caveats:
 
 1. Keep polling logic aligned with `202 pending` semantics.
+2. Legacy orchestration GET endpoints are observer-only and do not trigger progression.
+3. Queue progression starts from explicit `pipeline/start` calls.
+
+### Start Backend-Owned Pipeline Job
+
+Goal:
+
+1. Enqueue an idempotent orchestration job once per study.
+
+Use:
+
+1. Endpoint: `POST /api/studies/{study_uid}/pipeline/start`
+2. Backend implementation: [`pipeline_start_api.py`](../backend/app/api/orchestration_apis/pipeline/pipeline_start_api.py#L16)
+3. Queue service: [`service.py`](../backend/app/services/pipeline/service.py)
+
+Returns:
+
+1. `created_new`
+2. `job_id`
+3. current queue `status`
+
+### Observe Pipeline Job Status
+
+Goal:
+
+1. Read job/stage progress without side effects.
+
+Use:
+
+1. Endpoint: `GET /api/studies/{study_uid}/pipeline/status`
+2. Backend implementation: [`pipeline_status_api.py`](../backend/app/api/orchestration_apis/pipeline/pipeline_status_api.py#L15)
+
+Returns:
+
+1. `has_job`
+2. `pipeline` snapshot (`status`, `current_stage`, stage list, timestamps, last_error)
+3. `pipeline.artifact_sets`:
+1. `draft` set linked to current queue job
+2. `active` set representing clinician-visible baseline
+4. cancellation fields:
+1. `pipeline.cancel_requested_at`
+2. `pipeline.is_cancel_requested`
+
+### Promote Draft Artifact Set
+
+Goal:
+
+1. Promote latest completed draft result set into active view.
+
+Use:
+
+1. Endpoint: `POST /api/studies/{study_uid}/pipeline/promote`
+2. Backend implementation: [`pipeline_promote_api.py`](../backend/app/api/orchestration_apis/pipeline/pipeline_promote_api.py#L14)
+
+Returns:
+
+1. promoted job id
+2. promoted artifact set id
+3. optionally discarded previous active set id
+
+### Cancel Pipeline Job
+
+Goal:
+
+1. Cancel preview pipeline work and apply cleanup by scope.
+
+Use:
+
+1. Endpoint: `POST /api/studies/{study_uid}/pipeline/cancel`
+2. Backend implementation: [`pipeline_cancel_api.py`](../backend/app/api/orchestration_apis/pipeline/pipeline_cancel_api.py#L14)
+
+Returns:
+
+1. `cancel_requested=true` for cooperative cancel of running jobs
+2. `status=cancelled` for immediate queued/completed cancellation
+3. cleanup summary counts for applied delete operations
+
+### Regenerate Combined (Override-Safe)
+
+Goal:
+
+1. Recompute combined raw AI values while preserving clinician overrides.
+
+Use:
+
+1. Endpoint: `POST /api/studies/{study_uid}/pipeline/regenerate-combined`
+2. Backend implementation: [`pipeline_regenerate_api.py`](../backend/app/api/orchestration_apis/pipeline/pipeline_regenerate_api.py#L16)
+3. Queue service: [`service.py`](../backend/app/services/pipeline/service.py)
+
+Returns:
+
+1. idempotent queue response (`created_new`, `job_id`, `status`)
+
+Caveats:
+
+1. Request fails with `409` if no active combined baseline exists.
+2. On success, queue worker auto-promotes regenerate draft set.
+3. On failure, currently active artifact set remains unchanged.
 
 ### Apply and Persist a Measurement Override
 
@@ -271,7 +403,7 @@ Use:
 
 1. API call: [`updatePanechoEchoprimeOverrides`](../frontend/src/api/orchestration_apis/PanechoEchoprimeResultsApi.js#L26)
 2. Endpoint: `PATCH /api/studies/{study_uid}/PanEcho-EchoPrime-overrides`
-3. Backend implementation: [`combined_panecho_echoprime_api.py`](../backend/app/api/orchestration_apis/combined_panecho_echoprime_api.py#L124)
+3. Backend implementation: [`combined_panecho_echoprime_api.py`](../backend/app/api/orchestration_apis/results/combined_panecho_echoprime_api.py#L124)
 
 Returns:
 
@@ -312,3 +444,4 @@ If endpoint shape changes:
 2. Update corresponding frontend API wrapper.
 3. Update query `select` normalizers and ViewModel mapping.
 4. Update this file in the same PR.
+
