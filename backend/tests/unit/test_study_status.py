@@ -6,7 +6,7 @@ from app.core.artifacts import (
     PANECHO_ECHOPRIME_COMBINED_TYPE,
 )
 from app.database_models.derived_results import ResultStatus
-from app.helpers.study_status import compute_study_status, status_by_type
+from app.helpers.pipeline.study_status import compute_study_status, status_by_type
 
 
 def test_compute_study_status_llm_disabled_completed():
@@ -66,3 +66,4 @@ def test_status_by_type_collapses_multiple_rows_with_failed_precedence():
     ]
     statuses = status_by_type(rows)
     assert statuses[LLM_REPORT_TYPE] == ResultStatus.failed
+

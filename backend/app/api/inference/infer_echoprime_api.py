@@ -13,7 +13,7 @@ import requests
 import torch
 
 from app.AI_models.EchoPrime.echo_prime import EchoPrime
-from app.helpers.inference_functions import fetch_orthanc_instance_ids_from_study
+from app.helpers.inference_runtime.inference_functions import fetch_orthanc_instance_ids_from_study
 from app.core.config import settings
 from app.schemas.inference.infer_echoprime_schemas import (EchoPrimeResponse,
                                                  InferEchoPrimeRequest)
@@ -147,8 +147,10 @@ def infer_echoprime(
     logger.info(f"[EchoPrime] infer_echoprime called with study_uid={study_uid}")
 
     ep = get_ep()  # model is loaded on first request
-    # --- Step 1: fetch instances from Orthanc ---
-    instance_orthanc_ids = fetch_orthanc_instance_ids_from_study(study_uid)
+    # --- Step 1: resolve input instance set ---
+    instance_orthanc_ids = payload.include_instance_orthanc_ids or fetch_orthanc_instance_ids_from_study(study_uid)
+    if not instance_orthanc_ids:
+        raise HTTPException(status_code=404, detail=f"No instances found for study_uid={study_uid}")
     
     # --- Step 2: download dicoms ---
     downloaded = download_dicoms_for_study(instance_orthanc_ids)
@@ -199,16 +201,38 @@ def infer_echoprime(
 
         study = db.query(Study).filter(Study.study_uid == study_uid).first()
         if study:
-            dr_report = DerivedResult(
-                study_id = study.id,
-                type="EchoPrime_AllTasks",
-                value_json={
-                    "predictions": predictions,
-                },
-                model_name="EchoPrime",
-                model_version="v1"
-            )
-            db.add(dr_report)
+            # --- Step 4.1 Queue mode writes into draft-scoped artifact set ---
+            if payload.artifact_set_id is not None:
+                dr_report = (
+                    db.query(DerivedResult)
+                    .filter(
+                        DerivedResult.study_id == study.id,
+                        DerivedResult.type == "EchoPrime_AllTasks",
+                        DerivedResult.artifact_set_id == payload.artifact_set_id,
+                    )
+                    .first()
+                )
+                if not dr_report:
+                    dr_report = DerivedResult(
+                        study_id=study.id,
+                        type="EchoPrime_AllTasks",
+                        model_name="EchoPrime",
+                        model_version="v1",
+                        artifact_set_id=payload.artifact_set_id,
+                    )
+                    db.add(dr_report)
+            else:
+                dr_report = DerivedResult(
+                    study_id=study.id,
+                    type="EchoPrime_AllTasks",
+                    model_name="EchoPrime",
+                    model_version="v1",
+                )
+                db.add(dr_report)
+
+            dr_report.value_json = {
+                "predictions": predictions,
+            }
             db.commit()
             db.refresh(dr_report)
 
@@ -229,3 +253,4 @@ def infer_echoprime(
             shutil.rmtree(study_dir)
         except Exception:
             pass
+

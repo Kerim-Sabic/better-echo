@@ -14,6 +14,11 @@ class Settings(BaseSettings):
     SECRET_KEY: str
     TOKEN_EXPIRE_HOURS: int
 
+    # WebAuthn pending ceremony state backend (memory | redis).
+    WEBAUTHN_STATE_BACKEND: str = "memory"
+    # Enforce single-process runtime when using in-memory WebAuthn state.
+    WEBAUTHN_REQUIRE_SINGLE_PROCESS: bool = True
+
     # Model preload toggles (default on; disable per machine if needed)
     PANECHO_PRELOAD: bool = True
     PANECHO_WARMUP: bool = False
@@ -29,6 +34,13 @@ class Settings(BaseSettings):
     ECHONET_BATCH: int = 16
     MEASUREMENTS_BATCH: int = 16
     MEASUREMENTS_OUTPUT_FPS: int = 30
+
+    # Inference runtime profile and queue controls
+    INFERENCE_PROFILE: str = "auto"
+    PIPELINE_UNLOAD_POLICY: str = "stage"
+    PIPELINE_MAX_ACTIVE_STUDIES: int = 1
+    PIPELINE_POLL_INTERVAL_MS: int = 500
+    PIPELINE_VIEW_CONFIDENCE_MIN: float = 0.75
 
     # Preferred devices (auto | cpu | cuda:<index>)
     PANECHO_DEVICE: str = "auto"

@@ -88,3 +88,5 @@ class LLMClient:
             logger.exception(f"[LLM] chat_completion failed: {e}")
             raise
 
+
+__all__ = ["LLMClient"]

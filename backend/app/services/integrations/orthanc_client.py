@@ -38,6 +38,7 @@ def send_dicom_to_orthanc(filepath: str) -> Dict[str, Any]:
 
     return upload_response
 
+
 def get_instance_tags(instance_id: str) -> Dict[str, Any]:
     """
     Fetch DICOM tags for a given instance ID from Orthanc.
@@ -56,6 +57,7 @@ def get_instance_tags(instance_id: str) -> Dict[str, Any]:
         logger.error(f"Failed to fetch tags from Orthanc for instance {instance_id}: {str(e)}")
         raise RuntimeError(f"Failed to fetch tags from Orthanc: {e}")
 
+
 def delete_study_from_orthanc(study_orthanc_id: str) -> bool:
     """
     Delete a study from Orthanc by its Orthanc study ID.
@@ -72,3 +74,31 @@ def delete_study_from_orthanc(study_orthanc_id: str) -> bool:
     except requests.RequestException as err:
         logger.error(f"Error deleting study {study_orthanc_id} from Orthanc: {str(err)}")
         return False
+
+
+def delete_instance_from_orthanc(instance_orthanc_id: str) -> bool:
+    """
+    Delete an instance from Orthanc by Orthanc instance ID.
+    Returns True on success, False otherwise.
+    """
+    try:
+        del_response = requests.delete(f"{orthanc_url}/instances/{instance_orthanc_id}", auth=AUTH, timeout=30)
+        if del_response.status_code == 200:
+            logger.info(f"Deleted instance from Orthanc (Orthanc ID: {instance_orthanc_id})")
+            return True
+        logger.warning(
+            "Failed to delete instance %s from Orthanc. Status: %s",
+            instance_orthanc_id,
+            del_response.status_code,
+        )
+        return False
+    except requests.RequestException as err:
+        logger.error(f"Error deleting instance {instance_orthanc_id} from Orthanc: {str(err)}")
+        return False
+
+__all__ = [
+    "send_dicom_to_orthanc",
+    "get_instance_tags",
+    "delete_study_from_orthanc",
+    "delete_instance_from_orthanc",
+]

@@ -8,7 +8,7 @@ from app.core.artifacts import AUTH_COOKIE_NAME
 from app.core.config import settings
 from app.database.db import get_db
 from app.database_models import User, WebAuthnCredential
-from app.helpers.authentication_functions import create_token, get_current_user_id
+from app.helpers.auth.authentication_functions import create_token, get_current_user_id
 from app.schemas.authentication.authentication_schemas import AuthResponse
 from app.schemas.authentication.webauthn_schemas import (
     AuthCompleteRequest,
@@ -30,17 +30,20 @@ from fido2.webauthn import (
     UserVerificationRequirement,
 )
 
-from .credentials import attested_credential_from_record, load_credentials
-from .encoding import b64url, b64url_to_bytes, serialize_options
-from .fido import server_for_request
-from .state import pending_auth, pending_register
+from app.services.auth.webauthn.credentials import (
+    attested_credential_from_record,
+    load_credentials,
+)
+from app.services.auth.webauthn.encoding import b64url, b64url_to_bytes, serialize_options
+from app.services.auth.webauthn.fido import server_for_request
+from app.services.auth.webauthn.state import pending_auth, pending_register
 
 
-router = APIRouter()
+router = APIRouter(tags=["WebAuthn"])
 logger = logging.getLogger(__name__)
 
 
-@router.get("/auth/webauthn/status", response_model=WebAuthnStatusResponse)
+@router.get("/webauthn/status", response_model=WebAuthnStatusResponse)
 def get_webauthn_status(
     current_user_id: int = Depends(get_current_user_id),
     db: Session = Depends(get_db),
@@ -71,7 +74,7 @@ def get_webauthn_status(
     )
 
 
-@router.post("/auth/webauthn/options/register", response_model=RegisterOptionsResponse)
+@router.post("/webauthn/registration/start", response_model=RegisterOptionsResponse)
 def get_register_options(
     request: Request,
     current_user_id: int = Depends(get_current_user_id),
@@ -117,7 +120,7 @@ def get_register_options(
     return RegisterOptionsResponse(publicKey=serialize_options(options))
 
 
-@router.post("/auth/webauthn/register", response_model=RegisterCompleteResponse)
+@router.post("/webauthn/registration/complete", response_model=RegisterCompleteResponse)
 def complete_register(
     payload: RegisterCompleteRequest,
     request: Request,
@@ -190,7 +193,7 @@ def complete_register(
     )
 
 
-@router.post("/auth/webauthn/options/authenticate", response_model=AuthOptionsResponse)
+@router.post("/webauthn/authentication/start", response_model=AuthOptionsResponse)
 def get_auth_options(
     payload: AuthOptionsRequest,
     request: Request,
@@ -232,7 +235,7 @@ def get_auth_options(
     return AuthOptionsResponse(publicKey=serialize_options(options))
 
 
-@router.post("/auth/webauthn/authenticate", response_model=AuthResponse)
+@router.post("/webauthn/authentication/complete", response_model=AuthResponse)
 def complete_authenticate(
     payload: AuthCompleteRequest,
     response: Response,
@@ -329,7 +332,7 @@ def complete_authenticate(
     }
 
 
-@router.delete("/auth/webauthn/credentials/{credential_id}", response_model=RemoveCredentialResponse)
+@router.delete("/webauthn/credentials/{credential_id}", response_model=RemoveCredentialResponse)
 def delete_credential(
     credential_id: str,
     current_user_id: int = Depends(get_current_user_id),
@@ -366,3 +369,4 @@ def delete_credential(
     db.commit()
     logger.info("Removed WebAuthn credential for user_id=%s", current_user_id)
     return RemoveCredentialResponse(message="Credential removed", removed=True)
+

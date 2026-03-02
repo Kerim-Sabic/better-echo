@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 from app.database.db import engine, SessionLocal
 from app.database_models import *
 
-from app.helpers.authentication_functions import hash_password
+from app.helpers.auth.authentication_functions import hash_password
 
 """
 Function to manually add a user in the database
@@ -12,9 +12,9 @@ def create_user():
 
     # Create a new user
     user = User(
-        username="doctor1",
+        username="doctor2",
         hashed_password=hash_password("1234"),
-        full_name="Dr. Kerim Sabic",
+        full_name="Dr. Zoe Alkhalil",
         role="doctor"
     )
 

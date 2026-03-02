@@ -1,4 +1,4 @@
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
@@ -6,11 +6,11 @@ import torch
 import logging
 import numpy as np
 
-from app.helpers.inference_functions import (fetch_orthanc_instance_ids_from_study,
+from app.helpers.inference_runtime.inference_functions import (fetch_orthanc_instance_ids_from_study,
                         pick_frames_from_instance,
                         stack_to_tensor,
                         get_model_and_device)
-from app.helpers.batch_config import get_batch_size
+from app.helpers.inference_runtime.batch_config import get_batch_size
 from app.schemas.inference.infer_panecho_schemas import (AllTasksPanEchoResponse,
                                             InferPanEchoRequest)
 
@@ -42,8 +42,8 @@ def infer_panecho(
 
     logger.info(f"[INFER_PANECHO] infer_panecho called with study_uid={study_uid}")
 
-    # --- Part 1: Fetch all instance IDs for the study ---
-    orthanc_instance_ids = fetch_orthanc_instance_ids_from_study(study_uid)
+    # --- Part 1: Resolve input instance set ---
+    orthanc_instance_ids = payload.include_instance_orthanc_ids or fetch_orthanc_instance_ids_from_study(study_uid)
     if not orthanc_instance_ids:
         raise HTTPException(status_code=404, detail=f"No instances found for study_uid={study_uid}")
 
@@ -145,14 +145,36 @@ def infer_panecho(
         # --- Part 4: Save aggregated results to database ---
         study = db.query(Study).filter(Study.study_uid == study_uid).first()
         if study:
-            derived_result = DerivedResult(
-                study_id = study.id,
-                type="PanEcho_AllTasks",
-                value_json=aggregated,
-                model_name="PanEcho",
-                model_version="v1",
-            )
-            db.add(derived_result)
+            # Part 4.1 Queue mode writes into draft-scoped artifact set.
+            if payload.artifact_set_id is not None:
+                derived_result = (
+                    db.query(DerivedResult)
+                    .filter(
+                        DerivedResult.study_id == study.id,
+                        DerivedResult.type == "PanEcho_AllTasks",
+                        DerivedResult.artifact_set_id == payload.artifact_set_id,
+                    )
+                    .first()
+                )
+                if not derived_result:
+                    derived_result = DerivedResult(
+                        study_id=study.id,
+                        type="PanEcho_AllTasks",
+                        model_name="PanEcho",
+                        model_version="v1",
+                        artifact_set_id=payload.artifact_set_id,
+                    )
+                    db.add(derived_result)
+            else:
+                derived_result = DerivedResult(
+                    study_id=study.id,
+                    type="PanEcho_AllTasks",
+                    model_name="PanEcho",
+                    model_version="v1",
+                )
+                db.add(derived_result)
+
+            derived_result.value_json = aggregated
             db.commit()
             db.refresh(derived_result)
             logger.info(f"[INFER_PANECHO] Saved DerivedResult id={derived_result.id} for study_id={study.id}")
@@ -167,3 +189,4 @@ def infer_panecho(
     except Exception as err:
         logger.exception(f"[INFER_PANECHO] Inference failed: {type(err).__name__}: {err}")
         raise HTTPException(status_code=500, detail=f"Inference failed: {type(err).__name__}: {err}")
+

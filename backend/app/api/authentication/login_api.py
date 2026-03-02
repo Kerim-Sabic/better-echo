@@ -5,12 +5,12 @@ from sqlalchemy.orm import Session
 
 from app.database.db import get_db
 from app.database_models.users import User
-from app.helpers.authentication_functions import verify_password, create_token
+from app.helpers.auth.authentication_functions import verify_password, create_token
 from app.core.config import settings
 from app.schemas.authentication.authentication_schemas import LoginRequest, AuthResponse
 from app.core.artifacts import AUTH_COOKIE_NAME
 
-router = APIRouter()
+router = APIRouter(tags=["Authentication"])
 
 
 @router.post("/login", response_model=AuthResponse)

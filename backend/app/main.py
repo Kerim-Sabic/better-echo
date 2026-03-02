@@ -16,9 +16,11 @@ from app.api.inference import router as inference_router
 from app.api.authentication import router as authentication_router
 from app.api.llm import router as llm_router
 from app.api.orchestration_apis import router as orchestration_router
-from app.helpers.AVI_to_MP4_converter import kill_tracked_ffmpeg_processes
-from app.helpers.device_selector import get_device_for_model
-from app.helpers.preload_utils import safe_preload, has_min_vram
+from app.helpers.media.ffmpeg_mp4_writer import kill_tracked_ffmpeg_processes
+from app.helpers.inference_runtime.device_selector import get_device_for_model
+from app.helpers.inference_runtime.preload_utils import safe_preload, has_min_vram
+from app.services.auth.webauthn.state import assert_webauthn_state_runtime_safe
+from app.services.pipeline.scheduler import start_pipeline_scheduler, stop_pipeline_scheduler
 
 from app.core.config import settings
 from app.core.artifacts import UPLOAD_DIR
@@ -60,7 +62,7 @@ app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 # Routes
 app.include_router(health_router, prefix="/api", tags=["Health"])
-app.include_router(authentication_router, prefix="/api", tags=["Authentication"])
+app.include_router(authentication_router, prefix="/api")
 app.include_router(upload_dicom_router, prefix="/api", tags=["Upload dicom"])
 app.include_router(studies_router, prefix="/api", tags=["Studies"])
 app.include_router(patients_router, prefix="/api", tags=["Patients"])
@@ -74,9 +76,17 @@ def startup_preload_models():
     Sequential, guarded preloads based on env flags.
     Each stage checks VRAM and skips on low memory or errors.
     """
+    # Part 1. Validate WebAuthn state runtime mode.
+    assert_webauthn_state_runtime_safe(
+        state_backend=settings.WEBAUTHN_STATE_BACKEND,
+        require_single_process=settings.WEBAUTHN_REQUIRE_SINGLE_PROCESS,
+    )
+
+    # Part 2. Start backend-owned pipeline scheduler loop.
+    start_pipeline_scheduler()
 
     def _preload_panecho():
-        from app.helpers.inference_functions import get_model_and_device
+        from app.helpers.inference_runtime.inference_functions import get_model_and_device
         get_model_and_device()
 
     def _preload_echonet():
@@ -121,6 +131,11 @@ def shutdown_cleanup():
     Ensure auxiliary processes are stopped when the app exits.
     """
     try:
+        stop_pipeline_scheduler()
+        logger.info("Shutdown cleanup: pipeline scheduler stopped.")
+    except Exception as exc:
+        logger.warning("Shutdown cleanup: failed to stop pipeline scheduler: %s", exc)
+    try:
         kill_tracked_ffmpeg_processes()
         logger.info("Shutdown cleanup: terminated tracked ffmpeg processes.")
     except Exception as exc:
@@ -134,3 +149,4 @@ def shutdown_cleanup():
 if __name__ == "__main__":
     logger.info("Starting FastAPI server on 0.0.0.0:8000")
     uvicorn.run("app.main:app", host = "0.0.0.0", port=8000, reload=True)
+

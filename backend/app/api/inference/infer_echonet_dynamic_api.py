@@ -16,11 +16,11 @@ from app.database.db import get_db
 from app.schemas.inference.infer_echonet_dynamic_schemas import LVSegmentationResponse
 from app.database_models.instances import Instance
 from app.database_models.derived_results import DerivedResult
-from app.helpers.inference_functions import check_instance_exists_in_orthanc
-from app.helpers.DICOM_to_AVI_converter import read_dicom_frames
-from app.helpers.AVI_to_MP4_converter import ffmpeg_write_mp4_from_frames
-from app.helpers.device_selector import get_device_for_model
-from app.helpers.batch_config import get_batch_size
+from app.helpers.inference_runtime.inference_functions import check_instance_exists_in_orthanc
+from app.helpers.media.dicom_frame_reader import read_dicom_frames
+from app.helpers.media.ffmpeg_mp4_writer import ffmpeg_write_mp4_from_frames
+from app.helpers.inference_runtime.device_selector import get_device_for_model
+from app.helpers.inference_runtime.batch_config import get_batch_size
 from app.core.artifacts import BASE_DIR, UPLOAD_DIR
 
 logger = logging.getLogger(__name__)
@@ -91,6 +91,8 @@ def unload_model():
 @router.post("/infer/echonet-dynamic/LV-segmentation", response_model=LVSegmentationResponse)
 def infer_lv_segmentation(
     sop_instance_uid: str = Query(..., description="The DICOM SOPInstanceUID to run segmentation on"),
+    artifact_set_id: int | None = Query(default=None, include_in_schema=False),
+    skip_orthanc_check: bool = Query(default=False, include_in_schema=False),
     db: Session = Depends(get_db),
 ):
     global device
@@ -105,7 +107,7 @@ def infer_lv_segmentation(
     5. Persist a DerivedResult and return the relative MP4 path.
     """
     # --- Step 1: Check if instance with given sop_instance_uid exists ---
-    if not check_instance_exists_in_orthanc(sop_instance_uid):
+    if (not skip_orthanc_check) and (not check_instance_exists_in_orthanc(sop_instance_uid)):
         raise HTTPException(
             status_code=400,
             detail=f"Instance with sop_instance_uid: {sop_instance_uid} does not exist.",
@@ -350,24 +352,48 @@ def infer_lv_segmentation(
 
     # --- Step 5: Save DerivedResult in database ---
     if instance:
-        dr = DerivedResult(
-            study_id=instance.series.study.id,
-            instance_id=instance.id,
-            type="EchonetDynamic_LV_Segmentation",
-            value_json={"outputfile": relative_output_path},
-            model_name="EchonetDynamic",
-            model_version="v1",
-        )
-        # Check if the result already exists in the DB
-        existing = db.query(DerivedResult).filter(
-            DerivedResult.instance_id == instance.id,
-            DerivedResult.type == "EchonetDynamic_LV_Segmentation",
-        ).first()
-
-        if not existing:
-            db.add(dr)
+        if artifact_set_id is not None:
+            dr = (
+                db.query(DerivedResult)
+                .filter(
+                    DerivedResult.instance_id == instance.id,
+                    DerivedResult.type == "EchonetDynamic_LV_Segmentation",
+                    DerivedResult.artifact_set_id == artifact_set_id,
+                )
+                .first()
+            )
+            if not dr:
+                dr = DerivedResult(
+                    study_id=instance.series.study.id,
+                    instance_id=instance.id,
+                    type="EchonetDynamic_LV_Segmentation",
+                    model_name="EchonetDynamic",
+                    model_version="v1",
+                    artifact_set_id=artifact_set_id,
+                )
+                db.add(dr)
+            dr.value_json = {"outputfile": relative_output_path}
             db.commit()
-            logger.info(f"[Echonet-dynamic] Saved DerivedResult in DB for study_uid={study_uid}")
+            logger.info(f"[Echonet-dynamic] Saved draft DerivedResult in DB for study_uid={study_uid}")
+        else:
+            dr = DerivedResult(
+                study_id=instance.series.study.id,
+                instance_id=instance.id,
+                type="EchonetDynamic_LV_Segmentation",
+                value_json={"outputfile": relative_output_path},
+                model_name="EchonetDynamic",
+                model_version="v1",
+            )
+            # Check if the result already exists in the DB
+            existing = db.query(DerivedResult).filter(
+                DerivedResult.instance_id == instance.id,
+                DerivedResult.type == "EchonetDynamic_LV_Segmentation",
+            ).first()
+
+            if not existing:
+                db.add(dr)
+                db.commit()
+                logger.info(f"[Echonet-dynamic] Saved DerivedResult in DB for study_uid={study_uid}")
 
     # --- Step 6: Return success response ---
     logger.info("[Echonet-dynamic] LV-segmentation model inference completed")
@@ -376,3 +402,4 @@ def infer_lv_segmentation(
         "message": "LV segmentation completed successfully",
         "output_file": relative_output_path,
     }
+

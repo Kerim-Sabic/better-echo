@@ -1,6 +1,6 @@
 import pytest
 
-from app.helpers.combine_panecho_echoprime_predictions import combine_results
+from app.helpers.ensemble.combine_panecho_echoprime_predictions import combine_results
 
 
 def _assert_task(case_name, output, task_key, expected_label, expected_value, expected_sources):
@@ -90,3 +90,4 @@ def test_binary_integrated_label_confidence(
 ):
     out = combine_results("demo", panecho_raw, echoprime_raw)
     _assert_task(case_name, out, task_key, expected_label, expected_value, expected_sources)
+

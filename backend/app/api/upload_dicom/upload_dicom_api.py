@@ -8,7 +8,7 @@ from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from sqlalchemy.orm import Session
 import pydicom
 
-from app.services.orthanc_client import (
+from app.services.integrations.orthanc_client import (
     send_dicom_to_orthanc,
     get_instance_tags,
 )
@@ -19,7 +19,7 @@ from app.database_models.studies import Study
 from app.database_models.series import Series
 from app.database_models.instances import Instance
 from app.schemas.upload_dicom.upload_dicom_schemas import UploadDicomResponseSchema
-from app.helpers.authentication_functions import get_current_user_id
+from app.helpers.auth.authentication_functions import get_current_user_id
 from app.core.artifacts import UPLOAD_DIR
 
 logger = logging.getLogger(__name__)
@@ -237,3 +237,4 @@ async def upload_dicom(file: UploadFile = File(...),
             logger.info(f"Deleted local file due to error at {file_location}")
         logger.exception(f"Upload failed: {str(err)}")
         raise HTTPException(status_code=500, detail=f"Failed to save file: {str(err)}")
+

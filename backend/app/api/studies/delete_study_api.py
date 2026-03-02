@@ -8,7 +8,7 @@ import logging
 
 from app.database.db import get_db
 from app.database_models.studies import Study
-from app.services.orthanc_client import delete_study_from_orthanc
+from app.services.integrations.orthanc_client import delete_study_from_orthanc
 from app.schemas.studies.studies_schemas import StudyDeleteResponse
 from app.core.artifacts import UPLOAD_DIR
 

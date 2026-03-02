@@ -12,9 +12,9 @@ from app.database_models.instances import Instance
 from app.database_models.derived_results import DerivedResult, ResultStatus
 from app.api.inference.infer_echonet_dynamic_api import infer_lv_segmentation
 from app.api.inference.infer_measurements_api import infer_measurements_2d
-from app.helpers.view_classifier import classify_views_for_study
+from app.helpers.ensemble.view_classifier import classify_views_for_study
 from app.core.artifacts import DYNAMIC_MEASUREMENTS_COMBINED_TYPE
-from app.helpers.study_status import sync_study_status
+from app.helpers.pipeline.study_status import sync_study_status
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +61,7 @@ def _run_echonet_dynamic(db: Session, instance: Instance) -> Dict[str, Any]:
                     "message": "infer_echonet_dynamic not wired", 
                     "ui_label": "Left Ventricle (LV) segmentation"}
         
-        response = infer_lv_segmentation(instance.sop_instance_uid, db)
+        response = infer_lv_segmentation(sop_instance_uid=instance.sop_instance_uid, db=db)
         output_path = (response or {}).get("output_file")
 
         if not output_path:
@@ -261,3 +261,4 @@ def combining_dynamic_measurements(study_uid: str) -> None:
             db.close()
         except Exception:
             pass
+

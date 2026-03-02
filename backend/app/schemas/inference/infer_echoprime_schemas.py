@@ -1,9 +1,11 @@
-from typing import Dict
+from typing import Dict, List, Optional
 
 from pydantic import BaseModel
 
 class InferEchoPrimeRequest(BaseModel):
     study_uid: str
+    include_instance_orthanc_ids: Optional[List[str]] = None
+    artifact_set_id: Optional[int] = None
 
 class EchoPrimeResponse(BaseModel):
     study_uid: str

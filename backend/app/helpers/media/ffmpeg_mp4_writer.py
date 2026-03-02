@@ -1,7 +1,6 @@
 import logging
 import os
 import subprocess
-import tempfile
 import threading
 import time
 import signal
@@ -46,42 +45,6 @@ def kill_tracked_ffmpeg_processes() -> None:
                     os.kill(pid, signal.SIGKILL)
             except Exception:
                 pass
-
-
-def convert_to_mp4(input_path: str) -> str:
-    """
-    Convert a video to MP4 (H.264, CRF 18, medium preset) using ffmpeg.
-    This is the final encode step for LV segmentation and 2D measurements videos.
-    Always re-encodes to ensure a browser-friendly H.264 stream.
-    Avoids in-place writes by using a temp output when needed.
-    """
-    output_path = os.path.splitext(input_path)[0] + ".mp4"
-    temp_output = None
-    if os.path.abspath(output_path) == os.path.abspath(input_path):
-        base_dir = os.path.dirname(input_path)
-        with tempfile.NamedTemporaryFile(prefix="tmp_enc_", suffix=".mp4", dir=base_dir, delete=False) as tmp:
-            temp_output = tmp.name
-        target_path = temp_output
-    else:
-        target_path = output_path
-
-    cmd = [
-        "ffmpeg",
-        "-y",  # overwrite existing file
-        "-i", input_path,
-        "-c:v", "libx264",
-        "-preset", "medium",
-        "-crf", "18",
-        "-pix_fmt", "yuv420p",
-        "-an",
-        "-movflags", "+faststart",  # web-friendly
-        target_path,
-    ]
-    subprocess.run(cmd, check=True)
-
-    if temp_output:
-        os.replace(temp_output, output_path)
-    return output_path
 
 
 def ffmpeg_write_mp4_from_frames(

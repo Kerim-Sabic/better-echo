@@ -1,6 +1,6 @@
 import pytest
 
-from app.helpers.combine_panecho_echoprime_predictions import combine_results
+from app.helpers.ensemble.combine_panecho_echoprime_predictions import combine_results
 
 
 MR_CLASSES = ["Mild", "Moderate or Severe", "None or Trace"]
@@ -72,3 +72,4 @@ def test_multiclass_prefer_panecho(
         expected_prob,
         expected_classes,
     )
+

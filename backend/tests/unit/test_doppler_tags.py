@@ -4,7 +4,7 @@ from pydicom.dataset import Dataset, FileDataset, FileMetaDataset
 from pydicom.sequence import Sequence
 from pydicom.uid import ExplicitVRLittleEndian, generate_uid
 
-from app.helpers.doppler_tags import inspect_doppler_tags
+from app.helpers.doppler.doppler_tags import inspect_doppler_tags
 
 
 def _write_test_dicom(
@@ -126,3 +126,4 @@ def test_inspect_doppler_tags_reports_missing_delta_x_as_warning(tmp_path):
     assert report["is_doppler_candidate"] is True
     assert report["reason_code"] == "TAGS_PRESENT"
     assert "MISSING_PHYSICAL_DELTA_X" in report["details"]["warnings"]
+

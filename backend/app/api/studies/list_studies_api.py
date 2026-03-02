@@ -6,10 +6,10 @@ import logging
 from app.database.db import get_db
 from app.database_models.studies import Study
 from app.schemas.studies.studies_schemas import StudyListResponse
-from app.helpers.authentication_functions import get_current_user_id
+from app.helpers.auth.authentication_functions import get_current_user_id
 from app.core.artifacts import LLM_REPORT_TYPE
 from app.database_models.derived_results import ResultStatus
-from app.helpers.study_status import sync_study_status
+from app.helpers.pipeline.study_status import sync_study_status
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -92,3 +92,4 @@ def list_studies(
         db.commit()
 
     return data
+

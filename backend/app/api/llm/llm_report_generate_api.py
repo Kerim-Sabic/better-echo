@@ -11,7 +11,7 @@ from app.database.db import get_db
 from app.database_models.studies import Study
 from app.database_models.derived_results import DerivedResult, ResultStatus
 from app.schemas.llm.llm_schemas import LLMReportResponse
-from app.services.llm_report_service import generate_for_study
+from app.services.reporting.llm_report_service import generate_for_study
 
 
 logger = logging.getLogger(__name__)

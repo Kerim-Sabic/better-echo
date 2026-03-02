@@ -5,8 +5,8 @@ from sqlalchemy.orm import Session
 from app.database.db import get_db
 from app.database_models.studies import Study
 from app.schemas.studies.studies_schemas import StudySchema
-from app.helpers.authentication_functions import get_current_user_id
-from app.helpers.study_status import sync_study_status
+from app.helpers.auth.authentication_functions import get_current_user_id
+from app.helpers.pipeline.study_status import sync_study_status
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -43,3 +43,4 @@ def retrieve_study(
         db.commit()
 
     return _study_to_dict(study)
+

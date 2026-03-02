@@ -8,18 +8,20 @@ from fastapi import FastAPI
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from app.api.orchestration_apis.combined_dynamic_measurements_api import router as dynamic_router
-from app.api.orchestration_apis.combined_panecho_echoprime_api import router as panecho_router
-from app.api.orchestration_apis.llm_report_get_api import router as llm_results_router
+from app.api.orchestration_apis.results.combined_dynamic_measurements_api import router as dynamic_router
+from app.api.orchestration_apis.results.combined_panecho_echoprime_api import router as panecho_router
+from app.api.orchestration_apis.results.llm_report_get_api import router as llm_results_router
+from app.api.orchestration_apis.pipeline.pipeline_start_api import router as pipeline_start_router
+from app.api.orchestration_apis.pipeline.pipeline_status_api import router as pipeline_status_router
+from app.api.orchestration_apis.pipeline.pipeline_promote_api import router as pipeline_promote_router
+from app.api.orchestration_apis.pipeline.pipeline_cancel_api import router as pipeline_cancel_router
+from app.api.orchestration_apis.pipeline.pipeline_regenerate_api import router as pipeline_regenerate_router
 from app.api.studies import router as studies_router
-from app.api.orchestration_apis import combined_dynamic_measurements_api as dynamic_api
-from app.api.orchestration_apis import combined_panecho_echoprime_api as panecho_api
-from app.api.orchestration_apis import llm_report_get_api as llm_api
 from app.database.db import Base, get_db
 from app.database_models.patients import Patient
 from app.database_models.studies import Study
 from app.database_models.users import User
-from app.helpers.authentication_functions import get_current_user_id
+from app.helpers.auth.authentication_functions import get_current_user_id
 
 
 @pytest.fixture(scope="session")
@@ -92,11 +94,16 @@ def seeded_study(db_session_factory):
 
 
 @pytest.fixture()
-def app(db_session_factory, seeded_study, monkeypatch):
+def app(db_session_factory, seeded_study):
     app = FastAPI()
     app.include_router(panecho_router, prefix="/api")
     app.include_router(dynamic_router, prefix="/api")
     app.include_router(llm_results_router, prefix="/api")
+    app.include_router(pipeline_start_router, prefix="/api")
+    app.include_router(pipeline_status_router, prefix="/api")
+    app.include_router(pipeline_promote_router, prefix="/api")
+    app.include_router(pipeline_cancel_router, prefix="/api")
+    app.include_router(pipeline_regenerate_router, prefix="/api")
     app.include_router(studies_router, prefix="/api")
 
     def override_get_db() -> Generator:
@@ -109,9 +116,5 @@ def app(db_session_factory, seeded_study, monkeypatch):
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_current_user_id] = lambda: seeded_study["user_id"]
 
-    # Prevent background task execution of heavy inference/LLM paths in integration tests.
-    monkeypatch.setattr(panecho_api, "combining_panecho_echoprime", lambda study_uid: None)
-    monkeypatch.setattr(dynamic_api, "combining_dynamic_measurements", lambda study_uid: None)
-    monkeypatch.setattr(llm_api, "generate_llm_report", lambda study_uid: None)
-
     return app
+

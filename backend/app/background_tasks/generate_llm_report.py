@@ -7,9 +7,9 @@ from app.database.db import SessionLocal
 from app.database_models.studies import Study
 from app.database_models.derived_results import DerivedResult, ResultStatus
 from app.core.artifacts import LLM_REPORT_TYPE
-from app.services.llm_report_service import generate_for_study
-from app.services.llm_client import LLMClient
-from app.helpers.study_status import sync_study_status
+from app.services.reporting.llm_report_service import generate_for_study
+from app.services.integrations.llm_client import LLMClient
+from app.helpers.pipeline.study_status import sync_study_status
 
 logger = logging.getLogger(__name__)
 
@@ -78,3 +78,4 @@ def generate_llm_report(study_uid: str) -> None:
             db.close()
         except Exception:
             pass
+

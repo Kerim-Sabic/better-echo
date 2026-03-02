@@ -10,9 +10,9 @@ import pydicom
 import torch
 from torchvision.models.segmentation import deeplabv3_resnet50
 
-from app.helpers.device_selector import get_device_for_model
-from app.helpers.doppler_frame_selection import select_doppler_frame
-from app.helpers.doppler_tags import extract_doppler_region
+from app.helpers.inference_runtime.device_selector import get_device_for_model
+from app.helpers.doppler.doppler_frame_selection import select_doppler_frame
+from app.helpers.doppler.doppler_tags import extract_doppler_region
 
 
 logger = logging.getLogger(__name__)
@@ -334,3 +334,4 @@ def run_doppler_inference(
         "output_file_image": output_image,
         "metadata": metadata,
     }
+

@@ -3,11 +3,11 @@ from sqlalchemy.orm import Session
 
 from app.database.db import get_db
 from app.database_models.users import User
-from app.helpers.authentication_functions import decode_token
+from app.helpers.auth.authentication_functions import decode_token
 from app.schemas.authentication.authentication_schemas import AuthResponse
 from app.core.artifacts import AUTH_COOKIE_NAME
 
-router = APIRouter()
+router = APIRouter(tags=["Authentication"])
 
 @router.get("/check-auth", response_model=AuthResponse)
 def check_auth(request: Request, db: Session = Depends(get_db)):
@@ -49,3 +49,4 @@ def check_auth(request: Request, db: Session = Depends(get_db)):
         }
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
+

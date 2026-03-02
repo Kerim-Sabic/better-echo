@@ -1,7 +1,7 @@
 import numpy as np
 from typing import Optional
 
-from app.helpers.doppler_frame_selection import select_doppler_frame
+from app.helpers.doppler.doppler_frame_selection import select_doppler_frame
 
 
 class FakeDicom:
@@ -74,3 +74,4 @@ def test_select_image_for_inference_multiframe_monochrome_outputs_rgb():
     assert meta["num_frames"] == 4
     assert meta["frame_window_start_index"] == 3
     assert meta["selected_frame_index"] == 3
+

@@ -9,8 +9,8 @@ import numpy as np
 import torch
 from torchvision.models.segmentation import deeplabv3_resnet50
 
-from app.helpers.AVI_to_MP4_converter import ffmpeg_write_mp4_from_frames
-from app.helpers.batch_config import get_batch_size
+from app.helpers.media.ffmpeg_mp4_writer import ffmpeg_write_mp4_from_frames
+from app.helpers.inference_runtime.batch_config import get_batch_size
 from app.core.config import settings
 
 try:
@@ -456,3 +456,4 @@ def run_2d_inference(model_weights: str, input_path: str, output_dir: str) -> Tu
         )
 
     return out_video, out_csv
+

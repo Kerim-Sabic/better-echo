@@ -36,3 +36,17 @@ class Study(Base):
         cascade="all, delete-orphan",
         passive_deletes=True
     )
+
+    pipeline_jobs = relationship(
+        "PipelineJob",
+        back_populates="study",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    pipeline_artifact_sets = relationship(
+        "PipelineArtifactSet",
+        back_populates="study",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )

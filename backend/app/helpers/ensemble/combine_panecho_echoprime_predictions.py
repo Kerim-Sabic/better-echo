@@ -5,8 +5,9 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Load configuration file once
-CONFIG_FILE = pathlib.Path(__file__).parent.parent / "configs" / "thresholds.config.json"
+# Load configuration file once.
+# File location is backend/app/helpers/ensemble/, so parents[2] resolves to backend/app/.
+CONFIG_FILE = pathlib.Path(__file__).resolve().parents[2] / "configs" / "thresholds.config.json"
 try:
     with open(CONFIG_FILE) as f:
         TASK_CONFIG = json.load(f)

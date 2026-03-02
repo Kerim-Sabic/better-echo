@@ -15,7 +15,7 @@ from app.schemas.llm.llm_schemas import (
     LLMChatRequest,
     LLMChatResponse,
 )
-from app.services.llm_client import LLMClient
+from app.services.integrations.llm_client import LLMClient
 from app.prompting.params import LLMParams
 from app.prompting.builder import build_chat_messages
 

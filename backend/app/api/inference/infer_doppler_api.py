@@ -15,7 +15,7 @@ from app.database_models.derived_results import DerivedResult
 from app.database_models.instances import Instance
 from app.database_models.series import Series
 from app.database_models.studies import Study
-from app.helpers.doppler_tags import inspect_doppler_tags
+from app.helpers.doppler.doppler_tags import inspect_doppler_tags
 from app.schemas.inference.infer_doppler_schemas import (
     DopplerInferenceResponse,
     DopplerTagAuditItem,
@@ -171,6 +171,7 @@ def infer_measurements_doppler(
     sop_instance_uid: str = Query(..., description="DICOM SOPInstanceUID to run Doppler inference on"),
     model_weights: str = Query(..., description=f"One of: {', '.join(sorted(list(VALID_DOPPLER_WEIGHTS)))}"),
     force: bool = Query(False, description="Force re-run even if a cached result exists"),
+    artifact_set_id: Optional[int] = Query(default=None, include_in_schema=False),
     db: Session = Depends(get_db),
 ):
     """
@@ -276,15 +277,38 @@ def infer_measurements_doppler(
     }
 
     try:
-        dr = DerivedResult(
-            study_id=instance.series.study.id,
-            instance_id=instance.id,
-            type=dr_type,
-            value_json=payload,
-            model_name="EchoNetMeasurementsDoppler",
-            model_version="v1",
-        )
-        db.add(dr)
+        if artifact_set_id is not None:
+            dr = (
+                db.query(DerivedResult)
+                .filter(
+                    DerivedResult.instance_id == instance.id,
+                    DerivedResult.type == dr_type,
+                    DerivedResult.artifact_set_id == artifact_set_id,
+                )
+                .order_by(DerivedResult.id.desc())
+                .first()
+            )
+            if not dr:
+                dr = DerivedResult(
+                    study_id=instance.series.study.id,
+                    instance_id=instance.id,
+                    type=dr_type,
+                    model_name="EchoNetMeasurementsDoppler",
+                    model_version="v1",
+                    artifact_set_id=artifact_set_id,
+                )
+                db.add(dr)
+            dr.value_json = payload
+        else:
+            dr = DerivedResult(
+                study_id=instance.series.study.id,
+                instance_id=instance.id,
+                type=dr_type,
+                value_json=payload,
+                model_name="EchoNetMeasurementsDoppler",
+                model_version="v1",
+            )
+            db.add(dr)
         db.commit()
     except Exception as err:
         logger.warning("[Doppler] Failed to persist DerivedResult: %s", err)
@@ -312,3 +336,4 @@ def infer_measurements_doppler(
         low_confidence=bool(payload.get("metadata", {}).get("low_confidence")),
         metadata=payload.get("metadata"),
     )
+

@@ -3,7 +3,7 @@ import json
 import logging
 from pathlib import Path
 
-from app.helpers.measurement_ranges import get_range_status
+from app.helpers.clinical.measurement_ranges import get_range_status
 
 logger = logging.getLogger(__name__)
 
@@ -129,3 +129,4 @@ def build_combined_sections_for_llm(derived_results) -> Dict[str, Any]:
         "patient": {"sex": patient_sex},
         "tasks": tasks_payload,
     }
+

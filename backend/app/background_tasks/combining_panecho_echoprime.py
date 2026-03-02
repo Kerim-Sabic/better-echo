@@ -13,8 +13,8 @@ from app.api.inference.infer_echoprime_api import infer_echoprime
 from app.schemas.inference.infer_echoprime_schemas import InferEchoPrimeRequest
 
 from app.core.artifacts import PANECHO_TYPE, ECHOPRIME_TYPE, PANECHO_ECHOPRIME_COMBINED_TYPE
-from app.helpers.combine_panecho_echoprime_predictions import combine_results
-from app.helpers.study_status import sync_study_status
+from app.helpers.ensemble.combine_panecho_echoprime_predictions import combine_results
+from app.helpers.pipeline.study_status import sync_study_status
 
 logger = logging.getLogger(__name__)
 
@@ -165,3 +165,4 @@ def combining_panecho_echoprime(study_uid: str):
             db.close()
         except Exception:
             pass
+

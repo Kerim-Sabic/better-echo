@@ -8,10 +8,9 @@ import logging
 from app.database.db import get_db
 from app.database_models.instances import Instance
 from app.database_models.derived_results import DerivedResult
-from app.helpers.inference_functions import check_instance_exists_in_orthanc
+from app.helpers.inference_runtime.inference_functions import check_instance_exists_in_orthanc
 from app.AI_models.measurements.runner_2d import run_2d_inference, VALID_2D_WEIGHTS
 from app.schemas.inference.infer_measurements_schemas import Measurements2DResponse
-from app.helpers.AVI_to_MP4_converter import convert_to_mp4
 from app.core.artifacts import BASE_DIR
 
 
@@ -37,6 +36,8 @@ def infer_measurements_2d(
     sop_instance_uid: str = Query(..., description="DICOM SOPInstanceUID to run 2D measurement annotation on"),
     model_weights: str = Query(..., description=f"One of: {', '.join(sorted(list(VALID_2D_WEIGHTS)))}"),
     force: bool = Query(False, description="Force re-run even if a cached result exists"),
+    artifact_set_id: Optional[int] = Query(default=None, include_in_schema=False),
+    skip_orthanc_check: bool = Query(default=False, include_in_schema=False),
     db: Session = Depends(get_db),
 ):
     """
@@ -47,15 +48,15 @@ def infer_measurements_2d(
     2. Derive a study-specific output directory under `uploads/measurements_2D_keypoint_detection`.
     3. Check for a cached DerivedResult unless `force=true`, returning cached MP4/min/max if available.
     4. Use a lockfile to avoid duplicate concurrent inferences for the same instance/weights.
-    5. Run `run_2d_inference` to produce an annotated AVI and CSV, then convert AVI → MP4 and derive min/max lengths from the CSV.
+    5. Run `run_2d_inference` to produce an annotated MP4 and CSV, then derive min/max lengths from the CSV.
     6. Persist a DerivedResult row with MP4 path and measurements, clean up lock + temporary files, and return the response payload.
     """
     model_weights = model_weights.strip().lower()
     if model_weights not in VALID_2D_WEIGHTS:
         raise HTTPException(status_code=400, detail=f"Invalid model_weights '{model_weights}'")
 
-    # --- Step 1: Validate Orthanc presence ---
-    if not check_instance_exists_in_orthanc(sop_instance_uid):
+    # --- Step 1: Validate Orthanc presence (optional in queue-worker path) ---
+    if (not skip_orthanc_check) and (not check_instance_exists_in_orthanc(sop_instance_uid)):
         raise HTTPException(status_code=400, detail=f"Instance with sop_instance_uid={sop_instance_uid} not found in Orthanc.")
 
     # --- Step 2: Resolve instance + local file path ---
@@ -130,7 +131,7 @@ def infer_measurements_2d(
         # best-effort; continue
         pass
 
-    # --- Step 6: Run model inference (creates AVI + CSV) ---
+    # --- Step 6: Run model inference (creates MP4 + CSV) ---
     try:
         out_video, out_csv = run_2d_inference(model_weights=model_weights, input_path=input_path, output_dir=out_dir)
     except Exception as e:
@@ -144,21 +145,14 @@ def infer_measurements_2d(
 
     logger.info(f"[Measurements2D] Completed. Output video: {out_video}")
 
-    # --- Step 7: Finalize MP4 output (already encoded via ffmpeg; convert only if not mp4) ---
+    # --- Step 7: Finalize MP4 output path ---
     out_mp4 = None
     try:
-        out_mp4_path = out_video
         if not out_video.lower().endswith(".mp4"):
-            out_mp4_path = convert_to_mp4(out_video)
-            if out_mp4_path != out_video:
-                try:
-                    if os.path.exists(out_video):
-                        os.remove(out_video)
-                except Exception:
-                    pass
-        out_mp4 = os.path.normpath(out_mp4_path).replace("\\", "/")
+            logger.warning("[Measurements2D] Unexpected non-MP4 output: %s", out_video)
+        out_mp4 = os.path.normpath(out_video).replace("\\", "/")
     except Exception as e:
-        logger.warning(f"[Measurements2D] MP4 conversion failed: {e}")
+        logger.warning(f"[Measurements2D] Failed to finalize MP4 output path: {e}")
 
     # --- Step 8: Compute ES/ED (min/max) from CSV when available ---
     min_len_cm = None
@@ -191,15 +185,38 @@ def infer_measurements_2d(
             "max_length_cm": max_len_cm,
             "model_weights": model_weights,
         }
-        dr = DerivedResult(
-            study_id=instance.series.study.id,
-            instance_id=instance.id,
-            type=dr_type,
-            value_json=payload,
-            model_name="EchoNetMeasurements2D",
-            model_version="v1",
-        )
-        db.add(dr)
+        if artifact_set_id is not None:
+            dr = (
+                db.query(DerivedResult)
+                .filter(
+                    DerivedResult.instance_id == instance.id,
+                    DerivedResult.type == dr_type,
+                    DerivedResult.artifact_set_id == artifact_set_id,
+                )
+                .order_by(DerivedResult.id.desc())
+                .first()
+            )
+            if not dr:
+                dr = DerivedResult(
+                    study_id=instance.series.study.id,
+                    instance_id=instance.id,
+                    type=dr_type,
+                    model_name="EchoNetMeasurements2D",
+                    model_version="v1",
+                    artifact_set_id=artifact_set_id,
+                )
+                db.add(dr)
+            dr.value_json = payload
+        else:
+            dr = DerivedResult(
+                study_id=instance.series.study.id,
+                instance_id=instance.id,
+                type=dr_type,
+                value_json=payload,
+                model_name="EchoNetMeasurements2D",
+                model_version="v1",
+            )
+            db.add(dr)
         db.commit()
     except Exception as e:
         logger.warning(f"[Measurements2D] Failed to persist DerivedResult: {e}")
@@ -222,3 +239,4 @@ def infer_measurements_2d(
         "max_length_cm": max_len_cm,
         "in_progress": False,
     }
+

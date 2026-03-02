@@ -11,7 +11,7 @@ from app.core.artifacts import PANECHO_ECHOPRIME_COMBINED_TYPE, LLM_REPORT_TYPE
 from app.database_models.studies import Study
 from app.database_models.derived_results import DerivedResult, ResultStatus
 from app.helpers.row_to_dict.combined_results_row_to_dict import build_combined_sections_for_llm
-from app.services.llm_client import LLMClient
+from app.services.integrations.llm_client import LLMClient
 from app.prompting.params import LLMParams
 from app.prompting.builder import build_report_messages, extract_report_blocks
 
@@ -107,3 +107,6 @@ def generate_for_study(study_uid: str, db: Session) -> Dict[str, Any]:
         "diagnoses_json": diagnoses_json,
         "report_generated_at": payload.get("report_generated_at"),
     }
+
+
+__all__ = ["generate_for_study"]
