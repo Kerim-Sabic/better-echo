@@ -1,6 +1,6 @@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../../../general_components/ui/dialog";
 import { Button } from "../../../../general_components/ui/button";
-import { formatStudyDate } from "../../helpers/dashboardHelpers";
+import { formatStudyDate } from "../../model/dashboardHelpers";
 
 export default function DeleteStudyDialog({ open, study, onCancel, onConfirm, busy }) {
     return (
@@ -16,11 +16,11 @@ export default function DeleteStudyDialog({ open, study, onCancel, onConfirm, bu
                     <div className="rounded-md border border-border p-3 bg-white/50 space-y-1 w-full overflow-hidden">
                         <div className="text-sm">
                             <span className="text-muted-foreground">Patient:</span>{" "}
-                            <span className="font-medium break-words break-all">{study?.patient?.patient_name || "Unknown"}</span>
+                            <span className="font-medium break-words break-all">{study?.patient?.patientName || "Unknown"}</span>
                         </div>
                         <div className="text-sm">
                             <span className="text-muted-foreground">Study UID:</span>{" "}
-                            <span className="font-medium break-all whitespace-normal">{study?.study_uid || "-"}</span>
+                            <span className="font-medium break-all whitespace-normal">{study?.studyUid || "-"}</span>
                         </div>
                         <div className="text-sm">
                             <span className="text-muted-foreground">Date:</span>{" "}

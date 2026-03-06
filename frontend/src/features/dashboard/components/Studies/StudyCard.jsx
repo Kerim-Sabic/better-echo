@@ -1,7 +1,7 @@
 import { User, Edit, Trash2 } from "lucide-react";
 import { Card } from "../../../../general_components/ui/card";
 import { Button } from "../../../../general_components/ui/button";
-import { formatEf, formatStudyDate, getStatusBadge } from "../../helpers/dashboardHelpers";
+import { formatEf, formatStudyDate, getStatusBadge } from "../../model/dashboardHelpers";
 
 export default function StudyCard({ study, onSelectStudy, onEdit, onDelete }) {
     return (
@@ -20,12 +20,12 @@ export default function StudyCard({ study, onSelectStudy, onEdit, onDelete }) {
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-3 mb-2">
                             <h3 className="text-lg font-bold text-foreground truncate">
-                                {study?.patient?.patient_name || study?.patient?.patient_id || "Unknown"}
+                                {study?.patient?.patientName || study?.patient?.patientId || "Unknown"}
                             </h3>
                             {getStatusBadge(study?.status)}
                         </div>
                         <p className="text-sm font-medium text-foreground mb-1 truncate">
-                            Study UID: {study?.study_uid || "-"}
+                            Study UID: {study?.studyUid || "-"}
                         </p>
                         <p className="text-sm text-muted-foreground truncate" title={formatStudyDate(study)}>
                             {formatStudyDate(study)}

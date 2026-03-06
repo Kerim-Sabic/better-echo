@@ -47,3 +47,6 @@ electron/build-resources/icon.*
 .env
 .idea/
 *.iml
+
+# Codex instructions
+/AGENTS.md

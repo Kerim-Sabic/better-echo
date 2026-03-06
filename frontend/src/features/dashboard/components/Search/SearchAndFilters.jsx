@@ -11,7 +11,7 @@ import {
 import "react-multi-date-picker/styles/layouts/prime.css";
 import "react-multi-date-picker/styles/colors/teal.css";
 import DateFilterPopover from "./DateFilterPopover";
-import { formatIsoToHuman } from "../../helpers/dashboardHelpers";
+import { formatIsoToHuman } from "../../model/dashboardHelpers";
 
 export default function SearchAndFilters({
     searchTerm,
@@ -36,7 +36,7 @@ export default function SearchAndFilters({
         if (dateFilters.length > 1) return "Multiple dates applied";
         const first = dateFilters[0];
         if (first.from && first.to && first.from !== first.to) {
-            return `${formatIsoToHuman(first.from)} → ${formatIsoToHuman(first.to)}`;
+            return `${formatIsoToHuman(first.from)} â†’ ${formatIsoToHuman(first.to)}`;
         }
         if (first.from) return formatIsoToHuman(first.from);
         return "";

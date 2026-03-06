@@ -1,5 +1,5 @@
 import { FileText, CheckCircle2, Clock, AlertCircle } from "lucide-react";
-import { parseStudyDate, isSameDay } from "../../helpers/dashboardHelpers";
+import { parseStudyDate, isSameDay } from "../../model/dashboardHelpers";
 
 export default function DashboardStats({ studies = [] }) {
     const total = studies.length;

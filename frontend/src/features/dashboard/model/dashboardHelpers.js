@@ -46,30 +46,31 @@ export function formatEf(ef) {
 }
 
 /**
- * Tries to parse a date from a study object (uploaded_at or study_date)
+ * Tries to parse a date from a study object (uploadedAt or studyDate).
+ * Also supports legacy snake_case fields during transition.
  * Returns a Date object or null.
  */
 export function parseStudyDate(study) {
-    // 1. Try uploaded_at (ISO string)
-    if (study?.uploaded_at) {
-        const d = new Date(study.uploaded_at);
+    const uploadedAt = study?.uploadedAt ?? study?.uploaded_at;
+    if (uploadedAt) {
+        const d = new Date(uploadedAt);
         if (!isNaN(d)) return d;
     }
-    // 2. Try study_date (YYYYMMDD or YYYY-MM-DD)
-    const sd = study?.study_date;
-    if (sd) {
-        // Handle YYYYMMDD
-        if (/^\d{8}$/.test(sd)) {
-            const y = sd.slice(0, 4), m = sd.slice(4, 6), d = sd.slice(6, 8);
+
+    const studyDate = study?.studyDate ?? study?.study_date;
+    if (studyDate) {
+        if (/^\d{8}$/.test(studyDate)) {
+            const y = studyDate.slice(0, 4), m = studyDate.slice(4, 6), d = studyDate.slice(6, 8);
             const dt = new Date(`${y}-${m}-${d}T00:00:00`);
             if (!isNaN(dt)) return dt;
         }
-        // Handle YYYY-MM-DD
-        if (/^\d{4}-\d{2}-\d{2}$/.test(sd)) {
-            const dt = new Date(`${sd}T00:00:00`);
+
+        if (/^\d{4}-\d{2}-\d{2}$/.test(studyDate)) {
+            const dt = new Date(`${studyDate}T00:00:00`);
             if (!isNaN(dt)) return dt;
         }
     }
+
     return null;
 }
 

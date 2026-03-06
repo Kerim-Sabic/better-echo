@@ -11,10 +11,7 @@ import {
 export const loginRepository = {
   async loginWithPassword({ username, password }) {
     const rawLoginResponse = await loginApi(username, password);
-    console.log("RAW LOGIN RESPONSE", rawLoginResponse)
     const formattedLoginResponse = formatLoginUser(rawLoginResponse);
-    console.log("FORMATTED LOGIN RESPONSE", formattedLoginResponse)
-
     return formattedLoginResponse;
   },
 

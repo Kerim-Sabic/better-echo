@@ -1,28 +1,31 @@
-export function formatStudyListItemDto(rawStudy) {
-  const rawItem = rawStudy && typeof rawStudy === "object" ? rawStudy : {};
-  const rawPatient = rawItem.patient && typeof rawItem.patient === "object" ? rawItem.patient : {};
+import { formatDateTime, formatStudyDate } from "@/general_components/utility/dateUtils";
+
+export function formatStudyList(rawStudy) {
+  const rawPatient = rawStudy.patient ?? null;
 
   return {
-    ...rawItem,
-    id: rawItem.id ?? null,
-    study_uid: rawItem.study_uid ?? null,
-    status: rawItem.status ?? "unknown",
-    description: rawItem.description ?? "",
-    diagnoses: Array.isArray(rawItem.diagnoses) ? rawItem.diagnoses : [],
-    uploaded_at: rawItem.uploaded_at ?? null,
-    study_date: rawItem.study_date ?? null,
-    patient: {
-      ...rawPatient,
-      patient_name: rawPatient.patient_name ?? "",
-      patient_sex: rawPatient.patient_sex ?? null,
-    },
+    id: rawStudy.id,
+    studyUid: rawStudy.study_uid,
+    studyDate: rawStudy.study_date ? formatStudyDate(rawStudy.study_date) : null,
+    description: rawStudy.description ?? null,
+    status: rawStudy.status ?? "unknown",
+    uploadedAt: formatDateTime(rawStudy.uploaded_at),
+    patientHeightCm: rawStudy.patient_height_cm ?? null,
+    patientWeightKg: rawStudy.patient_weight_kg ?? null,
+    heartRateBpm: rawStudy.heart_rate_bpm ?? null,
+    diagnoses: rawStudy.diagnoses ?? [],
+    patient: rawPatient
+      ? {
+          id: rawPatient.id,
+          patientId: rawPatient.patient_id,
+          patientName: rawPatient.patient_name,
+          patientSex: rawPatient.patient_sex,
+          patientBirthDate: rawPatient.patient_birth_date,
+        }
+      : null,
   };
 }
 
-export function formatStudiesListDto(rawStudiesData) {
-  if (!Array.isArray(rawStudiesData)) {
-    return [];
-  }
-
-  return rawStudiesData.map(formatStudyListItemDto);
+export function formatStudiesList(rawStudiesData = []) {
+  return rawStudiesData.map(formatStudyList);
 }
