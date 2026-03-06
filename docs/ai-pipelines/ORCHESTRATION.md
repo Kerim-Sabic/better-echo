@@ -1,6 +1,6 @@
 # AI Pipelines and Orchestration
 
-Last Updated: 2026-02-25  
+Last Updated: 2026-03-06  
 Owner: AI/Backend
 
 ## Scope
@@ -10,12 +10,12 @@ How inference and orchestration stages are triggered, persisted, and exposed to 
 ## Pipeline Stages
 
 1. Upload and index DICOM data.
-2. Run PanEcho inference.
-3. Run EchoPrime inference.
-4. Run EchoNet Dynamic segmentation.
-5. Run Measurements 2D inference.
+2. Queue prefilter and routing map (hard compatibility checks + confidence gate + Doppler short-circuit).
+3. EchoPrime view classification pass.
+4. EchoPrime metrics pass (gated set).
+5. PanEcho metrics pass (gated set).
 6. Build PanEcho+EchoPrime combined artifact.
-7. Build Dynamic+Measurements combined artifact.
+7. Build Dynamic+Measurements combined artifact (EchoNet + 2D + Doppler lanes).
 8. Generate LLM report artifact (optional by config).
 
 ## Trigger Model
@@ -34,7 +34,7 @@ Legacy orchestration result endpoints remain for result retrieval, but are now o
 
 They do not enqueue or progress pipeline stages.
 
-Queue foundation (implemented in Iteration 1-2):
+Queue foundation (implemented):
 
 1. `POST /api/studies/{study_uid}/pipeline/start` creates/reuses one study-owned queue job.
 2. `GET /api/studies/{study_uid}/pipeline/status` returns observer-only job + stage state.
@@ -45,7 +45,7 @@ Queue foundation (implemented in Iteration 1-2):
 2. existing study-level artifacts are assigned to `active` set baseline
 3. status payload exposes both sets for frontend-safe transition planning
 
-Iteration 3 additions:
+Promote/cancel additions:
 
 1. `POST /api/studies/{study_uid}/pipeline/promote` promotes latest completed draft set to active atomically.
 2. `POST /api/studies/{study_uid}/pipeline/cancel` supports:
@@ -53,7 +53,7 @@ Iteration 3 additions:
 2. cooperative cancel request for running jobs (`cancel_requested_at` checkpoint)
 3. cleanup scopes (`none`, `append_delta`, `new_study`) applied by backend cleanup service.
 
-Iteration 4 additions:
+Stage/routing additions:
 
 1. Queue worker now executes real stage handlers:
 1. `prefilter`
@@ -66,7 +66,7 @@ Iteration 4 additions:
 3. global confidence gate via `PIPELINE_VIEW_CONFIDENCE_MIN` (default `0.75`)
 3. Combined and dynamic stages now persist draft-scoped artifacts directly through queue execution.
 
-Iteration 5 additions:
+Regenerate additions:
 
 1. `POST /api/studies/{study_uid}/pipeline/regenerate-combined` is implemented.
 2. Regenerate requires an active combined baseline (`409` when missing).
@@ -76,9 +76,10 @@ Iteration 5 additions:
 
 Remaining redesign work:
 
-1. Upload-batch kickoff and observer-only frontend polling/events tie-in.
-2. Frontend migration from legacy result-query assumptions to explicit queue control path.
-3. Detailed plan: [`BACKEND_QUEUE_REWORK_PLAN.md`](./BACKEND_QUEUE_REWORK_PLAN.md).
+1. Post-pilot throughput optimization (controlled parallel queue workers for high-VRAM profile).
+2. Viewer-focused frontend integration on refactored frontend branch.
+3. Detailed backend plan: [`BACKEND_QUEUE_REWORK_PLAN.md`](./BACKEND_QUEUE_REWORK_PLAN.md).
+4. Detailed frontend plan: [`FRONTEND_QUEUE_INTEGRATION_PLAN.md`](./FRONTEND_QUEUE_INTEGRATION_PLAN.md).
 
 Implementation references:
 

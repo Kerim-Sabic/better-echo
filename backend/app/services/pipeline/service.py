@@ -180,6 +180,11 @@ def get_pipeline_status(*, db: Session, study_uid: str, user_id: int) -> Optiona
 def promote_latest_draft_artifact_set(*, db: Session, study_uid: str, user_id: int) -> Dict[str, Any]:
     """
     Promote latest successful draft artifact set to active.
+
+    Behavior:
+    1. Return `promoted` when a completed draft can be promoted immediately.
+    2. Return `pending` when an active queued/running job exists and auto-promote intent is recorded.
+    3. Return 409 when no promotable draft and no active job context exists.
     """
     study = _resolve_owned_study_or_404(db, study_uid, user_id)
 
@@ -202,31 +207,72 @@ def promote_latest_draft_artifact_set(*, db: Session, study_uid: str, user_id: i
             selected_draft = draft
             break
 
-    if not selected_job or not selected_draft:
-        raise HTTPException(status_code=409, detail="No promotable draft artifact set found")
+    if selected_job and selected_draft:
+        # Part 2. Discard current active set and promote selected draft set atomically.
+        now = datetime.utcnow()
+        previous_active = _get_latest_artifact_set_for_study(
+            db,
+            study_id=study.id,
+            state=PipelineArtifactSetState.active,
+        )
+        discarded_artifact_set_id = None
+        if previous_active and previous_active.id != selected_draft.id:
+            previous_active.state = PipelineArtifactSetState.discarded
+            previous_active.discarded_at = now
+            discarded_artifact_set_id = previous_active.id
 
-    # Part 2. Discard current active set and promote selected draft set atomically.
-    now = datetime.utcnow()
-    previous_active = _get_latest_artifact_set_for_study(
+        selected_draft.state = PipelineArtifactSetState.active
+        selected_draft.promoted_at = now
+        selected_job.auto_promote_on_complete = False
+        db.commit()
+
+        return {
+            "state": "promoted",
+            "job_id": selected_job.id,
+            "promoted_artifact_set_id": selected_draft.id,
+            "discarded_artifact_set_id": discarded_artifact_set_id,
+            "message": "Draft artifact set promoted to active",
+            "retry_after": None,
+        }
+
+    # Part 3. If an active queued/running job exists, record promote intent and return pending.
+    active_job = _active_job_query(db, study.id).first()
+    if active_job:
+        if not active_job.auto_promote_on_complete:
+            active_job.auto_promote_on_complete = True
+            db.commit()
+        return {
+            "state": "pending",
+            "job_id": active_job.id,
+            "promoted_artifact_set_id": None,
+            "discarded_artifact_set_id": None,
+            "message": "Promotion queued; draft will auto-promote when pipeline completes",
+            "retry_after": 3,
+        }
+
+    # Part 4. Idempotent no-op: latest completed job already owns active set.
+    latest_job = (
+        db.query(PipelineJob)
+        .filter(PipelineJob.study_id == study.id)
+        .order_by(PipelineJob.queued_at.desc(), PipelineJob.id.desc())
+        .first()
+    )
+    active_set = _get_latest_artifact_set_for_study(
         db,
         study_id=study.id,
         state=PipelineArtifactSetState.active,
     )
-    discarded_artifact_set_id = None
-    if previous_active and previous_active.id != selected_draft.id:
-        previous_active.state = PipelineArtifactSetState.discarded
-        previous_active.discarded_at = now
-        discarded_artifact_set_id = previous_active.id
+    if latest_job and latest_job.status == PipelineJobStatus.completed and active_set and active_set.pipeline_job_id == latest_job.id:
+        return {
+            "state": "promoted",
+            "job_id": latest_job.id,
+            "promoted_artifact_set_id": active_set.id,
+            "discarded_artifact_set_id": None,
+            "message": "Latest pipeline output is already active",
+            "retry_after": None,
+        }
 
-    selected_draft.state = PipelineArtifactSetState.active
-    selected_draft.promoted_at = now
-    db.commit()
-
-    return {
-        "job_id": selected_job.id,
-        "promoted_artifact_set_id": selected_draft.id,
-        "discarded_artifact_set_id": discarded_artifact_set_id,
-    }
+    raise HTTPException(status_code=409, detail="No promotable draft artifact set found")
 
 
 def _discard_draft_artifact_set_for_job(db: Session, *, job_id: int) -> Optional[PipelineArtifactSet]:
@@ -268,6 +314,7 @@ def _finalize_cancelled_job(
     job.status = PipelineJobStatus.cancelled
     job.current_stage = None
     job.finished_at = now
+    job.auto_promote_on_complete = False
     if not job.cancel_requested_at:
         job.cancel_requested_at = now
     _cancel_stage_rows_for_job(db=db, pipeline_job_id=job.id)
@@ -314,26 +361,28 @@ def cancel_pipeline_job(*, db: Session, study_uid: str, user_id: int) -> Dict[st
     job = _select_cancel_target_job(db, study_id=study.id)
     if not job:
         raise HTTPException(status_code=409, detail="No cancellable pipeline job found")
+    job_id = job.id
+    cleanup_scope_value = job.cleanup_scope.value
 
     # Part 1. Running jobs are cancelled cooperatively by scheduler checkpoint.
     if job.status == PipelineJobStatus.running:
         job.cancel_requested_at = datetime.utcnow()
         db.commit()
         return {
-            "job_id": job.id,
+            "job_id": job_id,
             "status": job.status.value,
             "cancel_requested": True,
-            "cleanup_scope": job.cleanup_scope.value,
+            "cleanup_scope": cleanup_scope_value,
             "cleanup_summary": _empty_cleanup_summary(),
         }
 
     # Part 2. Queued/completed jobs are cancelled immediately.
     summary = _finalize_cancelled_job(db, study=study, job=job, apply_cleanup=True)
     return {
-        "job_id": job.id,
+        "job_id": job_id,
         "status": PipelineJobStatus.cancelled.value,
         "cancel_requested": False,
-        "cleanup_scope": job.cleanup_scope.value,
+        "cleanup_scope": cleanup_scope_value,
         "cleanup_summary": summary,
     }
 
@@ -355,6 +404,7 @@ def run_pending_jobs_once(*, db: Session, max_active_studies: int) -> int:
         .all()
     )
     for job in running_cancel_jobs:
+        job_id = job.id
         try:
             _process_job_skeleton(
                 db=db,
@@ -364,12 +414,20 @@ def run_pending_jobs_once(*, db: Session, max_active_studies: int) -> int:
             )
             processed += 1
         except Exception as exc:
-            logger.exception("[PIPELINE_QUEUE] Cancel checkpoint failed for job %s: %s", job.id, exc)
-            job.status = PipelineJobStatus.failed
-            job.current_stage = None
-            job.last_error = str(exc)
-            job.finished_at = datetime.utcnow()
-            db.commit()
+            logger.exception("[PIPELINE_QUEUE] Cancel checkpoint failed for job_id=%s: %s", job_id, exc)
+            try:
+                job.status = PipelineJobStatus.failed
+                job.current_stage = None
+                job.last_error = str(exc)
+                job.finished_at = datetime.utcnow()
+                db.commit()
+            except Exception as mark_exc:
+                db.rollback()
+                logger.warning(
+                    "[PIPELINE_QUEUE] Could not mark cancel-checkpoint job failed | job_id=%s reason=%s",
+                    job_id,
+                    mark_exc,
+                )
 
     running_count = (
         db.query(PipelineJob)
@@ -390,6 +448,7 @@ def run_pending_jobs_once(*, db: Session, max_active_studies: int) -> int:
     )
 
     for job in queued_jobs:
+        job_id = job.id
         try:
             _process_job_skeleton(
                 db=db,
@@ -399,12 +458,20 @@ def run_pending_jobs_once(*, db: Session, max_active_studies: int) -> int:
             )
             processed += 1
         except Exception as exc:
-            logger.exception("[PIPELINE_QUEUE] Job %s failed in scheduler skeleton: %s", job.id, exc)
-            job.status = PipelineJobStatus.failed
-            job.current_stage = None
-            job.last_error = str(exc)
-            job.finished_at = datetime.utcnow()
-            db.commit()
+            logger.exception("[PIPELINE_QUEUE] Job failed in scheduler skeleton | job_id=%s error=%s", job_id, exc)
+            try:
+                job.status = PipelineJobStatus.failed
+                job.current_stage = None
+                job.last_error = str(exc)
+                job.finished_at = datetime.utcnow()
+                db.commit()
+            except Exception as mark_exc:
+                db.rollback()
+                logger.warning(
+                    "[PIPELINE_QUEUE] Could not mark queued job failed | job_id=%s reason=%s",
+                    job_id,
+                    mark_exc,
+                )
 
     return processed
 

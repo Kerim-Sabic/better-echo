@@ -9,8 +9,9 @@ from app.database.db import get_db
 from app.database_models.instances import Instance
 from app.database_models.derived_results import DerivedResult
 from app.helpers.inference_runtime.inference_functions import check_instance_exists_in_orthanc
-from app.AI_models.measurements.runner_2d import run_2d_inference, VALID_2D_WEIGHTS
+from app.AI_models.measurements.runner_2d import run_2d_inference, VALID_2D_WEIGHTS, unload_2d_models
 from app.schemas.inference.infer_measurements_schemas import Measurements2DResponse
+from app.core.config import settings
 from app.core.artifacts import BASE_DIR
 
 
@@ -38,6 +39,7 @@ def infer_measurements_2d(
     force: bool = Query(False, description="Force re-run even if a cached result exists"),
     artifact_set_id: Optional[int] = Query(default=None, include_in_schema=False),
     skip_orthanc_check: bool = Query(default=False, include_in_schema=False),
+    defer_model_unload: bool = Query(default=False, include_in_schema=False),
     db: Session = Depends(get_db),
 ):
     """
@@ -54,6 +56,10 @@ def infer_measurements_2d(
     model_weights = model_weights.strip().lower()
     if model_weights not in VALID_2D_WEIGHTS:
         raise HTTPException(status_code=400, detail=f"Invalid model_weights '{model_weights}'")
+    unload_after_request = (
+        str(settings.PIPELINE_UNLOAD_POLICY).strip().lower() == "stage"
+        or str(settings.INFERENCE_PROFILE).strip().lower() == "low_vram"
+    )
 
     # --- Step 1: Validate Orthanc presence (optional in queue-worker path) ---
     if (not skip_orthanc_check) and (not check_instance_exists_in_orthanc(sop_instance_uid)):
@@ -142,6 +148,9 @@ def infer_measurements_2d(
         except Exception:
             pass
         raise HTTPException(status_code=500, detail=f"Inference failed: {e}")
+    finally:
+        if unload_after_request and (not defer_model_unload):
+            unload_2d_models()
 
     logger.info(f"[Measurements2D] Completed. Output video: {out_video}")
 

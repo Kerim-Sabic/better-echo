@@ -11,7 +11,7 @@ from app.database_models.instances import Instance
 from app.database_models.series import Series
 from app.database_models.studies import Study
 from app.helpers.doppler.doppler_tags import inspect_doppler_tags
-from app.helpers.ensemble.view_classifier import classify_views_for_study
+from app.services.inference.echoprime_service import classify_views_for_study
 
 # Part 0. Queue prefilter skip reason codes.
 INCOMPATIBLE_DICOM = "INCOMPATIBLE_DICOM"
@@ -36,6 +36,9 @@ VIEW_TASK_MAP: Dict[str, Dict[str, Any]] = {
 # Part 2. Doppler weights by spectral subtype.
 PW_DOPPLER_WEIGHTS = ["lvotvmax", "latevel", "medevel", "mvpeak_2c", "tapse_2c"]
 CW_DOPPLER_WEIGHTS = ["avvmax", "trvmax", "mrvmax"]
+SPECTRAL_DOPPLER_PW_VIEW = "SPECTRAL_DOPPLER_PW"
+SPECTRAL_DOPPLER_CW_VIEW = "SPECTRAL_DOPPLER_CW"
+SPECTRAL_DOPPLER_VIEW = "SPECTRAL_DOPPLER"
 
 
 def _detect_hard_compatibility(instance: Instance) -> tuple[bool, Optional[str]]:
@@ -72,6 +75,15 @@ def _doppler_weights_for_subtype(subtype: Optional[str]) -> List[str]:
     return list(PW_DOPPLER_WEIGHTS + CW_DOPPLER_WEIGHTS)
 
 
+def _spectral_view_label(subtype: Optional[str]) -> str:
+    subtype_norm = (subtype or "").strip().lower()
+    if subtype_norm == "pw":
+        return SPECTRAL_DOPPLER_PW_VIEW
+    if subtype_norm == "cw":
+        return SPECTRAL_DOPPLER_CW_VIEW
+    return SPECTRAL_DOPPLER_VIEW
+
+
 def build_prefilter_routing_map(
     *,
     db: Session,
@@ -81,18 +93,10 @@ def build_prefilter_routing_map(
     """
     Build routing decisions for queue stages with persisted skip reasons.
     """
-    # Part 4. Ensure study exists and refresh classifier outputs.
+    # Part 4. Ensure study exists and load study instances.
     study = db.query(Study).filter(Study.study_uid == study_uid).first()
     if not study:
         raise ValueError("Study not found")
-
-    classifier_failed = False
-    classifier_error = None
-    try:
-        classify_views_for_study(study_uid, db)
-    except Exception as exc:
-        classifier_failed = True
-        classifier_error = str(exc)
 
     instances: List[Instance] = (
         db.query(Instance)
@@ -102,6 +106,67 @@ def build_prefilter_routing_map(
         .all()
     )
 
+    # Part 5. Run compatibility + Doppler tagging first, then classify only non-spectral targets.
+    classifier_target_paths: List[str] = []
+    precomputed_by_instance_id: Dict[int, Dict[str, Any]] = {}
+    has_spectral_updates = False
+
+    for instance in instances:
+        is_compatible, compatibility_reason = _detect_hard_compatibility(instance)
+        doppler_report: Dict[str, Any] = {}
+        doppler_region = None
+        doppler_subtype = None
+        doppler_weights: List[str] = []
+        is_spectral_routed = False
+
+        if is_compatible:
+            doppler_report = inspect_doppler_tags(instance.file_path)
+            if bool(doppler_report.get("is_doppler_candidate")):
+                details = doppler_report.get("details") or {}
+                doppler_region = details.get("doppler_region")
+                doppler_subtype = details.get("spectral_subtype")
+                doppler_weights = _doppler_weights_for_subtype(doppler_subtype)
+                is_spectral_routed = True
+
+                spectral_view = _spectral_view_label(doppler_subtype)
+                if (
+                    instance.predicted_view != spectral_view
+                    or float(instance.predicted_view_confidence or 0.0) != 1.0
+                ):
+                    instance.predicted_view = spectral_view
+                    instance.predicted_view_confidence = 1.0
+                    db.add(instance)
+                    has_spectral_updates = True
+            elif instance.file_path:
+                classifier_target_paths.append(instance.file_path)
+
+        precomputed_by_instance_id[instance.id] = {
+            "is_compatible": is_compatible,
+            "compatibility_reason": compatibility_reason,
+            "doppler_region": doppler_region,
+            "doppler_subtype": doppler_subtype,
+            "doppler_weights": doppler_weights,
+            "is_spectral_routed": is_spectral_routed,
+        }
+
+    if has_spectral_updates:
+        db.commit()
+
+    classifier_failed = False
+    classifier_error = None
+    if classifier_target_paths:
+        classifier_target_paths = list(dict.fromkeys(classifier_target_paths))
+        try:
+            classify_views_for_study(
+                study_uid,
+                db,
+                include_file_paths=classifier_target_paths,
+            )
+        except Exception as exc:
+            classifier_failed = True
+            classifier_error = str(exc)
+
+    # Part 6. Build final routing decisions.
     decisions: List[Dict[str, Any]] = []
     skip_counter = Counter()
     combined_eligible_count = 0
@@ -111,28 +176,24 @@ def build_prefilter_routing_map(
         combined_skip_reasons: List[str] = []
         dynamic_skip_reasons: List[str] = []
 
-        is_compatible, compatibility_reason = _detect_hard_compatibility(instance)
+        precomputed = precomputed_by_instance_id.get(instance.id, {})
+        is_compatible = bool(precomputed.get("is_compatible"))
+        compatibility_reason = precomputed.get("compatibility_reason")
         if not is_compatible and compatibility_reason:
             combined_skip_reasons.append(compatibility_reason)
             dynamic_skip_reasons.append(compatibility_reason)
             skip_counter[compatibility_reason] += 1
 
-        doppler_report: Dict[str, Any] = {}
-        doppler_region = None
-        doppler_subtype = None
-        doppler_weights: List[str] = []
+        doppler_region = precomputed.get("doppler_region")
+        doppler_subtype = precomputed.get("doppler_subtype")
+        doppler_weights = precomputed.get("doppler_weights") or []
+        is_spectral_routed = bool(precomputed.get("is_spectral_routed"))
 
-        if is_compatible:
-            doppler_report = inspect_doppler_tags(instance.file_path)
-            if bool(doppler_report.get("is_doppler_candidate")):
-                doppler_routed_count += 1
-                combined_skip_reasons.append(SPECTRAL_DOPPLER_TAG_ROUTED)
-                dynamic_skip_reasons.append(SPECTRAL_DOPPLER_TAG_ROUTED)
-                skip_counter[SPECTRAL_DOPPLER_TAG_ROUTED] += 1
-                details = doppler_report.get("details") or {}
-                doppler_region = details.get("doppler_region")
-                doppler_subtype = details.get("spectral_subtype")
-                doppler_weights = _doppler_weights_for_subtype(doppler_subtype)
+        if is_spectral_routed:
+            doppler_routed_count += 1
+            combined_skip_reasons.append(SPECTRAL_DOPPLER_TAG_ROUTED)
+            dynamic_skip_reasons.append(SPECTRAL_DOPPLER_TAG_ROUTED)
+            skip_counter[SPECTRAL_DOPPLER_TAG_ROUTED] += 1
 
         predicted_view = (instance.predicted_view or "").upper() if instance.predicted_view else None
         predicted_conf = float(instance.predicted_view_confidence) if instance.predicted_view_confidence is not None else None
@@ -173,6 +234,7 @@ def build_prefilter_routing_map(
                 "instance_id": instance.id,
                 "instance_orthanc_id": instance.instance_orthanc_id,
                 "sop_instance_uid": instance.sop_instance_uid,
+                "instance_number": instance.instance_number,
                 "file_path": instance.file_path,
                 "predicted_view": predicted_view,
                 "predicted_view_confidence": predicted_conf,

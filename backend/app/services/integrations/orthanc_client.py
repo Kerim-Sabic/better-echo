@@ -1,6 +1,6 @@
 import requests
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, Literal
 
 from app.core.config import settings
 
@@ -10,6 +10,7 @@ orthanc_url = settings.ORTHANC_URL
 orthanc_username = settings.ORTHANC_USER
 orthanc_password = settings.ORTHANC_PASS
 AUTH = (orthanc_username, orthanc_password)
+OrthancDeleteStatus = Literal["deleted", "not_found", "error"]
 
 
 def send_dicom_to_orthanc(filepath: str) -> Dict[str, Any]:
@@ -58,22 +59,37 @@ def get_instance_tags(instance_id: str) -> Dict[str, Any]:
         raise RuntimeError(f"Failed to fetch tags from Orthanc: {e}")
 
 
-def delete_study_from_orthanc(study_orthanc_id: str) -> bool:
+def delete_study_from_orthanc_status(study_orthanc_id: str) -> OrthancDeleteStatus:
     """
     Delete a study from Orthanc by its Orthanc study ID.
-    Returns True on success, False otherwise.
+    Returns one of: "deleted" | "not_found" | "error".
     """
     try:
         del_response = requests.delete(f"{orthanc_url}/studies/{study_orthanc_id}", auth=AUTH, timeout=30)
         if del_response.status_code == 200:
-            logger.info(f"Deleted study from Orthanc (Orthanc ID: {study_orthanc_id})")
-            return True
-        else:
-            logger.warning(f"Failed to delete study {study_orthanc_id} from Orthanc. Status: {del_response.status_code}")
-            return False
+            logger.info("Deleted study from Orthanc (Orthanc ID: %s)", study_orthanc_id)
+            return "deleted"
+        if del_response.status_code == 404:
+            logger.info("Orthanc study already missing (Orthanc ID: %s)", study_orthanc_id)
+            return "not_found"
+        logger.warning(
+            "Failed to delete study %s from Orthanc. Status: %s",
+            study_orthanc_id,
+            del_response.status_code,
+        )
+        return "error"
     except requests.RequestException as err:
         logger.error(f"Error deleting study {study_orthanc_id} from Orthanc: {str(err)}")
-        return False
+        return "error"
+
+
+def delete_study_from_orthanc(study_orthanc_id: str) -> bool:
+    """
+    Backward-compatible bool wrapper around delete_study_from_orthanc_status.
+    Treats both deleted and not_found as success for idempotent delete flows.
+    """
+    status = delete_study_from_orthanc_status(study_orthanc_id)
+    return status in {"deleted", "not_found"}
 
 
 def delete_instance_from_orthanc(instance_orthanc_id: str) -> bool:
@@ -99,6 +115,7 @@ def delete_instance_from_orthanc(instance_orthanc_id: str) -> bool:
 __all__ = [
     "send_dicom_to_orthanc",
     "get_instance_tags",
+    "delete_study_from_orthanc_status",
     "delete_study_from_orthanc",
     "delete_instance_from_orthanc",
 ]

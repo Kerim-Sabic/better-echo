@@ -8,6 +8,7 @@ class CompleteResponse(BaseModel):
 class PendingResponse(BaseModel):
     status: Literal["pending"]
     retry_after: int = Field(..., ge=1)
+    dynamic_measurements_results: Dict[str, Any] | None = None
 
 class FailedResponse(BaseModel):
     status: Literal["failed"]

@@ -12,9 +12,9 @@ def create_user():
 
     # Create a new user
     user = User(
-        username="doctor2",
+        username="doctor1",
         hashed_password=hash_password("1234"),
-        full_name="Dr. Zoe Alkhalil",
+        full_name="Dr. Kerim Sabic",
         role="doctor"
     )
 

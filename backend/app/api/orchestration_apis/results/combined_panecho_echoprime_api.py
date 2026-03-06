@@ -3,7 +3,7 @@ from typing import Optional
 import logging
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
@@ -23,6 +23,7 @@ from app.schemas.orchestration_apis.combined_panecho_echoprime_schemas import (
 from app.schemas.orchestration_apis.panecho_echoprime_overrides_schemas import OverridesUpdateRequest
 from app.services.pipeline.read import (
     get_active_or_legacy_result_row,
+    get_result_row_for_read_mode,
     get_latest_stage_failure_detail,
     get_study_or_404,
 )
@@ -38,23 +39,26 @@ router = APIRouter()
 )
 def get_combined_results(
     study_uid: str,
+    preview: bool = Query(False, description="Return latest draft artifacts when available"),
     db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user_id),
 ):
     """
     Observer-only combined PanEcho + EchoPrime results endpoint.
 
     Steps:
-    1. Resolve study and read active (or legacy fallback) combined row.
+    1. Resolve study and read preview/active (or legacy fallback) combined row.
     2. Return complete payload when active row is complete.
     3. Return failed payload when active row or latest queue stage indicates failure.
     4. Otherwise return pending without side effects.
     """
-    # Part 1. Resolve study and active/legacy row.
-    study = get_study_or_404(db=db, study_uid=study_uid)
-    combined_results_row = get_active_or_legacy_result_row(
+    # Part 1. Resolve study and preview-aware row.
+    study = get_study_or_404(db=db, study_uid=study_uid, user_id=current_user_id)
+    combined_results_row = get_result_row_for_read_mode(
         db=db,
         study_id=study.id,
         result_type=PANECHO_ECHOPRIME_COMBINED_TYPE,
+        preview=preview,
     )
 
     # Part 2. Complete response for ready active artifact.
@@ -107,7 +111,7 @@ def update_combined_overrides(
     3. Merge and persist overrides on active row.
     """
     # Part 1. Resolve study and active/legacy combined row.
-    study = get_study_or_404(db=db, study_uid=study_uid)
+    study = get_study_or_404(db=db, study_uid=study_uid, user_id=current_user_id)
     incoming_overrides = payload.overrides or {}
 
     combined_row = get_active_or_legacy_result_row(

@@ -1,6 +1,6 @@
 # Frontend Architecture
 
-Last Updated: 2026-02-16  
+Last Updated: 2026-03-06  
 Owner: Frontend
 
 ## Scope
@@ -16,6 +16,7 @@ frontend/src/
 |- App.js
 |- api/
 |  |- StudiesApi.js
+|  |- AuthenticationApi.js
 |  |- shared/client.js
 |  `- orchestration_apis/
 |- contexts/
@@ -39,6 +40,7 @@ frontend/src/
 |     |- components/
 |     |- hooks/
 |     |  `- queries/
+|     |  `- mutations/
 |     `- helpers/
 `- __tests__/
    `- integration/
@@ -88,8 +90,8 @@ Auth and route guards:
 Execution chain:
 
 1. [`useStudyResultsData.js`](../../frontend/src/features/StudyResults/hooks/useStudyResultsData.js#L8)
-1. Pulls study meta + 3 orchestration queries.
-2. Computes page state (`loading|pending|ready|not_found|error`).
+1. Pulls study meta + pipeline status query + observer result queries.
+2. Computes page state (`loading|pending|ready|not_found|error`) with status-first precedence.
 3. Exposes normalized results and utility handlers (`refresh`, `onPrint`).
 2. [`useAiMeasurementsViewModel.js`](../../frontend/src/features/StudyResults/hooks/useAiMeasurementsViewModel.js#L14)
 1. Builds measurement sections from integrated tasks + overrides.
@@ -202,12 +204,15 @@ Indexed/raw mode implications:
 
 Pattern used across feature queries:
 
-1. API wrapper returns `{ status, data, retryAfter }`.
-2. Query hook `select` maps to `{ isPending, isComplete, results }`.
-3. `refetchInterval` polls only while pending.
+1. Queue control plane and observer reads are split:
+1. mutations via `PipelineApi` (`start`, `promote`, `cancel`, `regenerate-combined`)
+2. queries via `pipeline/status` + observer result APIs
+2. Query hook `select` maps to normalized readiness fields.
+3. `refetchInterval` polls while pending.
 
 Examples:
 
+1. [`usePipelineStatusQuery.js`](../../frontend/src/features/StudyResults/hooks/queries/usePipelineStatusQuery.js)
 1. [`usePanechoEchoprimeResultsQuery.js`](../../frontend/src/features/StudyResults/hooks/queries/usePanechoEchoprimeResultsQuery.js#L9)
 2. [`useDynamicMeasurementsResultsQuery.js`](../../frontend/src/features/StudyResults/hooks/queries/useDynamicMeasurementsResultsQuery.js#L9)
 3. [`useLlmReportResultsQuery.js`](../../frontend/src/features/StudyResults/hooks/queries/useLlmReportResultsQuery.js#L9)

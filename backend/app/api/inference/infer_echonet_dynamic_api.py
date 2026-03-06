@@ -93,6 +93,7 @@ def infer_lv_segmentation(
     sop_instance_uid: str = Query(..., description="The DICOM SOPInstanceUID to run segmentation on"),
     artifact_set_id: int | None = Query(default=None, include_in_schema=False),
     skip_orthanc_check: bool = Query(default=False, include_in_schema=False),
+    defer_model_unload: bool = Query(default=False, include_in_schema=False),
     db: Session = Depends(get_db),
 ):
     global device
@@ -141,7 +142,12 @@ def infer_lv_segmentation(
     if suffix == ".dcm":
         logger.info("[Echonet-dynamic] Reading frames directly from DICOM")
         try:
-            frames, fps = read_dicom_frames(dicom_file_path, apply_mask=True)
+            # Keep original DICOM geometry so overlays are rendered at diagnostic resolution.
+            frames, fps = read_dicom_frames(
+                dicom_file_path,
+                apply_mask=False,
+                preserve_geometry=True,
+            )
         except Exception as exc:
             logger.exception("[Echonet-dynamic] Failed to read DICOM frames")
             raise HTTPException(status_code=400, detail=f"Failed to read frames from DICOM: {exc}")
@@ -313,7 +319,8 @@ def infer_lv_segmentation(
                 vw.release()
             return output_path_mp4
         finally:
-            unload_model()
+            if not defer_model_unload:
+                unload_model()
 
     result_path = None
     overall_start = time.time()
@@ -342,7 +349,8 @@ def infer_lv_segmentation(
 
     if cap is not None:
         cap.release()
-    logger.info("[Echonet-dynamic] LV-segmentation model unloaded")
+    if not defer_model_unload:
+        logger.info("[Echonet-dynamic] LV-segmentation model unloaded")
 
     if not result_path:
         raise HTTPException(status_code=500, detail="LV segmentation failed: no output path produced.")

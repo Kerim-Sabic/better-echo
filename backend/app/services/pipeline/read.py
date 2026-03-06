@@ -15,9 +15,13 @@ from app.database_models.pipeline_stage_runs import PipelineStageRun, PipelineSt
 from app.database_models.studies import Study
 
 
-def get_study_or_404(*, db: Session, study_uid: str) -> Study:
+def get_study_or_404(*, db: Session, study_uid: str, user_id: int) -> Study:
     # Part 1. Resolve study ownership target for observer endpoints.
-    study = db.query(Study).filter(Study.study_uid == study_uid).first()
+    study = (
+        db.query(Study)
+        .filter(Study.study_uid == study_uid, Study.user_id == user_id)
+        .first()
+    )
     if not study:
         raise HTTPException(status_code=404, detail="Study not found")
     return study
@@ -36,29 +40,46 @@ def get_active_artifact_set(*, db: Session, study_id: int) -> Optional[PipelineA
     )
 
 
-def get_active_or_legacy_result_row(
+def get_latest_draft_artifact_set(*, db: Session, study_id: int) -> Optional[PipelineArtifactSet]:
+    # Part 3. Read latest draft artifact set for preview mode.
+    return (
+        db.query(PipelineArtifactSet)
+        .filter(
+            PipelineArtifactSet.study_id == study_id,
+            PipelineArtifactSet.state == PipelineArtifactSetState.draft,
+        )
+        .order_by(PipelineArtifactSet.id.desc())
+        .first()
+    )
+
+
+def _get_result_row_for_artifact_set(
+    *,
+    db: Session,
+    study_id: int,
+    result_type: str,
+    artifact_set_id: int,
+) -> Optional[DerivedResult]:
+    # Part 4. Resolve a result row scoped to one artifact set.
+    return (
+        db.query(DerivedResult)
+        .filter(
+            DerivedResult.study_id == study_id,
+            DerivedResult.type == result_type,
+            DerivedResult.artifact_set_id == artifact_set_id,
+        )
+        .order_by(DerivedResult.id.desc())
+        .first()
+    )
+
+
+def _get_legacy_result_row(
     *,
     db: Session,
     study_id: int,
     result_type: str,
 ) -> Optional[DerivedResult]:
-    # Part 3. Prefer active artifact-set scoped result.
-    active_set = get_active_artifact_set(db=db, study_id=study_id)
-    if active_set:
-        active_row = (
-            db.query(DerivedResult)
-            .filter(
-                DerivedResult.study_id == study_id,
-                DerivedResult.type == result_type,
-                DerivedResult.artifact_set_id == active_set.id,
-            )
-            .order_by(DerivedResult.id.desc())
-            .first()
-        )
-        if active_row:
-            return active_row
-
-    # Part 4. Transitional fallback for legacy non-artifact rows.
+    # Part 5. Transitional fallback for legacy non-artifact rows.
     return (
         db.query(DerivedResult)
         .filter(
@@ -71,13 +92,66 @@ def get_active_or_legacy_result_row(
     )
 
 
+def get_result_row_for_read_mode(
+    *,
+    db: Session,
+    study_id: int,
+    result_type: str,
+    preview: bool,
+) -> Optional[DerivedResult]:
+    # Part 6. Resolve result row using preview-aware read order.
+    if preview:
+        draft_set = get_latest_draft_artifact_set(db=db, study_id=study_id)
+        if draft_set:
+            draft_row = _get_result_row_for_artifact_set(
+                db=db,
+                study_id=study_id,
+                result_type=result_type,
+                artifact_set_id=draft_set.id,
+            )
+            if draft_row:
+                return draft_row
+
+    active_set = get_active_artifact_set(db=db, study_id=study_id)
+    if active_set:
+        active_row = _get_result_row_for_artifact_set(
+            db=db,
+            study_id=study_id,
+            result_type=result_type,
+            artifact_set_id=active_set.id,
+        )
+        if active_row:
+            return active_row
+
+    return _get_legacy_result_row(
+        db=db,
+        study_id=study_id,
+        result_type=result_type,
+    )
+
+
+def get_active_or_legacy_result_row(
+    *,
+    db: Session,
+    study_id: int,
+    result_type: str,
+) -> Optional[DerivedResult]:
+    # Part 7. Backward-compatible wrapper for active-first read mode.
+    return get_result_row_for_read_mode(
+        db=db,
+        study_id=study_id,
+        result_type=result_type,
+        preview=False,
+    )
+
+
 def get_latest_stage_failure_detail(
     *,
     db: Session,
     study_id: int,
     stage_names: Sequence[str],
 ) -> Optional[str]:
-    # Part 5. Surface latest failed queue stage detail for observer-only GET endpoints.
+    # Part 8. Surface latest failed queue stage detail for observer-only GET endpoints.
     if not stage_names:
         return None
     failed_stage = (
@@ -102,7 +176,8 @@ def get_latest_stage_failure_detail(
 __all__ = [
     "get_study_or_404",
     "get_active_artifact_set",
+    "get_latest_draft_artifact_set",
+    "get_result_row_for_read_mode",
     "get_active_or_legacy_result_row",
     "get_latest_stage_failure_detail",
 ]
-

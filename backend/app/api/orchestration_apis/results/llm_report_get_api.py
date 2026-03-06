@@ -2,13 +2,14 @@ from __future__ import annotations
 import os
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.database.db import get_db
 from app.database_models.derived_results import ResultStatus
 from app.core.artifacts import LLM_REPORT_TYPE
+from app.helpers.auth.authentication_functions import get_current_user_id
 from app.helpers.row_to_dict.llm_report_row_to_dict import build_llm_report_from_row
 from app.schemas.orchestration_apis.llm_report_get_api_schemas import (
     LLMReportResponse,
@@ -17,7 +18,7 @@ from app.schemas.orchestration_apis.llm_report_get_api_schemas import (
     LLMFailedResponse,
 )
 from app.services.pipeline.read import (
-    get_active_or_legacy_result_row,
+    get_result_row_for_read_mode,
     get_latest_stage_failure_detail,
     get_study_or_404,
 )
@@ -33,27 +34,30 @@ router = APIRouter()
 )
 def get_llm_report(
     study_uid: str,
+    preview: bool = Query(False, description="Return latest draft artifacts when available"),
     db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user_id),
 ):
     """
     Observer-only LLM report endpoint.
 
     Steps:
     1. Resolve study and enforce LLM-enabled policy.
-    2. Read active (or legacy fallback) LLM row.
+    2. Read preview/active (or legacy fallback) LLM row.
     3. Return complete/failed/pending with no enqueue side effects.
     """
     # Part 1. Resolve study and LLM feature gate.
-    study = get_study_or_404(db=db, study_uid=study_uid)
+    study = get_study_or_404(db=db, study_uid=study_uid, user_id=current_user_id)
     enable_llm = os.getenv("ENABLE_LLM", "true").lower() == "true"
     if not enable_llm:
         raise HTTPException(status_code=404, detail="LLM report disabled")
 
-    # Part 2. Resolve active/legacy LLM row.
-    llm_report_row = get_active_or_legacy_result_row(
+    # Part 2. Resolve preview-aware LLM row.
+    llm_report_row = get_result_row_for_read_mode(
         db=db,
         study_id=study.id,
         result_type=LLM_REPORT_TYPE,
+        preview=preview,
     )
 
     if llm_report_row and llm_report_row.status == ResultStatus.complete:

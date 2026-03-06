@@ -86,12 +86,23 @@ PowerShell alternatives:
 .\scripts\dev-start-with-llm.ps1
 ```
 
+LAN mode (same Wi-Fi/device testing):
+
+```powershell
+scripts\dev-lan.bat
+scripts\dev-lan-with-llm.bat
+```
+
 Script references:
 
 1. [`dev-start.bat`](./scripts/dev-start.bat)
 2. [`dev-start-with-llm.bat`](./scripts/dev-start-with-llm.bat)
 3. [`dev-start.ps1`](./scripts/dev-start.ps1)
 4. [`dev-start-with-llm.ps1`](./scripts/dev-start-with-llm.ps1)
+5. [`dev-lan.bat`](./scripts/dev-lan.bat)
+6. [`dev-lan-with-llm.bat`](./scripts/dev-lan-with-llm.bat)
+7. [`dev-lan.ps1`](./scripts/dev-lan.ps1)
+8. [`dev-lan-with-llm.ps1`](./scripts/dev-lan-with-llm.ps1)
 
 What starts:
 
@@ -121,6 +132,8 @@ npm run dev:llm
 ```powershell
 npm run dev              # full stack, LLM disabled
 npm run dev:llm          # full stack, LLM enabled
+npm run dev:lan          # full stack, backend bound to 0.0.0.0 for LAN
+npm run dev:lan:llm      # full stack LAN + LLM
 npm run build            # electron + frontend
 npm run build:backend    # pyinstaller backend
 npm run dist:win         # windows installer

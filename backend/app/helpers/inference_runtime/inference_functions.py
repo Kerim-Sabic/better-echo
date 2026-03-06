@@ -3,11 +3,13 @@ import os
 import math
 import logging
 import time
+import gc
 from typing import List, Tuple
 import requests
 from PIL import Image
 import numpy as np
 import torch
+import pydicom
 from pathlib import Path
 
 from app.core.config import settings
@@ -98,13 +100,59 @@ def fetch_orthanc_instance_ids_from_study(study_uid: str) -> List[str]:
     logger.info(f"[INFERENCE_FUNCTIONS] Found {len(ids)} instance(s) in the study")
     return ids
 
+
+# Part 1. Normalize a DICOM frame into uint8 for PanEcho frame sampling.
+def _normalize_frame_to_uint8(frame: np.ndarray) -> np.ndarray:
+    if frame.ndim == 3:
+        frame = frame[..., 0]
+    data = frame.astype(np.float32)
+    min_value = float(np.min(data))
+    max_value = float(np.max(data))
+    if max_value > min_value:
+        data = (data - min_value) / (max_value - min_value) * 255.0
+    else:
+        data = np.zeros_like(data)
+    return data.astype(np.uint8)
+
+
+# Part 2. Fast local DICOM frame sampler for PanEcho.
+def pick_frames_from_local_dicom(dicom_path: str, num_frames: int = 16) -> List[Image.Image]:
+    if num_frames <= 0:
+        raise ValueError("num_frames must be >= 1")
+
+    ds = pydicom.dcmread(dicom_path, force=True)
+    pixels = ds.pixel_array
+
+    if pixels.ndim == 2:
+        pixels = pixels[np.newaxis, ...]
+    elif pixels.ndim == 4:
+        if pixels.shape[-1] in (3, 4):
+            pixels = pixels[..., 0]
+        else:
+            pixels = pixels[:, 0, :, :]
+    elif pixels.ndim != 3:
+        raise ValueError(f"Unsupported DICOM pixel array shape: {pixels.shape}")
+
+    frame_count = int(pixels.shape[0])
+    if frame_count <= 0:
+        raise ValueError("DICOM has no frames")
+
+    indices = np.linspace(0, frame_count - 1, num_frames, dtype=int).tolist()
+    imgs: List[Image.Image] = []
+    for index in indices:
+        frame_u8 = _normalize_frame_to_uint8(pixels[index])
+        img = Image.fromarray(frame_u8, mode="L").convert("RGB")
+        imgs.append(img.resize((224, 224), Image.BILINEAR))
+    return imgs
+
+
 def pick_frames_from_instance(instance_id: str, num_frames: int = 16) -> List[Image.Image]:
     """
     Fetch approximately `num_frames` evenly spaced rendered frames for an Orthanc instance.
     Returns a list of RGB PIL images resized to 224x224.
     """
     # Get instance metadata to know number of frames
-    logger.info(f"[INFERENCE_FUNCTIONS] Picking frames from instance {instance_id}")
+    logger.debug("[INFERENCE_FUNCTIONS] Sampling frames from Orthanc instance %s", instance_id)
     meta = requests.get(
         f"{orthanc_url}/instances/{instance_id}",
         auth=(orthanc_user, orthanc_pass),
@@ -116,7 +164,6 @@ def pick_frames_from_instance(instance_id: str, num_frames: int = 16) -> List[Im
         timeout=10,
     ).json()
     frames = len(frames_list) if isinstance(frames_list, list) else int(meta.get("MainDicomTags", {}).get("NumberOfFrames", 1))
-    logger.info(f"[INFERENCE_FUNCTIONS] Instance has {frames} frame(s)")
     # Pick 16 approximately evenly spaced frame indices (1-based in Orthanc HTTP)
     indices = [max(1, min(frames, 1 + math.floor(i * frames / num_frames))) for i in range(num_frames)]
     imgs: List[Image.Image] = []
@@ -132,11 +179,11 @@ def pick_frames_from_instance(instance_id: str, num_frames: int = 16) -> List[Im
         img = Image.open(io.BytesIO(resp.content)).convert("RGB")
         img = img.resize((224, 224), Image.BILINEAR)
         imgs.append(img)
-    logger.info(f"[INFERENCE_FUNCTIONS] Collected {len(imgs)} frame(s)")
+    logger.debug("[INFERENCE_FUNCTIONS] Collected %d Orthanc-rendered frame(s)", len(imgs))
     return imgs
 
 def stack_to_tensor(frames: List[Image.Image]) -> torch.Tensor:
-    logger.info("[INFERENCE_FUNCTIONS] Stacking frames into tensor and ImageNet-normalizing")
+    logger.debug("[INFERENCE_FUNCTIONS] Stacking %d frame(s) into tensor", len(frames))
     # frames: list of PIL RGB 224x224; output: (1,3,T,224,224), normalized ImageNet
     arr = np.stack([np.asarray(f).astype(np.float32) / 255.0 for f in frames], axis=0)  # (T, H, W, C)
     # ImageNet mean/std
@@ -145,7 +192,7 @@ def stack_to_tensor(frames: List[Image.Image]) -> torch.Tensor:
     arr = (arr - mean) / std
     arr = np.transpose(arr, (3, 0, 1, 2))  # (C, T, H, W)
     t = torch.from_numpy(arr).unsqueeze(0)  # (1, C, T, H, W)
-    logger.info(f"[INFERENCE_FUNCTIONS] Tensor shape: {tuple(t.shape)} dtype={t.dtype}")
+    logger.debug("[INFERENCE_FUNCTIONS] Tensor shape: %s dtype=%s", tuple(t.shape), t.dtype)
     return t
 
 # Lazy load the model once
@@ -165,7 +212,7 @@ def get_model_and_device() -> Tuple[torch.nn.Module, torch.device]:
         logger.info(f"[INFERENCE_FUNCTIONS] Loading PanEcho model on device: {_device}")
         
         # Local PanEcho repo path (vendored)
-        local_repo_dir = (Path(__file__).resolve().parent.parent / "AI_models" / "PanEcho").resolve()
+        local_repo_dir = (Path(__file__).resolve().parents[2] / "AI_models" / "PanEcho").resolve()
         hubconf_path = local_repo_dir / "hubconf.py"
         if not hubconf_path.exists():
             raise RuntimeError(
@@ -192,4 +239,18 @@ def get_model_and_device() -> Tuple[torch.nn.Module, torch.device]:
         logger.info("[INFERENCE_FUNCTIONS] PanEcho (local) loaded successfully in %.1fs", time.time() - start)
 
     return _model, _device
+
+
+def unload_panecho_model() -> None:
+    """
+    Unload cached PanEcho model and clear accelerator memory.
+    """
+    global _model, _device
+    if _model is not None:
+        del _model
+        _model = None
+    _device = None
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
 

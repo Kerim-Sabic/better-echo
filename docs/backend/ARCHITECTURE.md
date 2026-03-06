@@ -1,6 +1,6 @@
 # Backend Architecture
 
-Last Updated: 2026-02-27  
+Last Updated: 2026-03-06  
 Owner: Backend
 
 ## Scope
@@ -78,14 +78,17 @@ Model definitions:
 
 Startup behaviors in [`main.py`](../../backend/app/main.py):
 
-1. Configure CORS ([`main.py`](../../backend/app/main.py#L52))
-2. Mount `/uploads` static path ([`main.py`](../../backend/app/main.py#L59))
-3. Attempt model preloads with VRAM-aware guards ([`main.py`](../../backend/app/main.py#L71))
+1. Configure CORS with env allowlist plus detected LAN origin support for same-network dev.
+2. Suppress high-volume uvicorn access logs for poll-heavy endpoints in terminal output.
+3. Mount `/uploads` static path.
+4. Start backend-owned pipeline scheduler loop.
+5. Attempt model preloads with VRAM-aware guards.
 
 Shutdown behaviors in [`main.py`](../../backend/app/main.py):
 
-1. Kill tracked ffmpeg processes ([`main.py`](../../backend/app/main.py#L124))
-2. Unload EchoPrime when possible ([`main.py`](../../backend/app/main.py#L130))
+1. Stop pipeline scheduler.
+2. Kill tracked ffmpeg processes.
+3. Unload EchoPrime, PanEcho, and measurements models when possible.
 
 ## Upload and Persistence Flow
 
@@ -100,6 +103,12 @@ Flow:
 3. Parse required tags ([`upload_dicom_api.py`](../../backend/app/api/upload_dicom/upload_dicom_api.py#L138))
 4. Upsert patient/study/series/instance rows ([`upload_dicom_api.py`](../../backend/app/api/upload_dicom/upload_dicom_api.py#L168))
 5. Return normalized upload response ([`upload_dicom_api.py`](../../backend/app/api/upload_dicom/upload_dicom_api.py#L214))
+
+Delete semantics:
+
+1. Study delete is ownership-scoped and transactional in [`delete_study_api.py`](../../backend/app/api/studies/delete_study_api.py#L29).
+2. Orthanc `404` during delete is treated as idempotent success (already deleted remotely).
+3. Local study cleanup includes uploads, LV segmentation, 2D measurements, Doppler outputs, and LLM reports under `app/uploads`.
 
 ## Inference and Orchestration Flow
 
@@ -116,6 +125,7 @@ Orchestration routes:
 2. PanEcho+EchoPrime overrides: [`combined_panecho_echoprime_api.py`](../../backend/app/api/orchestration_apis/results/combined_panecho_echoprime_api.py#L120)
 3. Dynamic+Measurements combined: [`combined_dynamic_measurements_api.py`](../../backend/app/api/orchestration_apis/results/combined_dynamic_measurements_api.py#L28)
 4. LLM report results: [`llm_report_get_api.py`](../../backend/app/api/orchestration_apis/results/llm_report_get_api.py#L35)
+5. Pipeline start/status/promote/cancel/regenerate routes under [`api/orchestration_apis/pipeline/`](../../backend/app/api/orchestration_apis/pipeline/)
 
 Persistence:
 
@@ -131,6 +141,12 @@ Study status policy:
 4. Required artifacts depend on backend `ENABLE_LLM`:
     1. Disabled: PanEcho+EchoPrime combined + Dynamic+Measurements combined.
     2. Enabled: PanEcho+EchoPrime combined + Dynamic+Measurements combined + LLM report.
+5. `GET /api/studies` and `GET /api/studies/{study_uid}` compute effective status on read and do not commit status mutations.
+
+Ownership policy:
+
+1. Study routes, patient-by-study route, and orchestration observer routes are all user-scoped.
+2. Non-owned `study_uid` access returns `404` to avoid cross-user data exposure.
 
 ## Canonical Pipeline Services
 
@@ -160,6 +176,16 @@ Current diagnostics:
 2. Backend log file path: [`horalix.log`](../../backend/app/logs/horalix.log)
 3. Route-level HTTP statuses for pending/complete/error flows in orchestration handlers.
 4. Startup preload logs for device/memory-aware behavior in [`main.py`](../../backend/app/main.py#L71)
+
+SQLite runtime profile:
+
+1. Engine connection timeout is 30s.
+2. SQLite pragmas are applied on connect in [`db.py`](../../backend/app/database/db.py#L10):
+    1. `foreign_keys=ON`
+    2. `busy_timeout=30000`
+    3. `journal_mode=WAL`
+    4. `synchronous=NORMAL`
+3. Test DB config mirrors runtime pragmas to reduce lock-related flakiness.
 
 ## Backend Caveats
 

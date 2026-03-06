@@ -1,6 +1,6 @@
 from enum import Enum as PyEnum
 
-from sqlalchemy import Column, DateTime, Enum, ForeignKey, Index, Integer, String, func
+from sqlalchemy import Boolean, Column, DateTime, Enum, ForeignKey, Index, Integer, String, func
 from sqlalchemy.dialects.sqlite import JSON
 from sqlalchemy.orm import relationship
 
@@ -46,6 +46,7 @@ class PipelineJob(Base):
         default=PipelineCleanupScope.none,
     )
     uploaded_instance_uids_json = Column(JSON, nullable=True)
+    auto_promote_on_complete = Column(Boolean, nullable=False, default=False)
     last_error = Column(String, nullable=True)
     queued_at = Column(DateTime, server_default=func.now(), nullable=False, index=True)
     started_at = Column(DateTime, nullable=True)

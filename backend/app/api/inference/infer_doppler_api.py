@@ -8,7 +8,9 @@ import logging
 from app.AI_models.measurements.runner_doppler import (
     VALID_DOPPLER_WEIGHTS,
     run_doppler_inference,
+    unload_doppler_models,
 )
+from app.core.config import settings
 from app.core.artifacts import BASE_DIR
 from app.database.db import get_db
 from app.database_models.derived_results import DerivedResult
@@ -172,6 +174,7 @@ def infer_measurements_doppler(
     model_weights: str = Query(..., description=f"One of: {', '.join(sorted(list(VALID_DOPPLER_WEIGHTS)))}"),
     force: bool = Query(False, description="Force re-run even if a cached result exists"),
     artifact_set_id: Optional[int] = Query(default=None, include_in_schema=False),
+    defer_model_unload: bool = Query(default=False, include_in_schema=False),
     db: Session = Depends(get_db),
 ):
     """
@@ -187,6 +190,10 @@ def infer_measurements_doppler(
     model_weights = model_weights.strip().lower()
     if model_weights not in VALID_DOPPLER_WEIGHTS:
         raise HTTPException(status_code=400, detail=f"Invalid model_weights '{model_weights}'")
+    unload_after_request = (
+        str(settings.PIPELINE_UNLOAD_POLICY).strip().lower() == "stage"
+        or str(settings.INFERENCE_PROFILE).strip().lower() == "low_vram"
+    )
 
     instance = _resolve_instance(db, sop_instance_uid)
     tag_report = inspect_doppler_tags(instance.file_path)
@@ -266,6 +273,9 @@ def infer_measurements_doppler(
         except Exception:
             pass
         raise HTTPException(status_code=500, detail=f"Doppler inference failed: {err}")
+    finally:
+        if unload_after_request and (not defer_model_unload):
+            unload_doppler_models()
 
     payload: Dict[str, Any] = {
         "outputfile": _rel_uploads(result.get("output_file_image")),

@@ -1,6 +1,6 @@
 # API Schema Notes
 
-Last Updated: 2026-02-25  
+Last Updated: 2026-03-06  
 Owner: Backend/API
 
 ## Scope
@@ -60,6 +60,7 @@ Key endpoints:
 Path note:
 
 1. Patient lookup is currently mounted directly under `/api` (not `/api/patients`).
+2. Study and patient reads are ownership-scoped to the authenticated user (`404` on non-owned studies).
 
 ### Inference Endpoints
 
@@ -70,12 +71,13 @@ Router:
 Key endpoints:
 
 1. `POST /api/infer/panecho` ([`infer_panecho_api.py`](../backend/app/api/inference/infer_panecho_api.py#L24))
-2. `POST /api/infer/echoprime` ([`infer_echoprime_api.py`](../backend/app/api/inference/infer_echoprime_api.py#L129))
-3. `POST /api/infer/echonet-dynamic/LV-segmentation` ([`infer_echonet_dynamic_api.py`](../backend/app/api/inference/infer_echonet_dynamic_api.py#L91))
-4. `POST /api/infer/measurements/2d` ([`infer_measurements_api.py`](../backend/app/api/inference/infer_measurements_api.py#L35))
-5. `GET /api/infer/measurements/doppler/tag-check` ([`infer_doppler_api.py`](../backend/app/api/inference/infer_doppler_api.py#L54))
-6. `GET /api/infer/measurements/doppler/tag-audit/{study_uid}` ([`infer_doppler_api.py`](../backend/app/api/inference/infer_doppler_api.py#L78))
-7. `POST /api/infer/measurements/doppler` ([`infer_doppler_api.py`](../backend/app/api/inference/infer_doppler_api.py#L139))
+2. `POST /api/infer/echoprime` (metrics-only pass) ([`infer_echoprime_api.py`](../backend/app/api/inference/infer_echoprime_api.py#L18))
+3. `POST /api/infer/echoprime/views` (view-classification-only pass) ([`infer_echoprime_api.py`](../backend/app/api/inference/infer_echoprime_api.py#L40))
+4. `POST /api/infer/echonet-dynamic/LV-segmentation` ([`infer_echonet_dynamic_api.py`](../backend/app/api/inference/infer_echonet_dynamic_api.py#L91))
+5. `POST /api/infer/measurements/2d` ([`infer_measurements_api.py`](../backend/app/api/inference/infer_measurements_api.py#L35))
+6. `GET /api/infer/measurements/doppler/tag-check` ([`infer_doppler_api.py`](../backend/app/api/inference/infer_doppler_api.py#L54))
+7. `GET /api/infer/measurements/doppler/tag-audit/{study_uid}` ([`infer_doppler_api.py`](../backend/app/api/inference/infer_doppler_api.py#L78))
+8. `POST /api/infer/measurements/doppler` ([`infer_doppler_api.py`](../backend/app/api/inference/infer_doppler_api.py#L139))
 
 Doppler identification contract:
 
@@ -115,9 +117,13 @@ Pipeline queue note (Iterations 1-5):
 2. status returns `artifact_sets.draft` and `artifact_sets.active`
 3. legacy study-level results are backfilled into an `active` artifact set on queue start
 5. Iteration 3 promote/cancel semantics are active:
-1. `pipeline/promote` atomically swaps draft to active
+1. `pipeline/promote` supports immediate promote or delayed promote-intent contract
 2. `pipeline/cancel` supports queued/completed immediate cancel and running cooperative cancel request
 3. cancel cleanup uses `cleanup_scope` (`none`, `append_delta`, `new_study`)
+4. promote response semantics:
+1. `200` immediate promote
+2. `202` promote intent accepted (`auto_promote_on_complete`)
+3. `409` no valid promote context
 6. Iteration 4 routing gate is active:
 1. hard DICOM compatibility checks
 2. Doppler tag short-circuit
@@ -128,6 +134,7 @@ Pipeline queue note (Iterations 1-5):
 3. successful regenerate auto-promotes draft artifact set
 4. failed regenerate leaves active artifact set unchanged
 5. clinician overrides are preserved while raw AI values are refreshed
+8. Orchestration result observers and pipeline mutations are ownership-scoped (`404` for non-owned study UID).
 
 ### LLM Endpoints
 
@@ -195,6 +202,7 @@ Status semantics:
 4. Required artifact set is environment-dependent:
 1. `ENABLE_LLM=false`: PanEcho+EchoPrime combined + Dynamic+Measurements combined.
 2. `ENABLE_LLM=true`: PanEcho+EchoPrime combined + Dynamic+Measurements combined + LLM report.
+5. Study status returned by read endpoints is computed in read path and is not persisted by GET handlers.
 
 ### Study Detail (`GET /api/studies/{study_uid}`)
 
@@ -296,6 +304,7 @@ Caveats:
 1. Keep polling logic aligned with `202 pending` semantics.
 2. Legacy orchestration GET endpoints are observer-only and do not trigger progression.
 3. Queue progression starts from explicit `pipeline/start` calls.
+4. Result observers are ownership-scoped and return `404` for non-owned studies.
 
 ### Start Backend-Owned Pipeline Job
 
@@ -350,9 +359,17 @@ Use:
 
 Returns:
 
-1. promoted job id
-2. promoted artifact set id
-3. optionally discarded previous active set id
+1. `state` (`promoted` or `pending`)
+2. `job_id`
+3. `promoted_artifact_set_id` (nullable for pending)
+4. `discarded_artifact_set_id` (nullable)
+5. `retry_after` (set when state is pending)
+
+Status handling:
+
+1. `200` when promoted now or already active.
+2. `202` when promote intent is recorded for running/queued job.
+3. `409` when no promotable draft and no active job context exists.
 
 ### Cancel Pipeline Job
 
@@ -370,6 +387,24 @@ Returns:
 1. `cancel_requested=true` for cooperative cancel of running jobs
 2. `status=cancelled` for immediate queued/completed cancellation
 3. cleanup summary counts for applied delete operations
+
+### Delete Study (Idempotent Orthanc semantics)
+
+Goal:
+
+1. Delete local/DB study data even when Orthanc already removed the remote study.
+
+Use:
+
+1. Endpoint: `DELETE /api/studies/{study_id}`
+2. Backend implementation: [`delete_study_api.py`](../backend/app/api/studies/delete_study_api.py#L29)
+3. Orthanc helper: [`delete_study_from_orthanc_status`](../backend/app/services/integrations/orthanc_client.py#L57)
+
+Behavior:
+
+1. Orthanc `200` => continue delete.
+2. Orthanc `404` => treat as already deleted and continue.
+3. Other Orthanc error => fail delete request and keep DB row unchanged.
 
 ### Regenerate Combined (Override-Safe)
 

@@ -109,6 +109,7 @@ def test_pipeline_promote_swaps_draft_to_active(app, seeded_study, db_session_fa
     assert promote.status_code == 200
     promote_body = promote.json()
     assert promote_body["ok"] is True
+    assert promote_body["state"] == "promoted"
     promoted_set_id = promote_body["promoted_artifact_set_id"]
 
     status = client.get(f"/api/studies/{study_uid}/pipeline/status")
@@ -123,6 +124,36 @@ def test_pipeline_promote_swaps_draft_to_active(app, seeded_study, db_session_fa
         assert promoted_set.state == PipelineArtifactSetState.active
     finally:
         db.close()
+
+
+def test_pipeline_promote_returns_pending_and_auto_promotes_after_completion(app, seeded_study, db_session_factory):
+    client = TestClient(app)
+    study_uid = seeded_study["study_uid"]
+
+    start = client.post(f"/api/studies/{study_uid}/pipeline/start", json={})
+    assert start.status_code == 200
+    job_id = start.json()["job_id"]
+
+    promote = client.post(f"/api/studies/{study_uid}/pipeline/promote")
+    assert promote.status_code == 202
+    promote_body = promote.json()
+    assert promote_body["ok"] is True
+    assert promote_body["state"] == "pending"
+    assert promote_body["job_id"] == job_id
+    assert promote_body["retry_after"] == 3
+
+    db = db_session_factory()
+    try:
+        run_pending_jobs_once(db=db, max_active_studies=8)
+    finally:
+        db.close()
+
+    status = client.get(f"/api/studies/{study_uid}/pipeline/status")
+    assert status.status_code == 200
+    body = status.json()
+    assert body["pipeline"]["status"] == "completed"
+    assert body["pipeline"]["artifact_sets"]["draft"] is None
+    assert body["pipeline"]["artifact_sets"]["active"]["pipeline_job_id"] == job_id
 
 
 def test_pipeline_cancel_marks_queued_job_cancelled_and_discards_draft(app, seeded_study, db_session_factory):

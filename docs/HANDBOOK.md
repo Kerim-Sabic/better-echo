@@ -1,6 +1,6 @@
 # Echocardiology App Handbook
 
-Last Updated: 2026-02-16  
+Last Updated: 2026-03-06  
 Audience: Engineering (current team + new developers/interns)
 
 ## Table of Contents
@@ -37,6 +37,7 @@ Architecture and contracts:
 9. [LLM Context Enrichment Contract](./ai-pipelines/ORCHESTRATION.md#llm-context-enrichment-contract)
 10. [Deterministic LLM Report Controls](./ai-pipelines/ORCHESTRATION.md#deterministic-llm-report-controls)
 11. [Backend Queue Redesign Plan](./ai-pipelines/BACKEND_QUEUE_REWORK_PLAN.md)
+12. [Frontend Queue Integration Plan](./ai-pipelines/FRONTEND_QUEUE_INTEGRATION_PLAN.md)
 
 Quality and planning:
 
@@ -107,6 +108,8 @@ Echocardiology_App/
 |- scripts/
 |  |- dev-start.bat / .ps1 / .sh
 |  |- dev-start-with-llm.bat / .ps1 / .sh
+|  |- dev-lan.bat / .ps1
+|  |- dev-lan-with-llm.bat / .ps1
 |  `- build-all.bat / .sh
 |- docs/
 |  |- HANDBOOK.md
@@ -146,15 +149,19 @@ Primary references:
 
 ### Orchestration and Polling
 
-1. StudyResults queries orchestration endpoints.
-2. Backend returns `202 pending` until artifacts are complete, then `200 complete`.
-3. Frontend query hooks normalize polling states for ViewModels.
+1. NewStudy starts backend queue explicitly after upload batch (`pipeline/start`).
+2. Backend scheduler owns stage progression.
+3. StudyResults is observer-only:
+1. `pipeline/status` for orchestration state.
+2. legacy result endpoints for payload reads.
+4. Promote/cancel/regenerate actions call explicit pipeline mutation endpoints.
 
 Primary references:
 
 1. [Orchestration Endpoints](./API_SCHEMA_NOTES.md#orchestration-endpoints)
 2. [Orchestration State Model](./API_SCHEMA_NOTES.md#orchestration-state-model)
 3. [StudyResults Hook Chain](./frontend/ARCHITECTURE.md#studyresults-mvvm-hook-chain)
+4. [Frontend Queue Integration Plan](./ai-pipelines/FRONTEND_QUEUE_INTEGRATION_PLAN.md)
 
 ### LLM Report Generation
 

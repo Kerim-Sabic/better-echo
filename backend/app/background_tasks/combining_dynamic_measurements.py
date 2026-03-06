@@ -12,7 +12,7 @@ from app.database_models.instances import Instance
 from app.database_models.derived_results import DerivedResult, ResultStatus
 from app.api.inference.infer_echonet_dynamic_api import infer_lv_segmentation
 from app.api.inference.infer_measurements_api import infer_measurements_2d
-from app.helpers.ensemble.view_classifier import classify_views_for_study
+from app.services.inference.echoprime_service import classify_views_for_study
 from app.core.artifacts import DYNAMIC_MEASUREMENTS_COMBINED_TYPE
 from app.helpers.pipeline.study_status import sync_study_status
 

@@ -5,7 +5,7 @@ from uuid import uuid4
 
 import pytest
 from fastapi import FastAPI
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 
 from app.api.orchestration_apis.results.combined_dynamic_measurements_api import router as dynamic_router
@@ -16,12 +16,31 @@ from app.api.orchestration_apis.pipeline.pipeline_status_api import router as pi
 from app.api.orchestration_apis.pipeline.pipeline_promote_api import router as pipeline_promote_router
 from app.api.orchestration_apis.pipeline.pipeline_cancel_api import router as pipeline_cancel_router
 from app.api.orchestration_apis.pipeline.pipeline_regenerate_api import router as pipeline_regenerate_router
+from app.api.patients import router as patients_router
 from app.api.studies import router as studies_router
 from app.database.db import Base, get_db
 from app.database_models.patients import Patient
 from app.database_models.studies import Study
 from app.database_models.users import User
 from app.helpers.auth.authentication_functions import get_current_user_id
+
+
+def _apply_sqlite_pragmas(dbapi_connection) -> None:
+    cursor = dbapi_connection.cursor()
+    pragmas = (
+        ("foreign_keys", "ON"),
+        ("busy_timeout", "30000"),
+        ("journal_mode", "WAL"),
+        ("synchronous", "NORMAL"),
+    )
+    try:
+        for key, value in pragmas:
+            try:
+                cursor.execute(f"PRAGMA {key}={value}")
+            except Exception:
+                continue
+    finally:
+        cursor.close()
 
 
 @pytest.fixture(scope="session")
@@ -33,8 +52,9 @@ def db_engine():
     os.close(fd)
     engine = create_engine(
         f"sqlite:///{db_path}",
-        connect_args={"check_same_thread": False},
+        connect_args={"check_same_thread": False, "timeout": 30},
     )
+    event.listen(engine, "connect", lambda dbapi_connection, _record: _apply_sqlite_pragmas(dbapi_connection))
     Base.metadata.create_all(bind=engine)
 
     try:
@@ -50,6 +70,18 @@ def db_engine():
 @pytest.fixture(scope="session")
 def db_session_factory(db_engine):
     return sessionmaker(autocommit=False, autoflush=False, bind=db_engine)
+
+
+@pytest.fixture(autouse=True)
+def reset_test_db(db_session_factory):
+    # Part 1. Isolate tests by removing prior rows to avoid shared-DB queue/state bleed.
+    db = db_session_factory()
+    try:
+        for table in reversed(Base.metadata.sorted_tables):
+            db.execute(table.delete())
+        db.commit()
+    finally:
+        db.close()
 
 
 @pytest.fixture()
@@ -105,6 +137,7 @@ def app(db_session_factory, seeded_study):
     app.include_router(pipeline_cancel_router, prefix="/api")
     app.include_router(pipeline_regenerate_router, prefix="/api")
     app.include_router(studies_router, prefix="/api")
+    app.include_router(patients_router, prefix="/api")
 
     def override_get_db() -> Generator:
         db = db_session_factory()

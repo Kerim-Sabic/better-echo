@@ -1,6 +1,6 @@
 # Current Tasks
 
-Last Updated: 2026-03-02  
+Last Updated: 2026-03-06  
 Owner: Engineering
 
 ## How to Use This File
@@ -45,7 +45,8 @@ Owner: Engineering
     6. Use a single view-confidence gate of `>=0.75` for classifier-routed instances.
     7. If DICOM tags identify spectral Doppler upfront, skip view-classifier work for that instance and route directly to the Doppler lane.
     8. Persist explicit skip reason codes for filtered instances to keep orchestration transparent and debuggable.
-    9. Canonical implementation plan: [`BACKEND_QUEUE_REWORK_PLAN.md`](./ai-pipelines/BACKEND_QUEUE_REWORK_PLAN.md).
+    9. Canonical backend implementation plan: [`BACKEND_QUEUE_REWORK_PLAN.md`](./ai-pipelines/BACKEND_QUEUE_REWORK_PLAN.md).
+    10. Canonical frontend integration companion plan: [`FRONTEND_QUEUE_INTEGRATION_PLAN.md`](./ai-pipelines/FRONTEND_QUEUE_INTEGRATION_PLAN.md).
 4. Dashboard completion status hardening
     1. Ensure completion reflects all required orchestration outputs, not single-model completion.
 5. Approve/Sign and Send to PACS workflow wiring
@@ -58,6 +59,7 @@ Owner: Engineering
 Source of truth:
 
 1. [`BACKEND_QUEUE_REWORK_PLAN.md`](./ai-pipelines/BACKEND_QUEUE_REWORK_PLAN.md)
+2. [`FRONTEND_QUEUE_INTEGRATION_PLAN.md`](./ai-pipelines/FRONTEND_QUEUE_INTEGRATION_PLAN.md)
 
 Locked highlights:
 
@@ -116,16 +118,69 @@ Current implementation status:
 1. Canonical locations are now `backend/app/services/integrations/` (`llm_client.py`, `orthanc_client.py`) and `backend/app/services/reporting/` (`llm_report_service.py`).
 2. Root service duplicates (`llm_client.py`, `orthanc_client.py`, `llm_report_service.py`) were removed.
 3. Runtime imports and docs were updated to canonical paths.
+9. Iteration 4 promote-intent contract is implemented (backend + frontend):
+1. `pipeline/promote` now returns:
+1. `200` when promoted immediately
+2. `202` when promote intent is recorded (`auto_promote_on_complete`) and backend will auto-promote on completion
+3. `409` only when no valid promote context exists
+2. NewStudy Continue now supports `200` and `202` as navigable success paths.
+10. Frontend queue integration status:
+1. Iteration F5 is implemented:
+1. StudyResults now consumes `pipeline/status` via `usePipelineStatusQuery`.
+2. StudyResults page state is status-first with ready-over-pending precedence when active results are already complete.
+2. Iteration F6 is implemented:
+1. StudyResults now has queue-native combined regenerate action wired to `pipeline/regenerate-combined`.
+2. Regenerate success refreshes status and observer result queries.
+3. Regenerate `409` is handled as a controlled UI message (no crash path).
+3. Iteration F7 is implemented:
+1. StudyResults header now shows clearer pending/failed/ready status messaging and retry affordance for recoverable failures.
+2. Cancelled pipeline state is treated as neutral and is not shown as a persistent user-facing status label.
+3. NewStudy cancel flow now requires confirmation with context-specific copy for new-study upload vs existing-study update.
+11. Pilot reliability stabilization pass is implemented (backend + operator startup path):
+1. Study read routes (`GET /api/studies`, `GET /api/studies/{study_uid}`) no longer perform DB write-back during reads.
+2. Study delete path is idempotent with Orthanc `404` treated as already-deleted success.
+3. Ownership checks are enforced across study/patient/result observer APIs to prevent cross-user reads/writes.
+4. SQLite engine/test config now applies busy timeout + WAL pragmas and uses longer connection timeout for lock resilience.
+5. Pipeline cancel flow bug for new-study cleanup was fixed by preserving `job_id` before delete-cascade commit.
+6. Dev startup scripts now fail fast when `3000` or `8000` are already occupied, with process/PID hints.
+
+## Branch Carry-Forward Caveat (Do Not Miss)
+
+When moving work to `pilot-new-frontend`, you must carry the promote-intent backend contract patch.  
+Without this patch, frontend Continue behavior will diverge and can break expected auto-promotion flow.
+
+Minimum backend files to carry:
+
+1. `backend/app/database_models/pipeline_jobs.py`
+2. `backend/app/services/pipeline/service.py`
+3. `backend/app/services/pipeline/internal/runner.py`
+4. `backend/app/api/orchestration_apis/pipeline/pipeline_promote_api.py`
+5. `backend/app/schemas/orchestration_apis/pipeline/pipeline_promote_schemas.py`
+6. `backend/tests/unit/test_pipeline_queue_service.py`
+7. `backend/tests/integration/test_pipeline_queue_api.py`
+
+Minimum frontend files that rely on this contract:
+
+1. `frontend/src/features/NewStudy/hooks/useNewStudy.jsx`
+2. `frontend/src/pages/NewStudy.jsx`
+3. `frontend/src/features/NewStudy/hooks/__tests__/useNewStudy.test.js`
+4. `frontend/src/api/orchestration_apis/PipelineApi.js`
+5. `frontend/src/api/orchestration_apis/__tests__/PipelineApi.test.js`
 
 ## Planned Queue
 
 1. CSP hardening for Electron renderer.
-2. Continued inference performance tuning and batching safeguards.
-3. AI segmentation instance-to-viewer mapping refinements.
-4. Authentication/WebAuthn security hardening (parked until after pilot):
+2. Controlled multi-threaded/multi-worker queue execution for high-VRAM systems:
+    1. Add backend-owned parallel job execution behind env flag(s) for server profile.
+    2. Keep per-study ordering guarantees and cancellation semantics intact.
+    3. Add GPU slot controls/semaphores to avoid VRAM overcommit.
+    4. Add soak/perf validation for throughput vs latency before enabling by default.
+3. Continued inference performance tuning and batching safeguards.
+4. AI segmentation instance-to-viewer mapping refinements.
+5. Authentication/WebAuthn security hardening (parked until after pilot):
     1. Secure cookie policy for production (`Secure`, `SameSite`, HTTPS assumptions).
     2. Final CORS/origin restrictions for hospital deployment.
-5. Python deprecation cleanup pass (parked until after pilot):
+6. Python deprecation cleanup pass (parked until after pilot):
     1. Replace deprecated `datetime.utcnow()` usage with timezone-aware UTC.
     2. Replace Pydantic class-based config / `from_orm` legacy patterns with V2-native usage.
 

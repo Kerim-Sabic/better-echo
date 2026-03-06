@@ -4,6 +4,7 @@ import logging
 
 from app.database.db import get_db
 from app.database_models.studies import Study
+from app.helpers.auth.authentication_functions import get_current_user_id
 from app.schemas.studies.studies_schemas import StudyUpdateResponse
 
 logger = logging.getLogger(__name__)
@@ -11,7 +12,12 @@ router = APIRouter()
 
 
 @router.patch("/studies/{study_id}", response_model=StudyUpdateResponse)
-def update_study(study_id: int, payload: dict, db: Session = Depends(get_db)):
+def update_study(
+    study_id: int,
+    payload: dict,
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user_id),
+):
     """
     Update the `study_date` and/or the patient name for a given study.
 
@@ -22,7 +28,11 @@ def update_study(study_id: int, payload: dict, db: Session = Depends(get_db)):
     4. Commit the transaction and return a success message.
     """
     # --- Step 1: Fetch study or 404 ---
-    study = db.query(Study).get(study_id)
+    study = (
+        db.query(Study)
+        .filter(Study.id == study_id, Study.user_id == current_user_id)
+        .first()
+    )
     if not study:
         raise HTTPException(status_code=404, detail="Study not found")
     

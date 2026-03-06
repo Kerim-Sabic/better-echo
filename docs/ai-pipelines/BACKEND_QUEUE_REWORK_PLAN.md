@@ -1,12 +1,12 @@
 # Backend Queue Redesign Plan (Server-Owned Orchestration)
 
-Last Updated: 2026-02-25  
+Last Updated: 2026-03-06  
 Owner: Backend/AI
 
 ## Scope
 
-This is a backend-first implementation plan.  
-Frontend wiring is defined as follow-up and intentionally deferred until the OHIF branch stabilizes.
+This is the backend implementation blueprint for the queue architecture.  
+Frontend wiring is tracked in a companion plan so both tracks stay synchronized.
 
 Goals:
 
@@ -17,6 +17,10 @@ Goals:
 5. Support clean cancel semantics for both new studies and append-to-existing-study flows.
 6. Preserve clinician overrides when PanEcho/EchoPrime is regenerated.
 7. Improve throughput while keeping architecture minimal and maintainable.
+
+Frontend companion plan:
+
+1. [`FRONTEND_QUEUE_INTEGRATION_PLAN.md`](./FRONTEND_QUEUE_INTEGRATION_PLAN.md)
 
 ## Current Behavior (Code Reality)
 
@@ -31,13 +35,17 @@ Queue endpoints are now the backend orchestration control path:
    3. [`llm_report_get_api.py`](../../backend/app/api/orchestration_apis/results/llm_report_get_api.py)
 5. Upload endpoint stores DICOM/study data but does not enqueue autonomous pipeline work:
    1. [`upload_dicom_api.py`](../../backend/app/api/upload_dicom/upload_dicom_api.py)
-6. NewStudy cancel is navigation-only today and does not perform backend cleanup.
+6. NewStudy/StudyResults queue actions are implemented on current pilot branch frontend:
+   1. start after upload batch
+   2. promote on continue
+   3. cancel with backend cleanup semantics
+   4. regenerate combined via queue endpoint
 
 Main limitation:
 
-1. Current frontend still needs explicit queue-start wiring from upload flow.
-2. NewStudy cancel is not wired to backend queue cancel/cleanup yet.
-3. Frontend still needs promote/cancel/regenerate mutations and status-first orchestration UX wiring.
+1. Refactored/frontend-modernization branch still needs to consume this backend contract.
+2. Scheduler currently executes jobs serially in one thread; controlled parallel execution is planned for high-VRAM profile.
+3. Final post-pilot hardening (security/deprecation cleanup) remains tracked separately.
 
 ## Why Change Is Required
 
@@ -213,8 +221,10 @@ Planned changes:
 
 1. `POST /api/studies/{study_uid}/pipeline/promote`
 2. Auth + ownership required.
-3. Promotes latest successful draft artifact set.
-4. Fails safely if no successful draft exists.
+3. Promotes latest successful draft artifact set immediately when available (`200`).
+4. If draft is not yet promotable but an active queued/running job exists, records promote intent and returns `202`.
+5. Scheduler auto-promotes draft on completion when intent flag is set.
+6. Returns `409` only when no valid promote context exists.
 
 ### New: Cancel Pipeline
 
@@ -325,45 +335,64 @@ Precedence:
 2. Reuse resident models across studies with minimal unload.
 3. Keep queue concurrency conservative and profile-driven.
 
-## Planned Backend Additions (File Tree)
+## Canonical Backend File Tree (Implemented)
 
 ```text
 backend/app/
 |- api/
 |  `- orchestration_apis/
-|     |- pipeline_start_api.py            (new)
-|     |- pipeline_status_api.py           (new)
-|     |- pipeline_promote_api.py          (new)
-|     |- pipeline_cancel_api.py           (new)
-|     `- pipeline_regenerate_api.py       (new)
-|- background_tasks/
-|  `- pipeline_worker.py                  (new)
+|     |- pipeline/
+|     |  |- pipeline_start_api.py
+|     |  |- pipeline_status_api.py
+|     |  |- pipeline_promote_api.py
+|     |  |- pipeline_cancel_api.py
+|     |  `- pipeline_regenerate_api.py
+|     `- results/
+|        |- combined_panecho_echoprime_api.py
+|        |- combined_dynamic_measurements_api.py
+|        `- llm_report_get_api.py
 |- services/
-|  `- pipeline/
-|     |- scheduler.py                     (new)
-|     `- service.py                       (new)
+|  |- pipeline/
+|  |  |- scheduler.py
+|  |  |- service.py
+|  |  |- read.py
+|  |  |- cleanup.py
+|  |  |- stages/
+|  |  `- internal/
+|  |- integrations/
+|  |  |- orthanc_client.py
+|  |  `- llm_client.py
+|  `- reporting/
+|     `- llm_report_service.py
 |- helpers/
-|  `- study_instance_routing.py           (new)
+|  |- pipeline/
+|  |  |- pipeline_routing.py
+|  |  `- study_status.py
+|  |- doppler/
+|  |- inference_runtime/
+|  |- media/
+|  `- ensemble/
 |- database_models/
-|  |- pipeline_jobs.py                    (new)
-|  |- pipeline_stage_runs.py              (new)
-|  `- pipeline_artifact_sets.py           (new)
+|  |- pipeline_jobs.py
+|  |- pipeline_stage_runs.py
+|  `- pipeline_artifact_sets.py
 `- schemas/
    `- orchestration_apis/
-      |- pipeline_start_schemas.py        (new)
-      |- pipeline_status_schemas.py       (new)
-      |- pipeline_promote_schemas.py      (new)
-      |- pipeline_cancel_schemas.py       (new)
-      `- pipeline_regenerate_schemas.py   (new)
+      `- pipeline/
+         |- pipeline_start_schemas.py
+         |- pipeline_status_schemas.py
+         |- pipeline_promote_schemas.py
+         |- pipeline_cancel_schemas.py
+         `- pipeline_regenerate_schemas.py
 ```
 
-## File-by-File Checklist (Backend)
+## Canonical File-by-File Map (Backend)
 
 ### A) Data and schema
 
-1. `backend/app/database_models/pipeline_jobs.py` (new)
-2. `backend/app/database_models/pipeline_stage_runs.py` (new)
-3. `backend/app/database_models/pipeline_artifact_sets.py` (new)
+1. `backend/app/database_models/pipeline_jobs.py`
+2. `backend/app/database_models/pipeline_stage_runs.py`
+3. `backend/app/database_models/pipeline_artifact_sets.py`
 4. `backend/app/database_models/derived_results.py`
 5. `backend/app/database_models/__init__.py`
 6. `backend/app/database/setup_db.py`
@@ -376,33 +405,43 @@ backend/app/
 
 ### C) Queue APIs
 
-1. `backend/app/api/orchestration_apis/pipeline/pipeline_start_api.py` (new)
-2. `backend/app/api/orchestration_apis/pipeline/pipeline_status_api.py` (new)
-3. `backend/app/api/orchestration_apis/pipeline/pipeline_promote_api.py` (new)
-4. `backend/app/api/orchestration_apis/pipeline/pipeline_cancel_api.py` (new)
-5. `backend/app/api/orchestration_apis/pipeline/pipeline_regenerate_api.py` (new)
-6. `backend/app/api/orchestration_apis/__init__.py`
+1. `backend/app/api/orchestration_apis/pipeline/pipeline_start_api.py`
+2. `backend/app/api/orchestration_apis/pipeline/pipeline_status_api.py`
+3. `backend/app/api/orchestration_apis/pipeline/pipeline_promote_api.py`
+4. `backend/app/api/orchestration_apis/pipeline/pipeline_cancel_api.py`
+5. `backend/app/api/orchestration_apis/pipeline/pipeline_regenerate_api.py`
+6. `backend/app/api/orchestration_apis/results/combined_panecho_echoprime_api.py`
+7. `backend/app/api/orchestration_apis/results/combined_dynamic_measurements_api.py`
+8. `backend/app/api/orchestration_apis/results/llm_report_get_api.py`
+9. `backend/app/api/orchestration_apis/__init__.py`
 
-### D) Scheduler and worker
+### D) Scheduler and runtime
 
-1. `backend/app/services/pipeline/scheduler.py` (new)
-2. `backend/app/services/pipeline/service.py` (new)
-3. `backend/app/background_tasks/pipeline_worker.py` (new)
+1. `backend/app/services/pipeline/scheduler.py`
+2. `backend/app/services/pipeline/service.py`
+3. `backend/app/services/pipeline/internal/runner.py`
+4. `backend/app/services/pipeline/internal/state.py`
+5. `backend/app/services/pipeline/internal/store.py`
+6. `backend/app/services/pipeline/internal/registry.py`
 
 ### E) Stage integrations
 
-1. `backend/app/background_tasks/combining_panecho_echoprime.py`
-2. `backend/app/background_tasks/combining_dynamic_measurements.py`
-3. `backend/app/background_tasks/generate_llm_report.py`
-4. `backend/app/helpers/pipeline/study_status.py`
+1. `backend/app/services/pipeline/stages/prefilter.py`
+2. `backend/app/services/pipeline/stages/combined.py`
+3. `backend/app/services/pipeline/stages/dynamic_measurements.py`
+4. `backend/app/services/pipeline/stages/llm.py`
+5. `backend/app/background_tasks/combining_panecho_echoprime.py`
+6. `backend/app/background_tasks/combining_dynamic_measurements.py`
+7. `backend/app/background_tasks/generate_llm_report.py`
+8. `backend/app/helpers/pipeline/study_status.py`
 
 ### F) Pre-filter/routing
 
-1. `backend/app/helpers/study_instance_routing.py` (new)
+1. `backend/app/helpers/pipeline/pipeline_routing.py`
 2. `backend/app/helpers/ensemble/view_classifier.py`
 3. `backend/app/helpers/doppler/doppler_tags.py`
 
-### G) Performance/IO cleanup
+### G) Performance and inference runtime
 
 1. `backend/app/helpers/inference_runtime/inference_functions.py`
 2. `backend/app/api/inference/infer_echoprime_api.py`
@@ -497,14 +536,14 @@ Acceptance:
 2. Queue start path is explicit and deterministic.
 3. Observer endpoints return failed when queue stage state reports failure.
 
-### Iteration 7: Frontend Tie-In + Final Cleanup (Deferred)
+### Iteration 7: Frontend Tie-In + Final Cleanup (Tracked Separately)
 
 Focus:
 
-1. Wire NewStudy start/promote/cancel actions.
-2. Wire StudyResults observer-only status model.
-3. Use TanStack mutations for start/promote/cancel/regenerate actions and queries for observer-only status reads.
-4. Remove all compatibility fallback and legacy trigger code.
+1. Frontend work moved to companion plan:
+   1. [`FRONTEND_QUEUE_INTEGRATION_PLAN.md`](./FRONTEND_QUEUE_INTEGRATION_PLAN.md)
+2. Keep backend contracts stable while frontend migration lands.
+3. Remove compatibility fallback/legacy trigger assumptions only after frontend integration is fully validated.
 
 Acceptance:
 
@@ -548,13 +587,28 @@ Acceptance:
 1. Implement backend queue architecture first.
 2. Keep temporary fallback only where needed for safe frontend transition.
 3. Wait for OHIF/frontend stabilization.
-4. Integrate frontend to start/promote/cancel/status flow.
+4. Integrate frontend to start/promote/cancel/status flow using:
+   1. [`FRONTEND_QUEUE_INTEGRATION_PLAN.md`](./FRONTEND_QUEUE_INTEGRATION_PLAN.md)
 5. Run full validation on low-vram and server profiles.
 6. Remove all temporary fallback/legacy paths before release.
 
 Release rule:
 
 1. No legacy stage-trigger code ships in release branch.
+
+## Branch Portability Note
+
+If frontend work is moved to `pilot-new-frontend`, carry the backend promote-intent contract patch first.
+
+Required backend files:
+
+1. `backend/app/database_models/pipeline_jobs.py`
+2. `backend/app/services/pipeline/service.py`
+3. `backend/app/services/pipeline/internal/runner.py`
+4. `backend/app/api/orchestration_apis/pipeline/pipeline_promote_api.py`
+5. `backend/app/schemas/orchestration_apis/pipeline/pipeline_promote_schemas.py`
+6. `backend/tests/unit/test_pipeline_queue_service.py`
+7. `backend/tests/integration/test_pipeline_queue_api.py`
 
 ## Legacy Cleanup Register (Trim-at-End)
 

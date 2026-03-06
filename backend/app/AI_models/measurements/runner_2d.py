@@ -1,6 +1,7 @@
 import logging
 import os
 import time
+import gc
 from datetime import datetime
 from typing import Tuple, List, Dict, Optional
 
@@ -234,6 +235,29 @@ def _load_model(model_key: str) -> torch.nn.Module:
     _loaded_models[model_key] = model
     logger.info("[Measurements2D] Loaded model '%s' on %s in %.1fs", model_key, device, time.time() - start)
     return model
+
+
+def unload_2d_models(*, keep_weight: Optional[str] = None) -> None:
+    """
+    Unload cached 2D measurement models.
+
+    When keep_weight is provided, all other cached models are removed.
+    """
+    global _loaded_models
+    if not _loaded_models:
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        return
+
+    keep = keep_weight.strip().lower() if isinstance(keep_weight, str) else None
+    keys = list(_loaded_models.keys())
+    for key in keys:
+        if keep and key == keep:
+            continue
+        _loaded_models.pop(key, None)
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
 
 
 def run_2d_inference(model_weights: str, input_path: str, output_dir: str) -> Tuple[str, str]:

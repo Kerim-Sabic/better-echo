@@ -1,6 +1,6 @@
 # Runbook
 
-Last Updated: 2026-02-16  
+Last Updated: 2026-03-06  
 Owner: Engineering
 
 ## Scope
@@ -14,6 +14,7 @@ Operational troubleshooting for local development and desktop runtime.
 3. React frontend (`localhost:3000` in dev).
 4. Electron desktop runtime.
 5. Optional LLM service managed by scripts/Electron.
+6. Optional LAN dev mode (`0.0.0.0:8000` backend bind + LAN URL hint).
 
 ## Health Checks
 
@@ -24,6 +25,62 @@ Operational troubleshooting for local development and desktop runtime.
 1. `GET http://localhost:8042`
 3. Frontend (dev):
 1. `http://localhost:3000`
+4. Frontend (LAN dev):
+1. `http://<your-lan-ip>:3000`
+
+## LAN Device Cannot Connect
+
+Symptoms:
+
+1. App loads on host machine but not on another device in same network.
+2. Login/API calls from second device fail or timeout.
+
+Actions:
+
+1. Start LAN stack instead of localhost-only stack:
+
+```powershell
+scripts\dev-lan.bat
+```
+
+or with LLM:
+
+```powershell
+scripts\dev-lan-with-llm.bat
+```
+
+2. Use the printed `LAN test URL` from startup logs.
+3. Ensure backend logs show LAN hints and CORS allowlist at startup.
+4. Verify both devices are on same network and not guest-isolated.
+5. Verify Windows firewall allows inbound TCP on `3000`, `8000` (and `8042` if viewer access is needed).
+
+## Startup Fails: Port Already In Use
+
+Symptoms:
+
+1. `scripts/dev-start.bat` or `scripts/dev-lan.bat` exits immediately.
+2. Error indicates frontend `3000` or backend `8000` is already in use by another PID.
+
+Actions:
+
+1. Stop the conflicting process shown by the script output.
+2. If PID-based stop is needed:
+
+```powershell
+Stop-Process -Id <PID> -Force
+```
+
+3. Rerun startup script:
+
+```powershell
+scripts\dev-start.bat
+```
+
+or:
+
+```powershell
+scripts\dev-lan.bat
+```
 
 ## DockerOrthanc Not Available
 
@@ -68,6 +125,33 @@ References:
 Warning:
 
 1. Local dev DB reset is destructive.
+
+## SQLite "database is locked"
+
+Symptoms:
+
+1. API requests fail with `sqlite3.OperationalError: database is locked`.
+2. Dashboard requests may hang or return `500` while another process keeps a write lock.
+
+Immediate unblock:
+
+1. Stop all backend/electron/frontend dev processes.
+2. Ensure no backend listener remains on `8000`.
+3. Restart with one startup script only (`dev-start` or `dev-lan`), not multiple overlapping stacks.
+
+If lock persists:
+
+1. Backup and rebuild local DB:
+
+```powershell
+Copy-Item backend/database.db "backend/database.$(Get-Date -Format 'yyyyMMdd_HHmmss').bak"
+Remove-Item backend/database.db -Force -ErrorAction SilentlyContinue
+Remove-Item backend/database.db-wal -Force -ErrorAction SilentlyContinue
+Remove-Item backend/database.db-shm -Force -ErrorAction SilentlyContinue
+cd backend
+python -m app.database.setup_db
+python -m app.database.create_user
+```
 
 ## LLM StartupShutdown Problems
 

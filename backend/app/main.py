@@ -1,5 +1,6 @@
 import logging
 import os
+import socket
 import warnings
 
 from fastapi import FastAPI
@@ -8,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 import uvicorn
 
 from app.api.health.health_api import router as health_router
-from app.api.inference.infer_echoprime_api import start_echoprime_preload_background, unload_ep
+from app.services.inference.echoprime_service import start_echoprime_preload_background, unload_ep
 from app.api.upload_dicom import router as upload_dicom_router
 from app.api.studies import router as studies_router
 from app.api.patients import router as patients_router
@@ -18,7 +19,10 @@ from app.api.llm import router as llm_router
 from app.api.orchestration_apis import router as orchestration_router
 from app.helpers.media.ffmpeg_mp4_writer import kill_tracked_ffmpeg_processes
 from app.helpers.inference_runtime.device_selector import get_device_for_model
+from app.helpers.inference_runtime.inference_functions import unload_panecho_model
 from app.helpers.inference_runtime.preload_utils import safe_preload, has_min_vram
+from app.AI_models.measurements.runner_2d import unload_2d_models
+from app.AI_models.measurements.runner_doppler import unload_doppler_models
 from app.services.auth.webauthn.state import assert_webauthn_state_runtime_safe
 from app.services.pipeline.scheduler import start_pipeline_scheduler, stop_pipeline_scheduler
 
@@ -47,12 +51,40 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 # Silence passlib bcrypt version probe warnings (harmless)
 logging.getLogger("passlib.handlers.bcrypt").setLevel(logging.ERROR)
+# Part 1. Keep terminal output readable by suppressing high-volume HTTP access poll logs.
+logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+
+
+# Part 2. Detect current LAN IPv4 to support same-network frontend testing.
+def _detect_lan_ipv4() -> str | None:
+    sock = None
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.connect(("8.8.8.8", 80))
+        ip = sock.getsockname()[0]
+        if ip and not ip.startswith("127."):
+            return ip
+    except Exception:
+        return None
+    finally:
+        if sock:
+            sock.close()
+    return None
+
+
+# Part 3. Build CORS allowlist from env + detected LAN frontend origin.
+_detected_lan_ip = _detect_lan_ipv4()
+_cors_origins = list(settings.CORS_ORIGIN)
+if _detected_lan_ip:
+    _lan_frontend_origin = f"http://{_detected_lan_ip}:3000"
+    if _lan_frontend_origin not in _cors_origins:
+        _cors_origins.append(_lan_frontend_origin)
 
 app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGIN,
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -84,6 +116,12 @@ def startup_preload_models():
 
     # Part 2. Start backend-owned pipeline scheduler loop.
     start_pipeline_scheduler()
+
+    # Part 2.1 Emit LAN access hints for manual device testing.
+    if _detected_lan_ip:
+        logger.info("LAN frontend URL hint: http://%s:3000", _detected_lan_ip)
+        logger.info("LAN backend URL hint:  http://%s:8000", _detected_lan_ip)
+    logger.info("CORS allow origins: %s", _cors_origins)
 
     def _preload_panecho():
         from app.helpers.inference_runtime.inference_functions import get_model_and_device
@@ -145,6 +183,17 @@ def shutdown_cleanup():
         logger.info("Shutdown cleanup: unloaded EchoPrime.")
     except Exception as exc:
         logger.warning("Shutdown cleanup: failed to unload EchoPrime: %s", exc)
+    try:
+        unload_panecho_model()
+        logger.info("Shutdown cleanup: unloaded PanEcho.")
+    except Exception as exc:
+        logger.warning("Shutdown cleanup: failed to unload PanEcho: %s", exc)
+    try:
+        unload_2d_models()
+        unload_doppler_models()
+        logger.info("Shutdown cleanup: unloaded Measurements models.")
+    except Exception as exc:
+        logger.warning("Shutdown cleanup: failed to unload Measurements models: %s", exc)
 
 if __name__ == "__main__":
     logger.info("Starting FastAPI server on 0.0.0.0:8000")

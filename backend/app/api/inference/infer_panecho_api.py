@@ -1,4 +1,5 @@
-from typing import Dict, Any
+import os
+from typing import Dict, Any, List
 
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
@@ -8,6 +9,7 @@ import numpy as np
 
 from app.helpers.inference_runtime.inference_functions import (fetch_orthanc_instance_ids_from_study,
                         pick_frames_from_instance,
+                        pick_frames_from_local_dicom,
                         stack_to_tensor,
                         get_model_and_device)
 from app.helpers.inference_runtime.batch_config import get_batch_size
@@ -15,11 +17,41 @@ from app.schemas.inference.infer_panecho_schemas import (AllTasksPanEchoResponse
                                             InferPanEchoRequest)
 
 from app.database.db import get_db
+from app.database_models.instances import Instance
+from app.database_models.series import Series
 from app.database_models.studies import Study
 from app.database_models.derived_results import DerivedResult
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+# Part 1. Resolve local file paths for Orthanc instance IDs in this study.
+def _local_file_path_map(
+    *,
+    db: Session,
+    study_uid: str,
+    orthanc_instance_ids: List[str],
+) -> Dict[str, str]:
+    if not orthanc_instance_ids:
+        return {}
+
+    rows = (
+        db.query(Instance.instance_orthanc_id, Instance.file_path)
+        .join(Instance.series)
+        .join(Series.study)
+        .filter(
+            Study.study_uid == study_uid,
+            Instance.instance_orthanc_id.in_(orthanc_instance_ids),
+        )
+        .all()
+    )
+    return {
+        orthanc_id: file_path
+        for orthanc_id, file_path in rows
+        if orthanc_id and file_path and os.path.exists(file_path)
+    }
+
 
 @router.post("/infer/panecho", response_model=AllTasksPanEchoResponse)
 def infer_panecho(
@@ -48,6 +80,17 @@ def infer_panecho(
         raise HTTPException(status_code=404, detail=f"No instances found for study_uid={study_uid}")
 
     logger.info(f"[INFER_PANECHO] found {len(orthanc_instance_ids)} instance(s) for study ")
+    local_path_by_orthanc_id = _local_file_path_map(
+        db=db,
+        study_uid=study_uid,
+        orthanc_instance_ids=orthanc_instance_ids,
+    )
+    if local_path_by_orthanc_id:
+        logger.info(
+            "[INFER_PANECHO] Local DICOM fast-path available for %d/%d instance(s)",
+            len(local_path_by_orthanc_id),
+            len(orthanc_instance_ids),
+        )
 
     try:
         model, device = get_model_and_device()
@@ -70,7 +113,19 @@ def infer_panecho(
 
             for orthanc_instance_id in batch_ids:
                 try:
-                    frames = pick_frames_from_instance(orthanc_instance_id, 16)
+                    local_path = local_path_by_orthanc_id.get(orthanc_instance_id)
+                    if local_path:
+                        try:
+                            frames = pick_frames_from_local_dicom(local_path, 16)
+                        except Exception as local_error:
+                            logger.warning(
+                                "[INFER_PANECHO] Local frame read failed for %s (%s); falling back to Orthanc",
+                                orthanc_instance_id,
+                                local_error,
+                            )
+                            frames = pick_frames_from_instance(orthanc_instance_id, 16)
+                    else:
+                        frames = pick_frames_from_instance(orthanc_instance_id, 16)
                     x = stack_to_tensor(frames)  # (1, 3, 16, 224, 224)
                     tensors.append(x)
                     valid_ids.append(orthanc_instance_id)

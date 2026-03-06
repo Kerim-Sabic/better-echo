@@ -238,7 +238,7 @@ def test_start_pipeline_job_backfills_study_level_legacy_results_into_active_set
         db.close()
 
 
-def test_promote_latest_draft_artifact_set_fails_without_completed_draft(
+def test_promote_latest_draft_artifact_set_returns_pending_for_active_job(
     db_session_factory,
     seeded_study,
     monkeypatch,
@@ -246,7 +246,7 @@ def test_promote_latest_draft_artifact_set_fails_without_completed_draft(
     monkeypatch.setenv("ENABLE_LLM", "false")
     db = db_session_factory()
     try:
-        start_pipeline_job(
+        job, _ = start_pipeline_job(
             db=db,
             study_uid=seeded_study["study_uid"],
             user_id=seeded_study["user_id"],
@@ -254,15 +254,93 @@ def test_promote_latest_draft_artifact_set_fails_without_completed_draft(
             cleanup_scope=PipelineCleanupScope.none,
             uploaded_instance_uids=[],
         )
+        result = promote_latest_draft_artifact_set(
+            db=db,
+            study_uid=seeded_study["study_uid"],
+            user_id=seeded_study["user_id"],
+        )
+        assert result["state"] == "pending"
+        assert result["job_id"] == job.id
+        assert result["retry_after"] == 3
+        db.refresh(job)
+        assert job.auto_promote_on_complete is True
+    finally:
+        db.close()
+
+
+def test_promote_latest_draft_artifact_set_fails_without_job_or_draft(
+    db_session_factory,
+    seeded_study,
+    monkeypatch,
+):
+    monkeypatch.setenv("ENABLE_LLM", "false")
+    db = db_session_factory()
+    try:
         try:
             promote_latest_draft_artifact_set(
                 db=db,
                 study_uid=seeded_study["study_uid"],
                 user_id=seeded_study["user_id"],
             )
-            assert False, "Expected promote to fail without completed draft"
+            assert False, "Expected promote to fail when no job context exists"
         except HTTPException as exc:
             assert exc.status_code == 409
+    finally:
+        db.close()
+
+
+def test_pending_promote_intent_auto_promotes_when_job_completes(
+    db_session_factory,
+    seeded_study,
+    monkeypatch,
+):
+    monkeypatch.setenv("ENABLE_LLM", "false")
+    db = db_session_factory()
+    try:
+        job, _ = start_pipeline_job(
+            db=db,
+            study_uid=seeded_study["study_uid"],
+            user_id=seeded_study["user_id"],
+            run_mode=PipelineRunMode.upload_preview,
+            cleanup_scope=PipelineCleanupScope.none,
+            uploaded_instance_uids=[],
+        )
+        pending = promote_latest_draft_artifact_set(
+            db=db,
+            study_uid=seeded_study["study_uid"],
+            user_id=seeded_study["user_id"],
+        )
+        assert pending["state"] == "pending"
+
+        for _ in range(6):
+            run_pending_jobs_once(db=db, max_active_studies=16)
+            db.refresh(job)
+            if job.status == PipelineJobStatus.completed:
+                break
+        assert job.status == PipelineJobStatus.completed
+        assert job.auto_promote_on_complete is False
+
+        active_set = (
+            db.query(PipelineArtifactSet)
+            .filter(
+                PipelineArtifactSet.study_id == seeded_study["study_id"],
+                PipelineArtifactSet.state == PipelineArtifactSetState.active,
+            )
+            .order_by(PipelineArtifactSet.id.desc())
+            .first()
+        )
+        assert active_set is not None
+        assert active_set.pipeline_job_id == job.id
+
+        draft_set = (
+            db.query(PipelineArtifactSet)
+            .filter(
+                PipelineArtifactSet.pipeline_job_id == job.id,
+                PipelineArtifactSet.state == PipelineArtifactSetState.draft,
+            )
+            .first()
+        )
+        assert draft_set is None
     finally:
         db.close()
 
@@ -484,5 +562,41 @@ def test_regenerate_combined_failure_keeps_previous_active_set(
         )
         assert active_after_failure is not None
         assert active_after_failure.id == baseline_active_set.id
+    finally:
+        db.close()
+
+
+def test_run_pending_jobs_once_handles_deleted_job_row_during_stage_failure(
+    db_session_factory,
+    seeded_study,
+    monkeypatch,
+):
+    monkeypatch.setenv("ENABLE_LLM", "false")
+    db = db_session_factory()
+    try:
+        job, _ = start_pipeline_job(
+            db=db,
+            study_uid=seeded_study["study_uid"],
+            user_id=seeded_study["user_id"],
+            run_mode=PipelineRunMode.upload_preview,
+            cleanup_scope=PipelineCleanupScope.none,
+            uploaded_instance_uids=[],
+        )
+        job_id = job.id
+
+        # Part 1. Simulate concurrent deletion while scheduler processes a queued job.
+        def _delete_then_fail(*, db, job, **kwargs):
+            db.query(PipelineJob).filter(PipelineJob.id == job.id).delete(synchronize_session=False)
+            db.commit()
+            raise RuntimeError("forced_deleted_job_failure")
+
+        monkeypatch.setattr(
+            "app.services.pipeline.service._process_job_skeleton",
+            _delete_then_fail,
+        )
+
+        processed = run_pending_jobs_once(db=db, max_active_studies=4)
+        assert processed == 0
+        assert db.query(PipelineJob).filter(PipelineJob.id == job_id).first() is None
     finally:
         db.close()

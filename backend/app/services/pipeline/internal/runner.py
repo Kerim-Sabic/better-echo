@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
+from time import perf_counter
 from typing import Any, Callable, Dict, Optional
 
 from sqlalchemy.orm import Session
@@ -95,6 +96,9 @@ def _process_job_skeleton(
     finalize_cancelled_job,
     stage_handlers: Optional[Dict[str, Callable[..., Dict[str, Any]]]] = None,
 ) -> None:
+    job_id = job.id
+    job_started_perf = perf_counter()
+
     # Part 2.1 Handle cooperative cancellation before any stage work.
     if job.cancel_requested_at:
         study = db.query(Study).filter(Study.id == job.study_id).first()
@@ -144,32 +148,58 @@ def _process_job_skeleton(
                 finalize_cancelled_job(db, study=study, job=job, apply_cleanup=True)
             return
 
+        stage_name = stage_row.stage_name
         _set_stage_running(db=db, job=job, stage_row=stage_row)
+        stage_started_perf = perf_counter()
         try:
             payload = _execute_stage_for_job(
                 db=db,
                 job=job,
-                stage_name=stage_row.stage_name,
+                stage_name=stage_name,
                 draft_artifact_set=draft_artifact_set,
                 prefilter_payload=prefilter_payload,
                 stage_handlers=stage_handlers,
             )
             _set_stage_completed(db=db, stage_row=stage_row, payload=payload)
-            if stage_row.stage_name == "prefilter" and isinstance(payload, dict):
+            logger.info(
+                "[PIPELINE_QUEUE] Stage completed | job_id=%s stage=%s duration_s=%.3f",
+                job_id,
+                stage_name,
+                perf_counter() - stage_started_perf,
+            )
+            if stage_name == "prefilter" and isinstance(payload, dict):
                 prefilter_payload = payload
         except Exception as exc:
-            _set_stage_failed(db=db, job=job, stage_row=stage_row, error=exc)
+            logger.warning(
+                "[PIPELINE_QUEUE] Stage failed | job_id=%s stage=%s duration_s=%.3f error=%s",
+                job_id,
+                stage_name,
+                perf_counter() - stage_started_perf,
+                exc,
+            )
+            try:
+                _set_stage_failed(db=db, job=job, stage_row=stage_row, error=exc)
+            except Exception as state_exc:
+                db.rollback()
+                logger.warning(
+                    "[PIPELINE_QUEUE] Could not persist stage failure | job_id=%s stage=%s reason=%s",
+                    job_id,
+                    stage_name,
+                    state_exc,
+                )
             return
 
     # Part 2.5 Mark job complete once all stages are complete.
     if (not job.cancel_requested_at) and all(row.status == PipelineStageStatus.completed for row in stage_rows):
-        if job.run_mode == PipelineRunMode.regenerate_combined:
+        should_auto_promote = job.run_mode == PipelineRunMode.regenerate_combined or bool(job.auto_promote_on_complete)
+        if should_auto_promote:
             study = db.query(Study).filter(Study.id == job.study_id).first()
             if not study:
-                raise RuntimeError("Study not found for regenerate auto-promote")
+                raise RuntimeError("Study not found for auto-promote")
             promoted_artifact_set_id = _promote_draft_artifact_set_for_job(db, study=study, job=job)
+            job.auto_promote_on_complete = False
             logger.info(
-                "[PIPELINE_QUEUE] Auto-promoted regenerate job %s draft artifact_set_id=%s",
+                "[PIPELINE_QUEUE] Auto-promoted job %s draft artifact_set_id=%s",
                 job.id,
                 promoted_artifact_set_id,
             )
@@ -177,6 +207,11 @@ def _process_job_skeleton(
         job.current_stage = None
         job.finished_at = datetime.utcnow()
         db.commit()
+        logger.info(
+            "[PIPELINE_QUEUE] Job completed | job_id=%s duration_s=%.3f",
+            job_id,
+            perf_counter() - job_started_perf,
+        )
 
 
 __all__ = [
