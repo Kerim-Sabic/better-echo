@@ -1,4 +1,4 @@
-import { app, ipcMain } from 'electron';
+import { app, ipcMain, session } from 'electron';
 import * as path from 'path';
 import { registerIpcHandlers } from './ipc';
 import { attemptStartOrthanc, setupOrthancAuth, stopOrthanc } from './orthanc';
@@ -11,6 +11,10 @@ const REACT_DEV_PORT = 3000;
 const BACKEND_DEV_PORT = 8000;
 // Toggle to default-open DevTools in development. Flip to true locally if desired.
 const OPEN_DEVTOOLS_DEFAULT = true;
+// Clear renderer web caches on startup to avoid stale iframe/service worker content.
+const CLEAR_ELECTRON_WEB_CACHE_ON_START: boolean = (
+    (process.env.CLEAR_ELECTRON_WEB_CACHE_ON_START ?? '1') === '1'
+);
 // Allow autoplay with audio for splash video first pass
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 
@@ -57,8 +61,24 @@ function ensureMainWindow(): void {
     win.focus();
 }
 
+async function clearRendererWebCaches(): Promise<void> {
+    try {
+        const ses = session.defaultSession;
+        await ses.clearCache();
+        await ses.clearStorageData({
+            storages: ['serviceworkers', 'cachestorage'],
+        });
+        console.log('Cleared Electron renderer web cache/storage on startup.');
+    } catch (err) {
+        console.warn('Failed to clear Electron renderer web cache/storage:', err);
+    }
+}
+
 app.on('ready', async () => {
     try {
+        if (CLEAR_ELECTRON_WEB_CACHE_ON_START) {
+            await clearRendererWebCaches();
+        }
         if (!isDev) {
             attemptStartOrthanc().catch((err) => console.warn('Orthanc start warning:', err));
         }

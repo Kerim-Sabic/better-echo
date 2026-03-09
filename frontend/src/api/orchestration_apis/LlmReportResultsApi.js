@@ -1,4 +1,4 @@
-import { apiClient, parseRetryAfter } from "../shared/client";
+import { apiClient, parseRetryAfter } from "../client";
 
 /**
  * One-shot GET for LLM report results.

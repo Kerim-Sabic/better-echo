@@ -1,0 +1,10 @@
+import { useQuery } from "@tanstack/react-query";
+import { dashboardRepository } from "@/features/dashboard/model/dashboardRepository";
+
+export function useStudiesListQuery() {
+  return useQuery({
+    queryKey: "studies",
+    queryFn: () => dashboardRepository.getStudies(),
+    staleTime: 1000 * 60 * 2,
+  });
+}

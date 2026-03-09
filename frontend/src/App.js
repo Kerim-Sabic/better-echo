@@ -1,13 +1,13 @@
 // src/App.js
 import React from "react";
-import TitleBar, { TITLEBAR_HEIGHT } from "./components/TitleBar";
+import TitleBar, { TITLEBAR_HEIGHT } from "./general_components/TitleBar";
 import { BrowserRouter, Routes, Route, useNavigate, Navigate, useLocation } from "react-router-dom";
 import RoutePersistence from "./RoutePersistence";
 
 import { AuthProvider } from "./contexts/AuthenticationContext";
 import ProtectedRoute from "./contexts/ProtectedRoute";
 
-import SplashScreen from "./components/SplashScreen";
+import SplashScreen from "./general_components/SplashScreen";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import NewStudy from "./pages/NewStudy";

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { uploadDicomApi } from "../../../api/UploadDicomApi";
+import { uploadDicomApi } from "../../../api/upload_dicom/uploadDicomApi";
 import { pickTags, getStudyUID } from "../utils";
 
 export function useNewStudy() {
