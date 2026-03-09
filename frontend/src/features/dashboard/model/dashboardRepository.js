@@ -1,17 +1,14 @@
 import { getStudiesApi, patchStudyApi, deleteStudyApi } from "@/api/studies";
-import { formatStudiesList, formatStudyList } from "./dashboard.dto";
+import { formatStudiesList } from "./dashboard.dto";
 
 export const dashboardRepository = {
   async getStudies() {
     const rawStudiesData = await getStudiesApi();
-    const formattedStudiesData = formatStudiesList(rawStudiesData);
-    return formattedStudiesData;
+    return formatStudiesList(rawStudiesData);
   },
 
   async updateStudy(studyId, patchData) {
-    const rawStudyData = await patchStudyApi(studyId, patchData);
-    const formattedStudyData = formatStudyList(rawStudyData);
-    return formattedStudyData;
+    return patchStudyApi(studyId, patchData);
   },
 
   async deleteStudy(studyId) {

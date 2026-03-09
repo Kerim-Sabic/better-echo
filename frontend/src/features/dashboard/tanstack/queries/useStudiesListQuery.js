@@ -3,8 +3,10 @@ import { dashboardRepository } from "@/features/dashboard/model/dashboardReposit
 
 export function useStudiesListQuery() {
   return useQuery({
-    queryKey: "studies",
+    queryKey: ["studies"],
     queryFn: () => dashboardRepository.getStudies(),
-    staleTime: 1000 * 60 * 2,
+    staleTime: 1000 * 10,
+    refetchInterval: 3000,
+    refetchIntervalInBackground: true,
   });
 }

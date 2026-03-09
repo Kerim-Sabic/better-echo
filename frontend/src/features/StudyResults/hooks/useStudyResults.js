@@ -9,16 +9,16 @@ import { useStudyResultsTabs } from "./useStudyResultsTabs";
  * @returns {{
  *   state: "loading" | "pending" | "ready" | "not_found" | "error",
  *   error: unknown,
- * 
+ *
  *   panEchoEchoprimeState:     "loading" | "pending" | "ready" | "not_found" | "error",
  *   dynamicMeasurementsState:  "loading" | "pending" | "ready" | "not_found" | "error",
  *   llmReportState:            "loading" | "pending" | "ready" | "not_found" | "error",
- * 
+ *
  *   studyUID: string | null,
  *   // data buckets
- *   panechoEchoprimeResults: any,         // PanEcho + EchoPrime combined results
- *   dynamicMeasurementsResults: any,      // Dynamic + Measurements combined results
- *   llmReportResults: any,                // LLM report results
+ *   panechoEchoprimeResults: any,
+ *   dynamicMeasurementsResults: any,
+ *   llmReportResults: any,
  *   hasMeasurements: boolean,
  *   hasOverrides: boolean,
  *   latestOverrideAt: string | null,
@@ -43,6 +43,9 @@ export function useStudyResults(studyUid) {
     panEchoEchoprimeState,
     dynamicMeasurementsState,
     llmReportState,
+    pipelineStatus,
+    hasPipelineJob,
+    pipelineJobId,
     panechoEchoprimeResults,
     dynamicMeasurementsResults,
     llmReportResults,
@@ -99,7 +102,6 @@ export function useStudyResults(studyUid) {
   }, [handlePrint, aiMeasurements?.isIndexedMode, aiMeasurements?.bsa]);
 
   // ---- Compose UI-facing view model ----------------------------------------
-  // Note: Tracking specific values instead of entire query objects for performance
   /* eslint-disable react-hooks/exhaustive-deps */
   const viewModel = useMemo(
     () => ({
@@ -110,6 +112,9 @@ export function useStudyResults(studyUid) {
       panEchoEchoprimeState,
       dynamicMeasurementsState,
       llmReportState,
+      pipelineStatus,
+      hasPipelineJob,
+      pipelineJobId,
 
       // identifiers / header bits
       studyUID: studyUid ?? null,
@@ -165,10 +170,12 @@ export function useStudyResults(studyUid) {
       patientWeightKg,
       heartRateBpm,
       studyInstanceKey,
-
       panEchoEchoprimeState,
       dynamicMeasurementsState,
       llmReportState,
+      pipelineStatus,
+      hasPipelineJob,
+      pipelineJobId,
     ]
   );
   /* eslint-enable react-hooks/exhaustive-deps */

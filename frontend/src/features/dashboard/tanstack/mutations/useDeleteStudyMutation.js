@@ -7,7 +7,7 @@ export function useDeleteStudyMutation() {
   return useMutation({
     mutationFn: ({ studyId }) => dashboardRepository.deleteStudy(studyId),
     onSuccess: () => {
-      queryClient.invalidateQueries(["studies"]);
+      queryClient.invalidateQueries({ queryKey: ["studies"] });
     },
   });
 }

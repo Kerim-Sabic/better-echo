@@ -7,7 +7,7 @@ export function useUpdateStudyMutation() {
   return useMutation({
     mutationFn: ({ studyId, patchData }) => dashboardRepository.updateStudy(studyId, patchData),
     onSuccess: () => {
-      queryClient.invalidateQueries(["studies"]);
+      queryClient.invalidateQueries({ queryKey: ["studies"] });
     },
   });
 }

@@ -17,8 +17,11 @@ export default function NewStudyLayout({ viewModel }) {
     tags,
     handleUpload,
     createStudyAndAnalyze,
+    cancelAndGoBack,
     setTags,
     duplicatesFiles,
+    isContinuingToResults,
+    isCancellingPipeline,
   } = viewModel;
 
   return (
@@ -46,16 +49,21 @@ export default function NewStudyLayout({ viewModel }) {
         )}
 
         <div className="flex items-center justify-end gap-4">
-          <Button variant="outline" onClick={() => window.history.back()} className="h-12 px-8 gap-2">
-            Cancel
+          <Button
+            variant="outline"
+            onClick={cancelAndGoBack}
+            disabled={isCancellingPipeline || isContinuingToResults || isUploading}
+            className="h-12 px-8 gap-2"
+          >
+            {isCancellingPipeline ? "Cancelling..." : "Cancel"}
           </Button>
           <Button
             variant="gradient"
             onClick={createStudyAndAnalyze}
-            disabled={!studyUID}
+            disabled={!studyUID || isContinuingToResults || isUploading || isCancellingPipeline}
             className="h-12 px-8 gap-2 shadow-md hover:shadow-lg"
           >
-            Continue to Results
+            {isContinuingToResults ? "Preparing..." : "Continue to Results"}
           </Button>
         </div>
       </main>
