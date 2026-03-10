@@ -1,13 +1,22 @@
-export function formatStudyList(rawStudy) {
+import { formatStudyDateForUi, formatUploadedAtForUi } from "./dashboardDateHelpers";
+
+export function formatStudyData(rawStudy) {
   const rawPatient = rawStudy?.patient ?? null;
 
   return {
     id: rawStudy?.id ?? null,
     studyUid: rawStudy?.study_uid ?? null,
+
+    // Keep raw values for sorting/filtering/business logic
     studyDate: rawStudy?.study_date ?? null,
+    uploadedAt: rawStudy?.uploaded_at ?? null,
+
+    // Add UI-ready display values
+    studyDateLabel: formatStudyDateForUi(rawStudy?.study_date),
+    uploadedAtLabel: formatUploadedAtForUi(rawStudy?.uploaded_at),
+
     description: rawStudy?.description ?? null,
     status: rawStudy?.status ?? "unknown",
-    uploadedAt: rawStudy?.uploaded_at ?? null,
     patientHeightCm: rawStudy?.patient_height_cm ?? null,
     patientWeightKg: rawStudy?.patient_weight_kg ?? null,
     heartRateBpm: rawStudy?.heart_rate_bpm ?? null,
@@ -29,5 +38,5 @@ export function formatStudiesList(rawStudiesData = []) {
     return [];
   }
 
-  return rawStudiesData.map(formatStudyList);
+  return rawStudiesData.map(formatStudyData);
 }

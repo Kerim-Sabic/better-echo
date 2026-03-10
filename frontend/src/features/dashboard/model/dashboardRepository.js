@@ -4,7 +4,8 @@ import { formatStudiesList } from "./dashboard.dto";
 export const dashboardRepository = {
   async getStudies() {
     const rawStudiesData = await getStudiesApi();
-    return formatStudiesList(rawStudiesData);
+    const formattedStudiesList = formatStudiesList(rawStudiesData);
+    return formattedStudiesList;
   },
 
   async updateStudy(studyId, patchData) {

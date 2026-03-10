@@ -1,23 +1,18 @@
-import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/features/dashboard/views/DashboardLayout";
 import { useDashboardPageViewModel } from "@/features/dashboard/viewmodels/useDashboardPageViewModel";
 import { useEditStudyModalViewModel } from "@/features/dashboard/viewmodels/useEditStudyModalViewModel";
+import { useDashboardHeaderViewModel } from "@/features/dashboard/viewmodels/useDashboardHeaderViewModel";
 
 export default function DashboardPage() {
-  const navigate = useNavigate();
   const dashboardPageViewModel = useDashboardPageViewModel();
   const editStudyModalViewModel = useEditStudyModalViewModel();
-
-  const handleNewStudy = () => navigate("/studies/new");
-  const handleSelectStudy = study =>
-    navigate(`/studies/${encodeURIComponent(study.studyUid || study.id)}`);
+  const dashboardHeaderViewModel = useDashboardHeaderViewModel();
 
   return (
     <DashboardLayout
       dashboardPageViewModel={dashboardPageViewModel}
       editStudyModalViewModel={editStudyModalViewModel}
-      onNewStudy={handleNewStudy}
-      onSelectStudy={handleSelectStudy}
+      dashboardHeaderViewModel={dashboardHeaderViewModel}
     />
   );
 }
