@@ -29,10 +29,10 @@ Queue endpoints are now the backend orchestration control path:
 1. `POST /pipeline/start` creates/reuses queue jobs.
 2. Scheduler runs stages server-side.
 3. `GET /pipeline/status` is observer-only telemetry.
-4. Legacy orchestration GET routes are observer-only readers:
-   1. [`combined_panecho_echoprime_api.py`](../../backend/app/api/orchestration_apis/results/combined_panecho_echoprime_api.py)
-   2. [`combined_dynamic_measurements_api.py`](../../backend/app/api/orchestration_apis/results/combined_dynamic_measurements_api.py)
-   3. [`llm_report_get_api.py`](../../backend/app/api/orchestration_apis/results/llm_report_get_api.py)
+4. AI result GET routes are observer-only readers:
+   1. [`combined_panecho_echoprime_api.py`](../../backend/app/api/results/combined_panecho_echoprime_api.py)
+   2. [`combined_dynamic_measurements_api.py`](../../backend/app/api/results/combined_dynamic_measurements_api.py)
+   3. [`llm_report_get_api.py`](../../backend/app/api/results/llm_report_get_api.py)
 5. Upload endpoint stores DICOM/study data but does not enqueue autonomous pipeline work:
    1. [`upload_dicom_api.py`](../../backend/app/api/upload_dicom/upload_dicom_api.py)
 6. NewStudy/StudyResults queue actions are implemented on current pilot branch frontend:
@@ -247,9 +247,9 @@ Planned changes:
 
 Keep existing endpoints during transition:
 
-1. [`combined_panecho_echoprime_api.py`](../../backend/app/api/orchestration_apis/results/combined_panecho_echoprime_api.py)
-2. [`combined_dynamic_measurements_api.py`](../../backend/app/api/orchestration_apis/results/combined_dynamic_measurements_api.py)
-3. [`llm_report_get_api.py`](../../backend/app/api/orchestration_apis/results/llm_report_get_api.py)
+1. [`combined_panecho_echoprime_api.py`](../../backend/app/api/results/combined_panecho_echoprime_api.py)
+2. [`combined_dynamic_measurements_api.py`](../../backend/app/api/results/combined_dynamic_measurements_api.py)
+3. [`llm_report_get_api.py`](../../backend/app/api/results/llm_report_get_api.py)
 
 Final target behavior:
 
@@ -405,15 +405,15 @@ backend/app/
 
 ### C) Queue APIs
 
-1. `backend/app/api/orchestration_apis/pipeline/pipeline_start_api.py`
-2. `backend/app/api/orchestration_apis/pipeline/pipeline_status_api.py`
-3. `backend/app/api/orchestration_apis/pipeline/pipeline_promote_api.py`
-4. `backend/app/api/orchestration_apis/pipeline/pipeline_cancel_api.py`
-5. `backend/app/api/orchestration_apis/pipeline/pipeline_regenerate_api.py`
-6. `backend/app/api/orchestration_apis/results/combined_panecho_echoprime_api.py`
-7. `backend/app/api/orchestration_apis/results/combined_dynamic_measurements_api.py`
-8. `backend/app/api/orchestration_apis/results/llm_report_get_api.py`
-9. `backend/app/api/orchestration_apis/__init__.py`
+1. `backend/app/api/pipeline/pipeline_start_api.py`
+2. `backend/app/api/pipeline/pipeline_status_api.py`
+3. `backend/app/api/pipeline/pipeline_promote_api.py`
+4. `backend/app/api/pipeline/pipeline_cancel_api.py`
+5. `backend/app/api/pipeline/pipeline_regenerate_api.py`
+6. `backend/app/api/results/combined_panecho_echoprime_api.py`
+7. `backend/app/api/results/combined_dynamic_measurements_api.py`
+8. `backend/app/api/results/llm_report_get_api.py`
+9. `backend/app/main.py`
 
 ### D) Scheduler and runtime
 
@@ -605,8 +605,8 @@ Required backend files:
 1. `backend/app/database_models/pipeline_jobs.py`
 2. `backend/app/services/pipeline/service.py`
 3. `backend/app/services/pipeline/internal/runner.py`
-4. `backend/app/api/orchestration_apis/pipeline/pipeline_promote_api.py`
-5. `backend/app/schemas/orchestration_apis/pipeline/pipeline_promote_schemas.py`
+4. `backend/app/api/pipeline/pipeline_promote_api.py`
+5. `backend/app/schemas/pipeline/pipeline_promote_schemas.py`
 6. `backend/tests/unit/test_pipeline_queue_service.py`
 7. `backend/tests/integration/test_pipeline_queue_api.py`
 

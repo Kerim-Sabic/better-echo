@@ -83,19 +83,19 @@ Remaining redesign work:
 
 Implementation references:
 
-1. PanEcho+EchoPrime route: [`combined_panecho_echoprime_api.py`](../../backend/app/api/orchestration_apis/results/combined_panecho_echoprime_api.py#L29)
-2. Dynamic+Measurements route: [`combined_dynamic_measurements_api.py`](../../backend/app/api/orchestration_apis/results/combined_dynamic_measurements_api.py#L28)
-3. LLM report results route: [`llm_report_get_api.py`](../../backend/app/api/orchestration_apis/results/llm_report_get_api.py#L35)
-4. Queue start route: [`pipeline_start_api.py`](../../backend/app/api/orchestration_apis/pipeline/pipeline_start_api.py#L16)
-5. Queue status route: [`pipeline_status_api.py`](../../backend/app/api/orchestration_apis/pipeline/pipeline_status_api.py#L15)
+1. PanEcho+EchoPrime route: [`combined_panecho_echoprime_api.py`](../../backend/app/api/results/combined_panecho_echoprime_api.py)
+2. Dynamic+Measurements route: [`combined_dynamic_measurements_api.py`](../../backend/app/api/results/combined_dynamic_measurements_api.py)
+3. LLM report results route: [`llm_report_get_api.py`](../../backend/app/api/results/llm_report_get_api.py)
+4. Queue start route: [`pipeline_start_api.py`](../../backend/app/api/pipeline/pipeline_start_api.py)
+5. Queue status route: [`pipeline_status_api.py`](../../backend/app/api/pipeline/pipeline_status_api.py)
 6. Queue service (canonical): [`service.py`](../../backend/app/services/pipeline/service.py#L1)
 7. Queue scheduler (canonical): [`scheduler.py`](../../backend/app/services/pipeline/scheduler.py#L1)
-8. Queue promote route: [`pipeline_promote_api.py`](../../backend/app/api/orchestration_apis/pipeline/pipeline_promote_api.py#L14)
-9. Queue cancel route: [`pipeline_cancel_api.py`](../../backend/app/api/orchestration_apis/pipeline/pipeline_cancel_api.py#L14)
+8. Queue promote route: [`pipeline_promote_api.py`](../../backend/app/api/pipeline/pipeline_promote_api.py)
+9. Queue cancel route: [`pipeline_cancel_api.py`](../../backend/app/api/pipeline/pipeline_cancel_api.py)
 10. Queue cleanup service (canonical): [`cleanup.py`](../../backend/app/services/pipeline/cleanup.py#L1)
 11. Queue stage registry/handlers (canonical): [`registry.py`](../../backend/app/services/pipeline/internal/registry.py#L1), [`stages/`](../../backend/app/services/pipeline/stages/)
 12. Prefilter routing helper: [`pipeline_routing.py`](../../backend/app/helpers/pipeline/pipeline_routing.py#L64)
-13. Queue regenerate route: [`pipeline_regenerate_api.py`](../../backend/app/api/orchestration_apis/pipeline/pipeline_regenerate_api.py#L16)
+13. Queue regenerate route: [`pipeline_regenerate_api.py`](../../backend/app/api/pipeline/pipeline_regenerate_api.py)
 
 Service path note:
 

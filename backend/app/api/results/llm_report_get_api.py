@@ -11,7 +11,7 @@ from app.database_models.derived_results import ResultStatus
 from app.core.artifacts import LLM_REPORT_TYPE
 from app.helpers.auth.authentication_functions import get_current_user_id
 from app.helpers.row_to_dict.llm_report_row_to_dict import build_llm_report_from_row
-from app.schemas.orchestration_apis.llm_report_get_api_schemas import (
+from app.schemas.results.llm_report_get_api_schemas import (
     LLMReportResponse,
     LLMCompleteResponse,
     LLMPendingResponse,

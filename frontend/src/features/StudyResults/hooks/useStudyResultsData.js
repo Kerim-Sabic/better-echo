@@ -5,7 +5,7 @@ import { useLlmReportResultsQuery } from "./queries/useLlmReportResultsQuery";
 import { useStudyMetaQuery } from "./queries/useStudyMetaQuery";
 import { usePipelineStatusQuery } from "./queries/usePipelineStatusQuery";
 import { printMeasurements } from "../helpers/printMeasurements";
-import { startStudyPipeline } from "../../../api/orchestration_apis/PipelineApi";
+import { startStudyPipeline } from "../../../api/pipeline/PipelineApi";
 
 const FAILED_PIPELINE_STATUS = "failed";
 const COMPLETED_PIPELINE_STATUS = "completed";

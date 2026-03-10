@@ -1,19 +1,6 @@
 from typing import Any, Dict, Optional, Tuple
-import json
-import logging
-from pathlib import Path
 
-from app.helpers.clinical.measurement_ranges import get_range_status
-
-logger = logging.getLogger(__name__)
-
-_CONFIG_FILE = Path(__file__).resolve().parents[2] / "configs" / "thresholds.config.json"
-try:
-    with _CONFIG_FILE.open(encoding="utf-8") as f:
-        TASK_CONFIG = json.load(f)
-except Exception as exc:
-    TASK_CONFIG = {}
-    logger.warning(f"[combined_results_row_to_dict] Failed to load thresholds config: {exc}")
+from app.helpers.clinical.measurement_display import get_display_name, get_range_status, is_editable_task
 
 def _safe_dict(value: Any) -> Dict[str, Any]:
     return value if isinstance(value, dict) else {}
@@ -29,13 +16,7 @@ def _extract_payload(value_json: Any) -> Tuple[Dict[str, Any], Dict[str, Any], O
     return payload, {}, None
 
 def _task_display_name(task_key: str) -> str:
-    cfg = TASK_CONFIG.get(task_key) if isinstance(TASK_CONFIG, dict) else None
-    candidate = None
-    if isinstance(cfg, dict):
-        candidate = cfg.get("panecho_name") or cfg.get("echoprime_name")
-    if isinstance(candidate, str) and candidate.strip():
-        return candidate.strip().replace("_", " ").replace("-", " ")
-    return task_key.replace("_", " ").replace("-", " ").strip()
+    return get_display_name(task_key)
 
 def _to_float_or_none(value: Any) -> Optional[float]:
     try:
@@ -47,11 +28,59 @@ def _to_float_or_none(value: Any) -> Optional[float]:
     except Exception:
         return None
 
+
+def _public_override_item(override: Any) -> Optional[Dict[str, Any]]:
+    if not isinstance(override, dict):
+        return None
+
+    if override.get("value") is not None:
+        value = _to_float_or_none(override.get("value"))
+        if value is not None:
+            return {"value": value}
+
+    label = override.get("label")
+    if isinstance(label, str) and label.strip():
+        return {"label": label.strip()}
+
+    return None
+
+
+def _build_public_overrides_payload(overrides: Dict[str, Any]) -> Dict[str, Any]:
+    payload: Dict[str, Any] = {}
+    for task_key, override in overrides.items():
+        public_item = _public_override_item(override)
+        if public_item is not None:
+            payload[task_key] = public_item
+    return payload
+
+
+def _build_edit_baselines_payload(integrated_tasks: Dict[str, Any]) -> Dict[str, Any]:
+    baselines: Dict[str, Any] = {}
+
+    for task_key, task in integrated_tasks.items():
+        if not isinstance(task, dict) or not is_editable_task(task_key):
+            continue
+
+        units = task.get("units")
+        if units is not None:
+            value = _to_float_or_none(task.get("integrated_value"))
+            if value is not None:
+                baselines[task_key] = {"rawValue": value}
+            continue
+
+        label = task.get("integrated_label")
+        if isinstance(label, str) and label.strip():
+            baselines[task_key] = {"label": label.strip()}
+
+    return baselines
+
+
 def build_combined_sections_payload(value_json: Optional[Any]) -> Dict[str, Any]:
     integrated_tasks, overrides, overrides_updated_at = _extract_payload(value_json)
     return {
         "integrated_tasks": integrated_tasks,
-        "overrides": overrides,
+        "edit_baselines": _build_edit_baselines_payload(integrated_tasks),
+        "overrides": _build_public_overrides_payload(overrides),
         "overrides_updated_at": overrides_updated_at,
     }
 
@@ -59,6 +88,7 @@ def build_combined_sections_from_row(derived_results) -> Dict[str, Any]:
     if derived_results is None:
         return {
             "integrated_tasks": {},
+            "edit_baselines": {},
             "overrides": {},
             "overrides_updated_at": None,
         }

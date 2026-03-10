@@ -23,7 +23,8 @@ Canonical engineering documentation lives under `docs/`.
 4. [AI Orchestration](./ai-pipelines/ORCHESTRATION.md)
 5. [Backend Queue Redesign Plan](./ai-pipelines/BACKEND_QUEUE_REWORK_PLAN.md)
 6. [Frontend Queue Integration Plan](./ai-pipelines/FRONTEND_QUEUE_INTEGRATION_PLAN.md)
-7. [Testing Strategy](./testing/TESTING_STRATEGY.md)
+7. [Combined Results Compact Contract Plan](./ai-pipelines/COMBINED_RESULTS_COMPACT_CONTRACT_PLAN.md)
+8. [Testing Strategy](./testing/TESTING_STRATEGY.md)
 
 ## Decision Records
 

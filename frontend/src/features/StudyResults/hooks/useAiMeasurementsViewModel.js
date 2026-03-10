@@ -1,9 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { buildAiMeasurementsProps } from "../helpers/buildAiMeasurementsProps";
 import { INDEXABLE_KEYS } from "../helpers/aiMeasurementsConstants";
-import { updatePanechoEchoprimeOverrides } from "../../../api/orchestration_apis/PanechoEchoprimeResultsApi";
+import { applyIndexedMeasurementDisplay } from "../helpers/applyIndexedMeasurementDisplay";
+import { updatePanechoEchoprimeOverrides } from "../../../api/results/PanechoEchoprimeResultsApi";
 
 const EMPTY_OBJ = {};
+const EMPTY_DISPLAY = {
+  mainMeasurements: [],
+  Measurements: [],
+  hasMainMeasurements: false,
+  hasMeasurements: false,
+  totalMeasurements: 0,
+};
 
 const parseNumericInput = (rawValue) => {
   const cleaned = String(rawValue ?? "").replace(/[^\d.-]/g, "");
@@ -16,10 +23,8 @@ export function useAiMeasurementsViewModel({
   panechoEchoprimeResults,
   panEchoEchoprimeState,
   studyInstanceKey,
-  patientSex,
   patientHeightCm,
   patientWeightKg,
-  heartRateBpm,
   refresh,
 }) {
   // ---- Local UI state ------------------------------------------------------
@@ -100,6 +105,11 @@ export function useAiMeasurementsViewModel({
     [activeResults?.integrated_tasks]
   );
 
+  const backendDisplay = useMemo(
+    () => activeResults?.display || EMPTY_DISPLAY,
+    [activeResults?.display]
+  );
+
   const pendingOverrides = useMemo(() => {
     const pending = {};
     Object.entries(draftOverrides).forEach(([key, entry]) => {
@@ -133,47 +143,17 @@ export function useAiMeasurementsViewModel({
     return pending;
   }, [draftOverrides, integratedTasks, savedOverrides, isIndexedMode, bsa]);
 
-  const effectiveOverrides = useMemo(() => {
-    const merged = { ...savedOverrides };
-    Object.entries(pendingOverrides).forEach(([key, entry]) => {
-      if (entry === null) {
-        delete merged[key];
-        return;
-      }
-      if (entry?.label !== undefined) {
-        merged[key] = { ...(merged[key] || {}), label: entry.label };
-        return;
-      }
-      if (entry?.value !== undefined) {
-        const parsed = parseNumericInput(entry.value);
-        if (parsed !== null) {
-          const rawValue = (isIndexedMode && bsa && INDEXABLE_KEYS.has(key))
-            ? parsed * bsa
-            : parsed;
-          merged[key] = { ...(merged[key] || {}), value: parsed };
-          merged[key].value = rawValue;
-        }
-      }
-    });
-    return merged;
-  }, [pendingOverrides, savedOverrides, isIndexedMode, bsa]);
-
-  const { mainMeasurements, Measurements: measurementSections } = useMemo(
-    () => buildAiMeasurementsProps(activeResults, effectiveOverrides, patientSex, {
-      isIndexedMode,
-      bsa,
-      heartRateBpm,
-    }),
-    [activeResults, effectiveOverrides, patientSex, isIndexedMode, bsa, heartRateBpm]
+  const {
+    mainMeasurements,
+    Measurements: measurementSections,
+    hasMainMeasurements,
+    hasMeasurements,
+    totalMeasurements,
+  } = useMemo(
+    () => applyIndexedMeasurementDisplay(backendDisplay, { isIndexedMode, bsa }),
+    [backendDisplay, isIndexedMode, bsa]
   );
 
-  const hasMainMeasurements = Array.isArray(mainMeasurements) && mainMeasurements.length > 0;
-  const hasMeasurements = Array.isArray(measurementSections) && measurementSections.length > 0;
-  const totalMeasurements =
-    (hasMainMeasurements ? mainMeasurements.length : 0) +
-    (hasMeasurements
-      ? measurementSections.reduce((sum, m) => sum + (m.items?.length || 0), 0)
-      : 0);
   const isEmpty = !hasMainMeasurements && !hasMeasurements;
 
   // ---- Edit handlers -------------------------------------------------------
@@ -184,12 +164,16 @@ export function useAiMeasurementsViewModel({
     setDraftOverrides((prev) => {
       if (prev[item.key] !== undefined) return prev;
       const task = integratedTasks[item.key];
-      if (!task && item.rawNumericValue === undefined) return prev;
+      if (!task && item.rawValue === undefined) return prev;
       if (item.editType === "label") {
-        const currentLabel = effectiveOverrides?.[item.key]?.label ?? task.integrated_label ?? "";
+        const currentLabel = savedOverrides?.[item.key]?.label ?? task?.integrated_label ?? item.displayValue ?? "";
         return { ...prev, [item.key]: { label: currentLabel } };
       }
-      const currentValue = item.editValue ?? effectiveOverrides?.[item.key]?.value ?? task?.integrated_value;
+      const baseRawValue = savedOverrides?.[item.key]?.value ?? item.rawValue ?? task?.integrated_value;
+      const currentValue =
+        isIndexedMode && bsa && INDEXABLE_KEYS.has(item.key) && baseRawValue !== null && baseRawValue !== undefined
+          ? Number(baseRawValue) / bsa
+          : baseRawValue;
       return {
         ...prev,
         [item.key]: {
@@ -197,7 +181,7 @@ export function useAiMeasurementsViewModel({
         },
       };
     });
-  }, [effectiveOverrides, integratedTasks]);
+  }, [bsa, integratedTasks, isIndexedMode, savedOverrides]);
 
   const handleChangeValue = useCallback((key, nextValue) => {
     setDraftOverrides((prev) => ({ ...prev, [key]: { value: nextValue } }));

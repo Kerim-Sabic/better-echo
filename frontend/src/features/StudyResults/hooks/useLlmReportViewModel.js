@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import { generateLlmReport } from "../../../api/orchestration_apis/LlmReportResultsApi";
+import { generateLlmReport } from "../../../api/results/LlmReportResultsApi";
 
 export function useLlmReportViewModel({
   state,

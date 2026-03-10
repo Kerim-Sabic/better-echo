@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.database.db import get_db
 from app.helpers.auth.authentication_functions import get_current_user_id
-from app.schemas.orchestration_apis.pipeline.pipeline_promote_schemas import PipelinePromoteResponse
+from app.schemas.pipeline.pipeline_promote_schemas import PipelinePromoteResponse
 from app.services.pipeline.service import promote_latest_draft_artifact_set
 
 router = APIRouter()

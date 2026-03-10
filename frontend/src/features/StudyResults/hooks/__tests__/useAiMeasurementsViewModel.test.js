@@ -1,8 +1,8 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { useAiMeasurementsViewModel } from "../useAiMeasurementsViewModel";
-import { updatePanechoEchoprimeOverrides } from "../../../../api/orchestration_apis/PanechoEchoprimeResultsApi";
+import { updatePanechoEchoprimeOverrides } from "../../../../api/results/PanechoEchoprimeResultsApi";
 
-jest.mock("../../../../api/orchestration_apis/PanechoEchoprimeResultsApi", () => ({
+jest.mock("../../../../api/results/PanechoEchoprimeResultsApi", () => ({
     updatePanechoEchoprimeOverrides: jest.fn(),
 }));
 
@@ -23,6 +23,50 @@ const baseResults = {
         },
     },
     overrides: {},
+    display: {
+        mainMeasurements: [
+            {
+                key: "ejection_fraction",
+                label: "Ejection Fraction (EF)",
+                kind: "numeric",
+                displayValue: "60.00",
+                rawValue: 60,
+                units: "%",
+                probabilities: null,
+                color: "green",
+                discrepancy: false,
+                isOverridden: false,
+                editable: true,
+                editType: "value",
+                editOptions: null,
+            },
+        ],
+        Measurements: [
+            {
+                section: "Valves",
+                items: [
+                    {
+                        key: "aortic_stenosis",
+                        label: "Aortic Stenosis",
+                        kind: "categorical",
+                        displayValue: "Absent",
+                        rawValue: null,
+                        units: null,
+                        probabilities: null,
+                        color: "green",
+                        discrepancy: false,
+                        isOverridden: false,
+                        editable: true,
+                        editType: "label",
+                        editOptions: ["Absent", "Mild"],
+                    },
+                ],
+            },
+        ],
+        hasMainMeasurements: true,
+        hasMeasurements: true,
+        totalMeasurements: 2,
+    },
 };
 
 describe("useAiMeasurementsViewModel", () => {

@@ -15,20 +15,15 @@ export default function MeasurementBox({
 }) {
     const {
         label,
-        value,
+        kind,
+        displayValue,
+        probabilities,
         discrepancy,
         color,
         units,
         isOverridden,
         editType,
         editOptions,
-        displayVariant,
-        primaryLabel,
-        primaryValue,
-        primaryUnits,
-        secondaryLabel,
-        secondaryValue,
-        secondaryUnits,
     } = item;
 
     // ------------------------------------------------------------
@@ -77,31 +72,18 @@ export default function MeasurementBox({
     // ------------------------------------------------------------
     // PART 2 - Identify classification tasks
     // ------------------------------------------------------------
-    const isProbObject =
-        value &&
-        typeof value === "object" &&
-        value.probs &&
-        typeof value.probs === "object";
-    const isDualNumeric = displayVariant === "dual_numeric";
+    const hasProbabilities =
+        probabilities &&
+        typeof probabilities === "object" &&
+        Object.keys(probabilities).length > 0;
 
     // ------------------------------------------------------------
     // PART 3 - Detect unavailable measurement
     // ------------------------------------------------------------
     const isMissing =
-        value === null ||
-        value === undefined ||
-        value === "" ||
-        (typeof value === "number" && isNaN(value));
-
-    const formatMeasurementValue = (raw) => {
-        if (typeof raw === "number" && Number.isFinite(raw)) {
-            return raw.toFixed(2);
-        }
-        if (typeof raw === "string" && raw.trim()) {
-            return raw;
-        }
-        return "-";
-    };
+        displayValue === null ||
+        displayValue === undefined ||
+        displayValue === "";
 
     return (
         <div
@@ -215,13 +197,13 @@ export default function MeasurementBox({
                 This measurement is not available for this study.
             </div>
             </div>
-        ) : isProbObject ? (
+        ) : hasProbabilities ? (
             /* ------------------------------------------------------------
                 CASE 2 - CLASSIFICATION (with probabilities)
             ------------------------------------------------------------ */
             <div className="mt-3 text-center">
             <div className={`text-lg font-semibold ${text}`}>
-                {value.integrated_label}
+                {displayValue}
             </div>
 
             <div
@@ -232,7 +214,7 @@ export default function MeasurementBox({
                 space-y-2
                 "
             >
-                {Object.entries(value.probs).map(([k, v]) => (
+                {Object.entries(probabilities).map(([k, v]) => (
                 <div
                     key={k}
                     className="
@@ -257,38 +239,17 @@ export default function MeasurementBox({
                 ))}
             </div>
             </div>
-        ) : isDualNumeric ? (
-            <div className="mt-4 space-y-3">
-                <div className="flex items-end justify-between gap-3">
-                    <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                        {primaryLabel}
-                    </span>
-                    <div className="flex items-end gap-1">
-                        <span className={`text-2xl font-bold ${text}`}>
-                            {formatMeasurementValue(primaryValue)}
-                        </span>
-                        <span className="text-xs text-gray-500 mb-0.5">{primaryUnits}</span>
-                    </div>
-                </div>
-                <div className="h-px bg-gray-200/50" />
-                <div className="flex items-end justify-between gap-3">
-                    <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                        {secondaryLabel}
-                    </span>
-                    <div className="flex items-end gap-1">
-                        <span className={`text-sm font-semibold ${text}`}>
-                            {formatMeasurementValue(secondaryValue)}
-                        </span>
-                        <span className="text-xs text-gray-500 mb-0.5">{secondaryUnits}</span>
-                    </div>
-                </div>
-            </div>
         ) : (
             /* ------------------------------------------------------------
                 CASE 3 - NUMERIC OR SIMPLE LABEL
             ------------------------------------------------------------ */
             <div className="mt-5 text-center">
-            <span className={`text-3xl font-bold ${text}`}>{value}</span>
+            <div className="flex items-end justify-center gap-1">
+                <span className={`text-3xl font-bold ${text}`}>{displayValue}</span>
+                {kind === "numeric" && units && (
+                    <span className="mb-0.5 text-xs text-gray-500">{units}</span>
+                )}
+            </div>
             </div>
         )}
 

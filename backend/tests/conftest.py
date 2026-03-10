@@ -8,14 +8,14 @@ from fastapi import FastAPI
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 
-from app.api.orchestration_apis.results.combined_dynamic_measurements_api import router as dynamic_router
-from app.api.orchestration_apis.results.combined_panecho_echoprime_api import router as panecho_router
-from app.api.orchestration_apis.results.llm_report_get_api import router as llm_results_router
-from app.api.orchestration_apis.pipeline.pipeline_start_api import router as pipeline_start_router
-from app.api.orchestration_apis.pipeline.pipeline_status_api import router as pipeline_status_router
-from app.api.orchestration_apis.pipeline.pipeline_promote_api import router as pipeline_promote_router
-from app.api.orchestration_apis.pipeline.pipeline_cancel_api import router as pipeline_cancel_router
-from app.api.orchestration_apis.pipeline.pipeline_regenerate_api import router as pipeline_regenerate_router
+from app.api.pipeline.pipeline_cancel_api import router as pipeline_cancel_router
+from app.api.pipeline.pipeline_promote_api import router as pipeline_promote_router
+from app.api.pipeline.pipeline_regenerate_api import router as pipeline_regenerate_router
+from app.api.pipeline.pipeline_start_api import router as pipeline_start_router
+from app.api.pipeline.pipeline_status_api import router as pipeline_status_router
+from app.api.results.combined_dynamic_measurements_api import router as dynamic_router
+from app.api.results.combined_panecho_echoprime_api import router as panecho_router
+from app.api.results.llm_report_get_api import router as llm_results_router
 from app.api.patients import router as patients_router
 from app.api.studies import router as studies_router
 from app.database.db import Base, get_db

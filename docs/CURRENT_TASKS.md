@@ -1,6 +1,6 @@
 # Current Tasks
 
-Last Updated: 2026-03-06  
+Last Updated: 2026-03-11  
 Owner: Engineering
 
 ## How to Use This File
@@ -75,6 +75,7 @@ Locked highlights:
 10. Regenerate combined updates raw AI values while preserving clinician overrides.
 11. Use the iteration ladder in [`BACKEND_QUEUE_REWORK_PLAN.md`](./ai-pipelines/BACKEND_QUEUE_REWORK_PLAN.md#iteration-plan-small-manageable-steps) for small, focused implementation steps.
 12. Use the legacy trim list in [`BACKEND_QUEUE_REWORK_PLAN.md`](./ai-pipelines/BACKEND_QUEUE_REWORK_PLAN.md#legacy-cleanup-register-trim-at-end) during implementation and remove all temporary fallback paths before release.
+13. Combined-results compact-contract follow-up is tracked separately in [`COMBINED_RESULTS_COMPACT_CONTRACT_PLAN.md`](./ai-pipelines/COMBINED_RESULTS_COMPACT_CONTRACT_PLAN.md).
 
 Current implementation status:
 
@@ -154,8 +155,8 @@ Minimum backend files to carry:
 1. `backend/app/database_models/pipeline_jobs.py`
 2. `backend/app/services/pipeline/service.py`
 3. `backend/app/services/pipeline/internal/runner.py`
-4. `backend/app/api/orchestration_apis/pipeline/pipeline_promote_api.py`
-5. `backend/app/schemas/orchestration_apis/pipeline/pipeline_promote_schemas.py`
+4. `backend/app/api/pipeline/pipeline_promote_api.py`
+5. `backend/app/schemas/pipeline/pipeline_promote_schemas.py`
 6. `backend/tests/unit/test_pipeline_queue_service.py`
 7. `backend/tests/integration/test_pipeline_queue_api.py`
 
@@ -164,8 +165,7 @@ Minimum frontend files that rely on this contract:
 1. `frontend/src/features/NewStudy/hooks/useNewStudy.jsx`
 2. `frontend/src/pages/NewStudy.jsx`
 3. `frontend/src/features/NewStudy/hooks/__tests__/useNewStudy.test.js`
-4. `frontend/src/api/orchestration_apis/PipelineApi.js`
-5. `frontend/src/api/orchestration_apis/__tests__/PipelineApi.test.js`
+4. `frontend/src/api/pipeline/PipelineApi.js`
 
 ## Planned Queue
 
@@ -190,6 +190,19 @@ Minimum frontend files that rely on this contract:
 2. Sex-aware threshold range logic in measurements rendering.
 3. LLM payload enrichment and deterministic report generation controls.
 4. Dark mode and style system normalization work.
+5. Dynamic+Measurements observer payload normalization on backend:
+    1. read contract is now typed and normalized
+    2. stage payload internals are no longer passed through directly
+    3. preview pending responses preserve partial normalized instance/media progress
+6. StudyResults combined measurements frontend cutover:
+    1. active UI now renders backend-owned `panecho_echoprime_results.display`
+    2. local measurement-builder/range catalog files were removed from the active path
+    3. indexed mode remains a thin client-side display transform only
+7. Combined results compact-contract Iteration 1:
+    1. added `edit_baselines`
+    2. slimmed public `overrides` to `value` / `label`
+    3. kept `integrated_tasks` temporarily for compatibility
+    4. remaining work is tracked in [`COMBINED_RESULTS_COMPACT_CONTRACT_PLAN.md`](./ai-pipelines/COMBINED_RESULTS_COMPACT_CONTRACT_PLAN.md)
 
 ## Documentation Maintenance Checklist
 

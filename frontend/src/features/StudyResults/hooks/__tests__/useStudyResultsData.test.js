@@ -5,6 +5,8 @@ import { usePanechoEchoprimeResultsQuery } from "../queries/usePanechoEchoprimeR
 import { useDynamicMeasurementsResultsQuery } from "../queries/useDynamicMeasurementsResultsQuery";
 import { useLlmReportResultsQuery } from "../queries/useLlmReportResultsQuery";
 import { useStudyMetaQuery } from "../queries/useStudyMetaQuery";
+import { usePipelineStatusQuery } from "../queries/usePipelineStatusQuery";
+import { startStudyPipeline } from "../../../../api/pipeline/PipelineApi";
 
 jest.mock("../../helpers/printMeasurements", () => ({
     printMeasurements: jest.fn(),
@@ -20,6 +22,12 @@ jest.mock("../queries/useLlmReportResultsQuery", () => ({
 }));
 jest.mock("../queries/useStudyMetaQuery", () => ({
     useStudyMetaQuery: jest.fn(),
+}));
+jest.mock("../queries/usePipelineStatusQuery", () => ({
+    usePipelineStatusQuery: jest.fn(),
+}));
+jest.mock("../../../../api/pipeline/PipelineApi", () => ({
+    startStudyPipeline: jest.fn(),
 }));
 
 const makeQuery = (data, opts = {}) => ({
@@ -70,6 +78,11 @@ describe("useStudyResultsData", () => {
         usePanechoEchoprimeResultsQuery.mockReturnValue(makeQuery(panechoResponse));
         useDynamicMeasurementsResultsQuery.mockReturnValue(makeQuery(dynamicResponse));
         useLlmReportResultsQuery.mockReturnValue(makeQuery(llmResponse));
+        usePipelineStatusQuery.mockReturnValue({
+            data: { hasJob: true, pipelineStatus: "completed", isActive: false },
+            isLoading: false,
+            refetch: jest.fn(),
+        });
         useStudyMetaQuery.mockReturnValue({
             data: { data: { id: 1 }, patientName: "Alex" },
             isLoading: false,
@@ -88,6 +101,7 @@ describe("useStudyResultsData", () => {
         expect(result.current.hasMeasurements).toBe(true);
         expect(result.current.anyLoading).toBe(false);
         expect(result.current.latestOverrideAt).toBe("2025-01-01T00:00:00.000Z");
+        expect(startStudyPipeline).not.toHaveBeenCalled();
     });
 
     it("disables llm state when env flag is false", () => {
@@ -96,6 +110,11 @@ describe("useStudyResultsData", () => {
         usePanechoEchoprimeResultsQuery.mockReturnValue(makeQuery({ status: 404 }));
         useDynamicMeasurementsResultsQuery.mockReturnValue(makeQuery({ status: 404 }));
         useLlmReportResultsQuery.mockReturnValue(makeQuery({ status: 404 }));
+        usePipelineStatusQuery.mockReturnValue({
+            data: { hasJob: true, pipelineStatus: "completed", isActive: false },
+            isLoading: false,
+            refetch: jest.fn(),
+        });
         useStudyMetaQuery.mockReturnValue({
             data: { data: { id: 1 }, patientName: "Alex" },
             isLoading: false,

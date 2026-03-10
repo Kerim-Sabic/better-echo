@@ -6,7 +6,7 @@ import {
   cancelStudyPipeline,
   promoteStudyPipelineDraft,
   startStudyPipeline,
-} from "@/api/orchestration_apis/PipelineApi";
+} from "@/api/pipeline/PipelineApi";
 
 export function useNewStudyPageViewModel() {
   const navigate = useNavigate();

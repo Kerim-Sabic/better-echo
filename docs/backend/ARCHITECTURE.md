@@ -1,11 +1,11 @@
 # Backend Architecture
 
-Last Updated: 2026-03-06  
+Last Updated: 2026-03-10  
 Owner: Backend
 
 ## Scope
 
-FastAPI application architecture, router composition, persistence model, and orchestration responsibilities.
+FastAPI application architecture, router composition, persistence model, and AI results/pipeline responsibilities.
 
 ## Backend Tree
 
@@ -22,7 +22,8 @@ backend/app/
 |  |- patients/
 |  |- inference/
 |  |- llm/
-|  `- orchestration_apis/
+|  |- pipeline/
+|  `- results/
 |- database_models/
 |- schemas/
 |- background_tasks/
@@ -49,7 +50,8 @@ Registered in [`main.py`](../../backend/app/main.py#L62):
 5. Patients: [`get_patient_by_study_uid_api.py`](../../backend/app/api/patients/get_patient_by_study_uid_api.py#L10)
 6. Inference: [`infer_panecho_api.py`](../../backend/app/api/inference/infer_panecho_api.py#L24)
 7. LLM: [`llm_report_generate_api.py`](../../backend/app/api/llm/llm_report_generate_api.py#L21)
-8. Orchestration APIs: [`combined_panecho_echoprime_api.py`](../../backend/app/api/orchestration_apis/results/combined_panecho_echoprime_api.py#L29)
+8. AI Results: [`api/results/`](../../backend/app/api/results/)
+9. Pipeline: [`api/pipeline/`](../../backend/app/api/pipeline/)
 
 ## Data Model Highlights
 
@@ -110,7 +112,7 @@ Delete semantics:
 2. Orthanc `404` during delete is treated as idempotent success (already deleted remotely).
 3. Local study cleanup includes uploads, LV segmentation, 2D measurements, Doppler outputs, and LLM reports under `app/uploads`.
 
-## Inference and Orchestration Flow
+## Inference and Queue/Results Flow
 
 Direct inference routes:
 
@@ -119,18 +121,17 @@ Direct inference routes:
 3. EchoNet Dynamic: [`infer_echonet_dynamic_api.py`](../../backend/app/api/inference/infer_echonet_dynamic_api.py#L91)
 4. Measurements 2D: [`infer_measurements_api.py`](../../backend/app/api/inference/infer_measurements_api.py#L35)
 
-Orchestration routes:
+AI result routes:
 
-1. PanEcho+EchoPrime combined: [`combined_panecho_echoprime_api.py`](../../backend/app/api/orchestration_apis/results/combined_panecho_echoprime_api.py#L29)
-2. PanEcho+EchoPrime overrides: [`combined_panecho_echoprime_api.py`](../../backend/app/api/orchestration_apis/results/combined_panecho_echoprime_api.py#L120)
-3. Dynamic+Measurements combined: [`combined_dynamic_measurements_api.py`](../../backend/app/api/orchestration_apis/results/combined_dynamic_measurements_api.py#L28)
-4. LLM report results: [`llm_report_get_api.py`](../../backend/app/api/orchestration_apis/results/llm_report_get_api.py#L35)
-5. Pipeline start/status/promote/cancel/regenerate routes under [`api/orchestration_apis/pipeline/`](../../backend/app/api/orchestration_apis/pipeline/)
+1. PanEcho+EchoPrime combined + overrides: [`combined_panecho_echoprime_api.py`](../../backend/app/api/results/combined_panecho_echoprime_api.py)
+2. Dynamic+Measurements combined: [`combined_dynamic_measurements_api.py`](../../backend/app/api/results/combined_dynamic_measurements_api.py)
+3. LLM report results: [`llm_report_get_api.py`](../../backend/app/api/results/llm_report_get_api.py)
+4. Pipeline start/status/promote/cancel/regenerate routes under [`api/pipeline/`](../../backend/app/api/pipeline/)
 
 Persistence:
 
 1. Artifacts are stored in `DerivedResult` ([`derived_results.py`](../../backend/app/database_models/derived_results.py#L12))
-2. Combined/orchestration rows drive frontend polling via orchestration APIs.
+2. Combined/result rows drive frontend polling via AI result APIs.
 3. Study-level dashboard status is derived from orchestration artifacts via [`study_status.py`](../../backend/app/helpers/pipeline/study_status.py#L1)
 
 Study status policy:

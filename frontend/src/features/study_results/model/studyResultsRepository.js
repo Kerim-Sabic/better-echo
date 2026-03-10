@@ -2,9 +2,9 @@ import { getStudyByUidApi } from "@/api/StudiesApi";
 import {
   getPanechoEchoprimeCombinedResults,
   updatePanechoEchoprimeOverrides,
-} from "@/api/orchestration_apis/PanechoEchoprimeResultsApi";
-import { getDynamicMeasurementsCombinedResults } from "@/api/orchestration_apis/DynamicMeasurementsResultsApi";
-import { getLlmReportResults } from "@/api/orchestration_apis/LlmReportResultsApi";
+} from "@/api/results/PanechoEchoprimeResultsApi";
+import { getDynamicMeasurementsCombinedResults } from "@/api/results/DynamicMeasurementsResultsApi";
+import { getLlmReportResults } from "@/api/results/LlmReportResultsApi";
 import {
   formatDynamicMeasurementsResultsDto,
   formatLlmReportResultsDto,

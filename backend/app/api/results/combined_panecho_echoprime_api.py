@@ -14,13 +14,14 @@ from app.database_models.derived_results import ResultStatus
 from app.core.artifacts import PANECHO_ECHOPRIME_COMBINED_TYPE
 from app.helpers.row_to_dict.combined_results_row_to_dict import build_combined_sections_from_row
 from app.helpers.auth.authentication_functions import get_current_user_id
-from app.schemas.orchestration_apis.combined_panecho_echoprime_schemas import (
+from app.schemas.results.combined_panecho_echoprime_schemas import (
     CombinedResultsResponse,
     CompleteResponse,
     PendingResponse,
     FailedResponse,
 )
-from app.schemas.orchestration_apis.panecho_echoprime_overrides_schemas import OverridesUpdateRequest
+from app.schemas.results.panecho_echoprime_overrides_schemas import OverridesUpdateRequest
+from app.services.results import build_combined_display_payload
 from app.services.pipeline.read import (
     get_active_or_legacy_result_row,
     get_result_row_for_read_mode,
@@ -31,6 +32,12 @@ from app.services.pipeline.read import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+def _build_complete_payload(combined_results_row) -> dict:
+    payload = build_combined_sections_from_row(combined_results_row)
+    payload["display"] = build_combined_display_payload(combined_results_row)
+    return payload
 
 
 @router.get(
@@ -63,7 +70,7 @@ def get_combined_results(
 
     # Part 2. Complete response for ready active artifact.
     if combined_results_row and combined_results_row.status == ResultStatus.complete:
-        payload = build_combined_sections_from_row(combined_results_row)
+        payload = _build_complete_payload(combined_results_row)
         return CompleteResponse(status="complete", panecho_echoprime_results=payload)
 
     # Part 3. Failed response for explicit failed row or failed queue stage.
@@ -186,6 +193,6 @@ def update_combined_overrides(
     flag_modified(combined_row, "value_json")
     db.commit()
 
-    result_payload = build_combined_sections_from_row(combined_row)
+    result_payload = _build_complete_payload(combined_row)
     return CompleteResponse(status="complete", panecho_echoprime_results=result_payload)
 
