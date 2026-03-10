@@ -8,10 +8,10 @@ import { AuthProvider } from "./contexts/AuthenticationContext";
 import ProtectedRoute from "./contexts/ProtectedRoute";
 
 import SplashScreen from "./general_components/SplashScreen";
-import Login from "./pages/Login";
-import Dashboard from "./pages/Dashboard";
-import NewStudy from "./pages/NewStudy";
-import StudyResults from "./pages/StudyResults";
+import LoginPage from "@/features/login/views/LoginPage";
+import DashboardPage from "@/features/dashboard/views/DashboardPage";
+import NewStudyPage from "@/features/new_study/views/NewStudyPage";
+import StudyResultsPage from "@/features/study_results/views/StudyResultsPage";
 
 
 function SplashRoute() {
@@ -53,13 +53,13 @@ function Shell() {
             <Route path="/" element={<SplashRoute />} />
 
             {/* Auth */}
-            <Route path="/login" element={<Login />} />
+            <Route path="/login" element={<LoginPage />} />
 
             {/* App */}{/*Protected routes */}
             <Route element={<ProtectedRoute />}>
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/studies/new" element={<NewStudy />} />
-                <Route path="/studies/:studyUid" element={<StudyResults />} />
+                <Route path="/dashboard" element={<DashboardPage />} />
+                <Route path="/studies/new" element={<NewStudyPage />} />
+                <Route path="/studies/:studyUid" element={<StudyResultsPage />} />
             </Route>
 
             {/* Fallback */}

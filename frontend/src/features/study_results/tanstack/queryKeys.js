@@ -1,7 +1,7 @@
 export const studyResultsKeys = {
   all: ["studyResults"],
-  panecho: studyUid => ["combinedResults", studyUid],
-  dynamicMeasurements: studyUid => ["dynamicMeasurementsResults", studyUid],
-  llmReport: studyUid => ["llmReportResults", studyUid],
-  meta: studyUid => ["studyMeta", studyUid],
+  panecho: studyUid => ["studyResults", "panechoEchoprimeCombinedResults", studyUid],
+  dynamicMeasurements: studyUid => ["studyResults", "dynamicMeasurementsCombinedResults", studyUid],
+  llmReport: studyUid => ["studyResults", "llmReportResults", studyUid],
+  meta: studyUid => ["studyResults", "studyMeta", studyUid],
 };

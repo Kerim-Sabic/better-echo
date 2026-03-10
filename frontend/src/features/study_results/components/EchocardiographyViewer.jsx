@@ -24,7 +24,7 @@ function resolvePostMessageOrigin(baseUrl) {
 
   try {
     return normalizeOrigin(new URL(baseUrl).origin);
-  } catch (error) {
+  } catch {
     return "";
   }
 }
@@ -39,7 +39,15 @@ function isObject(value) {
   return typeof value === "object" && value !== null;
 }
 
-export default function Viewer({ studyUID, aiPayload = null, useAiPanel = false }) {
+function isLocalDev() {
+  return process.env.NODE_ENV !== "production";
+}
+
+export default function EchocardiographyViewer({
+  studyUID,
+  aiPayload = null,
+  useAiPanel = false,
+}) {
   const location = useLocation();
   const iframeRef = useRef(null);
   const iframeLoadedRef = useRef(false);
@@ -70,10 +78,11 @@ export default function Viewer({ studyUID, aiPayload = null, useAiPanel = false 
   params.set("_cb", cacheBuster);
 
   const src = `${viewerBase}?${params.toString()}`;
+
   const viewerOrigin = useMemo(() => {
     try {
       return normalizeOrigin(new URL(viewerBase).origin);
-    } catch (error) {
+    } catch {
       return targetOrigin || "";
     }
   }, [targetOrigin, viewerBase]);
@@ -100,7 +109,17 @@ export default function Viewer({ studyUID, aiPayload = null, useAiPanel = false 
       payload: aiPayload,
     };
 
-    targetWindow.postMessage(message, viewerOrigin || targetOrigin || "*");
+    const strictTargetOrigin = viewerOrigin || targetOrigin || "*";
+    const safeTargetOrigin = isLocalDev() ? "*" : strictTargetOrigin;
+
+    try {
+      targetWindow.postMessage(message, safeTargetOrigin);
+    } catch (error) {
+      if (isLocalDev()) {
+        return;
+      }
+      throw error;
+    }
   }, [aiPayload, hasBase, hasStudyUID, targetOrigin, useAiPanel, viewerOrigin]);
 
   const handleIFrameLoad = useCallback(() => {
@@ -127,8 +146,11 @@ export default function Viewer({ studyUID, aiPayload = null, useAiPanel = false 
         return;
       }
 
-      if (viewerOrigin && normalizeOrigin(event.origin) !== viewerOrigin) {
-        return;
+      if (!isLocalDev()) {
+        const normalizedEventOrigin = normalizeOrigin(event.origin);
+        if (viewerOrigin && normalizedEventOrigin !== viewerOrigin) {
+          return;
+        }
       }
 
       const data = event.data;

@@ -1,10 +1,9 @@
 import { useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import StudyResultsLayout from "@/features/study_results/views/StudyResultsLayout";
-import { useStudyResultsPageViewModel } from "@/features/study_results/viewmodels/useStudyResultsPageViewModel";
-import { buildStudyResultsOhifAiPayload } from "@/features/study_results/viewmodels/ohifAiPayloadSerializer";
+import { useStudyResultsViewModel } from "@/features/study_results/viewmodels/useStudyResultsViewModel";
 
-function toBooleanFlag(value, fallback = false) {
+function toBooleanFlag(value, fallback = true) {
   if (value === undefined || value === null || value === "") {
     return fallback;
   }
@@ -17,18 +16,36 @@ export default function StudyResultsPage() {
   const { studyUid } = useParams();
   const navigate = useNavigate();
 
-  const studyResultsPageViewModel = useStudyResultsPageViewModel(studyUid);
-  const useOhifAiPanel = toBooleanFlag(process.env.REACT_APP_ENABLE_OHIF_AI_PANEL, false);
+  const baseViewModel = useStudyResultsViewModel(studyUid);
 
+  const studyResultsViewModel = useMemo(
+    () => ({
+      ...baseViewModel,
+      studyUID: studyUid ?? null,
+    }),
+    [baseViewModel, studyUid]
+  );
+
+  const useOhifAiPanel = toBooleanFlag(process.env.REACT_APP_ENABLE_OHIF_AI_PANEL, true);
+
+  // Temporary payload while migrating serializer.
   const ohifAiPayload = useMemo(
-    () => buildStudyResultsOhifAiPayload(studyResultsPageViewModel),
-    [studyResultsPageViewModel]
+    () => ({
+      version: 1,
+      sentAt: new Date().toISOString(),
+      studyUID: studyUid ?? null,
+      state: studyResultsViewModel?.state ?? "loading",
+      panEchoEchoprimeState: studyResultsViewModel?.panEchoEchoprimeState ?? "loading",
+      panechoEchoprimeResults: studyResultsViewModel?.panechoEchoprimeResults ?? null,
+      combinedData: studyResultsViewModel?.combinedData ?? null,
+    }),
+    [studyUid, studyResultsViewModel]
   );
 
   return (
     <StudyResultsLayout
       navigateBack={() => navigate("/dashboard")}
-      viewModel={studyResultsPageViewModel}
+      studyResultsViewModel={studyResultsViewModel}
       useOhifAiPanel={useOhifAiPanel}
       ohifAiPayload={ohifAiPayload}
     />
