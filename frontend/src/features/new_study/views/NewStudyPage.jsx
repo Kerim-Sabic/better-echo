@@ -4,5 +4,5 @@ import { useNewStudyPageViewModel } from "@/features/new_study/viewmodels/useNew
 export default function NewStudyPage() {
   const newStudyPageViewModel = useNewStudyPageViewModel();
 
-  return <NewStudyLayout viewModel={newStudyPageViewModel} />;
+  return <NewStudyLayout newStudyPageViewModel={newStudyPageViewModel} />;
 }

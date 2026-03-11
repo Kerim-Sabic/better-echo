@@ -27,6 +27,10 @@ export function useNewStudyPageViewModel() {
   const [isCancellingPipeline, setIsCancellingPipeline] = useState(false);
 
   // --- Actions / Handlers ---
+  const onBack = () => {
+    navigate("/dashboard");
+  };
+
   const handleUpload = async () => {
     if (!files.length) {
       return;
@@ -181,7 +185,6 @@ export function useNewStudyPageViewModel() {
     try {
       const cancelResponse = await cancelStudyPipeline(studyUID);
       if (cancelResponse.status === 409) {
-        // No active cancellable job is safe to treat as a no-op for navigation.
         navigate("/dashboard");
         return;
       }
@@ -209,6 +212,7 @@ export function useNewStudyPageViewModel() {
     pipelineJobId,
     isContinuingToResults,
     isCancellingPipeline,
+    onBack,
     handleUpload,
     createStudyAndAnalyze,
     cancelAndGoBack,
