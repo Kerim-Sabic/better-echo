@@ -47,6 +47,7 @@ def test_build_combined_sections_payload_adds_edit_baselines_and_slims_overrides
         "aortic_stenosis": {"label": "Moderate"},
     }
     assert payload["overrides_updated_at"] == "2026-03-10T12:34:56Z"
+    assert "integrated_tasks" not in payload
 
 
 def test_build_combined_sections_payload_handles_legacy_raw_payload():
@@ -60,7 +61,7 @@ def test_build_combined_sections_payload_handles_legacy_raw_payload():
         }
     )
 
-    assert payload["integrated_tasks"]["ejection_fraction"]["integrated_value"] == 52.5
     assert payload["edit_baselines"] == {"ejection_fraction": {"rawValue": 52.5}}
     assert payload["overrides"] == {}
     assert payload["overrides_updated_at"] is None
+    assert "integrated_tasks" not in payload

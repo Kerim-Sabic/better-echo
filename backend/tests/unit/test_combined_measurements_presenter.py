@@ -130,8 +130,11 @@ def test_build_combined_display_payload_builds_main_sections_and_derived_metrics
     assert items["pulmonary_artery_pressure"]["displayValue"] == "35.00-40.00"
 
     assert items["relative_wall_thickness"]["displayValue"] == "0.40"
+    assert items["relative_wall_thickness"]["color"] == "green"
     assert items["cardiac_output"]["displayValue"] == "3.60"
+    assert items["cardiac_output"]["color"] == "yellow"
     assert items["max_aortic_gradient"]["displayValue"] == "16.00"
+    assert items["max_aortic_gradient"]["color"] == "yellow"
 
     assert items["trv"]["label"] == "Tricuspid Regurgitation Velocity (TRV)"
     assert items["trv"]["displayValue"] == "3.00"
@@ -192,3 +195,24 @@ def test_build_combined_display_payload_recomputes_ef_when_volume_override_chang
     assert items["ejection_fraction"]["rawValue"] == 30.0
     assert items["ejection_fraction"]["color"] == "red"
     assert items["ejection_fraction"]["isOverridden"] is False
+
+
+def test_build_combined_display_payload_omits_cardiac_output_when_heart_rate_is_zero():
+    display_payload = build_combined_display_payload(
+        _row_stub(_sample_combined_value_json(), heart_rate_bpm=0.0)
+    )
+    items = _items_by_key(display_payload)
+
+    assert "cardiac_output" not in items
+
+
+def test_build_combined_display_payload_defaults_missing_discrepancy_to_false():
+    value_json = _sample_combined_value_json()
+    value_json["integrated_tasks"]["gls"].pop("discrepancy")
+    value_json["integrated_tasks"]["aortic_stenosis"].pop("discrepancy")
+
+    display_payload = build_combined_display_payload(_row_stub(value_json))
+    items = _items_by_key(display_payload)
+
+    assert items["gls"]["discrepancy"] is False
+    assert items["aortic_stenosis"]["discrepancy"] is False

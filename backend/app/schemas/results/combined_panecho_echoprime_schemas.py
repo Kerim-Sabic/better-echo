@@ -32,7 +32,6 @@ class CombinedDisplayPayload(BaseModel):
 
 class CombinedSections(BaseModel):
     """Structured payload built by build_combined_sections_from_row()"""
-    integrated_tasks: Dict[str, Any] = Field(default_factory=dict)
     edit_baselines: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
     overrides: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
     overrides_updated_at: Optional[str] = None

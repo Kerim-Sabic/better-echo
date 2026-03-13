@@ -100,9 +100,9 @@ export function useAiMeasurementsViewModel({
     [activeResults?.overrides]
   );
 
-  const integratedTasks = useMemo(
-    () => activeResults?.integrated_tasks || EMPTY_OBJ,
-    [activeResults?.integrated_tasks]
+  const editBaselines = useMemo(
+    () => activeResults?.edit_baselines || EMPTY_OBJ,
+    [activeResults?.edit_baselines]
   );
 
   const backendDisplay = useMemo(
@@ -119,29 +119,38 @@ export function useAiMeasurementsViewModel({
         }
         return;
       }
-      const task = integratedTasks[key];
-      if (!task) return;
+      const baseline = editBaselines[key];
+      if (!baseline && !savedOverrides?.[key]) return;
       if (entry?.label !== undefined) {
         const nextLabel = String(entry.label || "").trim();
-        const baseline = savedOverrides?.[key]?.label ?? task.integrated_label ?? "";
-        if (nextLabel && nextLabel !== baseline) {
+        const baselineLabel = savedOverrides?.[key]?.label ?? baseline?.label ?? "";
+        if (nextLabel && nextLabel !== baselineLabel) {
           pending[key] = { label: nextLabel };
         }
         return;
       }
       if (entry?.value !== undefined) {
         const parsed = parseNumericInput(entry.value);
-        const baselineRaw = savedOverrides?.[key]?.value ?? task.integrated_value ?? null;
-        const baseline = (isIndexedMode && bsa && INDEXABLE_KEYS.has(key) && baselineRaw !== null)
+        const baselineRaw = savedOverrides?.[key]?.value ?? baseline?.rawValue ?? null;
+        const normalizedBaseline = (
+          isIndexedMode &&
+          bsa &&
+          INDEXABLE_KEYS.has(key) &&
+          baselineRaw !== null
+        )
           ? Number(baselineRaw) / bsa
           : baselineRaw;
-        if (parsed === null || baseline === null || Number(parsed) !== Number(baseline)) {
+        if (
+          parsed === null ||
+          normalizedBaseline === null ||
+          Number(parsed) !== Number(normalizedBaseline)
+        ) {
           pending[key] = { value: entry.value };
         }
       }
     });
     return pending;
-  }, [draftOverrides, integratedTasks, savedOverrides, isIndexedMode, bsa]);
+  }, [draftOverrides, editBaselines, savedOverrides, isIndexedMode, bsa]);
 
   const {
     mainMeasurements,
@@ -163,13 +172,13 @@ export function useAiMeasurementsViewModel({
     setFieldErrors((prev) => ({ ...prev, [item.key]: null }));
     setDraftOverrides((prev) => {
       if (prev[item.key] !== undefined) return prev;
-      const task = integratedTasks[item.key];
-      if (!task && item.rawValue === undefined) return prev;
+      const baseline = editBaselines[item.key];
+      if (!baseline && item.rawValue === undefined) return prev;
       if (item.editType === "label") {
-        const currentLabel = savedOverrides?.[item.key]?.label ?? task?.integrated_label ?? item.displayValue ?? "";
+        const currentLabel = savedOverrides?.[item.key]?.label ?? baseline?.label ?? "";
         return { ...prev, [item.key]: { label: currentLabel } };
       }
-      const baseRawValue = savedOverrides?.[item.key]?.value ?? item.rawValue ?? task?.integrated_value;
+      const baseRawValue = savedOverrides?.[item.key]?.value ?? baseline?.rawValue;
       const currentValue =
         isIndexedMode && bsa && INDEXABLE_KEYS.has(item.key) && baseRawValue !== null && baseRawValue !== undefined
           ? Number(baseRawValue) / bsa
@@ -181,7 +190,7 @@ export function useAiMeasurementsViewModel({
         },
       };
     });
-  }, [bsa, integratedTasks, isIndexedMode, savedOverrides]);
+  }, [bsa, editBaselines, isIndexedMode, savedOverrides]);
 
   const handleChangeValue = useCallback((key, nextValue) => {
     setDraftOverrides((prev) => ({ ...prev, [key]: { value: nextValue } }));

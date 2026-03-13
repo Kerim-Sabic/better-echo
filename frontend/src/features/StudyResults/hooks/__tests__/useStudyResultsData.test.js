@@ -50,7 +50,18 @@ describe("useStudyResultsData", () => {
     it("returns ready state with derived results", () => {
         process.env.REACT_APP_ENABLE_LLM = "true";
 
-        const panechoResults = { integrated_tasks: {}, overrides: {}, overrides_updated_at: "2025-01-01T00:00:00Z" };
+        const panechoResults = {
+            display: {
+                mainMeasurements: [],
+                Measurements: [],
+                hasMainMeasurements: false,
+                hasMeasurements: false,
+                totalMeasurements: 0,
+            },
+            edit_baselines: {},
+            overrides: {},
+            overrides_updated_at: "2025-01-01T00:00:00Z",
+        };
         const panechoResponse = {
             status: 200,
             data: { status: "complete", panecho_echoprime_results: panechoResults },

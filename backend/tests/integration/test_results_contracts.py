@@ -294,7 +294,16 @@ def test_combined_results_prefers_active_artifact_over_draft(app, db_session_fac
                 study_id=seeded_study["study_id"],
                 type=PANECHO_ECHOPRIME_COMBINED_TYPE,
                 status=ResultStatus.complete,
-                value_json={"integrated_tasks": {"active_key": {"value": 1}}},
+                value_json={
+                    "integrated_tasks": {
+                        "ejection_fraction": {
+                            "integrated_value": 51.0,
+                            "integrated_label": None,
+                            "units": "%",
+                            "discrepancy": False,
+                        }
+                    }
+                },
                 model_name="PanEcho_EchoPrime_Combined",
                 model_version="v1",
                 artifact_set_id=active_set.id,
@@ -305,7 +314,16 @@ def test_combined_results_prefers_active_artifact_over_draft(app, db_session_fac
                 study_id=seeded_study["study_id"],
                 type=PANECHO_ECHOPRIME_COMBINED_TYPE,
                 status=ResultStatus.complete,
-                value_json={"integrated_tasks": {"draft_key": {"value": 2}}},
+                value_json={
+                    "integrated_tasks": {
+                        "ejection_fraction": {
+                            "integrated_value": 62.0,
+                            "integrated_label": None,
+                            "units": "%",
+                            "discrepancy": False,
+                        }
+                    }
+                },
                 model_name="PanEcho_EchoPrime_Combined",
                 model_version="v1",
                 artifact_set_id=draft_set.id,
@@ -321,9 +339,9 @@ def test_combined_results_prefers_active_artifact_over_draft(app, db_session_fac
     assert response.status_code == 200
     body = response.json()
     assert body.get("status") == "complete"
-    tasks = body.get("panecho_echoprime_results", {}).get("integrated_tasks", {})
-    assert "active_key" in tasks
-    assert "draft_key" not in tasks
+    payload = body.get("panecho_echoprime_results", {})
+    assert payload.get("edit_baselines", {}).get("ejection_fraction") == {"rawValue": 51.0}
+    assert "integrated_tasks" not in payload
 
 
 def test_combined_results_preview_prefers_draft_artifact_over_active(app, db_session_factory, seeded_study):
@@ -350,7 +368,16 @@ def test_combined_results_preview_prefers_draft_artifact_over_active(app, db_ses
                 study_id=seeded_study["study_id"],
                 type=PANECHO_ECHOPRIME_COMBINED_TYPE,
                 status=ResultStatus.complete,
-                value_json={"integrated_tasks": {"active_key": {"value": 1}}},
+                value_json={
+                    "integrated_tasks": {
+                        "ejection_fraction": {
+                            "integrated_value": 51.0,
+                            "integrated_label": None,
+                            "units": "%",
+                            "discrepancy": False,
+                        }
+                    }
+                },
                 model_name="PanEcho_EchoPrime_Combined",
                 model_version="v1",
                 artifact_set_id=active_set.id,
@@ -361,7 +388,16 @@ def test_combined_results_preview_prefers_draft_artifact_over_active(app, db_ses
                 study_id=seeded_study["study_id"],
                 type=PANECHO_ECHOPRIME_COMBINED_TYPE,
                 status=ResultStatus.complete,
-                value_json={"integrated_tasks": {"draft_key": {"value": 2}}},
+                value_json={
+                    "integrated_tasks": {
+                        "ejection_fraction": {
+                            "integrated_value": 62.0,
+                            "integrated_label": None,
+                            "units": "%",
+                            "discrepancy": False,
+                        }
+                    }
+                },
                 model_name="PanEcho_EchoPrime_Combined",
                 model_version="v1",
                 artifact_set_id=draft_set.id,
@@ -379,9 +415,9 @@ def test_combined_results_preview_prefers_draft_artifact_over_active(app, db_ses
     assert response.status_code == 200
     body = response.json()
     assert body.get("status") == "complete"
-    tasks = body.get("panecho_echoprime_results", {}).get("integrated_tasks", {})
-    assert "draft_key" in tasks
-    assert "active_key" not in tasks
+    payload = body.get("panecho_echoprime_results", {})
+    assert payload.get("edit_baselines", {}).get("ejection_fraction") == {"rawValue": 62.0}
+    assert "integrated_tasks" not in payload
 
 
 def test_combined_results_complete_includes_display_payload(app, db_session_factory, seeded_study):
@@ -408,7 +444,7 @@ def test_combined_results_complete_includes_display_payload(app, db_session_fact
     body = response.json()
     assert body.get("status") == "complete"
     payload = body.get("panecho_echoprime_results", {})
-    assert "integrated_tasks" in payload
+    assert "integrated_tasks" not in payload
     assert "edit_baselines" in payload
     assert "overrides" in payload
     assert "display" in payload

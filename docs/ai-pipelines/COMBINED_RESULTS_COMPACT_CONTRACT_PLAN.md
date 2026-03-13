@@ -154,9 +154,9 @@ Why it mattered:
 1. The codebase now reflects the real architecture.
 2. Future work should not build on stale naming.
 
-### B) Compact-Contract Iteration 1 Already Completed
+### B) Compact-Contract Iterations 1-3 Completed
 
-This sub-plan already has its first iteration implemented.
+This sub-plan is now fully implemented.
 
 Done:
 
@@ -166,6 +166,10 @@ Done:
    2. `{ "label": ... }`
 3. Kept `integrated_tasks` temporarily for compatibility.
 4. Added focused serializer and route contract tests.
+5. Frontend edit flow now reads `edit_baselines` instead of `integrated_tasks`.
+6. Frontend hook tests were updated to prove `edit_baselines` is the active baseline source.
+7. Public combined-results responses no longer expose `integrated_tasks`.
+8. Public serializer and route contract tests were updated to assert the final compact contract.
 
 Current response shape right now:
 
@@ -173,7 +177,6 @@ Current response shape right now:
 {
   "status": "complete",
   "panecho_echoprime_results": {
-    "integrated_tasks": { "...": "..." },
     "edit_baselines": { "...": "..." },
     "overrides": { "...": "..." },
     "overrides_updated_at": "...",
@@ -185,8 +188,8 @@ Current response shape right now:
 What this means:
 
 1. `display` is now the active rendering payload.
-2. `edit_baselines` is the future-safe minimal source for edit/save/reset behavior.
-3. `integrated_tasks` still exists only as a temporary compatibility field.
+2. `edit_baselines` is now the active source for edit/save/reset behavior.
+3. `overrides` are slimmed to only the fields the active frontend uses.
 
 ## Current State (Before Remaining Work)
 
@@ -194,16 +197,12 @@ What this means:
 
 The contract currently includes:
 
-1. `integrated_tasks`
-2. `edit_baselines`
-3. `overrides`
-4. `overrides_updated_at`
-5. `display`
+1. `edit_baselines`
+2. `overrides`
+3. `overrides_updated_at`
+4. `display`
 
-This is already better than the old contract, but the final duplication is not removed yet because:
-
-1. frontend still reads `integrated_tasks` in the active edit path
-2. therefore backend cannot remove `integrated_tasks` safely yet
+This is the final compact public contract. Raw `integrated_tasks` remains only in stored `value_json` for internal backend use.
 
 ### Why `edit_baselines` Exists
 
@@ -251,13 +250,28 @@ Important meaning:
 3. `overrides` = what the doctor changed
 4. `overrides_updated_at` = last override mutation timestamp
 
-What will be gone:
+What is now gone:
 
 1. `integrated_tasks` from the public response
-
-## Detailed Remaining Plan
+## Implementation Record
 
 ## Iteration 2: Frontend Cutover To `edit_baselines`
+
+Status: Completed
+
+Done:
+
+1. `useAiMeasurementsViewModel.js` now reads numeric baselines from `edit_baselines[key].rawValue`.
+2. `useAiMeasurementsViewModel.js` now reads categorical baselines from `edit_baselines[key].label`.
+3. Indexed-mode baseline handling still works off raw AI values.
+4. Frontend tests now use fixtures where `integrated_tasks` intentionally disagrees with `edit_baselines`, proving the hook trusts `edit_baselines`.
+
+Result:
+
+1. No active frontend edit behavior depends on `integrated_tasks`.
+2. The only remaining reason `integrated_tasks` appears is temporary public response compatibility.
+
+## Remaining Plan
 
 ### Objective
 
@@ -393,6 +407,20 @@ Run:
 3. Add one explicit categorical edit baseline test.
 
 ## Iteration 3: Remove `integrated_tasks` From Public Combined Response
+
+Status: Completed
+
+Done:
+
+1. Removed `integrated_tasks` from the public `CombinedSections` schema.
+2. Updated `build_combined_sections_payload(...)` so the public serializer returns only:
+   1. `edit_baselines`
+   2. `overrides`
+   3. `overrides_updated_at`
+3. Kept raw `integrated_tasks` in stored `value_json` for internal backend use.
+4. Switched the combined display presenter to read raw internal payload parts directly instead of relying on the public serializer to leak `integrated_tasks`.
+5. Updated backend route/unit/integration tests to assert `integrated_tasks` is absent from the public response.
+6. Updated API contract docs to match the final compact response.
 
 ### Objective
 

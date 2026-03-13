@@ -113,6 +113,7 @@ Pipeline queue note (Iterations 1-5):
 3. AI result GET routes are observer-only in Iteration 6:
 1. they read active/draft-derived results and status
 2. they do not enqueue jobs or create pending marker rows
+4. `llm_report` now includes a backend-built `display` block (`mainTitle`, `sections`) so the frontend renders report structure without parsing markdown headings itself.
 4. Iteration 2 draft boundary is active:
 1. queue start creates a `draft` artifact set per job
 2. status returns `artifact_sets.draft` and `artifact_sets.active`
@@ -139,12 +140,12 @@ Pipeline queue note (Iterations 1-5):
 
 Combined PanEcho+EchoPrime compact-contract note:
 
-1. The response still includes `integrated_tasks` temporarily for compatibility.
-2. `display` is the render-ready frontend payload.
-3. `edit_baselines` is the minimal AI baseline snapshot used for edit/save/reset logic:
+1. `display` is the render-ready frontend payload.
+2. `edit_baselines` is the minimal AI baseline snapshot used for edit/save/reset logic:
 1. numeric tasks expose `rawValue`
 2. categorical tasks expose `label`
-4. Public `overrides` are slimmed to `value` or `label`; audit fields remain internal to stored `value_json`.
+3. Public `overrides` are slimmed to `value` or `label`; audit fields remain internal to stored `value_json`.
+4. `integrated_tasks` remains internal to stored `value_json` and is no longer part of the public observer response.
 
 Dynamic+Measurements observer payload note:
 

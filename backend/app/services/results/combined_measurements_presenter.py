@@ -18,7 +18,7 @@ from app.helpers.clinical.measurement_display import (
     is_main_measurement,
     is_range_display_task,
 )
-from app.helpers.row_to_dict.combined_results_row_to_dict import build_combined_sections_payload
+from app.helpers.row_to_dict.combined_results_row_to_dict import extract_combined_payload_parts
 
 
 EF_DISCREPANCY_THRESHOLD = 8.0
@@ -57,7 +57,10 @@ def _extract_patient_sex(derived_results: Any) -> Optional[str]:
 def _extract_heart_rate_bpm(derived_results: Any) -> Optional[float]:
     try:
         study = getattr(derived_results, "study", None)
-        return _to_float_or_none(getattr(study, "heart_rate_bpm", None))
+        heart_rate_bpm = _to_float_or_none(getattr(study, "heart_rate_bpm", None))
+        if heart_rate_bpm is None or not math.isfinite(heart_rate_bpm) or heart_rate_bpm <= 0:
+            return None
+        return heart_rate_bpm
     except Exception:
         return None
 
@@ -260,7 +263,7 @@ def _build_display_item(
             "units": None,
             "probabilities": probabilities,
             "color": get_color_for_label(task_key, display_value),
-            "discrepancy": False if has_override else task.get("discrepancy"),
+            "discrepancy": False if has_override else bool(task.get("discrepancy")),
             "isOverridden": has_override,
             "editable": editable,
             "editType": edit_type,
@@ -282,11 +285,16 @@ def _build_display_item(
     if display_value is None and effective_numeric_value is None:
         return None
 
-    color = (
-        get_color_for_numeric("tvpkgrad", derived_context.get("tvpkgrad_raw"), patient_sex)
-        if task_key == "trv"
-        else get_color_for_numeric(task_key, effective_numeric_value, patient_sex)
-    )
+    inherited_color_source = {
+        "trv": "tvpkgrad",
+        "max_aortic_gradient": "avpkvel",
+    }.get(task_key)
+    if inherited_color_source == "tvpkgrad":
+        color = get_color_for_numeric("tvpkgrad", derived_context.get("tvpkgrad_raw"), patient_sex)
+    elif inherited_color_source == "avpkvel":
+        color = get_color_for_numeric("avpkvel", derived_context.get("avpkvel_raw"), patient_sex)
+    else:
+        color = get_color_for_numeric(task_key, effective_numeric_value, patient_sex)
 
     return {
         "key": task_key,
@@ -297,7 +305,7 @@ def _build_display_item(
         "units": task.get("units"),
         "probabilities": None,
         "color": color,
-        "discrepancy": False if has_override else task.get("discrepancy"),
+        "discrepancy": False if has_override else bool(task.get("discrepancy")),
         "isOverridden": has_override,
         "editable": editable,
         "editType": edit_type,
@@ -306,9 +314,10 @@ def _build_display_item(
 
 
 def build_combined_display_payload(derived_results: Any) -> Dict[str, Any]:
-    raw_payload = build_combined_sections_payload(getattr(derived_results, "value_json", None))
-    integrated_tasks = _safe_dict(raw_payload.get("integrated_tasks"))
-    overrides = _safe_dict(raw_payload.get("overrides"))
+    integrated_tasks, raw_overrides, _overrides_updated_at = extract_combined_payload_parts(
+        getattr(derived_results, "value_json", None)
+    )
+    overrides = _safe_dict(raw_overrides)
     patient_sex = _extract_patient_sex(derived_results)
     heart_rate_bpm = _extract_heart_rate_bpm(derived_results)
     derived_context = _build_derived_context(integrated_tasks, overrides, heart_rate_bpm)

@@ -679,7 +679,38 @@
     "indexable": false,
     "edit_type": "value",
     "editable": false,
-    "bands": null,
+    "bands": {
+      "unisex": {
+        "normal": [
+          {
+            "min": 4.0,
+            "max": 8.0
+          }
+        ],
+        "borderline": [
+          {
+            "min": 3.5,
+            "max": 4.0,
+            "exclusiveMax": true
+          },
+          {
+            "min": 8.0,
+            "max": 9.0,
+            "exclusiveMin": true
+          }
+        ],
+        "abnormal": [
+          {
+            "max": 3.5,
+            "exclusiveMax": true
+          },
+          {
+            "min": 9.0,
+            "exclusiveMin": true
+          }
+        ]
+      }
+    },
     "categories": null
   },
   "ivsd": {
@@ -802,7 +833,28 @@
     "indexable": false,
     "edit_type": "value",
     "editable": false,
-    "bands": null,
+    "bands": {
+      "unisex": {
+        "normal": [
+          {
+            "max": 0.42
+          }
+        ],
+        "borderline": [
+          {
+            "min": 0.42,
+            "max": 0.45,
+            "exclusiveMin": true
+          }
+        ],
+        "abnormal": [
+          {
+            "min": 0.45,
+            "exclusiveMin": true
+          }
+        ]
+      }
+    },
     "categories": null
   },
   "lvsize": {

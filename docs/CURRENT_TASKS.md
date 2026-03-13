@@ -198,11 +198,13 @@ Minimum frontend files that rely on this contract:
     1. active UI now renders backend-owned `panecho_echoprime_results.display`
     2. local measurement-builder/range catalog files were removed from the active path
     3. indexed mode remains a thin client-side display transform only
-7. Combined results compact-contract Iteration 1:
+7. Combined results compact-contract:
     1. added `edit_baselines`
     2. slimmed public `overrides` to `value` / `label`
-    3. kept `integrated_tasks` temporarily for compatibility
-    4. remaining work is tracked in [`COMBINED_RESULTS_COMPACT_CONTRACT_PLAN.md`](./ai-pipelines/COMBINED_RESULTS_COMPACT_CONTRACT_PLAN.md)
+    3. cut frontend edit flow over to `edit_baselines`
+    4. removed `integrated_tasks` from the public combined-results response
+    5. internal raw `integrated_tasks` remains stored-only for backend combine/display/LLM flows
+    6. implementation record is tracked in [`COMBINED_RESULTS_COMPACT_CONTRACT_PLAN.md`](./ai-pipelines/COMBINED_RESULTS_COMPACT_CONTRACT_PLAN.md)
 
 ## Documentation Maintenance Checklist
 

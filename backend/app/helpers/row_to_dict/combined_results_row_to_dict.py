@@ -15,6 +15,11 @@ def _extract_payload(value_json: Any) -> Tuple[Dict[str, Any], Dict[str, Any], O
         return integrated, overrides, overrides_updated_at
     return payload, {}, None
 
+
+def extract_combined_payload_parts(value_json: Any) -> Tuple[Dict[str, Any], Dict[str, Any], Optional[str]]:
+    """Return internal combined payload parts from stored value_json."""
+    return _extract_payload(value_json)
+
 def _task_display_name(task_key: str) -> str:
     return get_display_name(task_key)
 
@@ -76,9 +81,8 @@ def _build_edit_baselines_payload(integrated_tasks: Dict[str, Any]) -> Dict[str,
 
 
 def build_combined_sections_payload(value_json: Optional[Any]) -> Dict[str, Any]:
-    integrated_tasks, overrides, overrides_updated_at = _extract_payload(value_json)
+    integrated_tasks, overrides, overrides_updated_at = extract_combined_payload_parts(value_json)
     return {
-        "integrated_tasks": integrated_tasks,
         "edit_baselines": _build_edit_baselines_payload(integrated_tasks),
         "overrides": _build_public_overrides_payload(overrides),
         "overrides_updated_at": overrides_updated_at,
@@ -87,7 +91,6 @@ def build_combined_sections_payload(value_json: Optional[Any]) -> Dict[str, Any]
 def build_combined_sections_from_row(derived_results) -> Dict[str, Any]:
     if derived_results is None:
         return {
-            "integrated_tasks": {},
             "edit_baselines": {},
             "overrides": {},
             "overrides_updated_at": None,
@@ -111,7 +114,7 @@ def build_combined_sections_for_llm(derived_results) -> Dict[str, Any]:
         elif patient_sex == "f":
             patient_sex = "female"
 
-    integrated_tasks, overrides, _overrides_updated_at = _extract_payload(
+    integrated_tasks, overrides, _overrides_updated_at = extract_combined_payload_parts(
         getattr(derived_results, "value_json", None)
     )
     tasks_payload: Dict[str, Any] = {}
