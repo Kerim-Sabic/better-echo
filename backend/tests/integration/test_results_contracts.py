@@ -10,6 +10,97 @@ from app.database_models.pipeline_artifact_sets import PipelineArtifactSet, Pipe
 from app.helpers.auth.authentication_functions import get_current_user_id
 
 
+def _sample_combined_value_json(*, overrides=None):
+    return {
+        "integrated_tasks": {
+            "ejection_fraction": {
+                "panecho_value_or_prob": 55.0,
+                "echoprime_value_or_prob": 50.0,
+                "integrated_value": 52.5,
+                "integrated_label": None,
+                "units": "%",
+                "discrepancy": False,
+            },
+            "gls": {
+                "panecho_value_or_prob": -19.0,
+                "echoprime_value_or_prob": -21.0,
+                "integrated_value": -20.0,
+                "integrated_label": None,
+                "units": "%",
+                "discrepancy": False,
+            },
+            "pulmonary_artery_pressure": {
+                "panecho_value_or_prob": 35.0,
+                "echoprime_value_or_prob": 40.0,
+                "integrated_value": 37.5,
+                "integrated_label": None,
+                "units": "mmHg",
+                "discrepancy": False,
+            },
+            "lvedv": {
+                "panecho_value_or_prob": 100.0,
+                "echoprime_value_or_prob": 100.0,
+                "integrated_value": 100.0,
+                "integrated_label": None,
+                "units": "mL",
+                "discrepancy": False,
+            },
+            "lvesv": {
+                "panecho_value_or_prob": 40.0,
+                "echoprime_value_or_prob": 40.0,
+                "integrated_value": 40.0,
+                "integrated_label": None,
+                "units": "mL",
+                "discrepancy": False,
+            },
+            "lvpwd": {
+                "panecho_value_or_prob": 1.0,
+                "echoprime_value_or_prob": 1.0,
+                "integrated_value": 1.0,
+                "integrated_label": None,
+                "units": "cm",
+                "discrepancy": False,
+            },
+            "lvidd": {
+                "panecho_value_or_prob": 5.0,
+                "echoprime_value_or_prob": 5.0,
+                "integrated_value": 5.0,
+                "integrated_label": None,
+                "units": "cm",
+                "discrepancy": False,
+            },
+            "avpkvel": {
+                "panecho_value_or_prob": 2.0,
+                "echoprime_value_or_prob": 2.0,
+                "integrated_value": 2.0,
+                "integrated_label": None,
+                "units": "m/s",
+                "discrepancy": False,
+            },
+            "tvpkgrad": {
+                "panecho_value_or_prob": 36.0,
+                "echoprime_value_or_prob": 36.0,
+                "integrated_value": 36.0,
+                "integrated_label": None,
+                "units": "mmHg",
+                "discrepancy": False,
+            },
+        },
+        "overrides": overrides or {},
+        "overrides_updated_at": "2026-03-10T10:00:00Z" if overrides else None,
+    }
+
+
+def _display_items_by_key(display_payload):
+    items = {}
+    for item in display_payload.get("mainMeasurements", []):
+        items[item["key"]] = item
+    for section in display_payload.get("Measurements", []):
+        for item in section.get("items", []):
+            items[item["key"]] = item
+    return items
+
+
 def test_panecho_echoprime_first_call_returns_pending_and_retry_after_no_side_effect(app, db_session_factory, seeded_study):
     client = TestClient(app)
     response = client.get(f"/api/studies/{seeded_study['study_uid']}/PanEcho-EchoPrime-combined-results")
@@ -203,7 +294,16 @@ def test_combined_results_prefers_active_artifact_over_draft(app, db_session_fac
                 study_id=seeded_study["study_id"],
                 type=PANECHO_ECHOPRIME_COMBINED_TYPE,
                 status=ResultStatus.complete,
-                value_json={"integrated_tasks": {"active_key": {"value": 1}}},
+                value_json={
+                    "integrated_tasks": {
+                        "ejection_fraction": {
+                            "integrated_value": 51.0,
+                            "integrated_label": None,
+                            "units": "%",
+                            "discrepancy": False,
+                        }
+                    }
+                },
                 model_name="PanEcho_EchoPrime_Combined",
                 model_version="v1",
                 artifact_set_id=active_set.id,
@@ -214,7 +314,16 @@ def test_combined_results_prefers_active_artifact_over_draft(app, db_session_fac
                 study_id=seeded_study["study_id"],
                 type=PANECHO_ECHOPRIME_COMBINED_TYPE,
                 status=ResultStatus.complete,
-                value_json={"integrated_tasks": {"draft_key": {"value": 2}}},
+                value_json={
+                    "integrated_tasks": {
+                        "ejection_fraction": {
+                            "integrated_value": 62.0,
+                            "integrated_label": None,
+                            "units": "%",
+                            "discrepancy": False,
+                        }
+                    }
+                },
                 model_name="PanEcho_EchoPrime_Combined",
                 model_version="v1",
                 artifact_set_id=draft_set.id,
@@ -230,9 +339,9 @@ def test_combined_results_prefers_active_artifact_over_draft(app, db_session_fac
     assert response.status_code == 200
     body = response.json()
     assert body.get("status") == "complete"
-    tasks = body.get("panecho_echoprime_results", {}).get("integrated_tasks", {})
-    assert "active_key" in tasks
-    assert "draft_key" not in tasks
+    payload = body.get("panecho_echoprime_results", {})
+    assert payload.get("edit_baselines", {}).get("ejection_fraction") == {"rawValue": 51.0}
+    assert "integrated_tasks" not in payload
 
 
 def test_combined_results_preview_prefers_draft_artifact_over_active(app, db_session_factory, seeded_study):
@@ -259,7 +368,16 @@ def test_combined_results_preview_prefers_draft_artifact_over_active(app, db_ses
                 study_id=seeded_study["study_id"],
                 type=PANECHO_ECHOPRIME_COMBINED_TYPE,
                 status=ResultStatus.complete,
-                value_json={"integrated_tasks": {"active_key": {"value": 1}}},
+                value_json={
+                    "integrated_tasks": {
+                        "ejection_fraction": {
+                            "integrated_value": 51.0,
+                            "integrated_label": None,
+                            "units": "%",
+                            "discrepancy": False,
+                        }
+                    }
+                },
                 model_name="PanEcho_EchoPrime_Combined",
                 model_version="v1",
                 artifact_set_id=active_set.id,
@@ -270,7 +388,16 @@ def test_combined_results_preview_prefers_draft_artifact_over_active(app, db_ses
                 study_id=seeded_study["study_id"],
                 type=PANECHO_ECHOPRIME_COMBINED_TYPE,
                 status=ResultStatus.complete,
-                value_json={"integrated_tasks": {"draft_key": {"value": 2}}},
+                value_json={
+                    "integrated_tasks": {
+                        "ejection_fraction": {
+                            "integrated_value": 62.0,
+                            "integrated_label": None,
+                            "units": "%",
+                            "discrepancy": False,
+                        }
+                    }
+                },
                 model_name="PanEcho_EchoPrime_Combined",
                 model_version="v1",
                 artifact_set_id=draft_set.id,
@@ -288,9 +415,103 @@ def test_combined_results_preview_prefers_draft_artifact_over_active(app, db_ses
     assert response.status_code == 200
     body = response.json()
     assert body.get("status") == "complete"
-    tasks = body.get("panecho_echoprime_results", {}).get("integrated_tasks", {})
-    assert "draft_key" in tasks
-    assert "active_key" not in tasks
+    payload = body.get("panecho_echoprime_results", {})
+    assert payload.get("edit_baselines", {}).get("ejection_fraction") == {"rawValue": 62.0}
+    assert "integrated_tasks" not in payload
+
+
+def test_combined_results_complete_includes_display_payload(app, db_session_factory, seeded_study):
+    db = db_session_factory()
+    try:
+        db.add(
+            DerivedResult(
+                study_id=seeded_study["study_id"],
+                type=PANECHO_ECHOPRIME_COMBINED_TYPE,
+                status=ResultStatus.complete,
+                value_json=_sample_combined_value_json(),
+                model_name="PanEcho_EchoPrime_Combined",
+                model_version="v1",
+            )
+        )
+        db.commit()
+    finally:
+        db.close()
+
+    client = TestClient(app)
+    response = client.get(f"/api/studies/{seeded_study['study_uid']}/PanEcho-EchoPrime-combined-results")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body.get("status") == "complete"
+    payload = body.get("panecho_echoprime_results", {})
+    assert "integrated_tasks" not in payload
+    assert "edit_baselines" in payload
+    assert "overrides" in payload
+    assert "display" in payload
+    assert payload["edit_baselines"]["ejection_fraction"] == {"rawValue": 52.5}
+    assert "tvpkgrad" in payload["edit_baselines"]
+    assert "trv" not in payload["edit_baselines"]
+
+    display = payload["display"]
+    assert display.get("hasMainMeasurements") is True
+    items = _display_items_by_key(display)
+    assert items["ejection_fraction"]["displayValue"] == "50.00-55.00"
+    assert items["trv"]["displayValue"] == "3.00"
+    assert items["trv"]["editable"] is False
+    assert items["tvpkgrad"]["label"] == "Tricuspid Regurgitation Peak Gradient (TRPG)"
+
+
+def test_combined_overrides_patch_returns_recomputed_display_payload(app, db_session_factory, seeded_study):
+    db = db_session_factory()
+    try:
+        db.add(
+            DerivedResult(
+                study_id=seeded_study["study_id"],
+                type=PANECHO_ECHOPRIME_COMBINED_TYPE,
+                status=ResultStatus.complete,
+                value_json=_sample_combined_value_json(),
+                model_name="PanEcho_EchoPrime_Combined",
+                model_version="v1",
+            )
+        )
+        db.commit()
+    finally:
+        db.close()
+
+    client = TestClient(app)
+    response = client.patch(
+        f"/api/studies/{seeded_study['study_uid']}/PanEcho-EchoPrime-overrides",
+        json={"overrides": {"tvpkgrad": {"value": 64.0}}},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body.get("status") == "complete"
+    payload = body.get("panecho_echoprime_results", {})
+    assert payload["overrides"]["tvpkgrad"] == {"value": 64.0}
+    display = payload.get("display", {})
+    items = _display_items_by_key(display)
+    assert items["tvpkgrad"]["displayValue"] == "64.00"
+    assert items["tvpkgrad"]["rawValue"] == 64.0
+    assert items["tvpkgrad"]["isOverridden"] is True
+    assert items["trv"]["displayValue"] == "4.00"
+    assert items["trv"]["isOverridden"] is False
+
+    db = db_session_factory()
+    try:
+        row = (
+            db.query(DerivedResult)
+            .filter(
+                DerivedResult.study_id == seeded_study["study_id"],
+                DerivedResult.type == PANECHO_ECHOPRIME_COMBINED_TYPE,
+            )
+            .first()
+        )
+        assert row is not None
+        assert row.value_json.get("overrides", {}).get("tvpkgrad", {}).get("value") == 64.0
+        assert row.value_json.get("overrides", {}).get("tvpkgrad", {}).get("edited_by", {}).get("id") == 1
+    finally:
+        db.close()
 
 
 def test_dynamic_results_preview_prefers_draft_artifact_over_active(app, db_session_factory, seeded_study):
@@ -407,7 +628,16 @@ def test_dynamic_results_complete_exposes_instance_number_and_output_path(app, d
     assert len(instances) == 1
     assert instances[0].get("instance_number") == "17"
     first_result = instances[0].get("results", [])[0]
+    assert sorted(first_result.keys()) == [
+        "message",
+        "output_kind",
+        "output_path",
+        "status",
+        "task",
+        "ui_label",
+    ]
     assert first_result.get("output_path", "").endswith(".mp4")
+    assert first_result.get("output_kind") == "video"
 
 
 def test_dynamic_results_pending_preview_includes_partial_payload(app, db_session_factory, seeded_study):
@@ -466,6 +696,9 @@ def test_dynamic_results_pending_preview_includes_partial_payload(app, db_sessio
     instances = partial.get("instances", [])
     assert len(instances) == 1
     assert instances[0].get("instance_number") == "20"
+    first_result = instances[0].get("results", [])[0]
+    assert first_result.get("output_kind") == "video"
+    assert "weights" not in first_result
 
 
 def test_llm_results_prefers_active_artifact_over_draft(app, db_session_factory, seeded_study, monkeypatch):

@@ -153,12 +153,12 @@ Primary references:
 2. Backend scheduler owns stage progression.
 3. StudyResults is observer-only:
 1. `pipeline/status` for orchestration state.
-2. legacy result endpoints for payload reads.
+2. AI result endpoints for payload reads.
 4. Promote/cancel/regenerate actions call explicit pipeline mutation endpoints.
 
 Primary references:
 
-1. [Orchestration Endpoints](./API_SCHEMA_NOTES.md#orchestration-endpoints)
+1. [AI Results and Pipeline Endpoints](./API_SCHEMA_NOTES.md#ai-results-and-pipeline-endpoints)
 2. [Orchestration State Model](./API_SCHEMA_NOTES.md#orchestration-state-model)
 3. [StudyResults Hook Chain](./frontend/ARCHITECTURE.md#studyresults-mvvm-hook-chain)
 4. [Frontend Queue Integration Plan](./ai-pipelines/FRONTEND_QUEUE_INTEGRATION_PLAN.md)

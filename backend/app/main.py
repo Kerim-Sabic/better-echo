@@ -16,7 +16,8 @@ from app.api.patients import router as patients_router
 from app.api.inference import router as inference_router
 from app.api.authentication import router as authentication_router
 from app.api.llm import router as llm_router
-from app.api.orchestration_apis import router as orchestration_router
+from app.api.pipeline import router as pipeline_router
+from app.api.results import router as results_router
 from app.helpers.media.ffmpeg_mp4_writer import kill_tracked_ffmpeg_processes
 from app.helpers.inference_runtime.device_selector import get_device_for_model
 from app.helpers.inference_runtime.inference_functions import unload_panecho_model
@@ -100,7 +101,8 @@ app.include_router(studies_router, prefix="/api", tags=["Studies"])
 app.include_router(patients_router, prefix="/api", tags=["Patients"])
 app.include_router(inference_router, prefix="/api", tags=["Inference"])
 app.include_router(llm_router, prefix="/api", tags=["LLM"])
-app.include_router(orchestration_router, prefix="/api", tags=["Orchestration APIs"])
+app.include_router(results_router, prefix="/api", tags=["AI Results"])
+app.include_router(pipeline_router, prefix="/api", tags=["Pipeline"])
 
 @app.on_event("startup")
 def startup_preload_models():

@@ -1,4 +1,4 @@
-import { buildAiMeasurementsProps } from "./buildAiMeasurementsProps";
+import { applyIndexedMeasurementDisplay } from "./applyIndexedMeasurementDisplay";
 import { buildMeasurementsReportHtml } from "./buildMeasurementsReportHtml";
 import { printMeasurementsReport } from "./printMeasurementsReport";
 
@@ -21,18 +21,14 @@ async function toDataUrl(src) {
 export async function printMeasurements({
     panechoEchoprimeResults,
     patientName,
-    patientSex,
     studyUID,
     isIndexedMode = false,
     bsa = null,
-    heartRateBpm = null,
 }) {
-    const { mainMeasurements = [], Measurements = [] } = buildAiMeasurementsProps(
-        panechoEchoprimeResults || null,
-        panechoEchoprimeResults?.overrides || null,
-        patientSex,
-        { isIndexedMode, bsa, heartRateBpm }
-    ) || {};
+    const { mainMeasurements = [], Measurements = [] } = applyIndexedMeasurementDisplay(
+        panechoEchoprimeResults?.display || null,
+        { isIndexedMode, bsa }
+    );
 
     const hasAny = (Array.isArray(mainMeasurements) && mainMeasurements.length > 0) ||
         (Array.isArray(Measurements) && Measurements.some((g) => (g.items || []).length > 0));

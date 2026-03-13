@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.database.db import get_db
 from app.database_models.pipeline_jobs import PipelineCleanupScope, PipelineRunMode
 from app.helpers.auth.authentication_functions import get_current_user_id
-from app.schemas.orchestration_apis.pipeline.pipeline_regenerate_schemas import (
+from app.schemas.pipeline.pipeline_regenerate_schemas import (
     PipelineRegenerateResponse,
 )
 from app.services.pipeline.service import start_pipeline_job

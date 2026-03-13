@@ -10,7 +10,7 @@ from app.database_models.derived_results import ResultStatus
 from app.core.artifacts import DYNAMIC_MEASUREMENTS_COMBINED_TYPE
 from app.helpers.auth.authentication_functions import get_current_user_id
 from app.helpers.row_to_dict.dynamic_measurements_combined_results_row_to_dict import combined_results_row_to_dict
-from app.schemas.orchestration_apis.combined_dynamic_measurements_schemas import (
+from app.schemas.results.combined_dynamic_measurements_schemas import (
     CombinedResultsResponse,
     CompleteResponse,
     PendingResponse,

@@ -87,31 +87,33 @@ Doppler identification contract:
 2. `(0018,6014) Region Data Type in {3,4}`
 3. Numeric conversion tags (`reference_line`, `physical_delta_y`, and model-dependent `physical_delta_x`) are validated before inference execution.
 
-### Orchestration Endpoints
+### AI Results and Pipeline Endpoints
 
 Router:
 
-1. [`backend/app/api/orchestration_apis/`](../backend/app/api/orchestration_apis/)
+1. [`backend/app/api/results/`](../backend/app/api/results/)
+2. [`backend/app/api/pipeline/`](../backend/app/api/pipeline/)
 
 Key endpoints:
 
-1. `GET /api/studies/{study_uid}/PanEcho-EchoPrime-combined-results` ([`combined_panecho_echoprime_api.py`](../backend/app/api/orchestration_apis/results/combined_panecho_echoprime_api.py#L29))
-2. `PATCH /api/studies/{study_uid}/PanEcho-EchoPrime-overrides` ([`combined_panecho_echoprime_api.py`](../backend/app/api/orchestration_apis/results/combined_panecho_echoprime_api.py#L120))
-3. `GET /api/studies/{study_uid}/Dynamic-Measurements-combined-results` ([`combined_dynamic_measurements_api.py`](../backend/app/api/orchestration_apis/results/combined_dynamic_measurements_api.py#L28))
-4. `GET /api/studies/{study_uid}/llm-report-results` ([`llm_report_get_api.py`](../backend/app/api/orchestration_apis/results/llm_report_get_api.py#L35))
-5. `POST /api/studies/{study_uid}/pipeline/start` ([`pipeline_start_api.py`](../backend/app/api/orchestration_apis/pipeline/pipeline_start_api.py#L16))
-6. `GET /api/studies/{study_uid}/pipeline/status` ([`pipeline_status_api.py`](../backend/app/api/orchestration_apis/pipeline/pipeline_status_api.py#L15))
-7. `POST /api/studies/{study_uid}/pipeline/promote` ([`pipeline_promote_api.py`](../backend/app/api/orchestration_apis/pipeline/pipeline_promote_api.py#L14))
-8. `POST /api/studies/{study_uid}/pipeline/cancel` ([`pipeline_cancel_api.py`](../backend/app/api/orchestration_apis/pipeline/pipeline_cancel_api.py#L14))
-9. `POST /api/studies/{study_uid}/pipeline/regenerate-combined` ([`pipeline_regenerate_api.py`](../backend/app/api/orchestration_apis/pipeline/pipeline_regenerate_api.py#L16))
+1. `GET /api/studies/{study_uid}/PanEcho-EchoPrime-combined-results` ([`combined_panecho_echoprime_api.py`](../backend/app/api/results/combined_panecho_echoprime_api.py))
+2. `PATCH /api/studies/{study_uid}/PanEcho-EchoPrime-overrides` ([`combined_panecho_echoprime_api.py`](../backend/app/api/results/combined_panecho_echoprime_api.py))
+3. `GET /api/studies/{study_uid}/Dynamic-Measurements-combined-results` ([`combined_dynamic_measurements_api.py`](../backend/app/api/results/combined_dynamic_measurements_api.py))
+4. `GET /api/studies/{study_uid}/llm-report-results` ([`llm_report_get_api.py`](../backend/app/api/results/llm_report_get_api.py))
+5. `POST /api/studies/{study_uid}/pipeline/start` ([`pipeline_start_api.py`](../backend/app/api/pipeline/pipeline_start_api.py))
+6. `GET /api/studies/{study_uid}/pipeline/status` ([`pipeline_status_api.py`](../backend/app/api/pipeline/pipeline_status_api.py))
+7. `POST /api/studies/{study_uid}/pipeline/promote` ([`pipeline_promote_api.py`](../backend/app/api/pipeline/pipeline_promote_api.py))
+8. `POST /api/studies/{study_uid}/pipeline/cancel` ([`pipeline_cancel_api.py`](../backend/app/api/pipeline/pipeline_cancel_api.py))
+9. `POST /api/studies/{study_uid}/pipeline/regenerate-combined` ([`pipeline_regenerate_api.py`](../backend/app/api/pipeline/pipeline_regenerate_api.py))
 
 Pipeline queue note (Iterations 1-5):
 
 1. `pipeline/start` and `pipeline/status` are implemented as the backend queue foundation.
 2. Queue worker executes server-owned stage progression (`prefilter`, `combined`, `dynamic_measurements`, optional `llm`).
-3. Existing orchestration GET routes are observer-only in Iteration 6:
+3. AI result GET routes are observer-only in Iteration 6:
 1. they read active/draft-derived results and status
 2. they do not enqueue jobs or create pending marker rows
+4. `llm_report` now includes a backend-built `display` block (`mainTitle`, `sections`) so the frontend renders report structure without parsing markdown headings itself.
 4. Iteration 2 draft boundary is active:
 1. queue start creates a `draft` artifact set per job
 2. status returns `artifact_sets.draft` and `artifact_sets.active`
@@ -135,6 +137,37 @@ Pipeline queue note (Iterations 1-5):
 4. failed regenerate leaves active artifact set unchanged
 5. clinician overrides are preserved while raw AI values are refreshed
 8. Orchestration result observers and pipeline mutations are ownership-scoped (`404` for non-owned study UID).
+
+Combined PanEcho+EchoPrime compact-contract note:
+
+1. `display` is the render-ready frontend payload.
+2. `edit_baselines` is the minimal AI baseline snapshot used for edit/save/reset logic:
+1. numeric tasks expose `rawValue`
+2. categorical tasks expose `label`
+3. Public `overrides` are slimmed to `value` or `label`; audit fields remain internal to stored `value_json`.
+4. `integrated_tasks` remains internal to stored `value_json` and is no longer part of the public observer response.
+
+Dynamic+Measurements observer payload note:
+
+1. `GET /api/studies/{study_uid}/Dynamic-Measurements-combined-results` now returns a normalized observer payload instead of raw stage `value_json`.
+2. Canonical complete/pending-preview payload shape:
+1. `dynamic_measurements_results.instances[]`
+2. `dynamic_measurements_results.meta`
+3. Each instance exposes only:
+1. `sop_instance_uid`
+2. `instance_number`
+3. `predicted_view`
+4. `predicted_view_confidence`
+5. `results`
+4. Each result exposes only:
+1. `task`
+2. `ui_label`
+3. `status`
+4. `output_path`
+5. `output_kind`
+6. `message`
+5. Backend infers `output_kind` from file extension when not persisted explicitly.
+6. Backend also fills `ui_label` fallbacks when stage payload omits it.
 
 ### LLM Endpoints
 
@@ -281,11 +314,11 @@ Use:
 
 1. Start endpoint:
 1. `POST /api/studies/{study_uid}/pipeline/start`
-2. Legacy result observers:
+2. AI result observers:
 1. API wrappers:
-1. [`getPanechoEchoprimeCombinedResults`](../frontend/src/api/orchestration_apis/PanechoEchoprimeResultsApi.js#L10)
-2. [`getDynamicMeasurementsCombinedResults`](../frontend/src/api/orchestration_apis/DynamicMeasurementsResultsApi.js#L10)
-3. [`getLlmReportResults`](../frontend/src/api/orchestration_apis/LlmReportResultsApi.js#L10)
+1. [`getPanechoEchoprimeCombinedResults`](../frontend/src/api/results/PanechoEchoprimeResultsApi.js#L10)
+2. [`getDynamicMeasurementsCombinedResults`](../frontend/src/api/results/DynamicMeasurementsResultsApi.js#L10)
+3. [`getLlmReportResults`](../frontend/src/api/results/LlmReportResultsApi.js#L10)
 3. Query hooks:
 1. [`usePanechoEchoprimeResultsQuery`](../frontend/src/features/StudyResults/hooks/queries/usePanechoEchoprimeResultsQuery.js#L9)
 2. [`useDynamicMeasurementsResultsQuery`](../frontend/src/features/StudyResults/hooks/queries/useDynamicMeasurementsResultsQuery.js#L9)
@@ -315,7 +348,7 @@ Goal:
 Use:
 
 1. Endpoint: `POST /api/studies/{study_uid}/pipeline/start`
-2. Backend implementation: [`pipeline_start_api.py`](../backend/app/api/orchestration_apis/pipeline/pipeline_start_api.py#L16)
+2. Backend implementation: [`pipeline_start_api.py`](../backend/app/api/pipeline/pipeline_start_api.py)
 3. Queue service: [`service.py`](../backend/app/services/pipeline/service.py)
 
 Returns:
@@ -333,7 +366,7 @@ Goal:
 Use:
 
 1. Endpoint: `GET /api/studies/{study_uid}/pipeline/status`
-2. Backend implementation: [`pipeline_status_api.py`](../backend/app/api/orchestration_apis/pipeline/pipeline_status_api.py#L15)
+2. Backend implementation: [`pipeline_status_api.py`](../backend/app/api/pipeline/pipeline_status_api.py)
 
 Returns:
 
@@ -355,7 +388,7 @@ Goal:
 Use:
 
 1. Endpoint: `POST /api/studies/{study_uid}/pipeline/promote`
-2. Backend implementation: [`pipeline_promote_api.py`](../backend/app/api/orchestration_apis/pipeline/pipeline_promote_api.py#L14)
+2. Backend implementation: [`pipeline_promote_api.py`](../backend/app/api/pipeline/pipeline_promote_api.py)
 
 Returns:
 
@@ -380,7 +413,7 @@ Goal:
 Use:
 
 1. Endpoint: `POST /api/studies/{study_uid}/pipeline/cancel`
-2. Backend implementation: [`pipeline_cancel_api.py`](../backend/app/api/orchestration_apis/pipeline/pipeline_cancel_api.py#L14)
+2. Backend implementation: [`pipeline_cancel_api.py`](../backend/app/api/pipeline/pipeline_cancel_api.py)
 
 Returns:
 
@@ -415,7 +448,7 @@ Goal:
 Use:
 
 1. Endpoint: `POST /api/studies/{study_uid}/pipeline/regenerate-combined`
-2. Backend implementation: [`pipeline_regenerate_api.py`](../backend/app/api/orchestration_apis/pipeline/pipeline_regenerate_api.py#L16)
+2. Backend implementation: [`pipeline_regenerate_api.py`](../backend/app/api/pipeline/pipeline_regenerate_api.py)
 3. Queue service: [`service.py`](../backend/app/services/pipeline/service.py)
 
 Returns:
@@ -436,9 +469,9 @@ Goal:
 
 Use:
 
-1. API call: [`updatePanechoEchoprimeOverrides`](../frontend/src/api/orchestration_apis/PanechoEchoprimeResultsApi.js#L26)
+1. API call: [`updatePanechoEchoprimeOverrides`](../frontend/src/api/results/PanechoEchoprimeResultsApi.js#L25)
 2. Endpoint: `PATCH /api/studies/{study_uid}/PanEcho-EchoPrime-overrides`
-3. Backend implementation: [`combined_panecho_echoprime_api.py`](../backend/app/api/orchestration_apis/results/combined_panecho_echoprime_api.py#L124)
+3. Backend implementation: [`combined_panecho_echoprime_api.py`](../backend/app/api/results/combined_panecho_echoprime_api.py)
 
 Returns:
 
@@ -457,7 +490,7 @@ Goal:
 
 Use:
 
-1. API call: [`generateLlmReport`](../frontend/src/api/orchestration_apis/LlmReportResultsApi.js#L26)
+1. API call: [`generateLlmReport`](../frontend/src/api/results/LlmReportResultsApi.js#L24)
 2. Endpoint: `POST /api/studies/{study_uid}/llm/report/generate`
 3. Poll endpoint: `GET /api/studies/{study_uid}/llm-report-results`
 4. Backend generator: [`llm_report_generate_api.py`](../backend/app/api/llm/llm_report_generate_api.py#L22)

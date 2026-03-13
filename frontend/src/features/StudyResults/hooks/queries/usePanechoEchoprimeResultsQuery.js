@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { getPanechoEchoprimeCombinedResults } from "../../../../api/orchestration_apis/PanechoEchoprimeResultsApi";
+import { getPanechoEchoprimeCombinedResults } from "../../../../api/results/PanechoEchoprimeResultsApi";
 
 /**
  * React Query hook that fetches (and conditionally polls) the

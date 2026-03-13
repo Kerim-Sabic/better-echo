@@ -1,5 +1,16 @@
-import { getPanechoEchoprimeCombinedResultsApi } from "@/api/get_study_results_apis";
-import { formatPanechoEchoprimeCombinedResultsDto } from "./studyResults.dto";
+import { getStudyByUidApi } from "@/api/StudiesApi";
+import {
+  getPanechoEchoprimeCombinedResults,
+  updatePanechoEchoprimeOverrides,
+} from "@/api/results/PanechoEchoprimeResultsApi";
+import { getDynamicMeasurementsCombinedResults } from "@/api/results/DynamicMeasurementsResultsApi";
+import { getLlmReportResults } from "@/api/results/LlmReportResultsApi";
+import {
+  formatDynamicMeasurementsResultsDto,
+  formatLlmReportResultsDto,
+  formatPanechoEchoprimeResultsDto,
+  formatStudyMetaDto,
+} from "./studyResults.dto";
 
 export const studyResultsRepository = {
   async getPanechoEchoprimeCombinedResults(studyUid) {

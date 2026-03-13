@@ -64,9 +64,9 @@ Benefits:
 ### API layer today
 
 1. Observer result APIs exist:
-   1. [`PanechoEchoprimeResultsApi.js`](../../frontend/src/api/orchestration_apis/PanechoEchoprimeResultsApi.js)
-   2. [`DynamicMeasurementsResultsApi.js`](../../frontend/src/api/orchestration_apis/DynamicMeasurementsResultsApi.js)
-   3. [`LlmReportResultsApi.js`](../../frontend/src/api/orchestration_apis/LlmReportResultsApi.js)
+   1. [`PanechoEchoprimeResultsApi.js`](../../frontend/src/api/results/PanechoEchoprimeResultsApi.js)
+   2. [`DynamicMeasurementsResultsApi.js`](../../frontend/src/api/results/DynamicMeasurementsResultsApi.js)
+   3. [`LlmReportResultsApi.js`](../../frontend/src/api/results/LlmReportResultsApi.js)
 2. `PipelineApi` wrapper exists for start/status/promote/cancel/regenerate.
 
 ## Target Frontend Architecture (Plain English)
@@ -102,11 +102,11 @@ Pipeline endpoints:
 
 Request/response schemas:
 
-1. [`pipeline_start_schemas.py`](../../backend/app/schemas/orchestration_apis/pipeline/pipeline_start_schemas.py)
-2. [`pipeline_status_schemas.py`](../../backend/app/schemas/orchestration_apis/pipeline/pipeline_status_schemas.py)
-3. [`pipeline_promote_schemas.py`](../../backend/app/schemas/orchestration_apis/pipeline/pipeline_promote_schemas.py)
-4. [`pipeline_cancel_schemas.py`](../../backend/app/schemas/orchestration_apis/pipeline/pipeline_cancel_schemas.py)
-5. [`pipeline_regenerate_schemas.py`](../../backend/app/schemas/orchestration_apis/pipeline/pipeline_regenerate_schemas.py)
+1. [`pipeline_start_schemas.py`](../../backend/app/schemas/pipeline/pipeline_start_schemas.py)
+2. [`pipeline_status_schemas.py`](../../backend/app/schemas/pipeline/pipeline_status_schemas.py)
+3. [`pipeline_promote_schemas.py`](../../backend/app/schemas/pipeline/pipeline_promote_schemas.py)
+4. [`pipeline_cancel_schemas.py`](../../backend/app/schemas/pipeline/pipeline_cancel_schemas.py)
+5. [`pipeline_regenerate_schemas.py`](../../backend/app/schemas/pipeline/pipeline_regenerate_schemas.py)
 
 Start payload fields required for frontend decisions:
 
@@ -119,11 +119,12 @@ Start payload fields required for frontend decisions:
 ```text
 frontend/src/
 |- api/
-|  |- orchestration_apis/
-|  |  |- PipelineApi.js                         (new)
-|  |  |- PanechoEchoprimeResultsApi.js          (keep, observer-only)
-|  |  |- DynamicMeasurementsResultsApi.js       (keep, observer-only)
-|  |  `- LlmReportResultsApi.js                 (keep, observer-only)
+|  |- pipeline/
+|  |  `- PipelineApi.js                         (new)
+|  |- results/
+|  |  |- PanechoEchoprimeResultsApi.js          (observer-only)
+|  |  |- DynamicMeasurementsResultsApi.js       (observer-only)
+|  |  `- LlmReportResultsApi.js                 (observer-only)
 |  `- UploadDicomApi.js                         (existing)
 |- features/
 |  |- NewStudy/
@@ -153,7 +154,7 @@ frontend/src/
 
 ### A) API Layer
 
-1. Add `frontend/src/api/orchestration_apis/PipelineApi.js` with:
+1. Add `frontend/src/api/pipeline/PipelineApi.js` with:
    1. `startStudyPipeline`
    2. `getStudyPipelineStatus`
    3. `promoteStudyPipelineDraft`
@@ -191,7 +192,7 @@ frontend/src/
 2. Add mutation hook: `usePipelineCancelMutation` for explicit user cancel actions where needed.
 3. Add mutation hook: `usePipelinePromoteMutation` if StudyResults needs explicit promote actions beyond NewStudy handoff.
 4. Keep existing override patch flow unchanged in this phase:
-   1. [`updatePanechoEchoprimeOverrides`](../../frontend/src/api/orchestration_apis/PanechoEchoprimeResultsApi.js)
+   1. [`updatePanechoEchoprimeOverrides`](../../frontend/src/api/results/PanechoEchoprimeResultsApi.js)
 
 ### E) Query Keys and Invalidation
 
@@ -362,8 +363,7 @@ Frontend files that depend on this:
 1. `frontend/src/features/NewStudy/hooks/useNewStudy.jsx`
 2. `frontend/src/pages/NewStudy.jsx`
 3. `frontend/src/features/NewStudy/hooks/__tests__/useNewStudy.test.js`
-4. `frontend/src/api/orchestration_apis/PipelineApi.js`
-5. `frontend/src/api/orchestration_apis/__tests__/PipelineApi.test.js`
+4. `frontend/src/api/pipeline/PipelineApi.js`
 
 ## Completion Criteria
 

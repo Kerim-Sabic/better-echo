@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { getStudyPipelineStatus } from "../../../../api/orchestration_apis/PipelineApi";
+import { getStudyPipelineStatus } from "../../../../api/pipeline/PipelineApi";
 
 const ACTIVE_PIPELINE_STATUSES = new Set(["queued", "running"]);
 const FAILED_PIPELINE_STATUS = "failed";

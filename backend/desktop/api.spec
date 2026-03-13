@@ -28,14 +28,14 @@ hiddenimports = [
     'app.api.infer_measurements',
     'app.api.authentication',
     'app.api.llm',
-    'app.api.orchestration_apis.results.combined_panecho_echoprime_api',
-    'app.api.orchestration_apis.results.combined_dynamic_measurements_api',
-    'app.api.orchestration_apis.results.llm_report_get_api',
-    'app.api.orchestration_apis.pipeline.pipeline_start_api',
-    'app.api.orchestration_apis.pipeline.pipeline_status_api',
-    'app.api.orchestration_apis.pipeline.pipeline_promote_api',
-    'app.api.orchestration_apis.pipeline.pipeline_cancel_api',
-    'app.api.orchestration_apis.pipeline.pipeline_regenerate_api',
+    'app.api.results.combined_panecho_echoprime_api',
+    'app.api.results.combined_dynamic_measurements_api',
+    'app.api.results.llm_report_get_api',
+    'app.api.pipeline.pipeline_start_api',
+    'app.api.pipeline.pipeline_status_api',
+    'app.api.pipeline.pipeline_promote_api',
+    'app.api.pipeline.pipeline_cancel_api',
+    'app.api.pipeline.pipeline_regenerate_api',
 ]
 
 # Data files

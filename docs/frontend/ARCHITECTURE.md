@@ -1,6 +1,6 @@
 # Frontend Architecture
 
-Last Updated: 2026-03-06  
+Last Updated: 2026-03-10  
 Owner: Frontend
 
 ## Scope
@@ -15,10 +15,14 @@ Curated tree (2-3 levels + key files):
 frontend/src/
 |- App.js
 |- api/
-|  |- StudiesApi.js
-|  |- AuthenticationApi.js
-|  |- shared/client.js
-|  `- orchestration_apis/
+|  |- authentication/
+|  |- patients/
+|  |- pipeline/
+|  |- results/
+|  |- studies/
+|  |- upload_dicom/
+|  |- webauthn/
+|  `- client.js
 |- contexts/
 |  |- AuthenticationContext.jsx
 |  `- ProtectedRoute.jsx
@@ -171,33 +175,22 @@ Reference:
 
 ## StudyResults Measurement Composition Details
 
-Primary transformer:
+Primary source:
 
-1. [`buildAiMeasurementsProps.js`](../../frontend/src/features/StudyResults/helpers/buildAiMeasurementsProps.js#L149)
+1. StudyResults now consumes backend-owned `panecho_echoprime_results.display` in [`useAiMeasurementsViewModel.js`](../../frontend/src/features/StudyResults/hooks/useAiMeasurementsViewModel.js).
+2. Backend builds the canonical display payload in [`combined_measurements_presenter.py`](../../backend/app/services/results/combined_measurements_presenter.py).
 
-Implemented derived metrics:
+Backend-owned display behavior:
 
-1. Relative Wall Thickness (`relative_wall_thickness`) = `(2 * lvpwd) / lvidd` ([`buildAiMeasurementsProps.js`](../../frontend/src/features/StudyResults/helpers/buildAiMeasurementsProps.js#L189))
-2. Max Aortic Gradient (`max_aortic_gradient`) = `4 * avpkvel^2` ([`buildAiMeasurementsProps.js`](../../frontend/src/features/StudyResults/helpers/buildAiMeasurementsProps.js#L196))
-3. Cardiac Output (`cardiac_output`) = `(stroke_volume * heart_rate_bpm) / 1000` where `stroke_volume = lvedv - lvesv` ([`buildAiMeasurementsProps.js`](../../frontend/src/features/StudyResults/helpers/buildAiMeasurementsProps.js#L200))
-
-Hybrid EF behavior:
-
-1. Base displayed EF comes from integrated AI value.
-2. If clinician edits `lvedv` or `lvesv`, a math EF is recomputed and compared against the AI EF using `EF_DISCREPANCY_THRESHOLD` ([`buildAiMeasurementsProps.js`](../../frontend/src/features/StudyResults/helpers/buildAiMeasurementsProps.js#L209)).
-3. When discrepancy exceeds threshold, displayed EF switches to math EF for stability and consistency with edited volumes ([`buildAiMeasurementsProps.js`](../../frontend/src/features/StudyResults/helpers/buildAiMeasurementsProps.js#L274)).
-
-`tvpkgrad` dual display behavior:
-
-1. Display variant is dual numeric for tricuspid value presentation ([`buildAiMeasurementsProps.js`](../../frontend/src/features/StudyResults/helpers/buildAiMeasurementsProps.js#L332)).
-2. Top row shows `TRV` in `m/s` derived as `sqrt(TRPG/4)`.
-3. Bottom row shows `TRPG` in `mmHg` from integrated numeric value.
-4. Color/discrepancy logic still follows measurement task evaluation path anchored on raw task value.
+1. Derived metrics (`relative_wall_thickness`, `max_aortic_gradient`, `cardiac_output`) are computed server-side before the payload reaches the frontend.
+2. EF discrepancy handling is backend-owned; frontend renders the backend-selected display value and discrepancy flag.
+3. `TRV` is treated as a derived measurement from `tvpkgrad`, so `TRV` and `TRPG` now arrive as separate normal items instead of a frontend-only dual-value variant.
+4. Color/range/category logic is backend-owned through the measurement display catalog and presenter stack.
 
 Indexed/raw mode implications:
 
 1. Indexing is enabled only when BSA is available from study metadata ([`useAiMeasurementsViewModel.js`](../../frontend/src/features/StudyResults/hooks/useAiMeasurementsViewModel.js#L61)).
-2. Display in indexed mode divides indexable raw values by BSA ([`buildAiMeasurementsProps.js`](../../frontend/src/features/StudyResults/helpers/buildAiMeasurementsProps.js#L172)).
+2. Display in indexed mode is now a thin frontend transform in [`applyIndexedMeasurementDisplay.js`](../../frontend/src/features/StudyResults/helpers/applyIndexedMeasurementDisplay.js).
 3. Persisted overrides remain raw values; indexed edits are converted back to raw before API save ([`useAiMeasurementsViewModel.js`](../../frontend/src/features/StudyResults/hooks/useAiMeasurementsViewModel.js#L289)).
 
 ## API Integration Pattern
@@ -206,7 +199,7 @@ Pattern used across feature queries:
 
 1. Queue control plane and observer reads are split:
 1. mutations via `PipelineApi` (`start`, `promote`, `cancel`, `regenerate-combined`)
-2. queries via `pipeline/status` + observer result APIs
+2. queries via `pipeline/status` + AI result APIs
 2. Query hook `select` maps to normalized readiness fields.
 3. `refetchInterval` polls while pending.
 
@@ -232,7 +225,7 @@ Use:
 2. `onChangeValue(key, value)` or `onChangeLabel(key, label)` in [`useAiMeasurementsViewModel.js`](../../frontend/src/features/StudyResults/hooks/useAiMeasurementsViewModel.js#L264)
 3. `onStopEdit(key)` to persist ([`useAiMeasurementsViewModel.js`](../../frontend/src/features/StudyResults/hooks/useAiMeasurementsViewModel.js#L275))
 2. Internal persistence call:
-1. `updatePanechoEchoprimeOverrides(studyUid, { [key]: payload })` in [`PanechoEchoprimeResultsApi.js`](../../frontend/src/api/orchestration_apis/PanechoEchoprimeResultsApi.js#L26)
+1. `updatePanechoEchoprimeOverrides(studyUid, { [key]: payload })` in [`PanechoEchoprimeResultsApi.js`](../../frontend/src/api/results/PanechoEchoprimeResultsApi.js#L25)
 
 Returns:
 
