@@ -54,7 +54,7 @@ export default function DashboardHeader({ dashboardHeaderViewModel, onNewStudy }
       <div className="container px-6 py-4 mx-auto">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <img src="horalix-taskbar-app-icon.png" alt="Horalix Logo" className="w-8 h-8" />
+            <img src="/horalix-taskbar-app-icon.png" alt="Horalix Logo" className="w-8 h-8" />
             <div>
               <h1 className="text-2xl font-bold heading-accent">Patient Studies</h1>
               <p className="text-sm text-muted-foreground">

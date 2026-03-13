@@ -1,20 +1,12 @@
 import { useState } from "react";
-import { Upload, FileCheck2, X, FileText } from "lucide-react";
+import { Upload, X, FileText } from "lucide-react";
 import { Button } from "@/general_components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/general_components/ui/card";
 
 export default function UploadDicomCard({ newStudyPageViewModel }) {
   const [isActive, setIsActive] = useState(false);
 
-  const {
-    files,
-    setFiles,
-    studyUID,
-    isUploading,
-    handleUpload,
-    tags,
-    setTags,
-  } = newStudyPageViewModel;
+  const { files, setFiles, isDicomUploading, handleUpload } = newStudyPageViewModel;
 
   const dedupeFiles = incomingFiles => {
     const existingNames = new Set((files || []).map(file => file.name));
@@ -82,9 +74,7 @@ export default function UploadDicomCard({ newStudyPageViewModel }) {
 
             <div>
               <p className="text-lg font-semibold text-foreground mb-1">Click to upload or drag and drop</p>
-              <p className="text-sm text-muted-foreground">
-                DICOM files (.dcm) - PHI-safe handling recommended
-              </p>
+              <p className="text-sm text-muted-foreground">DICOM files (.dcm) - PHI-safe handling recommended</p>
             </div>
           </label>
         </div>
@@ -134,19 +124,12 @@ export default function UploadDicomCard({ newStudyPageViewModel }) {
         <div className="flex gap-2">
           <Button
             onClick={handleUpload}
-            disabled={!files || files.length === 0 || isUploading}
+            disabled={!files || files.length === 0 || isDicomUploading}
             variant="gradient"
             className="h-12 px-8 gap-2 shadow-md hover:shadow-lg"
           >
-            {isUploading ? "Uploading..." : "Upload & Parse Tags"}
+            {isDicomUploading ? "Uploading..." : "Upload Dicom Files"}
           </Button>
-
-          {studyUID && (
-            <Button variant="outline" className="h-12" onClick={() => setTags(tags)}>
-              <FileCheck2 className="w-4 h-4 mr-2" />
-              Re-parse
-            </Button>
-          )}
         </div>
       </CardContent>
     </Card>

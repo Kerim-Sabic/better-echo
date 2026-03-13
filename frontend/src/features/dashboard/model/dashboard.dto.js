@@ -1,4 +1,5 @@
-import { formatStudyDateForUi, formatUploadedAtForUi } from "./dashboardDateHelpers";
+import { formatDicomTagStudyDate } from "@/general_components/utility/dicomTagsUtils";
+import { formatDateTime } from "@/general_components/utility/dateUtils";
 
 export function formatStudyData(rawStudy) {
   const rawPatient = rawStudy?.patient ?? null;
@@ -12,8 +13,8 @@ export function formatStudyData(rawStudy) {
     uploadedAt: rawStudy?.uploaded_at ?? null,
 
     // Add UI-ready display values
-    studyDateLabel: formatStudyDateForUi(rawStudy?.study_date),
-    uploadedAtLabel: formatUploadedAtForUi(rawStudy?.uploaded_at),
+    studyDateLabel: formatDicomTagStudyDate(rawStudy?.study_date),
+    uploadedAtLabel: formatDateTime(rawStudy?.uploaded_at),
 
     description: rawStudy?.description ?? null,
     status: rawStudy?.status ?? "unknown",

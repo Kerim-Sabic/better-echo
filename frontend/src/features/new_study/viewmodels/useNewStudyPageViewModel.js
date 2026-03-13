@@ -1,30 +1,27 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUploadDicomMutation } from "@/features/new_study/tanstack/mutations/useUploadDicomMutation";
-import { pickTags, getStudyUID } from "@/features/new_study/model/newStudyFileUtils";
-import {
-  cancelStudyPipeline,
-  promoteStudyPipelineDraft,
-  startStudyPipeline,
-} from "@/api/orchestration_apis/PipelineApi";
+import { useStartStudyPipelineMutation } from "@/features/new_study/tanstack/mutations/useStartStudyPipelineMutation";
+import { usePromoteStudyPipelineDraftMutation } from "@/features/new_study/tanstack/mutations/usePromoteStudyPipelineDraftMutation";
+import { useCancelStudyPipelineMutation } from "@/features/new_study/tanstack/mutations/useCancelStudyPipelineMutation";
+import { getStudyUIDFromDicomFile } from "@/features/new_study/model/getStudyUIDFromDicomFile";
 
 export function useNewStudyPageViewModel() {
   const navigate = useNavigate();
 
   // --- Data Fetching & Mutations (Server State) ---
   const uploadDicomMutation = useUploadDicomMutation();
+  const startStudyPipelineMutation = useStartStudyPipelineMutation();
+  const promoteStudyPipelineDraftMutation = usePromoteStudyPipelineDraftMutation();
+  const cancelStudyPipelineMutation = useCancelStudyPipelineMutation();
 
   // --- Local UI State ---
   const [files, setFiles] = useState([]);
   const [status, setStatus] = useState("");
   const [studyUID, setStudyUID] = useState(null);
   const [instanceIds, setInstanceIds] = useState([]);
-  const [tags, setTags] = useState(null);
+  const [dicomTags, setDicomTags] = useState(null);
   const [duplicatesFiles, setDuplicateFiles] = useState([]);
-  const [pipelineJobId, setPipelineJobId] = useState(null);
-  const [isStartingPipeline, setIsStartingPipeline] = useState(false);
-  const [isContinuingToResults, setIsContinuingToResults] = useState(false);
-  const [isCancellingPipeline, setIsCancellingPipeline] = useState(false);
 
   // --- Actions / Handlers ---
   const onBack = () => {
@@ -42,7 +39,7 @@ export function useNewStudyPageViewModel() {
       let firstStudyUID = null;
 
       for (const file of files) {
-        const currentStudyUID = await getStudyUID(file);
+        const currentStudyUID = await getStudyUIDFromDicomFile(file);
         if (!currentStudyUID) {
           throw new Error(`Cannot read StudyUID for file ${file.name}`);
         }
@@ -66,27 +63,29 @@ export function useNewStudyPageViewModel() {
       for (const file of files) {
         try {
           const formattedUploadResponse = await uploadDicomMutation.mutateAsync(file);
-          const { study_uid, sop_instance_uid, tags: dicomTags } = formattedUploadResponse || {};
+          const { studyUid, sopInstanceUid, dicomTags } = formattedUploadResponse || {};
 
-          if (study_uid) {
-            resolvedStudyUID = study_uid;
+          if (studyUid) {
+            resolvedStudyUID = studyUid;
           }
-          if (sop_instance_uid) {
-            uploadedInstanceIds.push(sop_instance_uid);
+
+          if (sopInstanceUid) {
+            uploadedInstanceIds.push(sopInstanceUid);
           }
+
           if (!mergedTags && dicomTags) {
-            mergedTags = pickTags(dicomTags);
+            mergedTags = dicomTags;
           }
-        } catch (err) {
-          const detailMessage = err?.response?.data?.detail || err?.message || "";
+        } catch (error) {
+          const detailMessage = error?.response?.data?.detail || error?.message || "";
           if (detailMessage.includes("already been uploaded")) {
             duplicateFileNames.push(file.name);
             continue;
           }
 
-          console.error(`Failed to upload ${file.name}`, err);
+          console.error(`Failed to upload ${file.name}`, error);
           setStatus(`Upload failed for ${file.name}: ${detailMessage}`);
-          throw err;
+          throw error;
         }
       }
 
@@ -95,83 +94,63 @@ export function useNewStudyPageViewModel() {
       setInstanceIds(uploadedInstanceIds);
 
       if (mergedTags) {
-        setTags(mergedTags);
+        setDicomTags(mergedTags);
       }
 
       if (resolvedStudyUID && uploadedInstanceIds.length > 0) {
-        setIsStartingPipeline(true);
         setStatus("Upload complete. Starting AI pipeline...");
 
         try {
-          const pipelineStartResponse = await startStudyPipeline(resolvedStudyUID, {
-            run_mode: "upload_preview",
-            cleanup_scope: "new_study",
-            uploaded_instance_uids: uploadedInstanceIds,
+          await startStudyPipelineMutation.mutateAsync({
+            studyUid: resolvedStudyUID,
+            runMode: "upload_preview",
+            cleanupScope: "new_study",
+            uploadedInstanceUids: uploadedInstanceIds,
           });
 
-          setPipelineJobId(pipelineStartResponse?.data?.job_id ?? null);
           setStatus("Upload complete. AI pipeline started.");
         } catch (pipelineError) {
           console.error("Failed to start pipeline", pipelineError);
           const detailMessage = pipelineError?.response?.data?.detail || pipelineError?.message;
           setStatus(`Upload complete, but pipeline start failed: ${detailMessage || "Unknown error"}`);
-        } finally {
-          setIsStartingPipeline(false);
         }
       } else {
         setStatus(`Upload complete. ${files.length} files processed.`);
       }
-    } catch (err) {
-      console.error(err);
-      const detailMessage = err?.response?.data?.detail;
-      setStatus(`Upload failed: ${detailMessage || err.message}`);
-      setIsStartingPipeline(false);
+    } catch (error) {
+      console.error(error);
+      const detailMessage = error?.response?.data?.detail;
+      setStatus(`Upload failed: ${detailMessage || error.message}`);
     }
   };
 
-  const createStudyAndAnalyze = async () => {
+  const createStudyAndGoToResults = async () => {
     if (!studyUID) {
       setStatus("Please upload DICOM files first.");
       return;
     }
 
-    if (isContinuingToResults) {
+    if (promoteStudyPipelineDraftMutation.isPending) {
       return;
     }
 
-    setIsContinuingToResults(true);
     setStatus("Preparing study results...");
 
     try {
-      const promoteResponse = await promoteStudyPipelineDraft(studyUID);
+      await promoteStudyPipelineDraftMutation.mutateAsync(studyUID);
 
-      if (promoteResponse.status === 409) {
-        const detailMessage =
-          promoteResponse?.data?.detail ||
-          "No promotable draft yet. Please wait for the pipeline to progress and try again.";
-        setStatus(detailMessage);
-        return;
-      }
-
-      if (promoteResponse.status === 200 || promoteResponse.status === 202) {
-        navigate(`/studies/${encodeURIComponent(studyUID)}`, {
-          state: { study_uid: studyUID, instance_id: instanceIds },
-        });
-        return;
-      }
-
-      setStatus("Unexpected promote response from backend.");
-    } catch (err) {
-      console.error("Failed to continue to results", err);
-      const detailMessage = err?.response?.data?.detail || err?.message;
+      navigate(`/studies/${encodeURIComponent(studyUID)}`, {
+        state: { study_uid: studyUID, instance_id: instanceIds },
+      });
+    } catch (error) {
+      console.error("Failed to continue to results", error);
+      const detailMessage = error?.message || error?.response?.data?.detail;
       setStatus(`Failed to continue: ${detailMessage || "Unknown error"}`);
-    } finally {
-      setIsContinuingToResults(false);
     }
   };
 
   const cancelAndGoBack = async () => {
-    if (isCancellingPipeline) {
+    if (cancelStudyPipelineMutation.isPending) {
       return;
     }
 
@@ -180,22 +159,13 @@ export function useNewStudyPageViewModel() {
       return;
     }
 
-    setIsCancellingPipeline(true);
-
     try {
-      const cancelResponse = await cancelStudyPipeline(studyUID);
-      if (cancelResponse.status === 409) {
-        navigate("/dashboard");
-        return;
-      }
-
+      await cancelStudyPipelineMutation.mutateAsync(studyUID);
       navigate("/dashboard");
-    } catch (err) {
-      console.error("Failed to cancel pipeline", err);
-      const detailMessage = err?.response?.data?.detail || err?.message;
+    } catch (error) {
+      console.error("Failed to cancel pipeline", error);
+      const detailMessage = error?.message || error?.response?.data?.detail;
       setStatus(`Failed to cancel: ${detailMessage || "Unknown error"}`);
-    } finally {
-      setIsCancellingPipeline(false);
     }
   };
 
@@ -203,19 +173,18 @@ export function useNewStudyPageViewModel() {
   return {
     files,
     setFiles,
-    isUploading: uploadDicomMutation.isPending || isStartingPipeline,
+    isDicomUploading: uploadDicomMutation.isPending || startStudyPipelineMutation.isPending,
     status,
     studyUID,
     instanceIds,
-    tags,
+    dicomTags,
+    setDicomTags,
     duplicatesFiles,
-    pipelineJobId,
-    isContinuingToResults,
-    isCancellingPipeline,
+    isContinuingToResults: promoteStudyPipelineDraftMutation.isPending,
+    isCancellingPipeline: cancelStudyPipelineMutation.isPending,
     onBack,
     handleUpload,
-    createStudyAndAnalyze,
+    createStudyAndGoToResults,
     cancelAndGoBack,
-    setTags,
   };
 }

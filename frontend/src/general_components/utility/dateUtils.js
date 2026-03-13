@@ -1,3 +1,24 @@
+/**
+ * Formats a date/time value into a readable string using the `en-US` locale.
+ *
+ * Accepts either a JavaScript `Date` instance or any value parseable by `new Date(...)`.
+ * Returns `"N/A"` for empty or invalid values.
+ *
+ * @param {Date|string|number|null|undefined} value - Date-like value to format.
+ * @returns {string} Formatted date-time string (e.g. `"Mar 11, 2026, 14:08:30"`) or `"N/A"`.
+ *
+ * @example
+ * formatDateTime("2026-03-11T14:08:30Z");
+ * // "Mar 11, 2026, 14:08:30"
+ *
+ * @example
+ * formatDateTime(new Date("2026-03-11T14:08:30"));
+ * // "Mar 11, 2026, 14:08:30"
+ *
+ * @example
+ * formatDateTime(null);
+ * // "N/A"
+ */
 export const formatDateTime = (value) => {
   if (!value) return "N/A";
 
@@ -13,17 +34,4 @@ export const formatDateTime = (value) => {
     second: "2-digit",
     hour12: false, // set true if you prefer AM/PM
   }).format(date);
-};
-
-export const formatStudyDate = (studyDateValue) => {
-  if (!studyDateValue) return "N/A";
-
-  const rawStudyDate = String(studyDateValue).trim();
-  if (!/^\d{8}$/.test(rawStudyDate)) return "N/A";
-
-  const year = rawStudyDate.slice(0, 4);
-  const month = rawStudyDate.slice(4, 6);
-  const day = rawStudyDate.slice(6, 8);
-
-  return `${day}-${month}-${year}`;
 };

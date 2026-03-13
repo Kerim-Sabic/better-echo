@@ -35,7 +35,7 @@ export default function NewStudyLayout({ newStudyPageViewModel }) {
             disabled={
               newStudyPageViewModel.isCancellingPipeline ||
               newStudyPageViewModel.isContinuingToResults ||
-              newStudyPageViewModel.isUploading
+              newStudyPageViewModel.isDicomUploading
             }
             className="h-12 px-8 gap-2"
           >
@@ -44,11 +44,11 @@ export default function NewStudyLayout({ newStudyPageViewModel }) {
 
           <Button
             variant="gradient"
-            onClick={newStudyPageViewModel.createStudyAndAnalyze}
+            onClick={newStudyPageViewModel.createStudyAndGoToResults}
             disabled={
               !newStudyPageViewModel.studyUID ||
               newStudyPageViewModel.isContinuingToResults ||
-              newStudyPageViewModel.isUploading ||
+              newStudyPageViewModel.isDicomUploading ||
               newStudyPageViewModel.isCancellingPipeline
             }
             className="h-12 px-8 gap-2 shadow-md hover:shadow-lg"
