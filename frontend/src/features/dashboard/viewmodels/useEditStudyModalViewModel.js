@@ -1,14 +1,11 @@
 import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import { useUpdateStudyMutation } from "@/features/dashboard/tanstack/mutations/useUpdateStudyMutation";
 import { useDeleteStudyMutation } from "@/features/dashboard/tanstack/mutations/useDeleteStudyMutation";
-import { studyResultsKeys } from "@/features/study_results/tanstack/queryKeys";
 
 export function useEditStudyModalViewModel() {
   // 1. Data Fetching & Mutations (Server State)
   const updateStudyMutation = useUpdateStudyMutation();
   const deleteStudyMutation = useDeleteStudyMutation();
-  const queryClient = useQueryClient();
 
   // 2. Local UI State
   const [editingStudy, setEditingStudy] = useState(null);
@@ -49,29 +46,14 @@ export function useEditStudyModalViewModel() {
     setStudyToDelete(null);
   };
 
-  const removeStudyResultsCache = studyUid => {
-    if (!studyUid) return;
-
-    const keysToRemove = [
-      studyResultsKeys.panecho(studyUid),
-      studyResultsKeys.dynamicMeasurements(studyUid),
-      studyResultsKeys.llmReport(studyUid),
-      studyResultsKeys.meta(studyUid),
-    ];
-
-    keysToRemove.forEach(queryKey => {
-      queryClient.removeQueries({ queryKey, exact: true });
-    });
-  };
-
   const confirmDeleteStudy = async () => {
     if (!studyToDelete?.id) return;
 
     await deleteStudyMutation.mutateAsync({
       studyId: studyToDelete.id,
+      studyUid: studyToDelete.studyUid,
     });
 
-    removeStudyResultsCache(studyToDelete.studyUid);
     closeDeleteStudyModal();
   };
 

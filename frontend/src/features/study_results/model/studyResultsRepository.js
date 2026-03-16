@@ -1,27 +1,16 @@
-import { getStudyByUidApi } from "@/api/StudiesApi";
-import {
-  getPanechoEchoprimeCombinedResults,
-  updatePanechoEchoprimeOverrides,
-} from "@/api/results/PanechoEchoprimeResultsApi";
-import { getDynamicMeasurementsCombinedResults } from "@/api/results/DynamicMeasurementsResultsApi";
-import { getLlmReportResults } from "@/api/results/LlmReportResultsApi";
-import {
-  formatDynamicMeasurementsResultsDto,
-  formatLlmReportResultsDto,
-  formatPanechoEchoprimeResultsDto,
-  formatStudyMetaDto,
-} from "./studyResults.dto";
+import { getPanechoEchoprimeCombinedResultsApi } from "@/api/get_study_results_apis/getPanechoEchoprimeCombinedResultsApi";
+import { formatPanechoEchoprimeCombinedResultsDto } from "./studyResults.dto";
 
 export const studyResultsRepository = {
   async getPanechoEchoprimeCombinedResults(studyUid) {
-    const rawPanechoEchoprimeCombinedResultsResponse = await getPanechoEchoprimeCombinedResultsApi(studyUid);
-    console.log("[Repository][PanechoCombined] raw:", rawPanechoEchoprimeCombinedResultsResponse);
+    const rawPanechoEchoprimeCombinedResults =
+      await getPanechoEchoprimeCombinedResultsApi(studyUid);
+    console.log("RAW PANECHO ECHOPRIME COMBINED RESULTS: ", rawPanechoEchoprimeCombinedResults)
 
-    const formattedPanechoEchoprimeCombinedResults = formatPanechoEchoprimeCombinedResultsDto(
-      rawPanechoEchoprimeCombinedResultsResponse
-    );
+    const formattedPanechoEchoprimeCombinedResults =
+      formatPanechoEchoprimeCombinedResultsDto(rawPanechoEchoprimeCombinedResults);
+    console.log("FORMATTED PANECHO ECHOPRIME COMBINED RESULTS: ", formattedPanechoEchoprimeCombinedResults)
 
-    console.log("[Repository][PanechoCombined] formatted:", formattedPanechoEchoprimeCombinedResults);
     return formattedPanechoEchoprimeCombinedResults;
   },
 };

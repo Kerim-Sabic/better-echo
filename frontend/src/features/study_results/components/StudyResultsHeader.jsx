@@ -1,4 +1,3 @@
-import React from "react";
 import { ArrowLeft, RefreshCw } from "lucide-react";
 import { Button } from "@/general_components/ui/button";
 
@@ -42,39 +41,37 @@ function statusClasses(stateValue, isPolling) {
   return "border-gray-200 bg-white text-gray-700";
 }
 
-export default function StudyResultsHeader({
-  navigateBack,
-  studyUID,
-  panEchoEchoprimeState,
-  isPolling,
-  anyLoading,
-  onRefresh,
-}) {
-  const stateLabel = formatStateLabel(panEchoEchoprimeState, isPolling);
-  const stateClassName = statusClasses(panEchoEchoprimeState, isPolling);
+export default function StudyResultsHeader({ studyResultsPageViewModel }) {
+  const {
+    studyUid,
+    panechoEchoprimeCombinedResultsState,
+    isPolling,
+    anyLoading,
+    onBack,
+    refetchPanechoEchoprimeCombinedResults,
+  } = studyResultsPageViewModel;
+
+  const stateLabel = formatStateLabel(panechoEchoprimeCombinedResultsState, isPolling);
+  const stateClassName = statusClasses(panechoEchoprimeCombinedResultsState, isPolling);
 
   return (
     <div className="w-full flex items-center justify-between gap-4">
       <div className="flex items-center gap-4 min-w-0">
         <Button
           variant="ghost"
-          onClick={navigateBack}
+          onClick={onBack}
           className="gap-2 hover:scale-105 hover:bg-primary/10 hover:text-primary fast-transition"
         >
           <ArrowLeft className="w-5 h-5" />
           Back
         </Button>
 
-        <img
-          src="/horalix-taskbar-app-icon.png"
-          alt="Horalix Logo"
-          className="w-10 h-10"
-        />
+        <img src="/horalix-taskbar-app-icon.png" alt="Horalix Logo" className="w-10 h-10" />
 
         <div className="min-w-0">
           <h1 className="text-2xl font-bold heading-accent truncate">Study Results</h1>
           <div className="mt-0.5 pb-1 text-xs text-muted-foreground">
-            UID: <span className="font-medium">{studyUID || "-"}</span>
+            UID: <span className="font-medium">{studyUid || "-"}</span>
           </div>
         </div>
       </div>
@@ -86,7 +83,7 @@ export default function StudyResultsHeader({
 
         <Button
           variant="outline"
-          onClick={onRefresh}
+          onClick={refetchPanechoEchoprimeCombinedResults}
           className="gap-2"
         >
           <RefreshCw className={`w-4 h-4 ${anyLoading ? "animate-spin" : ""}`} />

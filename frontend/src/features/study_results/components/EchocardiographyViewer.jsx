@@ -29,10 +29,9 @@ function resolvePostMessageOrigin(baseUrl) {
   }
 }
 
-function resolveViewerBase(baseUrl, useAiPanel) {
+function resolveViewerBase(baseUrl) {
   const root = stripViewerRoute(baseUrl);
-  const routeName = useAiPanel ? "viewer-ai" : "viewer";
-  return `${root}/${routeName}`;
+  return `${root}/viewer-ai`;
 }
 
 function isObject(value) {
@@ -43,28 +42,29 @@ function isLocalDev() {
   return process.env.NODE_ENV !== "production";
 }
 
-export default function EchocardiographyViewer({
-  studyUID,
-  aiPayload = null,
-  useAiPanel = false,
-}) {
+export default function EchocardiographyViewer({ studyResultsPageViewModel }) {
+  const {
+    studyUid,
+    ohifAiPayload,
+  } = studyResultsPageViewModel;
+
   const location = useLocation();
   const iframeRef = useRef(null);
   const iframeLoadedRef = useRef(false);
 
   const base = String(process.env.REACT_APP_OHIF_BASE_URL || "").replace(/\/+$/, "");
-  const hasStudyUID = Boolean(studyUID);
+  const hasStudyUid = Boolean(studyUid);
   const hasBase = Boolean(base);
 
   const viewerRoot = stripViewerRoute(base);
-  const viewerBase = resolveViewerBase(base, useAiPanel);
+  const viewerBase = resolveViewerBase(base);
   const targetOrigin = resolvePostMessageOrigin(base);
 
   const configUrlRaw = String(
     process.env.REACT_APP_OHIF_CONFIG_URL || `${viewerRoot}/orthanc-standalone.json`
   );
 
-  const cacheBuster = `${studyUID || "study"}-${location.key || "location"}`;
+  const cacheBuster = `${studyUid || "study"}-${location.key || "location"}`;
 
   const configUrl = configUrlRaw.includes("?")
     ? `${configUrlRaw}&_cb=${cacheBuster}`
@@ -73,8 +73,8 @@ export default function EchocardiographyViewer({
   const params = new URLSearchParams();
   params.set("configUrl", configUrl);
   params.set("url", configUrl);
-  params.set("studyInstanceUIDs", studyUID || "");
-  params.set("StudyInstanceUIDs", studyUID || "");
+  params.set("studyInstanceUIDs", studyUid || "");
+  params.set("StudyInstanceUIDs", studyUid || "");
   params.set("_cb", cacheBuster);
 
   const src = `${viewerBase}?${params.toString()}`;
@@ -88,7 +88,7 @@ export default function EchocardiographyViewer({
   }, [targetOrigin, viewerBase]);
 
   const postAiPayload = useCallback(() => {
-    if (!hasStudyUID || !hasBase || !useAiPanel || !isObject(aiPayload)) {
+    if (!hasStudyUid || !hasBase || !isObject(ohifAiPayload)) {
       return;
     }
 
@@ -106,7 +106,7 @@ export default function EchocardiographyViewer({
       type: AI_RESULTS_TYPE,
       version: MESSAGE_VERSION,
       sentAt: new Date().toISOString(),
-      payload: aiPayload,
+      payload: ohifAiPayload,
     };
 
     const strictTargetOrigin = viewerOrigin || targetOrigin || "*";
@@ -118,9 +118,10 @@ export default function EchocardiographyViewer({
       if (isLocalDev()) {
         return;
       }
+
       throw error;
     }
-  }, [aiPayload, hasBase, hasStudyUID, targetOrigin, useAiPanel, viewerOrigin]);
+  }, [ohifAiPayload, hasBase, hasStudyUid, targetOrigin, viewerOrigin]);
 
   const handleIFrameLoad = useCallback(() => {
     iframeLoadedRef.current = true;
@@ -136,7 +137,7 @@ export default function EchocardiographyViewer({
   }, [postAiPayload]);
 
   useEffect(() => {
-    if (!hasStudyUID || !hasBase || !useAiPanel) {
+    if (!hasStudyUid || !hasBase) {
       return undefined;
     }
 
@@ -168,12 +169,13 @@ export default function EchocardiographyViewer({
     };
 
     window.addEventListener("message", onMessage);
+
     return () => {
       window.removeEventListener("message", onMessage);
     };
-  }, [hasBase, hasStudyUID, postAiPayload, useAiPanel, viewerOrigin]);
+  }, [hasBase, hasStudyUid, postAiPayload, viewerOrigin]);
 
-  if (!hasStudyUID) {
+  if (!hasStudyUid) {
     return null;
   }
 
@@ -188,7 +190,7 @@ export default function EchocardiographyViewer({
   return (
     <iframe
       ref={iframeRef}
-      key={`${studyUID}-${location.key}-${cacheBuster}-${useAiPanel ? "viewer-ai" : "viewer"}`}
+      key={`${studyUid}-${location.key}-${cacheBuster}-viewer-ai`}
       title="OHIF Viewer"
       src={src}
       allow="cross-origin-isolated"

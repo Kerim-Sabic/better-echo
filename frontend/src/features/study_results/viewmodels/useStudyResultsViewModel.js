@@ -1,77 +1,56 @@
-import { useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { usePanechoEchoprimeCombinedResultsQuery } from "@/features/study_results/tanstack/queries/usePanechoEchoprimeCombinedResultsQuery";
+import { buildStudyResultsOhifAiPayload } from "@/features/study_results/viewmodels/ohifAiPayloadSerializer";
 
 export function useStudyResultsViewModel(studyUid) {
-  // Part 1. Data Fetching (Server State)
-  const panechoEchoprimeCombinedResultsQuery = usePanechoEchoprimeCombinedResultsQuery(studyUid, {
+  const navigate = useNavigate();
+
+  // --- Part 1. Data Fetching (Server State) ---
+  const {
+    data: panechoEchoprimeCombinedResultsQueryData = null,
+    isLoading,
+    isFetching,
+    error,
+    refetch: refetchPanechoEchoprimeCombinedResults,
+  } = usePanechoEchoprimeCombinedResultsQuery(studyUid, {
     enabled: Boolean(studyUid),
   });
 
-  // Part 2. Derived Data
-  const combinedData = panechoEchoprimeCombinedResultsQuery.data ?? null;
-  const combinedState = combinedData?.state ?? (panechoEchoprimeCombinedResultsQuery.isLoading ? "loading" : "error");
+  // --- Part 2. Derived Data ---
+  const panechoEchoprimeCombinedResultsState =
+    panechoEchoprimeCombinedResultsQueryData?.state ??
+    (isLoading ? "loading" : "error");
 
-  const panEchoEchoprimeState = combinedState === "failed" ? "error" : combinedState;
+  const panechoEchoprimeCombinedResultsData =
+    panechoEchoprimeCombinedResultsQueryData?.panechoEchoprimeResults ?? null;
 
-  const panechoEchoprimeResults = combinedData?.panechoEchoprimeResults ?? null;
-  const retryAfter = combinedData?.retryAfter ?? null;
-  const errorDetail = combinedData?.errorDetail ?? null;
+  const anyLoading = isLoading || isFetching;
+  const isPolling = panechoEchoprimeCombinedResultsState === "pending";
 
-  const pageState = !studyUid ? "idle" : panEchoEchoprimeState;
-  const anyLoading = panechoEchoprimeCombinedResultsQuery.isFetching;
-  const isPolling = panEchoEchoprimeState === "pending";
-
-  useEffect(() => {
-    console.log("[useStudyResultsViewModel] query:", {
-      studyUid,
-      status: panechoEchoprimeCombinedResultsQuery.status,
-      fetchStatus: panechoEchoprimeCombinedResultsQuery.fetchStatus,
-      isLoading: panechoEchoprimeCombinedResultsQuery.isLoading,
-      isFetching: panechoEchoprimeCombinedResultsQuery.isFetching,
-      isError: panechoEchoprimeCombinedResultsQuery.isError,
-      error: panechoEchoprimeCombinedResultsQuery.error ?? null,
-      data: panechoEchoprimeCombinedResultsQuery.data ?? null,
-    });
-  }, [
+  const ohifAiPayload = buildStudyResultsOhifAiPayload({
     studyUid,
-    panechoEchoprimeCombinedResultsQuery.status,
-    panechoEchoprimeCombinedResultsQuery.fetchStatus,
-    panechoEchoprimeCombinedResultsQuery.isLoading,
-    panechoEchoprimeCombinedResultsQuery.isFetching,
-    panechoEchoprimeCombinedResultsQuery.isError,
-    panechoEchoprimeCombinedResultsQuery.error,
-    panechoEchoprimeCombinedResultsQuery.data,
-  ]);
+    panechoEchoprimeCombinedResultsState,
+    panechoEchoprimeCombinedResultsData,
+  });
 
-  // Part 3. Compose View Model
-  return useMemo(
-    () => ({
-      state: pageState,
-      error: panechoEchoprimeCombinedResultsQuery.error ?? null,
-      combinedData,
+  // --- Part 3. Actions / Handlers ---
+  const onBack = () => {
+    navigate("/dashboard");
+  };
 
-      panEchoEchoprimeState,
-      panechoEchoprimeResults,
-      retryAfter,
-      errorDetail,
+  // --- Part 4. Compose View Model ---
+  return {
+    studyUid,
+    panechoEchoprimeCombinedResultsState,
+    panechoEchoprimeCombinedResultsError: error,
 
-      anyLoading,
-      isPolling,
-      refresh: panechoEchoprimeCombinedResultsQuery.refetch,
+    panechoEchoprimeCombinedResultsData,
 
-      panechoEchoprimeCombinedResultsQuery,
-    }),
-    [
-      pageState,
-      panechoEchoprimeCombinedResultsQuery.error,
-      combinedData,
-      panEchoEchoprimeState,
-      panechoEchoprimeResults,
-      retryAfter,
-      errorDetail,
-      anyLoading,
-      isPolling,
-      panechoEchoprimeCombinedResultsQuery,
-    ]
-  );
+    anyLoading,
+    isPolling,
+    ohifAiPayload,
+
+    onBack,
+    refetchPanechoEchoprimeCombinedResults,
+  };
 }

@@ -6,8 +6,15 @@ export function useDeleteStudyMutation() {
 
   return useMutation({
     mutationFn: ({ studyId }) => dashboardRepository.deleteStudy(studyId),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["studies"] });
+
+      if (variables?.studyUid) {
+        queryClient.removeQueries({
+          queryKey: ["panechoEchoprimeCombinedResults", variables.studyUid],
+          exact: true,
+        });
+      }
     },
   });
 }

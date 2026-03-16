@@ -1,4 +1,4 @@
-import { apiClient, parseRetryAfter } from "../client";
+import { apiClient } from "../client";
 
 export const getPanechoEchoprimeCombinedResultsApi = async studyUid => {
   console.log("[API][PanechoCombined] Request studyUid:", studyUid);
@@ -10,15 +10,8 @@ export const getPanechoEchoprimeCombinedResultsApi = async studyUid => {
     }
   );
 
-  console.log("[API][PanechoCombined] Response:", {
-    status: response.status,
-    data: response.data,
-    retryAfterHeader: response.headers?.["retry-after"] ?? null,
-  });
-
   return {
     status: response.status,
     data: response.data,
-    retryAfter: parseRetryAfter(response),
   };
 };

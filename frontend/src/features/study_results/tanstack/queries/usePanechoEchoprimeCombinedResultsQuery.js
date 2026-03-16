@@ -5,12 +5,19 @@ const POLL_INTERVAL_MS = 3000;
 
 export function usePanechoEchoprimeCombinedResultsQuery(studyUid, { enabled = true } = {}) {
   return useQuery({
-    queryKey: ["PanechoEchoprimeCombinedResults", studyUid],
+    queryKey: ["panechoEchoprimeCombinedResults", studyUid],
     enabled: Boolean(enabled && studyUid),
     queryFn: () => studyResultsRepository.getPanechoEchoprimeCombinedResults(studyUid),
     staleTime: 0,
-    refetchInterval: query =>
-      query.state.data?.state === "pending" ? POLL_INTERVAL_MS : false,
+    refetchInterval: query => {
+      const panechoEchoprimeCombinedResultsState = query.state.data?.state;
+
+      if (panechoEchoprimeCombinedResultsState !== "pending") {
+        return false;
+      }
+
+      return POLL_INTERVAL_MS;
+    },
     refetchIntervalInBackground: true,
   });
 }
