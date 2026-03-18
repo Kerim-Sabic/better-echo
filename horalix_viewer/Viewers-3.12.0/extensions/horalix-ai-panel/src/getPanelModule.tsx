@@ -1,6 +1,5 @@
 import React from 'react';
-
-import HoralixAiResultsPanel from './Panels/HoralixAiResultsPanel';
+import HoralixAiResultsPanelBridge from './logic/HoralixAiResultsPanelBridge';
 
 function getPanelModule({ extensionManager }) {
   return [
@@ -9,7 +8,9 @@ function getPanelModule({ extensionManager }) {
       iconName: 'tab-linear',
       iconLabel: 'AI',
       label: 'AI Results',
-      component: props => <HoralixAiResultsPanel {...props} appConfig={extensionManager.appConfig} />,
+      component: () => (
+        <HoralixAiResultsPanelBridge appConfig={extensionManager.appConfig} />
+      ),
     },
   ];
 }

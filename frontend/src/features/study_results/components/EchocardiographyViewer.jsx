@@ -48,6 +48,7 @@ export default function EchocardiographyViewer({ studyResultsPageViewModel }) {
     ohifAiPayload,
   } = studyResultsPageViewModel;
 
+  console.log("OHIF AI PAYLOAD", ohifAiPayload)
   const location = useLocation();
   const iframeRef = useRef(null);
   const iframeLoadedRef = useRef(false);

@@ -11,16 +11,13 @@ export function buildStudyResultsOhifAiPayload({
     };
 
   return {
-    version: 1,
     sentAt: new Date().toISOString(),
-    studyUID: studyUid ?? null,
-    state: panechoEchoprimeCombinedResultsState ?? "loading",
-    panechoEchoprimeCombinedResultsState: panechoEchoprimeCombinedResultsState ?? "loading",
-    aiMeasurements: {
-      state: panechoEchoprimeCombinedResultsState ?? "loading",
+    studyUid,
+    panechoEchoprimeCombinedResultsState,
+    panechoEchoprimeAiMeasurements: {
       totalMeasurements: panechoEchoprimeCombinedResultsDisplay.totalMeasurements,
       mainMeasurements: panechoEchoprimeCombinedResultsDisplay.mainMeasurements,
-      Measurements: panechoEchoprimeCombinedResultsDisplay.measurementSections,
+      measurementSections: panechoEchoprimeCombinedResultsDisplay.measurementSections,
     },
   };
 }
