@@ -6,7 +6,12 @@ window.config = {
     allowedParentOrigins: ["http://localhost:3000"],
     channel: "horalix-ai"
   },
-  showStudyList: true,
+  showStudyList: false,
+  whiteLabeling: {
+    createLogoComponentFn: function (React) {
+      return React.createElement(React.Fragment, null);
+    }
+  },
   filterQueryParam: false,
   disableServersCache: false,
   defaultDataSourceName: "orthanc",
