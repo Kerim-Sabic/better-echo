@@ -53,21 +53,12 @@ if %errorlevel% neq 0 (
     rem :__AFTER_DOCKER
 
     rem Try new 'docker compose' first
-    docker compose -f docker-compose.yml up -d postgres orthanc >NUL 2>&1
+    docker compose -f docker-compose.yml up -d postgres orthanc horalix-viewer >NUL 2>&1
     if %errorlevel% neq 0 (
-        echo 'docker compose' failed, trying 'docker-compose' for PostgreSQL/Orthanc...
-        docker-compose -f docker-compose.yml up -d postgres orthanc
+        echo 'docker compose' failed, trying 'docker-compose' for PostgreSQL/Orthanc/OHIF...
+        docker-compose -f docker-compose.yml up -d postgres orthanc horalix-viewer
     ) else (
-        echo PostgreSQL and Orthanc started via 'docker compose'.
-    )
-
-    echo Starting OHIF viewer ^(Docker Compose^)...
-    docker compose -f viewer-ohif/docker-compose.yml up -d horalix-viewer >NUL 2>&1
-    if %errorlevel% neq 0 (
-        echo 'docker compose' failed for OHIF, trying 'docker-compose'...
-        docker-compose -f viewer-ohif/docker-compose.yml up -d horalix-viewer
-    ) else (
-        echo OHIF started via 'docker compose'.
+        echo PostgreSQL, Orthanc, and OHIF started via 'docker compose'.
     )
 )
 

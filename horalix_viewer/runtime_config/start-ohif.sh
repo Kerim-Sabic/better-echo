@@ -10,7 +10,7 @@ cat >/usr/share/nginx/html/init-service-worker.js <<'EOF'
 export {};
 EOF
 
-# Proxy DICOMweb to Orthanc through same origin to avoid browser CORS failures.
+# Proxy DICOMweb to Orthanc through the Docker Compose network.
 cat >/etc/nginx/conf.d/default.conf <<'EOF'
 server {
   listen 80;
@@ -26,23 +26,23 @@ server {
     try_files $uri =404;
   }
 
-  # Static assets should 404 when missing (not return index.html).
+  # Static assets should 404 when missing instead of returning index.html.
   location ~* \.(?:js|css|map|json|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf)$ {
     try_files $uri =404;
   }
 
   location /dicom-web/ {
-    proxy_pass http://host.docker.internal:8042/dicom-web/;
+    proxy_pass http://orthanc:8042/dicom-web/;
     proxy_http_version 1.1;
-    proxy_set_header Host host.docker.internal:8042;
+    proxy_set_header Host orthanc:8042;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
   }
 
   location /wado {
-    proxy_pass http://host.docker.internal:8042/wado;
+    proxy_pass http://orthanc:8042/wado;
     proxy_http_version 1.1;
-    proxy_set_header Host host.docker.internal:8042;
+    proxy_set_header Host orthanc:8042;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
   }
