@@ -1,6 +1,6 @@
 # Runbook
 
-Last Updated: 2026-03-06  
+Last Updated: 2026-03-18  
 Owner: Engineering
 
 ## Scope
@@ -9,12 +9,14 @@ Operational troubleshooting for local development and desktop runtime.
 
 ## Runtime Components
 
-1. Docker Orthanc (`8042`, `4242`).
-2. FastAPI backend (`127.0.0.1:8000`).
-3. React frontend (`localhost:3000` in dev).
-4. Electron desktop runtime.
-5. Optional LLM service managed by scripts/Electron.
-6. Optional LAN dev mode (`0.0.0.0:8000` backend bind + LAN URL hint).
+1. Docker PostgreSQL (`5433` -> container `5432`).
+2. Docker Orthanc (`8042`, `4242`).
+3. Docker OHIF viewer (`3001`).
+4. FastAPI backend (`127.0.0.1:8000`).
+5. React frontend (`localhost:3000` in dev).
+6. Electron desktop runtime.
+7. Optional LLM service managed by scripts/Electron.
+8. Optional LAN dev mode (`0.0.0.0:8000` backend bind + LAN URL hint).
 
 ## Health Checks
 
@@ -82,11 +84,12 @@ or:
 scripts\dev-lan.bat
 ```
 
-## DockerOrthanc Not Available
+## Docker Services Not Available
 
 Symptoms:
 
 1. DICOM upload/inference routes fail due to Orthanc connectivity.
+2. Backend fails because PostgreSQL is not reachable.
 
 Actions:
 
@@ -94,64 +97,78 @@ Actions:
 2. Run:
 
 ```powershell
-docker compose -f docker-compose.yml up -d orthanc
+docker compose -f docker-compose.yml up -d postgres orthanc
+docker compose -f viewer-ohif/docker-compose.yml up -d horalix-viewer
 ```
 
 3. Validate `http://localhost:8042`.
-4. Startup helper reference: [`dev-start.ps1`](../scripts/dev-start.ps1).
+4. Validate `docker ps --filter "name=horalix_postgres"`.
+5. Startup helper reference: [`dev-start.ps1`](../scripts/dev-start.ps1).
 
-## SQLite Schema Drift
+## PostgreSQL Schema Bootstrap or Reset
 
 Symptoms:
 
-1. SQL errors like `no such column` after model changes.
+1. Backend fails because the local Postgres schema is missing or out of sync.
+2. Fresh local DB starts but expected tables are not present.
 
 Actions:
 
-1. Stop services.
-2. From `backend/` run:
+1. Ensure Docker Desktop is running.
+2. Start local Postgres if needed:
+
+```powershell
+docker compose up -d postgres
+```
+
+3. From `backend/` run:
 
 ```powershell
 python -m app.database.setup_db
 ```
 
-3. Restart stack.
+4. Restart backend stack.
 
 References:
 
 1. Schema script: [`setup_db.py`](../backend/app/database/setup_db.py)
-2. Model field source for biometric columns: [`studies.py`](../backend/app/database_models/studies.py#L16)
+2. DB runtime config: [`config.py`](../backend/app/core/config.py)
 
 Warning:
 
-1. Local dev DB reset is destructive.
+1. `python -m app.database.setup_db --drop` is destructive and should only be used for a local reset.
 
-## SQLite "database is locked"
+## PostgreSQL Connection or Missing Database
 
 Symptoms:
 
-1. API requests fail with `sqlite3.OperationalError: database is locked`.
-2. Dashboard requests may hang or return `500` while another process keeps a write lock.
+1. Backend fails to connect to Postgres.
+2. Tests fail because `horalix_test` does not exist.
+3. Local startup fails because Docker Postgres is down.
 
 Immediate unblock:
 
-1. Stop all backend/electron/frontend dev processes.
-2. Ensure no backend listener remains on `8000`.
-3. Restart with one startup script only (`dev-start` or `dev-lan`), not multiple overlapping stacks.
-
-If lock persists:
-
-1. Backup and rebuild local DB:
+1. Ensure the Postgres container is running:
 
 ```powershell
-Copy-Item backend/database.db "backend/database.$(Get-Date -Format 'yyyyMMdd_HHmmss').bak"
-Remove-Item backend/database.db -Force -ErrorAction SilentlyContinue
-Remove-Item backend/database.db-wal -Force -ErrorAction SilentlyContinue
-Remove-Item backend/database.db-shm -Force -ErrorAction SilentlyContinue
+docker compose up -d postgres
+docker ps --filter "name=horalix_postgres"
+```
+
+2. If the main DB needs schema creation:
+
+```powershell
 cd backend
 python -m app.database.setup_db
-python -m app.database.create_user
 ```
+
+3. If the test DB is missing:
+
+```powershell
+docker exec horalix_postgres psql -U horalix -d postgres -c "CREATE DATABASE horalix_test;"
+```
+
+4. Re-run the backend tests or restart the backend.
 
 ## LLM StartupShutdown Problems
 
@@ -236,6 +253,6 @@ Useful debugging outputs:
 
 1. Stop app and all helper scripts.
 2. Stop LLM service (`scripts\stop_llm.ps1`).
-3. Ensure Docker + Orthanc are healthy.
+3. Ensure Docker-backed services are healthy (`postgres`, `orthanc`, `horalix-viewer`).
 4. Restart using `dev-start` or `dev-start-with-llm`.
 5. Validate backend and Orthanc health endpoints.

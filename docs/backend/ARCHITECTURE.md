@@ -178,19 +178,15 @@ Current diagnostics:
 3. Route-level HTTP statuses for pending/complete/error flows in orchestration handlers.
 4. Startup preload logs for device/memory-aware behavior in [`main.py`](../../backend/app/main.py#L71)
 
-SQLite runtime profile:
+PostgreSQL runtime profile:
 
-1. Engine connection timeout is 30s.
-2. SQLite pragmas are applied on connect in [`db.py`](../../backend/app/database/db.py#L10):
-    1. `foreign_keys=ON`
-    2. `busy_timeout=30000`
-    3. `journal_mode=WAL`
-    4. `synchronous=NORMAL`
-3. Test DB config mirrors runtime pragmas to reduce lock-related flakiness.
+1. Runtime DB connection is driven by `DATABASE_URL` in [`config.py`](../../backend/app/core/config.py).
+2. Engine uses `pool_pre_ping=True` in [`db.py`](../../backend/app/database/db.py).
+3. Backend tests use a dedicated `TEST_DATABASE_URL` and clear that DB between tests.
 
 ## Backend Caveats
 
-1. Local schema drift requires reset flow in local dev (see [`RUNBOOK.md`](../RUNBOOK.md#sqlite-schema-drift)).
+1. Local schema/bootstrap issues should follow the Postgres runbook flows in [`RUNBOOK.md`](../RUNBOOK.md#postgresql-schema-bootstrap-or-reset).
 2. Orthanc availability is an external dependency for upload/inference.
 3. Batch/preload settings should be tuned per machine hardware in [`config.py`](../../backend/app/core/config.py#L18).
 

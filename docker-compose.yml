@@ -1,4 +1,22 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: horalix_postgres
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    environment:
+      POSTGRES_DB: "${POSTGRES_DB:-horalix}"
+      POSTGRES_USER: "${POSTGRES_USER:-horalix}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-horalix_dev}"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-horalix} -d ${POSTGRES_DB:-horalix}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
   orthanc:
     image: jodogne/orthanc-plugins
     container_name: orthanc
@@ -11,4 +29,5 @@ services:
     restart: unless-stopped
 
 volumes:
+  postgres_data:
   orthanc_data:

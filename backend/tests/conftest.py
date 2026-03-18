@@ -1,11 +1,9 @@
-import os
-import tempfile
 from typing import Generator
 from uuid import uuid4
 
 import pytest
 from fastapi import FastAPI
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.api.pipeline.pipeline_cancel_api import router as pipeline_cancel_router
@@ -18,29 +16,15 @@ from app.api.results.combined_panecho_echoprime_api import router as panecho_rou
 from app.api.results.llm_report_get_api import router as llm_results_router
 from app.api.patients import router as patients_router
 from app.api.studies import router as studies_router
+from app.core.config import settings
 from app.database.db import Base, get_db
 from app.database_models.patients import Patient
 from app.database_models.studies import Study
 from app.database_models.users import User
 from app.helpers.auth.authentication_functions import get_current_user_id
 
-
-def _apply_sqlite_pragmas(dbapi_connection) -> None:
-    cursor = dbapi_connection.cursor()
-    pragmas = (
-        ("foreign_keys", "ON"),
-        ("busy_timeout", "30000"),
-        ("journal_mode", "WAL"),
-        ("synchronous", "NORMAL"),
-    )
-    try:
-        for key, value in pragmas:
-            try:
-                cursor.execute(f"PRAGMA {key}={value}")
-            except Exception:
-                continue
-    finally:
-        cursor.close()
+def _create_test_engine(database_url: str):
+    return create_engine(database_url, pool_pre_ping=True)
 
 
 @pytest.fixture(scope="session")
@@ -48,23 +32,19 @@ def db_engine():
     # Ensure model metadata is imported before create_all.
     import app.database_models  # noqa: F401
 
-    fd, db_path = tempfile.mkstemp(suffix="_test.db")
-    os.close(fd)
-    engine = create_engine(
-        f"sqlite:///{db_path}",
-        connect_args={"check_same_thread": False, "timeout": 30},
-    )
-    event.listen(engine, "connect", lambda dbapi_connection, _record: _apply_sqlite_pragmas(dbapi_connection))
+    database_url = settings.TEST_DATABASE_URL
+    if not database_url:
+        raise RuntimeError(
+            "TEST_DATABASE_URL must be set for backend tests now that PostgreSQL is the active runtime path."
+        )
+
+    engine = _create_test_engine(database_url)
     Base.metadata.create_all(bind=engine)
 
     try:
         yield engine
     finally:
         engine.dispose()
-        try:
-            os.remove(db_path)
-        except OSError:
-            pass
 
 
 @pytest.fixture(scope="session")
