@@ -1,6 +1,6 @@
 # AI Pipelines and Orchestration
 
-Last Updated: 2026-03-06  
+Last Updated: 2026-03-18  
 Owner: AI/Backend
 
 ## Scope
@@ -43,7 +43,7 @@ Queue foundation (implemented):
 5. Draft/active artifact boundary now exists:
 1. queue start creates `draft` artifact set for the job
 2. existing study-level artifacts are assigned to `active` set baseline
-3. status payload exposes both sets for frontend-safe transition planning
+3. status payload exposes both sets for observer reads
 
 Promote/cancel additions:
 
@@ -74,13 +74,6 @@ Regenerate additions:
 4. Failed regenerate keeps previous active artifact set unchanged.
 5. Combined regenerate preserves clinician override map while refreshing AI raw values.
 
-Remaining redesign work:
-
-1. Post-pilot throughput optimization (controlled parallel queue workers for high-VRAM profile).
-2. Viewer-focused frontend integration on refactored frontend branch.
-3. Detailed backend plan: [`BACKEND_QUEUE_REWORK_PLAN.md`](./BACKEND_QUEUE_REWORK_PLAN.md).
-4. Detailed frontend plan: [`FRONTEND_QUEUE_INTEGRATION_PLAN.md`](./FRONTEND_QUEUE_INTEGRATION_PLAN.md).
-
 Implementation references:
 
 1. PanEcho+EchoPrime route: [`combined_panecho_echoprime_api.py`](../../backend/app/api/results/combined_panecho_echoprime_api.py)
@@ -100,7 +93,6 @@ Implementation references:
 Service path note:
 
 1. Canonical runtime imports target modules under `backend/app/services/pipeline/`.
-2. Legacy top-level service shims were removed in Iteration 7.
 
 ## Persistence Contract
 
@@ -183,6 +175,7 @@ Env-driven controls in backend config:
 Operational note:
 
 1. Tune these values per hardware profile and VRAM limits.
+2. `PIPELINE_MAX_ACTIVE_STUDIES=1` remains the conservative default for low-VRAM systems.
 
 Config reference:
 

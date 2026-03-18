@@ -11,6 +11,9 @@ class Settings(BaseSettings):
     ORTHANC_USER: str
     ORTHANC_PASS: str
 
+    DATABASE_URL: str = "postgresql+psycopg://horalix:horalix_dev@localhost:5433/horalix"
+    TEST_DATABASE_URL: Optional[str] = None
+
     SECRET_KEY: str
     TOKEN_EXPIRE_HOURS: int
 

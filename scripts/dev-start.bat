@@ -2,27 +2,28 @@
 echo Starting Echocardiology Desktop App in DEV mode...
 echo.
 echo This will start:
-echo   1. Orthanc DICOM server (Docker)
-echo   2. OHIF viewer (Docker) on http://localhost:3001
-echo   3. FastAPI backend on http://127.0.0.1:8000
-echo   4. React frontend on http://localhost:3000
-echo   5. Electron app connecting to both
+echo   1. PostgreSQL (Docker)
+echo   2. Orthanc DICOM server (Docker)
+echo   3. OHIF viewer (Docker) on http://localhost:3001
+echo   4. FastAPI backend on http://127.0.0.1:8000
+echo   5. React frontend on http://localhost:3000
+echo   6. Electron app connecting to all services
 echo.
 
 cd /d "%~dp0\.."
 
-echo Checking Docker and starting Orthanc (Docker Compose)...
+echo Checking Docker and starting local infrastructure (Docker Compose)...
 docker --version >NUL 2>&1
 if %errorlevel% neq 0 (
-    echo Docker is not available. Skipping Orthanc/OHIF startup.
+    echo Docker is not available. Skipping PostgreSQL/Orthanc/OHIF startup.
 ) else (
     rem Try new 'docker compose' first
-    docker compose -f docker-compose.yml up -d orthanc >NUL 2>&1
+    docker compose -f docker-compose.yml up -d postgres orthanc >NUL 2>&1
     if %errorlevel% neq 0 (
-        echo 'docker compose' failed, trying 'docker-compose'...
-        docker-compose -f docker-compose.yml up -d orthanc
+        echo 'docker compose' failed, trying 'docker-compose' for PostgreSQL/Orthanc...
+        docker-compose -f docker-compose.yml up -d postgres orthanc
     ) else (
-        echo Orthanc started via 'docker compose'.
+        echo PostgreSQL and Orthanc started via 'docker compose'.
     )
 
     echo Starting OHIF viewer ^(Docker Compose^)...

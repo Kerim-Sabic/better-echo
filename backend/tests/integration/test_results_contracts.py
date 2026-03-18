@@ -509,7 +509,7 @@ def test_combined_overrides_patch_returns_recomputed_display_payload(app, db_ses
         )
         assert row is not None
         assert row.value_json.get("overrides", {}).get("tvpkgrad", {}).get("value") == 64.0
-        assert row.value_json.get("overrides", {}).get("tvpkgrad", {}).get("edited_by", {}).get("id") == 1
+        assert row.value_json.get("overrides", {}).get("tvpkgrad", {}).get("edited_by", {}).get("id") == seeded_study["user_id"]
     finally:
         db.close()
 

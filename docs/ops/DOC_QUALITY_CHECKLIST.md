@@ -37,12 +37,13 @@ Use this checklist before merging docs-heavy changes.
 
 1. Setup/run docs point to root README + `docs/ops/SETUP_FIRST_RUN.md`.
 2. API contract changes update `docs/API_SCHEMA_NOTES.md`.
-3. Active roadmap updates `docs/CURRENT_TASKS.md`.
+3. Canonical docs do not contain active task boards or unfinished plan docs.
 
 ## Repository Scope Checks
 
 1. Canonical docs are under `docs/`.
 2. Non-canonical/private directories are not referenced in canonical docs.
+3. Branch notes, migration diaries, and handoff residue are kept out of `docs/`.
 
 ## Maintenance Metadata
 

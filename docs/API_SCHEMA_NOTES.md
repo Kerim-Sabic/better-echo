@@ -1,6 +1,6 @@
 # API Schema Notes
 
-Last Updated: 2026-03-06  
+Last Updated: 2026-03-18  
 Owner: Backend/API
 
 ## Scope
@@ -106,19 +106,19 @@ Key endpoints:
 8. `POST /api/studies/{study_uid}/pipeline/cancel` ([`pipeline_cancel_api.py`](../backend/app/api/pipeline/pipeline_cancel_api.py))
 9. `POST /api/studies/{study_uid}/pipeline/regenerate-combined` ([`pipeline_regenerate_api.py`](../backend/app/api/pipeline/pipeline_regenerate_api.py))
 
-Pipeline queue note (Iterations 1-5):
+Pipeline queue behavior:
 
 1. `pipeline/start` and `pipeline/status` are implemented as the backend queue foundation.
 2. Queue worker executes server-owned stage progression (`prefilter`, `combined`, `dynamic_measurements`, optional `llm`).
-3. AI result GET routes are observer-only in Iteration 6:
+3. AI result GET routes are observer-only:
 1. they read active/draft-derived results and status
 2. they do not enqueue jobs or create pending marker rows
 4. `llm_report` now includes a backend-built `display` block (`mainTitle`, `sections`) so the frontend renders report structure without parsing markdown headings itself.
-4. Iteration 2 draft boundary is active:
+4. Draft artifact boundary:
 1. queue start creates a `draft` artifact set per job
 2. status returns `artifact_sets.draft` and `artifact_sets.active`
 3. legacy study-level results are backfilled into an `active` artifact set on queue start
-5. Iteration 3 promote/cancel semantics are active:
+5. Promote/cancel semantics:
 1. `pipeline/promote` supports immediate promote or delayed promote-intent contract
 2. `pipeline/cancel` supports queued/completed immediate cancel and running cooperative cancel request
 3. cancel cleanup uses `cleanup_scope` (`none`, `append_delta`, `new_study`)
@@ -126,11 +126,11 @@ Pipeline queue note (Iterations 1-5):
 1. `200` immediate promote
 2. `202` promote intent accepted (`auto_promote_on_complete`)
 3. `409` no valid promote context
-6. Iteration 4 routing gate is active:
+6. Routing gate:
 1. hard DICOM compatibility checks
 2. Doppler tag short-circuit
 3. global confidence gate via `PIPELINE_VIEW_CONFIDENCE_MIN` (default `0.75`)
-7. Iteration 5 regenerate flow is active:
+7. Regenerate flow:
 1. `pipeline/regenerate-combined` enqueues regenerate mode explicitly
 2. regenerate requires an active combined baseline
 3. successful regenerate auto-promotes draft artifact set
