@@ -14,8 +14,10 @@ from app.api.inference.infer_measurements_api import infer_measurements_2d
 from app.core.config import settings
 from app.core.artifacts import DYNAMIC_MEASUREMENTS_COMBINED_TYPE
 from app.database_models.derived_results import DerivedResult, ResultStatus
+from app.database_models.instances import Instance
 from app.database_models.pipeline_artifact_sets import PipelineArtifactSet
 from app.database_models.pipeline_jobs import PipelineJob
+from app.services.upload_mp4_to_orthanc.upload_mp4_to_orthanc import publish_mp4_as_derived_dicom
 from app.services.pipeline.stages.prefilter import _prefilter_instances
 
 
@@ -118,7 +120,27 @@ def _persist_progress(
     db.commit()
 
 
-# Part 5. Run dynamic + measurements lanes over routed instance list.
+def _attach_derived_dicom_artifact(
+    *,
+    instance: Instance | None,
+    output_path: str | None,
+    series_label: str,
+) -> Dict[str, Any] | None:
+    if instance is None or not output_path:
+        return None
+
+    try:
+        study_uid = instance.series.study.study_uid
+        return publish_mp4_as_derived_dicom(
+            source_dicom_path=instance.file_path,
+            mp4_path=output_path,
+            study_uid=study_uid,
+            series_label=series_label,
+        )
+    except Exception:
+        return None
+
+
 def run_dynamic_measurements_stage(
     *,
     db: Session,
@@ -133,6 +155,17 @@ def run_dynamic_measurements_stage(
     )
 
     instances = _prefilter_instances(prefilter_payload)
+    instance_uids = list(
+        OrderedDict.fromkeys(
+            item.get("sop_instance_uid")
+            for item in instances
+            if item.get("sop_instance_uid")
+        ).keys()
+    )
+    instance_by_uid: Dict[str, Instance] = {}
+    if instance_uids:
+        instance_rows = db.query(Instance).filter(Instance.sop_instance_uid.in_(instance_uids)).all()
+        instance_by_uid = {instance.sop_instance_uid: instance for instance in instance_rows}
 
     dynamic_runs = 0
     measurements_2d_runs = 0
@@ -205,6 +238,7 @@ def run_dynamic_measurements_stage(
         lane_records.append(
             {
                 "sop_uid": sop_uid,
+                "instance": instance_by_uid.get(sop_uid),
                 "instance_results": instance_results,
                 "dynamic_eligible": dynamic_eligible,
                 "run_dynamic": run_dynamic,
@@ -221,6 +255,7 @@ def run_dynamic_measurements_stage(
             if not record["run_dynamic"]:
                 continue
             sop_uid = record["sop_uid"]
+            instance_row = record["instance"]
             instance_results = record["instance_results"]
             try:
                 dynamic_response = infer_lv_segmentation(
@@ -233,14 +268,22 @@ def run_dynamic_measurements_stage(
                 dynamic_payload = _response_payload(dynamic_response)
                 dynamic_runs += 1
                 output_path = dynamic_payload.get("output_file") or dynamic_payload.get("outputfile")
-                instance_results.append(
-                    {
-                        "task": "echonet_dynamic_lv_segmentation",
-                        "status": "DONE",
-                        "ui_label": "Left Ventricle (LV) segmentation",
-                        "output_path": output_path,
-                    }
+                derived_dicom = _attach_derived_dicom_artifact(
+                    instance=instance_row,
+                    output_path=output_path,
+                    series_label="LV Segmentation",
                 )
+
+                result_item = {
+                    "task": "echonet_dynamic_lv_segmentation",
+                    "status": "DONE",
+                    "ui_label": "Left Ventricle (LV) segmentation",
+                    "output_path": output_path,
+                }
+                if derived_dicom:
+                    result_item["derived_dicom"] = derived_dicom
+
+                instance_results.append(result_item)
             except Exception as exc:
                 errors.append(f"dynamic:{sop_uid}:{exc}")
                 instance_results.append(
@@ -282,6 +325,7 @@ def run_dynamic_measurements_stage(
                 if not record["dynamic_eligible"] or weight_name not in record["weights_2d"]:
                     continue
                 sop_uid = record["sop_uid"]
+                instance_row = record["instance"]
                 instance_results = record["instance_results"]
                 try:
                     measurements_response = infer_measurements_2d(
@@ -300,15 +344,23 @@ def run_dynamic_measurements_stage(
                         or measurements_payload.get("output_file")
                         or measurements_payload.get("outputfile")
                     )
-                    instance_results.append(
-                        {
-                            "task": "measurements_2d",
-                            "status": "DONE",
-                            "weights": weight_name,
-                            "ui_label": weight_name,
-                            "output_path": output_path,
-                        }
+                    derived_dicom = _attach_derived_dicom_artifact(
+                        instance=instance_row,
+                        output_path=output_path,
+                        series_label=f"2D Measurements ({weight_name})",
                     )
+
+                    result_item = {
+                        "task": "measurements_2d",
+                        "status": "DONE",
+                        "weights": weight_name,
+                        "ui_label": weight_name,
+                        "output_path": output_path,
+                    }
+                    if derived_dicom:
+                        result_item["derived_dicom"] = derived_dicom
+
+                    instance_results.append(result_item)
                 except Exception as exc:
                     errors.append(f"measurements2d:{sop_uid}:{weight_name}:{exc}")
                     instance_results.append(

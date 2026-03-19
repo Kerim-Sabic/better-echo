@@ -44,15 +44,15 @@ function statusClasses(stateValue, isPolling) {
 export default function StudyResultsHeader({ studyResultsPageViewModel }) {
   const {
     studyUid,
-    panechoEchoprimeCombinedResultsState,
+    studyResultsState,
     isPolling,
     anyLoading,
     onBack,
-    refetchPanechoEchoprimeCombinedResults,
+    refetchStudyResults,
   } = studyResultsPageViewModel;
 
-  const stateLabel = formatStateLabel(panechoEchoprimeCombinedResultsState, isPolling);
-  const stateClassName = statusClasses(panechoEchoprimeCombinedResultsState, isPolling);
+  const stateLabel = formatStateLabel(studyResultsState, isPolling);
+  const stateClassName = statusClasses(studyResultsState, isPolling);
 
   return (
     <div className="w-full flex items-center justify-between gap-4">
@@ -81,11 +81,7 @@ export default function StudyResultsHeader({ studyResultsPageViewModel }) {
           {stateLabel}
         </span>
 
-        <Button
-          variant="outline"
-          onClick={refetchPanechoEchoprimeCombinedResults}
-          className="gap-2"
-        >
+        <Button variant="outline" onClick={refetchStudyResults} className="gap-2">
           <RefreshCw className={`w-4 h-4 ${anyLoading ? "animate-spin" : ""}`} />
           Refresh
         </Button>

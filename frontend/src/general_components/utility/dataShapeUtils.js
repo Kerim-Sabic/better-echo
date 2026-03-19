@@ -7,3 +7,13 @@ export function toArray(value) {
 export function toObject(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value) ? value : {};
 }
+
+// Returns a trimmed string if the value is not empty, otherwise returns null.
+export function toNullableString(value) {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  const text = String(value).trim();
+  return text.length > 0 ? text : null;
+}

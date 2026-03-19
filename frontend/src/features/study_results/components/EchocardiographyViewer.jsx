@@ -43,12 +43,8 @@ function isLocalDev() {
 }
 
 export default function EchocardiographyViewer({ studyResultsPageViewModel }) {
-  const {
-    studyUid,
-    ohifAiPayload,
-  } = studyResultsPageViewModel;
+  const { studyUid, ohifAiPayload, viewerRefreshToken } = studyResultsPageViewModel;
 
-  console.log("OHIF AI PAYLOAD", ohifAiPayload)
   const location = useLocation();
   const iframeRef = useRef(null);
   const iframeLoadedRef = useRef(false);
@@ -65,7 +61,8 @@ export default function EchocardiographyViewer({ studyResultsPageViewModel }) {
     process.env.REACT_APP_OHIF_CONFIG_URL || `${viewerRoot}/orthanc-standalone.json`
   );
 
-  const cacheBuster = `${studyUid || "study"}-${location.key || "location"}`;
+  const viewerDataVersion = String(viewerRefreshToken || "no-derived-dicom");
+  const cacheBuster = `${studyUid || "study"}-${location.key || "location"}-${viewerDataVersion}`;
 
   const configUrl = configUrlRaw.includes("?")
     ? `${configUrlRaw}&_cb=${cacheBuster}`
