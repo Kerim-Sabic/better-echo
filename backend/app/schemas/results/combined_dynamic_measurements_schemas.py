@@ -2,6 +2,17 @@ from typing import Annotated, Literal, Optional, Union
 from pydantic import BaseModel, Field
 
 
+class DerivedDicomRef(BaseModel):
+    relative_dicom_path: Optional[str] = None
+    sop_instance_uid: Optional[str] = None
+    series_instance_uid: Optional[str] = None
+    series_description: Optional[str] = None
+    orthanc_instance_id: Optional[str] = None
+    orthanc_series_id: Optional[str] = None
+    orthanc_study_id: Optional[str] = None
+    orthanc_status: Optional[str] = None
+
+
 class DynamicMeasurementResultItem(BaseModel):
     task: Optional[str] = None
     ui_label: Optional[str] = None
@@ -9,6 +20,7 @@ class DynamicMeasurementResultItem(BaseModel):
     output_path: Optional[str] = None
     output_kind: Optional[str] = None
     message: Optional[str] = None
+    derived_dicom: Optional[DerivedDicomRef] = None
 
 
 class DynamicMeasurementInstance(BaseModel):
@@ -36,14 +48,17 @@ class CompleteResponse(BaseModel):
     status: Literal["complete"]
     dynamic_measurements_results: DynamicMeasurementsPayload = Field(default_factory=DynamicMeasurementsPayload)
 
+
 class PendingResponse(BaseModel):
     status: Literal["pending"]
     retry_after: int = Field(..., ge=1)
     dynamic_measurements_results: DynamicMeasurementsPayload | None = None
 
+
 class FailedResponse(BaseModel):
     status: Literal["failed"]
     detail: str | None = None
+
 
 CombinedResultsResponse = Annotated[
     Union[CompleteResponse, PendingResponse, FailedResponse],
