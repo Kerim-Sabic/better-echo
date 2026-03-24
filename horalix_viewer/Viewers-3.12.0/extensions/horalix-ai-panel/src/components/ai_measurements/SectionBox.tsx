@@ -1,5 +1,5 @@
 import React from 'react';
-import { MeasurementItem } from '../horalixAiResults.types';
+import { MeasurementItem } from '../../horalixAiResults.types';
 
 type Props = {
   title: string;
@@ -41,15 +41,16 @@ function formatDisplayValue(item: MeasurementItem) {
 function MeasurementRow({ item }: { item: MeasurementItem }) {
   const value = formatDisplayValue(item);
   const alreadyContainsUnits =
-    Boolean(item.units) && value.toLowerCase().includes(String(item.units).toLowerCase());
+    Boolean(item.units) &&
+    value.toLowerCase().includes(String(item.units).toLowerCase());
 
   return (
     <div className="flex items-center justify-between gap-2 border-b border-[#1A2030] py-1.5 last:border-b-0">
-      <div className="text-[10px] tracking-wide text-[#8D98B3] uppercase leading-snug">
+      <div className="text-[10px] leading-snug tracking-wide text-[#8D98B3] uppercase">
         {item.label || item.key || 'Measurement'}
       </div>
 
-      <div className="shrink-0 flex items-center gap-1.5 text-right">
+      <div className="flex shrink-0 items-center gap-1.5 text-right">
         <span className="text-[11px] font-semibold text-white">
           {value}
           {item.units && !alreadyContainsUnits ? ` ${item.units}` : ''}
@@ -62,7 +63,7 @@ function MeasurementRow({ item }: { item: MeasurementItem }) {
 
         {item.discrepancy && (
           <span
-            className="inline-block text-[11px] font-bold leading-none text-red-400 cursor-help"
+            className="inline-block cursor-help text-[11px] font-bold leading-none text-red-400"
             title="Discrepancy, there is uncertainty about this measurement."
             aria-label="Discrepancy, there is uncertainty about this measurement."
           >

@@ -1,3 +1,4 @@
+// PANECHO ECHOPRIME MEASUREMENTS
 export type MeasurementItem = {
   key?: string;
   label?: string;
@@ -20,9 +21,25 @@ export type HoralixAiMeasurements = {
   totalMeasurements?: number | null;
 };
 
+// LLM ECHO REPORT
+export type HoralixLlmReportSection = {
+  title?: string | null;
+  body?: string | null;
+};
+
+export type HoralixLlmEchoReport = {
+  mainTitle?: string | null;
+  sections?: HoralixLlmReportSection[];
+  reportGeneratedAt?: string | null;
+};
+
+// COMBINED PAYLOAD
 export type HoralixAiResultsPayload = {
   sentAt?: string | null;
   studyUid?: string | null;
   panechoEchoprimeCombinedResultsState?: string | null;
   panechoEchoprimeAiMeasurements?: HoralixAiMeasurements | null;
+  llmReportResultsState?: string | null;
+  llmReportResultsDetail?: string | null;
+  llmEchoReport?: HoralixLlmEchoReport | null;
 };

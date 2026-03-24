@@ -1,5 +1,5 @@
 import React from 'react';
-import { MeasurementSection } from '../horalixAiResults.types';
+import { MeasurementSection } from '../../horalixAiResults.types';
 import SectionBox from './SectionBox';
 
 type Props = {

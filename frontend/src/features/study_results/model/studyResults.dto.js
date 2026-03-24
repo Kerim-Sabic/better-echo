@@ -1,5 +1,9 @@
-import { toArray, toObject, toNullableString } from "@/general_components/utility/dataShapeUtils";
-
+import {
+  toArray,
+  toObject,
+  toNullableString,
+} from "@/general_components/utility/dataShapeUtils";
+import { formatDateTime } from "@/general_components/utility/dateUtils";
 
 function deriveCombinedState(responseStatus, backendStatus) {
   if (responseStatus === 202 || backendStatus === "pending") {
@@ -33,7 +37,9 @@ function formatPanechoEchoprimeDisplayDto(rawDisplay) {
     hasMainMeasurements: Boolean(display.hasMainMeasurements),
     hasMeasurements: Boolean(display.hasMeasurements),
     totalMeasurements:
-      typeof display.totalMeasurements === "number" ? display.totalMeasurements : null,
+      typeof display.totalMeasurements === "number"
+        ? display.totalMeasurements
+        : null,
   };
 }
 
@@ -48,7 +54,46 @@ function formatPanechoEchoprimeResultsDto(rawResults) {
   };
 }
 
-function buildDynamicMeasurementsViewerRefreshToken(rawDynamicMeasurementsResults) {
+function formatLlmReportDisplayDto(rawDisplay) {
+  const display = toObject(rawDisplay);
+
+  const sections = toArray(display.sections)
+    .map(section => {
+      const normalizedSection = toObject(section);
+      const title = toNullableString(normalizedSection.title);
+      const body = toNullableString(normalizedSection.body);
+
+      if (!title && !body) {
+        return null;
+      }
+
+      return {
+        title,
+        body,
+      };
+    })
+    .filter(Boolean);
+
+  return {
+    mainTitle: toNullableString(display.mainTitle),
+    sections,
+  };
+}
+
+function formatLlmReportDto(rawReport) {
+  const report = toObject(rawReport);
+  const display = formatLlmReportDisplayDto(report.display);
+
+  return {
+    mainTitle: display.mainTitle,
+    sections: display.sections,
+    reportGeneratedAt: formatDateTime(report.report_generated_at)
+  };
+}
+
+function buildDynamicMeasurementsViewerRefreshToken(
+  rawDynamicMeasurementsResults
+) {
   const payload = toObject(rawDynamicMeasurementsResults);
   const instances = toArray(payload.instances);
   const seenTokens = new Set();
@@ -84,7 +129,8 @@ export function formatPanechoEchoprimeCombinedResultsDto(rawApiResponse) {
   const response = toObject(rawApiResponse);
   const responseStatus = response.status ?? null;
   const rawData = toObject(response.data);
-  const backendStatus = typeof rawData.status === "string" ? rawData.status : null;
+  const backendStatus =
+    typeof rawData.status === "string" ? rawData.status : null;
   const state = deriveCombinedState(responseStatus, backendStatus);
 
   const panechoEchoprimeResults =
@@ -102,7 +148,8 @@ export function formatDynamicMeasurementsCombinedResultsDto(rawApiResponse) {
   const response = toObject(rawApiResponse);
   const responseStatus = response.status ?? null;
   const rawData = toObject(response.data);
-  const backendStatus = typeof rawData.status === "string" ? rawData.status : null;
+  const backendStatus =
+    typeof rawData.status === "string" ? rawData.status : null;
   const state = deriveCombinedState(responseStatus, backendStatus);
 
   return {
@@ -110,5 +157,23 @@ export function formatDynamicMeasurementsCombinedResultsDto(rawApiResponse) {
     viewerRefreshToken: buildDynamicMeasurementsViewerRefreshToken(
       rawData.dynamic_measurements_results
     ),
+  };
+}
+
+export function formatLlmReportResultsDto(rawApiResponse) {
+  const response = toObject(rawApiResponse);
+  const responseStatus = response.status ?? null;
+  const rawData = toObject(response.data);
+  const backendStatus =
+    typeof rawData.status === "string" ? rawData.status : null;
+  const state = deriveCombinedState(responseStatus, backendStatus);
+
+  const llmReport =
+    state === "ready" ? formatLlmReportDto(rawData.llm_report) : null;
+
+  return {
+    state,
+    llmReport,
+    detail: state === "failed" ? toNullableString(rawData.detail) : null,
   };
 }
