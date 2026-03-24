@@ -23,7 +23,7 @@ export default function AiReportLoadingState({ state, detail }: Props) {
   }
 
   if (state === 'not_found') {
-    message = 'No AI Echo Report available for this study.';
+    message = 'No AI Echo Report available.';
     tone = 'info';
   }
 
