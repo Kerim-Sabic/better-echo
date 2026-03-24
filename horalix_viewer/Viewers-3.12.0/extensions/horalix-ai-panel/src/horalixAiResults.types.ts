@@ -2,12 +2,17 @@
 export type MeasurementItem = {
   key?: string;
   label?: string;
-  kind?: string;
+  kind?: 'numeric' | 'categorical' | string;
   displayValue?: string | number | null;
+  rawValue?: number | null;
   units?: string | null;
+  probabilities?: Record<string, number> | null;
   color?: string | null;
   discrepancy?: boolean;
-  editType?: string | null;
+  isOverridden?: boolean;
+  editable?: boolean;
+  editType?: 'label' | 'value' | string | null;
+  editOptions?: string[] | null;
 };
 
 export type MeasurementSection = {
@@ -19,6 +24,15 @@ export type HoralixAiMeasurements = {
   mainMeasurements?: MeasurementItem[];
   measurementSections?: MeasurementSection[];
   totalMeasurements?: number | null;
+};
+
+export type HoralixPanechoEchoprimeEditorState = {
+  hasOverrides?: boolean;
+  overridesUpdatedAt?: string | null;
+  isReportStale?: boolean;
+  canRegenerateAiReport?: boolean;
+  isRegeneratingAiReport?: boolean;
+  regenerateAiReportErrorMessage?: string | null;
 };
 
 // LLM ECHO REPORT
@@ -39,6 +53,7 @@ export type HoralixAiResultsPayload = {
   studyUid?: string | null;
   panechoEchoprimeCombinedResultsState?: string | null;
   panechoEchoprimeAiMeasurements?: HoralixAiMeasurements | null;
+  panechoEchoprimeEditorState?: HoralixPanechoEchoprimeEditorState | null;
   llmReportResultsState?: string | null;
   llmReportResultsDetail?: string | null;
   llmEchoReport?: HoralixLlmEchoReport | null;

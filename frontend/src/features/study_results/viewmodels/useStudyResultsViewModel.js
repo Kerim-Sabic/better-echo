@@ -4,7 +4,9 @@ import { usePanechoEchoprimeCombinedResultsQuery } from "@/features/study_result
 import { useDynamicMeasurementsCombinedResultsQuery } from "@/features/study_results/tanstack/queries/useDynamicMeasurementsCombinedResultsQuery";
 import { useLlmReportResultsQuery } from "@/features/study_results/tanstack/queries/useLlmReportResultsQuery";
 import { buildStudyResultsOhifAiPayload } from "@/features/study_results/viewmodels/ohifAiPayloadSerializer";
+import { usePanechoEchoprimeEditorViewModel } from "@/features/study_results/viewmodels/usePanechoEchoprimeEditorViewModel";
 
+// Resolves a single page-level state from the three study results query states.
 function resolveOverallState(states) {
   const normalizedStates = states.filter(Boolean);
 
@@ -34,7 +36,7 @@ function resolveOverallState(states) {
 export function useStudyResultsViewModel(studyUid) {
   const navigate = useNavigate();
 
-  // --- Part 1. Data Fetching (Server State) ---
+  // --- Part 1. Query and normalize all study-results server state. ---
   const {
     data: panechoEchoprimeQueryData = null,
     isLoading: isPanechoEchoprimeLoading,
@@ -86,6 +88,16 @@ export function useStudyResultsViewModel(studyUid) {
   const viewerRefreshToken =
     dynamicMeasurementsQueryData?.viewerRefreshToken ?? "no-derived-dicom";
 
+  // --- Part 2. Compose the PanEcho/EchoPrime editing workflow ViewModel. ---
+  const panechoEchoprimeEditorViewModel = usePanechoEchoprimeEditorViewModel({
+    studyUid,
+    panechoEchoprimeCombinedResultsState,
+    panechoEchoprimeCombinedResultsData,
+    llmReportResultsState,
+    llmReportResultsData,
+  });
+
+  // --- Part 3. Derive page-level UI state and build the OHIF bridge payload. ---
   const studyResultsState = resolveOverallState([
     panechoEchoprimeCombinedResultsState,
     dynamicMeasurementsCombinedResultsState,
@@ -114,6 +126,7 @@ export function useStudyResultsViewModel(studyUid) {
         llmReportResultsState,
         llmReportResultsData,
         llmReportResultsDetail,
+        panechoEchoprimeEditorViewModel,
       }),
     [
       studyUid,
@@ -122,6 +135,7 @@ export function useStudyResultsViewModel(studyUid) {
       llmReportResultsState,
       llmReportResultsData,
       llmReportResultsDetail,
+      panechoEchoprimeEditorViewModel,
     ]
   );
 
@@ -153,6 +167,8 @@ export function useStudyResultsViewModel(studyUid) {
 
     ohifAiPayload,
     viewerRefreshToken,
+
+    panechoEchoprimeEditorViewModel,
 
     onBack,
     refetchStudyResults,

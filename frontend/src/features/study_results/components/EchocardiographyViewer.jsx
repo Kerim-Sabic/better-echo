@@ -5,6 +5,9 @@ const MESSAGE_CHANNEL = "horalix-ai";
 const MESSAGE_VERSION = 1;
 const PANEL_READY_TYPE = "horalix:panel-ready";
 const AI_RESULTS_TYPE = "horalix:ai-results";
+const PANECHO_OVERRIDE_SAVE_TYPE = "horalix:panecho-override-save";
+const PANECHO_OVERRIDE_CLEAR_TYPE = "horalix:panecho-override-clear";
+const LLM_REPORT_REGENERATE_TYPE = "horalix:llm-report-regenerate";
 
 function stripViewerRoute(value) {
   return String(value || "")
@@ -14,6 +17,10 @@ function stripViewerRoute(value) {
 
 function normalizeOrigin(value) {
   return String(value || "").replace(/\/+$/, "");
+}
+
+function normalizeText(value) {
+  return typeof value === "string" ? value.trim() : "";
 }
 
 function resolvePostMessageOrigin(baseUrl) {
@@ -43,7 +50,19 @@ function isLocalDev() {
 }
 
 export default function EchocardiographyViewer({ studyResultsPageViewModel }) {
-  const { studyUid, ohifAiPayload, viewerRefreshToken } = studyResultsPageViewModel;
+  const {
+    studyUid,
+    ohifAiPayload,
+    viewerRefreshToken,
+    panechoEchoprimeEditorViewModel,
+  } = studyResultsPageViewModel;
+
+  const savePanechoEchoprimeOverride =
+    panechoEchoprimeEditorViewModel?.savePanechoEchoprimeOverride;
+  const clearPanechoEchoprimeOverride =
+    panechoEchoprimeEditorViewModel?.clearPanechoEchoprimeOverride;
+  const regenerateAiReport =
+    panechoEchoprimeEditorViewModel?.regenerateAiReport;
 
   const location = useLocation();
   const iframeRef = useRef(null);
@@ -121,6 +140,89 @@ export default function EchocardiographyViewer({ studyResultsPageViewModel }) {
     }
   }, [ohifAiPayload, hasBase, hasStudyUid, targetOrigin, viewerOrigin]);
 
+  const handlePanechoOverrideSaveIntent = useCallback(
+    async payload => {
+      if (typeof savePanechoEchoprimeOverride !== "function" || !studyUid) {
+        return;
+      }
+
+      const payloadStudyUid = normalizeText(payload?.studyUid);
+      const measurementKey = normalizeText(payload?.key);
+      const override = isObject(payload?.override) ? payload.override : null;
+
+      if (payloadStudyUid && payloadStudyUid !== studyUid) {
+        return;
+      }
+
+      if (!measurementKey || !override) {
+        return;
+      }
+
+      try {
+        await savePanechoEchoprimeOverride(measurementKey, override);
+      } catch (error) {
+        console.error(
+          "[EchocardiographyViewer] Failed to save PanEcho/EchoPrime override",
+          error
+        );
+      }
+    },
+    [savePanechoEchoprimeOverride, studyUid]
+  );
+
+  const handlePanechoOverrideClearIntent = useCallback(
+    async payload => {
+      if (typeof clearPanechoEchoprimeOverride !== "function" || !studyUid) {
+        return;
+      }
+
+      const payloadStudyUid = normalizeText(payload?.studyUid);
+      const measurementKey = normalizeText(payload?.key);
+
+      if (payloadStudyUid && payloadStudyUid !== studyUid) {
+        return;
+      }
+
+      if (!measurementKey) {
+        return;
+      }
+
+      try {
+        await clearPanechoEchoprimeOverride(measurementKey);
+      } catch (error) {
+        console.error(
+          "[EchocardiographyViewer] Failed to clear PanEcho/EchoPrime override",
+          error
+        );
+      }
+    },
+    [clearPanechoEchoprimeOverride, studyUid]
+  );
+
+  const handleRegenerateLlmReportIntent = useCallback(
+    async payload => {
+      if (typeof regenerateAiReport !== "function" || !studyUid) {
+        return;
+      }
+
+      const payloadStudyUid = normalizeText(payload?.studyUid);
+
+      if (payloadStudyUid && payloadStudyUid !== studyUid) {
+        return;
+      }
+
+      try {
+        await regenerateAiReport();
+      } catch (error) {
+        console.error(
+          "[EchocardiographyViewer] Failed to regenerate AI Report",
+          error
+        );
+      }
+    },
+    [regenerateAiReport, studyUid]
+  );
+
   const handleIFrameLoad = useCallback(() => {
     iframeLoadedRef.current = true;
     postAiPayload();
@@ -163,6 +265,25 @@ export default function EchocardiographyViewer({ studyResultsPageViewModel }) {
 
       if (data.type === PANEL_READY_TYPE) {
         postAiPayload();
+        return;
+      }
+
+      if (!isObject(data.payload)) {
+        return;
+      }
+
+      if (data.type === PANECHO_OVERRIDE_SAVE_TYPE) {
+        void handlePanechoOverrideSaveIntent(data.payload);
+        return;
+      }
+
+      if (data.type === PANECHO_OVERRIDE_CLEAR_TYPE) {
+        void handlePanechoOverrideClearIntent(data.payload);
+        return;
+      }
+
+      if (data.type === LLM_REPORT_REGENERATE_TYPE) {
+        void handleRegenerateLlmReportIntent(data.payload);
       }
     };
 
@@ -171,7 +292,15 @@ export default function EchocardiographyViewer({ studyResultsPageViewModel }) {
     return () => {
       window.removeEventListener("message", onMessage);
     };
-  }, [hasBase, hasStudyUid, postAiPayload, viewerOrigin]);
+  }, [
+    handlePanechoOverrideClearIntent,
+    handlePanechoOverrideSaveIntent,
+    handleRegenerateLlmReportIntent,
+    hasBase,
+    hasStudyUid,
+    postAiPayload,
+    viewerOrigin,
+  ]);
 
   if (!hasStudyUid) {
     return null;

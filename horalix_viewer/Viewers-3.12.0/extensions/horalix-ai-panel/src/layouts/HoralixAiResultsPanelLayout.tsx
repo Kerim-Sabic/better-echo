@@ -9,11 +9,22 @@ import AiReportLoadingState from '../components/ai_report/AiReportLoadingState';
 
 type Props = {
   payload: HoralixAiResultsPayload | null;
+  onRequestSavePanechoOverride?: (
+    key: string,
+    override: { value?: number; label?: string }
+  ) => void;
+  onRequestClearPanechoOverride?: (key: string) => void;
+  onRequestRegenerateLlmReport?: () => void;
 };
 
 type PanelTab = 'measurements' | 'report';
 
-export default function HoralixAiResultsPanelLayout({ payload }: Props) {
+export default function HoralixAiResultsPanelLayout({
+  payload,
+  onRequestSavePanechoOverride,
+  onRequestClearPanechoOverride,
+  onRequestRegenerateLlmReport,
+}: Props) {
   const [activeTab, setActiveTab] = useState<PanelTab>('measurements');
 
   if (!payload) {
@@ -21,6 +32,8 @@ export default function HoralixAiResultsPanelLayout({ payload }: Props) {
       <AiPanelEmptyState message="Waiting for AI payload from parent application." />
     );
   }
+
+  const editorState = payload.panechoEchoprimeEditorState ?? null;
 
   return (
     <div className="h-full overflow-y-auto bg-[#090D14] p-2 text-white">
@@ -55,6 +68,8 @@ export default function HoralixAiResultsPanelLayout({ payload }: Props) {
               measurementSections={
                 payload.panechoEchoprimeAiMeasurements?.measurementSections ?? []
               }
+              onRequestSavePanechoOverride={onRequestSavePanechoOverride}
+              onRequestClearPanechoOverride={onRequestClearPanechoOverride}
             />
           ) : (
             <AiMeasurementsLoadingState
@@ -66,11 +81,27 @@ export default function HoralixAiResultsPanelLayout({ payload }: Props) {
             state={payload.llmReportResultsState}
             sections={payload.llmEchoReport?.sections ?? []}
             reportGeneratedAt={payload.llmEchoReport?.reportGeneratedAt ?? null}
+            hasOverrides={editorState?.hasOverrides ?? false}
+            isReportStale={editorState?.isReportStale ?? false}
+            canRegenerateAiReport={editorState?.canRegenerateAiReport ?? false}
+            isRegeneratingAiReport={editorState?.isRegeneratingAiReport ?? false}
+            regenerateAiReportErrorMessage={
+              editorState?.regenerateAiReportErrorMessage ?? null
+            }
+            onRequestRegenerateLlmReport={onRequestRegenerateLlmReport}
           />
         ) : (
           <AiReportLoadingState
             state={payload.llmReportResultsState}
             detail={payload.llmReportResultsDetail ?? null}
+            hasOverrides={editorState?.hasOverrides ?? false}
+            isReportStale={editorState?.isReportStale ?? false}
+            canRegenerateAiReport={editorState?.canRegenerateAiReport ?? false}
+            isRegeneratingAiReport={editorState?.isRegeneratingAiReport ?? false}
+            regenerateAiReportErrorMessage={
+              editorState?.regenerateAiReportErrorMessage ?? null
+            }
+            onRequestRegenerateLlmReport={onRequestRegenerateLlmReport}
           />
         )}
       </div>

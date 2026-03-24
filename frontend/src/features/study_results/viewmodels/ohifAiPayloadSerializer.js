@@ -5,6 +5,7 @@ export function buildStudyResultsOhifAiPayload({
   llmReportResultsState,
   llmReportResultsData,
   llmReportResultsDetail,
+  panechoEchoprimeEditorViewModel,
 }) {
   const panechoEchoprimeCombinedResultsDisplay =
     panechoEchoprimeCombinedResultsData?.display ?? {
@@ -29,7 +30,23 @@ export function buildStudyResultsOhifAiPayload({
       mainMeasurements: panechoEchoprimeCombinedResultsDisplay.mainMeasurements,
       measurementSections: panechoEchoprimeCombinedResultsDisplay.measurementSections,
     },
-    
+
+    panechoEchoprimeEditorState: {
+      hasOverrides:
+        panechoEchoprimeEditorViewModel?.hasPanechoEchoprimeOverrides ?? false,
+      overridesUpdatedAt:
+        panechoEchoprimeEditorViewModel?.panechoEchoprimeOverridesUpdatedAt ??
+        null,
+      isReportStale:
+        panechoEchoprimeEditorViewModel?.isAiReportStale ?? false,
+      canRegenerateAiReport:
+        panechoEchoprimeEditorViewModel?.canRegenerateAiReport ?? false,
+      isRegeneratingAiReport:
+        panechoEchoprimeEditorViewModel?.isRegeneratingAiReport ?? false,
+      regenerateAiReportErrorMessage:
+        panechoEchoprimeEditorViewModel?.regenerateAiReportErrorMessage ?? null,
+    },
+
     llmReportResultsState,
     llmReportResultsDetail,
     llmEchoReport,

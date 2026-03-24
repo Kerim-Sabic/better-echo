@@ -18,7 +18,6 @@ export default function LoginLayout({ loginPageVM }) {
     handleSubmit,
     handleBiometricLogin,
   } = loginPageVM;
-  console.log("LOGIN PAGE VM", loginPageVM)
 
   return (
     <div
