@@ -4,8 +4,6 @@
 }
 
 .dicom-tag-browser-table-wrapper {
-  /*  height: 500px;*/
-  /*overflow-y: scroll;*/
   overflow-x: scroll;
 }
 
@@ -13,7 +11,7 @@
   padding-left: 10px;
   padding-right: 10px;
   color: #ffffff;
-  border-top: 1px solid #ddd;
+  border-top: 1px solid #30363d;
   white-space: nowrap;
 }
 
@@ -24,7 +22,6 @@
 
 .dicom-tag-browser-content {
   overflow: hidden;
-  /*height: 500px;*/
 }
 
 .dicom-tag-browser-instance-range .range {
@@ -43,7 +40,7 @@
   padding-left: 10px;
   padding-right: 10px;
   text-align: center;
-  color: '#20A5D6';
+  color: #8b949e;
 }
 
 .dicom-tag-browser-table th.dicom-tag-browser-table-left {

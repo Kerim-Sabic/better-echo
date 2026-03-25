@@ -71,11 +71,11 @@ const CinePlayer: React.FC<CinePlayerProps> = ({
 
   return (
     <div
-      className={`pointer-events-none absolute top-10 left-1/2 z-50 -translate-x-1/2 ${className}`}
+      className={`pointer-events-none z-50 ${className}`}
     >
       <div
         className={
-          'bg-muted pointer-events-auto inline-flex select-none items-center gap-2 rounded-md px-2 py-2'
+          'bg-muted/90 pointer-events-auto inline-flex select-none items-center gap-2 rounded-lg px-3 py-2 backdrop-blur-sm shadow-lg border border-border/40'
         }
       >
         <Button
