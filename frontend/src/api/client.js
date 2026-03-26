@@ -1,11 +1,22 @@
 import axios from "axios";
 
-const API_URL = process.env.REACT_APP_API_URL;
+function normalizeBaseUrl(value) {
+    return String(value || "").trim().replace(/\/+$/, "");
+}
+
+const DEFAULT_API_URL =
+    normalizeBaseUrl(process.env.REACT_APP_API_URL) || "http://localhost:8000/api";
 
 export const apiClient = axios.create({
-    baseURL: API_URL,
+    baseURL: DEFAULT_API_URL,
     withCredentials: true,
 });
+
+export const setApiClientBaseUrl = (value) => {
+    const nextBaseUrl = normalizeBaseUrl(value) || DEFAULT_API_URL;
+    apiClient.defaults.baseURL = nextBaseUrl;
+    return nextBaseUrl;
+};
 
 export const parseRetryAfter = (response) => {
     const headerValue = response?.headers?.["retry-after"];

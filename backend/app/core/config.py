@@ -13,6 +13,11 @@ class Settings(BaseSettings):
 
     DATABASE_URL: str = "postgresql+psycopg://horalix:horalix_dev@localhost:5433/horalix"
     TEST_DATABASE_URL: Optional[str] = None
+    BACKEND_HOST: str = "127.0.0.1"
+    BACKEND_PORT: int = 8000
+    POSTGRES_PORT: int = 5433
+    VIEWER_PUBLIC_BASE_URL: str = "http://localhost:3001"
+    STOP_LOCAL_INFRA_ON_QUIT: bool = True
 
     SECRET_KEY: str
     TOKEN_EXPIRE_HOURS: int
@@ -52,9 +57,18 @@ class Settings(BaseSettings):
     MEASUREMENTS_DEVICE: str = "auto"
     RESERVED_LLM_DEVICE: Optional[str] = None
 
+    ENABLE_LLM: bool = True
     LLM_BASE_URL: str = "http://localhost:8012/v1"
     LLM_API_KEY: str = "local-echo-key"
     LLM_MODEL: str = "Qwen/Qwen2.5-14B-Instruct-AWQ"
+    LLM_WSL_DISTRO: str = "Ubuntu"
+    LLM_VENV_PATH: str = "~/vllm"
+    LLM_GPU_INDEX: int = 1
+    HF_HOME: Optional[str] = None
+
+    LICENSE_ENFORCEMENT: bool = False
+    LICENSE_STORAGE_DIR: Optional[str] = None
+    LICENSE_PUBLIC_KEY_B64: Optional[str] = None
 
     LLM_PROMPT_TEMPLATE_PATH: str = "app/prompting/echo_report_prompt.md.j2"
     LLM_TEMPERATURE_REPORT: float = 0.0

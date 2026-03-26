@@ -5,8 +5,6 @@ from fastapi import APIRouter, HTTPException, Depends, Query
 from sqlalchemy.orm import Session
 import logging
 import torch
-import torchvision
-from torchvision.transforms import functional as F
 import cv2
 import numpy as np
 from collections import OrderedDict
@@ -44,6 +42,8 @@ def load_model():
     """
     global model, device
     if model is None:
+        import torchvision
+
         if device is None:
             device = get_device_for_model("echonet")
 
@@ -202,6 +202,8 @@ def infer_lv_segmentation(
 
     def encode_on_device(target_device: torch.device, allow_ffmpeg: bool) -> str:
         global device
+        from torchvision.transforms import functional as F
+
         if device != target_device:
             unload_model()
             device = target_device

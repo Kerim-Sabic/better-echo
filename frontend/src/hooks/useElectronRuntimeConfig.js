@@ -1,0 +1,36 @@
+import { useEffect, useState } from "react";
+
+export function useElectronRuntimeConfig() {
+  const [runtimeConfig, setRuntimeConfig] = useState(null);
+  const [loading, setLoading] = useState(Boolean(window.electronAPI?.getRuntimeConfig));
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadRuntimeConfig() {
+      if (!window.electronAPI?.getRuntimeConfig) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const nextRuntimeConfig = await window.electronAPI.getRuntimeConfig();
+        if (active) {
+          setRuntimeConfig(nextRuntimeConfig);
+        }
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadRuntimeConfig();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  return { runtimeConfig, loading };
+}

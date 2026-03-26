@@ -27,7 +27,6 @@ from app.services.pipeline.cleanup import (
     cleanup_append_delta_scope,
     cleanup_new_study_scope,
 )
-from app.services.pipeline.internal.registry import STAGE_HANDLER_MAP
 from app.services.pipeline.internal.serializers import _serialize_job
 from app.services.pipeline.internal.runner import _process_job_skeleton
 from app.services.pipeline.internal.state import _cancel_stage_rows_for_job
@@ -52,7 +51,9 @@ LLM_STAGE = "llm"
 
 def _stage_handlers_for_runtime() -> Dict[str, Any]:
     # Part 1. Runtime handler map comes from canonical stage registry.
-    return dict(STAGE_HANDLER_MAP)
+    from app.services.pipeline.internal.registry import get_stage_handler_map
+
+    return get_stage_handler_map()
 
 
 def _empty_cleanup_summary() -> Dict[str, Any]:

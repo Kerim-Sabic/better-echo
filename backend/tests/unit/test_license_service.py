@@ -1,0 +1,219 @@
+import base64
+import json
+from datetime import datetime, timedelta, timezone
+
+import pytest
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+from app.core.config import settings
+from app.services.licensing.service import (
+    build_activation_request,
+    get_license_file_path,
+    get_license_status,
+    import_signed_license,
+    invalidate_license_status_cache,
+    is_license_exempt_path,
+)
+
+
+def _iso_at(offset_days: int) -> str:
+    return (datetime.now(timezone.utc) + timedelta(days=offset_days)).isoformat().replace("+00:00", "Z")
+
+
+def _canonical_signature(payload: dict, private_key: Ed25519PrivateKey) -> str:
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode("utf-8")
+    return base64.b64encode(private_key.sign(canonical)).decode("utf-8")
+
+
+def _configure_license_env(monkeypatch, tmp_path):
+    private_key = Ed25519PrivateKey.generate()
+    public_key = private_key.public_key()
+    public_key_b64 = base64.b64encode(
+        public_key.public_bytes(
+            encoding=serialization.Encoding.Raw,
+            format=serialization.PublicFormat.Raw,
+        )
+    ).decode("utf-8")
+
+    monkeypatch.setattr(settings, "LICENSE_STORAGE_DIR", str(tmp_path), raising=False)
+    monkeypatch.setattr(settings, "LICENSE_PUBLIC_KEY_B64", public_key_b64, raising=False)
+    invalidate_license_status_cache()
+    return private_key
+
+
+def test_import_signed_license_accepts_matching_machine(monkeypatch, tmp_path):
+    private_key = _configure_license_env(monkeypatch, tmp_path)
+    activation_request = build_activation_request()
+    payload = {
+        "license_id": "pilot-001",
+        "customer_name": "Test Hospital",
+        "issued_at": _iso_at(0),
+        "expires_at": _iso_at(30),
+        "machine_fingerprint": activation_request["machine_fingerprint"],
+        "features": ["core", "llm"],
+    }
+
+    status = import_signed_license(
+        {
+            "payload": payload,
+            "signature": _canonical_signature(payload, private_key),
+        }
+    )
+
+    assert status["valid"] is True
+    assert status["status"] == "valid"
+    assert status["customer_name"] == "Test Hospital"
+    assert get_license_file_path().exists()
+
+
+def test_import_signed_license_replaces_existing_license_and_extends_expiry(monkeypatch, tmp_path):
+    private_key = _configure_license_env(monkeypatch, tmp_path)
+    activation_request = build_activation_request()
+
+    first_payload = {
+        "license_id": "pilot-short",
+        "customer_name": "Test Hospital",
+        "issued_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "expires_at": (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat().replace("+00:00", "Z"),
+        "machine_fingerprint": activation_request["machine_fingerprint"],
+        "features": ["core", "llm"],
+    }
+    second_payload = {
+        "license_id": "pilot-renewed",
+        "customer_name": "Test Hospital",
+        "issued_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "expires_at": (datetime.now(timezone.utc) + timedelta(minutes=20)).isoformat().replace("+00:00", "Z"),
+        "machine_fingerprint": activation_request["machine_fingerprint"],
+        "features": ["core", "llm"],
+    }
+
+    first_status = import_signed_license(
+        {
+            "payload": first_payload,
+            "signature": _canonical_signature(first_payload, private_key),
+        }
+    )
+    second_status = import_signed_license(
+        {
+            "payload": second_payload,
+            "signature": _canonical_signature(second_payload, private_key),
+        }
+    )
+
+    assert first_status["valid"] is True
+    assert second_status["valid"] is True
+    assert second_status["license_id"] == "pilot-renewed"
+    assert second_status["expires_at"] == second_payload["expires_at"]
+
+
+def test_import_signed_license_rejects_wrong_machine(monkeypatch, tmp_path):
+    private_key = _configure_license_env(monkeypatch, tmp_path)
+    payload = {
+        "license_id": "pilot-002",
+        "customer_name": "Wrong Machine Hospital",
+        "issued_at": _iso_at(0),
+        "expires_at": _iso_at(30),
+        "machine_fingerprint": "wrong-machine",
+        "features": ["core"],
+    }
+
+    with pytest.raises(ValueError, match="fingerprint"):
+        import_signed_license(
+            {
+                "payload": payload,
+                "signature": _canonical_signature(payload, private_key),
+            }
+        )
+
+
+def test_get_license_status_reports_expired_license(monkeypatch, tmp_path):
+    private_key = _configure_license_env(monkeypatch, tmp_path)
+    activation_request = build_activation_request()
+    payload = {
+        "license_id": "pilot-expired",
+        "customer_name": "Expired Hospital",
+        "issued_at": _iso_at(-60),
+        "expires_at": _iso_at(-1),
+        "machine_fingerprint": activation_request["machine_fingerprint"],
+        "features": ["core"],
+    }
+    envelope = {
+        "payload": payload,
+        "signature": _canonical_signature(payload, private_key),
+    }
+    license_path = get_license_file_path()
+    license_path.parent.mkdir(parents=True, exist_ok=True)
+    license_path.write_text(json.dumps(envelope, indent=2), encoding="utf-8")
+    invalidate_license_status_cache()
+
+    status = get_license_status(force_reload=True)
+
+    assert status["valid"] is False
+    assert status["status"] == "expired"
+    assert "expired" in (status["detail"] or "").lower()
+
+
+def test_import_signed_license_reactivates_system_after_expired_license(monkeypatch, tmp_path):
+    private_key = _configure_license_env(monkeypatch, tmp_path)
+    activation_request = build_activation_request()
+
+    expired_payload = {
+        "license_id": "pilot-expired-old",
+        "customer_name": "Expired Hospital",
+        "issued_at": _iso_at(-60),
+        "expires_at": _iso_at(-1),
+        "machine_fingerprint": activation_request["machine_fingerprint"],
+        "features": ["core", "llm"],
+    }
+    renewed_payload = {
+        "license_id": "pilot-renewed-short",
+        "customer_name": "Expired Hospital",
+        "issued_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "expires_at": (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat().replace("+00:00", "Z"),
+        "machine_fingerprint": activation_request["machine_fingerprint"],
+        "features": ["core", "llm"],
+    }
+
+    license_path = get_license_file_path()
+    license_path.parent.mkdir(parents=True, exist_ok=True)
+    license_path.write_text(
+        json.dumps(
+            {
+                "payload": expired_payload,
+                "signature": _canonical_signature(expired_payload, private_key),
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    invalidate_license_status_cache()
+
+    expired_status = get_license_status(force_reload=True)
+    renewed_status = import_signed_license(
+        {
+            "payload": renewed_payload,
+            "signature": _canonical_signature(renewed_payload, private_key),
+        }
+    )
+
+    assert expired_status["status"] == "expired"
+    assert renewed_status["valid"] is True
+    assert renewed_status["status"] == "valid"
+    assert renewed_status["license_id"] == "pilot-renewed-short"
+
+
+@pytest.mark.parametrize(
+    ("path_value", "expected"),
+    [
+        ("/api/licensing/status", True),
+        ("/api/licensing/import", True),
+        ("/api/admin/bootstrap-user", True),
+        ("/api/admin/setup-status", True),
+        ("/api/login", True),
+        ("/api/health", True),
+        ("/api/studies", False),
+    ],
+)
+def test_is_license_exempt_path(path_value, expected):
+    assert is_license_exempt_path(path_value) is expected

@@ -9,9 +9,9 @@
       "configuration": {
         "friendlyName": "Orthanc",
         "name": "Orthanc",
-        "wadoUriRoot": "http://localhost:3001/dicom-web",
-        "qidoRoot": "http://localhost:3001/dicom-web",
-        "wadoRoot": "http://localhost:3001/dicom-web",
+        "wadoUriRoot": "/dicom-web",
+        "qidoRoot": "/dicom-web",
+        "wadoRoot": "/dicom-web",
         "qidoSupportsIncludeField": false,
         "imageRendering": "wadors",
         "thumbnailRendering": "wadors",
@@ -26,9 +26,9 @@
     "dicomWeb": [
       {
         "name": "Orthanc",
-        "wadoUriRoot": "http://localhost:3001/dicom-web",
-        "qidoRoot": "http://localhost:3001/dicom-web",
-        "wadoRoot": "http://localhost:3001/dicom-web",
+        "wadoUriRoot": "/dicom-web",
+        "qidoRoot": "/dicom-web",
+        "wadoRoot": "/dicom-web",
         "qidoSupportsIncludeField": false,
         "imageRendering": "wadors",
         "thumbnailRendering": "wadors",

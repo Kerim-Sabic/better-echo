@@ -8,10 +8,12 @@ import { AuthProvider } from "./contexts/AuthenticationContext";
 import ProtectedRoute from "./contexts/ProtectedRoute";
 
 import SplashScreen from "./general_components/SplashScreen";
+import RuntimeConfigGate from "./general_components/RuntimeConfigGate";
 import LoginPage from "@/features/login/views/LoginPage";
 import DashboardPage from "@/features/dashboard/views/DashboardPage";
 import NewStudyPage from "@/features/new_study/views/NewStudyPage";
 import StudyResultsPage from "@/features/study_results/views/StudyResultsPage";
+import ServerAdminPage from "@/features/server_admin/views/ServerAdminPage";
 
 
 function SplashRoute() {
@@ -54,6 +56,7 @@ function Shell() {
 
             {/* Auth */}
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/server-admin" element={<ServerAdminPage />} />
 
             {/* App */}{/*Protected routes */}
             <Route element={<ProtectedRoute />}>
@@ -74,7 +77,9 @@ function Shell() {
 export default function App() {
     return (
         <BrowserRouter>
+        <RuntimeConfigGate>
         <Shell />
+        </RuntimeConfigGate>
         </BrowserRouter>
     );
 }

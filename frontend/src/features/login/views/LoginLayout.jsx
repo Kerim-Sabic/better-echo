@@ -17,8 +17,9 @@ export default function LoginLayout({ loginPageVM }) {
     setPassword,
     handleSubmit,
     handleBiometricLogin,
+    canOpenServerAdmin,
+    onOpenServerAdmin,
   } = loginPageVM;
-  console.log("LOGIN PAGE VM", loginPageVM)
 
   return (
     <div
@@ -48,6 +49,15 @@ export default function LoginLayout({ loginPageVM }) {
 
         <div className="mt-6 text-center">
           <AboutHoralixDialog />
+          {canOpenServerAdmin ? (
+            <button
+              type="button"
+              onClick={onOpenServerAdmin}
+              className="mt-4 text-sm font-medium text-slate-600 transition hover:text-slate-900"
+            >
+              Open Server Setup
+            </button>
+          ) : null}
         </div>
       </div>
     </div>

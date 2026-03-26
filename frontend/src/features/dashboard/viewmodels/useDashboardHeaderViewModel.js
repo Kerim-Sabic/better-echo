@@ -9,10 +9,12 @@ import {
 } from "@/api/webauthn";
 import { b64uToBuf, serializePublicKeyCredential } from "@/lib/webauthn";
 import { getStoredTheme, setStoredTheme } from "@/lib/theme";
+import { useElectronRuntimeConfig } from "@/hooks/useElectronRuntimeConfig";
 
 export function useDashboardHeaderViewModel() {
   const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
+  const { runtimeConfig } = useElectronRuntimeConfig();
 
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isBiometricStatusLoading, setIsBiometricStatusLoading] = useState(false);
@@ -66,6 +68,11 @@ export function useDashboardHeaderViewModel() {
       closeUserMenu();
     }
   }, [closeUserMenu, logout, navigate]);
+
+  const onOpenServerAdmin = useCallback(() => {
+    navigate("/server-admin");
+    closeUserMenu();
+  }, [closeUserMenu, navigate]);
 
   const onEnrollBiometrics = useCallback(async () => {
     if (!window.PublicKeyCredential) {
@@ -176,6 +183,8 @@ export function useDashboardHeaderViewModel() {
     isDarkTheme: themeMode === "dark",
     onToggleTheme,
 
+    canOpenServerAdmin: runtimeConfig?.runtimeMode === "server" && user?.role === "admin",
+    onOpenServerAdmin,
     onLogout,
   };
 }

@@ -34,7 +34,8 @@ server {
   location /dicom-web/ {
     proxy_pass http://orthanc:8042/dicom-web/;
     proxy_http_version 1.1;
-    proxy_set_header Host orthanc:8042;
+    proxy_set_header Host $http_host;
+    proxy_set_header X-Forwarded-Host $http_host;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
   }
@@ -42,7 +43,8 @@ server {
   location /wado {
     proxy_pass http://orthanc:8042/wado;
     proxy_http_version 1.1;
-    proxy_set_header Host orthanc:8042;
+    proxy_set_header Host $http_host;
+    proxy_set_header X-Forwarded-Host $http_host;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
   }

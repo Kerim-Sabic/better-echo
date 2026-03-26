@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { Plus, LogOut } from "lucide-react";
+import { Plus, LogOut, Shield } from "lucide-react";
 import { Button } from "@/general_components/ui/button";
 
 export default function DashboardHeader({ dashboardHeaderViewModel, onNewStudy }) {
@@ -22,6 +22,8 @@ export default function DashboardHeader({ dashboardHeaderViewModel, onNewStudy }
     onRemoveBiometrics,
     isDarkTheme,
     onToggleTheme,
+    canOpenServerAdmin,
+    onOpenServerAdmin,
     onLogout,
   } = dashboardHeaderViewModel;
 
@@ -140,6 +142,21 @@ export default function DashboardHeader({ dashboardHeaderViewModel, onNewStudy }
                     </div>
 
                     <div className="h-px bg-border" />
+
+                    {canOpenServerAdmin && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={onOpenServerAdmin}
+                          className="flex w-full items-center gap-2 px-3 py-2 text-sm text-foreground transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                        >
+                          <Shield className="w-4 h-4" />
+                          Server Admin
+                        </button>
+
+                        <div className="h-px bg-border" />
+                      </>
+                    )}
 
                     <button
                       type="button"

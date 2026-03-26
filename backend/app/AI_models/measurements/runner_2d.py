@@ -10,6 +10,7 @@ import numpy as np
 import torch
 from torchvision.models.segmentation import deeplabv3_resnet50
 
+from app.AI_models.measurements.constants import VALID_2D_WEIGHTS
 from app.helpers.media.ffmpeg_mp4_writer import ffmpeg_write_mp4_from_frames
 from app.helpers.inference_runtime.batch_config import get_batch_size
 from app.core.config import settings
@@ -27,19 +28,6 @@ _loaded_models: Dict[str, torch.nn.Module] = {}
 _device: Optional[torch.device] = None
 
 logger = logging.getLogger(__name__)
-
-
-VALID_2D_WEIGHTS = {
-    "ivs",
-    "lvid",
-    "lvpw",
-    "aorta",
-    "aortic_root",
-    "la",
-    "rv_base",
-    "pa",
-    "ivc",
-}
 
 
 def get_device() -> torch.device:

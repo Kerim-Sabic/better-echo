@@ -36,16 +36,11 @@ export const AuthProvider = ({ children }) => {
         return localStorage.getItem(SESSION_HINT_KEY) === "1";
     }, []);
 
-    const hasAuthCookie = useCallback(() => {
-        if (typeof document === "undefined") return false;
-        return document.cookie.includes("auth_token=");
-    }, []);
-
     // Fetch current user from /check-auth (initial auth check)
     const fetchUser = useCallback(async () => {
         try {
             const healthy = await waitForHealth();
-            if (healthy && hasSessionHint() && hasAuthCookie()) {
+            if (healthy && hasSessionHint()) {
                 const response = await checkAuthApi();
                 setUser(response.user);
             } else {
@@ -59,7 +54,7 @@ export const AuthProvider = ({ children }) => {
         } finally {
             setLoading(false);
         }
-    }, [hasAuthCookie, hasSessionHint, waitForHealth]);
+    }, [hasSessionHint, waitForHealth]);
 
     useEffect(() => {
         fetchUser();
