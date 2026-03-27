@@ -39,7 +39,7 @@ class CombinedSections(BaseModel):
 
 class CompleteResponse(BaseModel):
     status: Literal["complete"]
-    panecho_echoprime_results: CombinedSections
+    analysis_results: CombinedSections
 
 class PendingResponse(BaseModel):
     status: Literal["pending"]

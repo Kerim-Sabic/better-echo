@@ -4,13 +4,17 @@ import shutil
 import tempfile
 import threading
 import time
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 import requests
 import torch
 from sqlalchemy.orm import Session
 
-from app.core.artifacts import UPLOAD_DIR
+from app.core.artifacts import (
+    SECONDARY_ANALYSIS_MODEL_NAME,
+    SECONDARY_ANALYSIS_TYPE,
+    UPLOAD_DIR,
+)
 from app.core.config import settings
 from app.database_models.derived_results import DerivedResult
 from app.database_models.instances import Instance
@@ -24,17 +28,14 @@ orthanc_pass = settings.ORTHANC_PASS
 
 logger = logging.getLogger(__name__)
 
-if TYPE_CHECKING:
-    from app.AI_models.EchoPrime.echo_prime import EchoPrime
-
 
 _ep: Optional[Any] = None
 _ep_lock = threading.Lock()
 _preload_thread: Optional[threading.Thread] = None
 
 
-# Part 1. EchoPrime model lifecycle helpers.
-def get_ep() -> "EchoPrime":
+# Part 1. Secondary analysis model lifecycle helpers.
+def get_secondary_analysis_model() -> Any:
     global _ep
     if _ep is not None:
         return _ep
@@ -45,11 +46,11 @@ def get_ep() -> "EchoPrime":
             start = time.time()
             _ep = EchoPrime()
             device = getattr(_ep, "device", None)
-            logger.info("[EchoPrime] Model initialized on device=%s in %.1fs", device, time.time() - start)
+            logger.info("[SecondaryAnalysis] Model initialized on device=%s in %.1fs", device, time.time() - start)
     return _ep
 
 
-def _warmup_ep(ep: "EchoPrime") -> None:
+def _warmup_secondary_analysis(ep: Any) -> None:
     try:
         dummy = torch.zeros((1, 3, 16, 224, 224), device=ep.device)
         with torch.no_grad():
@@ -57,22 +58,22 @@ def _warmup_ep(ep: "EchoPrime") -> None:
             _ = ep.view_classifier(dummy[:, :, 0, :, :])
         if torch.cuda.is_available():
             torch.cuda.synchronize()
-        logger.info("[EchoPrime] Warmup completed")
+        logger.info("[SecondaryAnalysis] Warmup completed")
     except Exception as exc:
-        logger.warning("[EchoPrime] Warmup skipped due to error: %s", exc)
+        logger.warning("[SecondaryAnalysis] Warmup skipped due to error: %s", exc)
 
 
-def preload_echoprime(warmup: bool = False) -> Optional["EchoPrime"]:
+def preload_secondary_analysis(warmup: bool = False) -> Optional[Any]:
     try:
         start = time.time()
-        ep = get_ep()
+        ep = get_secondary_analysis_model()
         if warmup:
-            _warmup_ep(ep)
+            _warmup_secondary_analysis(ep)
         device = getattr(ep, "device", None)
-        logger.info("[EchoPrime] Preload finished (warmup=%s, device=%s) in %.1fs", warmup, device, time.time() - start)
+        logger.info("[SecondaryAnalysis] Preload finished (warmup=%s, device=%s) in %.1fs", warmup, device, time.time() - start)
         return ep
     except Exception as exc:
-        logger.warning("[EchoPrime] Preload failed; will fallback to lazy load: %s", exc)
+        logger.warning("[SecondaryAnalysis] Preload failed; will fallback to lazy load: %s", exc)
         return None
 
 
@@ -80,15 +81,15 @@ def _run_async(task: Callable[[], None]) -> None:
     global _preload_thread
     if _preload_thread and _preload_thread.is_alive():
         return
-    _preload_thread = threading.Thread(target=task, name="echoprime-preload", daemon=True)
+    _preload_thread = threading.Thread(target=task, name="secondary-analysis-preload", daemon=True)
     _preload_thread.start()
 
 
-def start_echoprime_preload_background(warmup: bool = False) -> None:
-    _run_async(lambda: preload_echoprime(warmup))
+def start_secondary_analysis_preload_background(warmup: bool = False) -> None:
+    _run_async(lambda: preload_secondary_analysis(warmup))
 
 
-def unload_ep() -> None:
+def unload_secondary_analysis_model() -> None:
     global _ep
     with _ep_lock:
         if _ep is None:
@@ -99,7 +100,7 @@ def unload_ep() -> None:
             torch.cuda.empty_cache()
         import gc
         gc.collect()
-        logger.info("[EchoPrime] Model unloaded and memory cleared")
+        logger.info("[SecondaryAnalysis] Model unloaded and memory cleared")
 
 
 # Part 2. Study input download and subset-build helpers.
@@ -108,7 +109,7 @@ def download_dicoms_for_study(instance_ids: List[str]) -> List[Dict[str, str]]:
     Download all DICOMs for a study into a temporary folder.
     Returns a list of dicts with instance_id and local path.
     """
-    tmp_dir = tempfile.mkdtemp(prefix="echoprime_study_")
+    tmp_dir = tempfile.mkdtemp(prefix="secondary_analysis_study_")
     records: List[Dict[str, str]] = []
     for idx, iid in enumerate(instance_ids):
         response = requests.get(
@@ -126,7 +127,7 @@ def download_dicoms_for_study(instance_ids: List[str]) -> List[Dict[str, str]]:
 
 
 def _build_subset_input_folder(file_paths: List[str]) -> tuple[str, str, bool]:
-    temp_dir = tempfile.mkdtemp(prefix="echoprime_view_subset_")
+    temp_dir = tempfile.mkdtemp(prefix="secondary_analysis_view_subset_")
     for idx, src in enumerate(file_paths):
         dst = os.path.join(temp_dir, f"{idx:05d}_{os.path.basename(src)}")
         try:
@@ -136,23 +137,23 @@ def _build_subset_input_folder(file_paths: List[str]) -> tuple[str, str, bool]:
     return temp_dir, temp_dir, True
 
 
-# Part 3. EchoPrime metrics inference service entrypoint.
-def run_echoprime_metrics(
+# Part 3. Secondary analysis metrics inference service entrypoint.
+def run_secondary_analysis_metrics(
     *,
     study_uid: str,
     db: Session,
     include_instance_orthanc_ids: Optional[List[str]] = None,
     artifact_set_id: Optional[int] = None,
 ) -> Dict[str, object]:
-    logger.info("[EchoPrime] infer_echoprime called with study_uid=%s", study_uid)
+    logger.info("[SecondaryAnalysis] infer called with study_uid=%s", study_uid)
 
-    ep = get_ep()
+    ep = get_secondary_analysis_model()
     instance_orthanc_ids = include_instance_orthanc_ids or fetch_orthanc_instance_ids_from_study(study_uid)
     if not instance_orthanc_ids:
         raise ValueError(f"No instances found for study_uid={study_uid}")
 
     downloaded = download_dicoms_for_study(instance_orthanc_ids)
-    study_dir = os.path.dirname(downloaded[0]["path"]) if downloaded else tempfile.mkdtemp(prefix="echoprime_study_empty_")
+    study_dir = os.path.dirname(downloaded[0]["path"]) if downloaded else tempfile.mkdtemp(prefix="secondary_analysis_study_empty_")
 
     try:
         stack_of_videos = ep.process_dicoms(study_dir)
@@ -166,7 +167,7 @@ def run_echoprime_metrics(
                     db.query(DerivedResult)
                     .filter(
                         DerivedResult.study_id == study.id,
-                        DerivedResult.type == "EchoPrime_AllTasks",
+                        DerivedResult.type == SECONDARY_ANALYSIS_TYPE,
                         DerivedResult.artifact_set_id == artifact_set_id,
                     )
                     .first()
@@ -174,8 +175,8 @@ def run_echoprime_metrics(
                 if not report_row:
                     report_row = DerivedResult(
                         study_id=study.id,
-                        type="EchoPrime_AllTasks",
-                        model_name="EchoPrime",
+                        type=SECONDARY_ANALYSIS_TYPE,
+                        model_name=SECONDARY_ANALYSIS_MODEL_NAME,
                         model_version="v1",
                         artifact_set_id=artifact_set_id,
                     )
@@ -183,8 +184,8 @@ def run_echoprime_metrics(
             else:
                 report_row = DerivedResult(
                     study_id=study.id,
-                    type="EchoPrime_AllTasks",
-                    model_name="EchoPrime",
+                    type=SECONDARY_ANALYSIS_TYPE,
+                    model_name=SECONDARY_ANALYSIS_MODEL_NAME,
                     model_version="v1",
                 )
                 db.add(report_row)
@@ -193,7 +194,7 @@ def run_echoprime_metrics(
             db.commit()
             db.refresh(report_row)
 
-        logger.info("[EchoPrime] Metrics inference completed for study_uid=%s", study_uid)
+        logger.info("[SecondaryAnalysis] Metrics inference completed for study_uid=%s", study_uid)
         return {
             "study_uid": study_uid,
             "num_instances": len(instance_orthanc_ids),
@@ -206,14 +207,14 @@ def run_echoprime_metrics(
             pass
 
 
-# Part 4. EchoPrime view-classification service entrypoint.
+# Part 4. Secondary analysis view-classification service entrypoint.
 def classify_views_for_study(
     study_uid: str,
     db: Session,
     include_file_paths: Optional[List[str]] = None,
 ) -> Dict[str, Dict[str, Optional[float | str]]]:
     """
-    Use EchoPrime view classifier to tag instances in a study.
+    Use the secondary analysis view classifier to tag instances in a study.
 
     When include_file_paths is provided, only that subset is classified and persisted.
     Returns a mapping of SOPInstanceUID -> {view, confidence, file_path}.
@@ -285,7 +286,7 @@ def classify_views_for_study(
     if target_paths_set is not None and len(disk_files) != len(study_disk_files):
         input_folder, cleanup_path, requires_cleanup = _build_subset_input_folder(disk_files)
 
-    ep = get_ep()
+    ep = get_secondary_analysis_model()
     try:
         stack_of_videos = ep.process_dicoms(input_folder)
         view_list, view_confidence_list = ep.get_views(

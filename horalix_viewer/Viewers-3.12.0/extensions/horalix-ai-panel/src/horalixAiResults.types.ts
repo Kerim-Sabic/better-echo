@@ -23,6 +23,6 @@ export type HoralixAiMeasurements = {
 export type HoralixAiResultsPayload = {
   sentAt?: string | null;
   studyUid?: string | null;
-  panechoEchoprimeCombinedResultsState?: string | null;
-  panechoEchoprimeAiMeasurements?: HoralixAiMeasurements | null;
+  studyAnalysisCombinedResultsState?: string | null;
+  studyAnalysisMeasurements?: HoralixAiMeasurements | null;
 };

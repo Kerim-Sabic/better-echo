@@ -3,16 +3,16 @@ import { studyResultsRepository } from "@/features/study_results/model/studyResu
 
 const POLL_INTERVAL_MS = 3000;
 
-export function usePanechoEchoprimeCombinedResultsQuery(studyUid, { enabled = true } = {}) {
+export function useStudyAnalysisCombinedResultsQuery(studyUid, { enabled = true } = {}) {
   return useQuery({
-    queryKey: ["panechoEchoprimeCombinedResults", studyUid],
+    queryKey: ["studyAnalysisCombinedResults", studyUid],
     enabled: Boolean(enabled && studyUid),
-    queryFn: () => studyResultsRepository.getPanechoEchoprimeCombinedResults(studyUid),
+    queryFn: () => studyResultsRepository.getStudyAnalysisCombinedResults(studyUid),
     staleTime: 0,
     refetchInterval: query => {
-      const panechoEchoprimeCombinedResultsState = query.state.data?.state;
+      const studyAnalysisCombinedResultsState = query.state.data?.state;
 
-      if (panechoEchoprimeCombinedResultsState !== "pending") {
+      if (studyAnalysisCombinedResultsState !== "pending") {
         return false;
       }
 

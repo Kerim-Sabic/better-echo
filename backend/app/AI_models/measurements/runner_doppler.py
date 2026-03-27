@@ -12,6 +12,7 @@ import torch
 from torchvision.models.segmentation import deeplabv3_resnet50
 
 from app.AI_models.measurements.constants import VALID_DOPPLER_WEIGHTS
+from app.core.runtime_paths import model_assets_dir
 from app.helpers.inference_runtime.device_selector import get_device_for_model
 from app.helpers.doppler.doppler_frame_selection import select_doppler_frame
 from app.helpers.doppler.doppler_tags import extract_doppler_region
@@ -31,7 +32,7 @@ _device: Optional[torch.device] = None
 def get_device() -> torch.device:
     global _device
     if _device is None:
-        _device = get_device_for_model("measurements")
+        _device = get_device_for_model("study_measurements")
     return _device
 
 
@@ -41,8 +42,8 @@ def _load_model(model_key: str) -> torch.nn.Module:
     if model_key in _loaded_models:
         return _loaded_models[model_key]
 
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    weights_path = os.path.join(base_dir, "weights", "Doppler_models", f"{model_key}_weights.ckpt")
+    base_dir = os.path.join(str(model_assets_dir("study_measurements")), "weights")
+    weights_path = os.path.join(base_dir, "Doppler_models", f"{model_key}_weights.ckpt")
     if not os.path.exists(weights_path):
         raise FileNotFoundError(f"Weights not found: {weights_path}")
 

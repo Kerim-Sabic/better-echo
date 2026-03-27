@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.database.db import get_db
 from app.database_models.derived_results import ResultStatus
-from app.core.artifacts import LLM_REPORT_TYPE
+from app.core.artifacts import REPORT_SUMMARY_TYPE
 from app.helpers.auth.authentication_functions import get_current_user_id
 from app.helpers.row_to_dict.llm_report_row_to_dict import build_llm_report_from_row
 from app.schemas.results.llm_report_get_api_schemas import (
@@ -56,7 +56,7 @@ def get_llm_report(
     llm_report_row = get_result_row_for_read_mode(
         db=db,
         study_id=study.id,
-        result_type=LLM_REPORT_TYPE,
+        result_type=REPORT_SUMMARY_TYPE,
         preview=preview,
     )
 

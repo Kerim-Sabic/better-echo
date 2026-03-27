@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 
 
-class Measurements2DResponse(BaseModel):
+class LinearMeasurementsResponse(BaseModel):
     success: bool
     message: str
     sop_instance_uid: str

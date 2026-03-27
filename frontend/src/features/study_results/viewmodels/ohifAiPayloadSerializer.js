@@ -1,10 +1,10 @@
 export function buildStudyResultsOhifAiPayload({
   studyUid,
-  panechoEchoprimeCombinedResultsState,
-  panechoEchoprimeCombinedResultsData,
+  studyAnalysisCombinedResultsState,
+  studyAnalysisCombinedResultsData,
 }) {
-  const panechoEchoprimeCombinedResultsDisplay =
-    panechoEchoprimeCombinedResultsData?.display ?? {
+  const studyAnalysisCombinedResultsDisplay =
+    studyAnalysisCombinedResultsData?.display ?? {
       mainMeasurements: [],
       measurementSections: [],
       totalMeasurements: null,
@@ -13,11 +13,11 @@ export function buildStudyResultsOhifAiPayload({
   return {
     sentAt: new Date().toISOString(),
     studyUid,
-    panechoEchoprimeCombinedResultsState,
-    panechoEchoprimeAiMeasurements: {
-      totalMeasurements: panechoEchoprimeCombinedResultsDisplay.totalMeasurements,
-      mainMeasurements: panechoEchoprimeCombinedResultsDisplay.mainMeasurements,
-      measurementSections: panechoEchoprimeCombinedResultsDisplay.measurementSections,
+    studyAnalysisCombinedResultsState,
+    studyAnalysisMeasurements: {
+      totalMeasurements: studyAnalysisCombinedResultsDisplay.totalMeasurements,
+      mainMeasurements: studyAnalysisCombinedResultsDisplay.mainMeasurements,
+      measurementSections: studyAnalysisCombinedResultsDisplay.measurementSections,
     },
   };
 }

@@ -7,12 +7,19 @@ from sqlalchemy.orm import Session
 
 from app.AI_models.measurements.runner_2d import unload_2d_models
 from app.AI_models.measurements.runner_doppler import unload_doppler_models
-from app.api.inference.infer_doppler_api import infer_measurements_doppler
-from app.api.inference.infer_echonet_dynamic_api import infer_lv_segmentation
-from app.api.inference.infer_echonet_dynamic_api import unload_model as unload_echonet_model
-from app.api.inference.infer_measurements_api import infer_measurements_2d
+from app.api.inference.infer_linear_measurements_api import infer_linear_measurements
+from app.api.inference.infer_motion_segmentation_api import (
+    infer_motion_segmentation,
+    unload_motion_segmentation_model,
+)
+from app.api.inference.infer_spectral_measurements_api import infer_spectral_measurements
 from app.core.config import settings
-from app.core.artifacts import DYNAMIC_MEASUREMENTS_COMBINED_TYPE
+from app.core.artifacts import (
+    LINEAR_MEASUREMENTS_TASK_KEY,
+    MEASUREMENT_WORKFLOW_TYPE,
+    MOTION_SEGMENTATION_TASK_KEY,
+    SPECTRAL_MEASUREMENTS_TASK_KEY,
+)
 from app.database_models.derived_results import DerivedResult, ResultStatus
 from app.database_models.instances import Instance
 from app.database_models.pipeline_artifact_sets import PipelineArtifactSet
@@ -38,16 +45,16 @@ def _build_combined_payload(
     summaries: List[Dict[str, Any]],
     dynamic_runs: int,
     measurements_2d_runs: int,
-    measurements_doppler_runs: int,
+    spectral_runs: int,
     skipped_instances: int,
     errors: List[str],
 ) -> Dict[str, Any]:
     return {
         "instances": summaries,
         "meta": {
-            "dynamic_runs": dynamic_runs,
-            "measurements_2d_runs": measurements_2d_runs,
-            "measurements_doppler_runs": measurements_doppler_runs,
+            "motion_runs": dynamic_runs,
+            "linear_runs": measurements_2d_runs,
+            "spectral_runs": spectral_runs,
             "skipped_instances": skipped_instances,
             "error_count": len(errors),
         },
@@ -65,7 +72,7 @@ def _ensure_pending_combined_row(
         db.query(DerivedResult)
         .filter(
             DerivedResult.study_id == job.study_id,
-            DerivedResult.type == DYNAMIC_MEASUREMENTS_COMBINED_TYPE,
+            DerivedResult.type == MEASUREMENT_WORKFLOW_TYPE,
             DerivedResult.artifact_set_id == draft_artifact_set.id,
         )
         .first()
@@ -74,7 +81,7 @@ def _ensure_pending_combined_row(
         summaries=[],
         dynamic_runs=0,
         measurements_2d_runs=0,
-        measurements_doppler_runs=0,
+        spectral_runs=0,
         skipped_instances=0,
         errors=[],
     )
@@ -84,10 +91,10 @@ def _ensure_pending_combined_row(
     else:
         combined_row = DerivedResult(
             study_id=job.study_id,
-            type=DYNAMIC_MEASUREMENTS_COMBINED_TYPE,
+            type=MEASUREMENT_WORKFLOW_TYPE,
             status=ResultStatus.pending,
             value_json=empty_payload,
-            model_name="Dynamic_Measurements_Combined",
+            model_name="StudyMeasurementsWorkflow",
             model_version="v1",
             artifact_set_id=draft_artifact_set.id,
         )
@@ -104,7 +111,7 @@ def _persist_progress(
     summaries: List[Dict[str, Any]],
     dynamic_runs: int,
     measurements_2d_runs: int,
-    measurements_doppler_runs: int,
+    spectral_runs: int,
     skipped_instances: int,
     errors: List[str],
 ) -> None:
@@ -112,7 +119,7 @@ def _persist_progress(
         summaries=summaries,
         dynamic_runs=dynamic_runs,
         measurements_2d_runs=measurements_2d_runs,
-        measurements_doppler_runs=measurements_doppler_runs,
+        spectral_runs=spectral_runs,
         skipped_instances=skipped_instances,
         errors=errors,
     )
@@ -169,7 +176,7 @@ def run_dynamic_measurements_stage(
 
     dynamic_runs = 0
     measurements_2d_runs = 0
-    measurements_doppler_runs = 0
+    spectral_runs = 0
     skipped_instances = 0
     errors: List[str] = []
     summaries: List[Dict[str, Any]] = []
@@ -229,7 +236,7 @@ def run_dynamic_measurements_stage(
                 summaries=summaries,
                 dynamic_runs=dynamic_runs,
                 measurements_2d_runs=measurements_2d_runs,
-                measurements_doppler_runs=measurements_doppler_runs,
+                spectral_runs=spectral_runs,
                 skipped_instances=skipped_instances,
                 errors=errors,
             )
@@ -249,7 +256,7 @@ def run_dynamic_measurements_stage(
 
     # Part 7. Run dynamic lane for all eligible instances before 2D/Doppler lanes.
     if unload_between_weights:
-        unload_echonet_model()
+        unload_motion_segmentation_model()
     try:
         for record in lane_records:
             if not record["run_dynamic"]:
@@ -258,7 +265,7 @@ def run_dynamic_measurements_stage(
             instance_row = record["instance"]
             instance_results = record["instance_results"]
             try:
-                dynamic_response = infer_lv_segmentation(
+                dynamic_response = infer_motion_segmentation(
                     sop_instance_uid=sop_uid,
                     db=db,
                     artifact_set_id=draft_artifact_set.id,
@@ -275,9 +282,9 @@ def run_dynamic_measurements_stage(
                 )
 
                 result_item = {
-                    "task": "echonet_dynamic_lv_segmentation",
+                    "task": MOTION_SEGMENTATION_TASK_KEY,
                     "status": "DONE",
-                    "ui_label": "Left Ventricle (LV) segmentation",
+                    "ui_label": "Motion Segmentation",
                     "output_path": output_path,
                 }
                 if derived_dicom:
@@ -288,10 +295,10 @@ def run_dynamic_measurements_stage(
                 errors.append(f"dynamic:{sop_uid}:{exc}")
                 instance_results.append(
                     {
-                        "task": "echonet_dynamic_lv_segmentation",
+                        "task": MOTION_SEGMENTATION_TASK_KEY,
                         "status": "FAILED",
                         "message": str(exc),
-                        "ui_label": "Left Ventricle (LV) segmentation",
+                        "ui_label": "Motion Segmentation",
                     }
                 )
             _persist_progress(
@@ -300,13 +307,13 @@ def run_dynamic_measurements_stage(
                 summaries=summaries,
                 dynamic_runs=dynamic_runs,
                 measurements_2d_runs=measurements_2d_runs,
-                measurements_doppler_runs=measurements_doppler_runs,
+                spectral_runs=spectral_runs,
                 skipped_instances=skipped_instances,
                 errors=errors,
             )
     finally:
         if unload_between_weights:
-            unload_echonet_model()
+            unload_motion_segmentation_model()
 
     try:
         # Part 8. Run 2D lane one weight at a time across all eligible instances.
@@ -328,7 +335,7 @@ def run_dynamic_measurements_stage(
                 instance_row = record["instance"]
                 instance_results = record["instance_results"]
                 try:
-                    measurements_response = infer_measurements_2d(
+                    measurements_response = infer_linear_measurements(
                         sop_instance_uid=sop_uid,
                         model_weights=weight_name,
                         force=True,
@@ -351,7 +358,7 @@ def run_dynamic_measurements_stage(
                     )
 
                     result_item = {
-                        "task": "measurements_2d",
+                        "task": LINEAR_MEASUREMENTS_TASK_KEY,
                         "status": "DONE",
                         "weights": weight_name,
                         "ui_label": weight_name,
@@ -365,7 +372,7 @@ def run_dynamic_measurements_stage(
                     errors.append(f"measurements2d:{sop_uid}:{weight_name}:{exc}")
                     instance_results.append(
                         {
-                            "task": "measurements_2d",
+                            "task": LINEAR_MEASUREMENTS_TASK_KEY,
                             "status": "FAILED",
                             "message": str(exc),
                             "weights": weight_name,
@@ -378,7 +385,7 @@ def run_dynamic_measurements_stage(
                     summaries=summaries,
                     dynamic_runs=dynamic_runs,
                     measurements_2d_runs=measurements_2d_runs,
-                    measurements_doppler_runs=measurements_doppler_runs,
+                    spectral_runs=spectral_runs,
                     skipped_instances=skipped_instances,
                     errors=errors,
                 )
@@ -400,7 +407,7 @@ def run_dynamic_measurements_stage(
                 sop_uid = record["sop_uid"]
                 instance_results = record["instance_results"]
                 try:
-                    doppler_response = infer_measurements_doppler(
+                    doppler_response = infer_spectral_measurements(
                         sop_instance_uid=sop_uid,
                         model_weights=weight_name,
                         force=True,
@@ -409,11 +416,11 @@ def run_dynamic_measurements_stage(
                         defer_model_unload=unload_between_weights,
                     )
                     doppler_payload = _response_payload(doppler_response)
-                    measurements_doppler_runs += 1
+                    spectral_runs += 1
                     output_path = doppler_payload.get("output_file_image") or doppler_payload.get("outputfile")
                     instance_results.append(
                         {
-                            "task": "measurements_doppler",
+                            "task": SPECTRAL_MEASUREMENTS_TASK_KEY,
                             "status": "DONE",
                             "weights": weight_name,
                             "ui_label": weight_name,
@@ -425,7 +432,7 @@ def run_dynamic_measurements_stage(
                     errors.append(f"doppler:{sop_uid}:{weight_name}:{exc}")
                     instance_results.append(
                         {
-                            "task": "measurements_doppler",
+                            "task": SPECTRAL_MEASUREMENTS_TASK_KEY,
                             "status": "FAILED",
                             "message": str(exc),
                             "weights": weight_name,
@@ -438,7 +445,7 @@ def run_dynamic_measurements_stage(
                     summaries=summaries,
                     dynamic_runs=dynamic_runs,
                     measurements_2d_runs=measurements_2d_runs,
-                    measurements_doppler_runs=measurements_doppler_runs,
+                    spectral_runs=spectral_runs,
                     skipped_instances=skipped_instances,
                     errors=errors,
                 )
@@ -453,7 +460,7 @@ def run_dynamic_measurements_stage(
         summaries=summaries,
         dynamic_runs=dynamic_runs,
         measurements_2d_runs=measurements_2d_runs,
-        measurements_doppler_runs=measurements_doppler_runs,
+        spectral_runs=spectral_runs,
         skipped_instances=skipped_instances,
         errors=errors,
     )
@@ -461,9 +468,9 @@ def run_dynamic_measurements_stage(
     db.commit()
 
     return {
-        "dynamic_runs": dynamic_runs,
-        "measurements_2d_runs": measurements_2d_runs,
-        "measurements_doppler_runs": measurements_doppler_runs,
+        "motion_runs": dynamic_runs,
+        "linear_runs": measurements_2d_runs,
+        "spectral_runs": spectral_runs,
         "skipped_instances": skipped_instances,
         "error_count": len(errors),
         "errors": errors[:25],

@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { usePanechoEchoprimeCombinedResultsQuery } from "@/features/study_results/tanstack/queries/usePanechoEchoprimeCombinedResultsQuery";
+import { useStudyAnalysisCombinedResultsQuery } from "@/features/study_results/tanstack/queries/useStudyAnalysisCombinedResultsQuery";
 import { useDynamicMeasurementsCombinedResultsQuery } from "@/features/study_results/tanstack/queries/useDynamicMeasurementsCombinedResultsQuery";
 import { buildStudyResultsOhifAiPayload } from "@/features/study_results/viewmodels/ohifAiPayloadSerializer";
 
@@ -35,12 +35,12 @@ export function useStudyResultsViewModel(studyUid) {
 
   // --- Part 1. Data Fetching (Server State) ---
   const {
-    data: panechoEchoprimeQueryData = null,
-    isLoading: isPanechoEchoprimeLoading,
-    isFetching: isPanechoEchoprimeFetching,
-    error: panechoEchoprimeError,
-    refetch: refetchPanechoEchoprime,
-  } = usePanechoEchoprimeCombinedResultsQuery(studyUid, {
+    data: studyAnalysisQueryData = null,
+    isLoading: isStudyAnalysisLoading,
+    isFetching: isStudyAnalysisFetching,
+    error: studyAnalysisError,
+    refetch: refetchStudyAnalysis,
+  } = useStudyAnalysisCombinedResultsQuery(studyUid, {
     enabled: Boolean(studyUid),
   });
 
@@ -54,40 +54,40 @@ export function useStudyResultsViewModel(studyUid) {
     enabled: Boolean(studyUid),
   });
 
-  const panechoEchoprimeCombinedResultsState =
-    panechoEchoprimeQueryData?.state ??
-    (isPanechoEchoprimeLoading ? "loading" : panechoEchoprimeError ? "error" : "idle");
+  const studyAnalysisCombinedResultsState =
+    studyAnalysisQueryData?.state ??
+    (isStudyAnalysisLoading ? "loading" : studyAnalysisError ? "error" : "idle");
 
   const dynamicMeasurementsCombinedResultsState =
     dynamicMeasurementsQueryData?.state ??
     (isDynamicMeasurementsLoading ? "loading" : dynamicMeasurementsError ? "error" : "idle");
 
-  const panechoEchoprimeCombinedResultsData =
-    panechoEchoprimeQueryData?.panechoEchoprimeResults ?? null;
+  const studyAnalysisCombinedResultsData =
+    studyAnalysisQueryData?.studyAnalysisResults ?? null;
 
   const viewerRefreshToken =
     dynamicMeasurementsQueryData?.viewerRefreshToken ?? "no-derived-dicom";
 
   const studyResultsState = resolveOverallState([
-    panechoEchoprimeCombinedResultsState,
+    studyAnalysisCombinedResultsState,
     dynamicMeasurementsCombinedResultsState,
   ]);
 
   const anyLoading =
-    isPanechoEchoprimeLoading || isPanechoEchoprimeFetching || isDynamicMeasurementsLoading || isDynamicMeasurementsFetching;
+    isStudyAnalysisLoading || isStudyAnalysisFetching || isDynamicMeasurementsLoading || isDynamicMeasurementsFetching;
 
   const isPolling =
-    panechoEchoprimeCombinedResultsState === "pending" ||
+    studyAnalysisCombinedResultsState === "pending" ||
     dynamicMeasurementsCombinedResultsState === "pending";
 
   const ohifAiPayload = useMemo(
     () =>
       buildStudyResultsOhifAiPayload({
         studyUid,
-        panechoEchoprimeCombinedResultsState,
-        panechoEchoprimeCombinedResultsData,
+        studyAnalysisCombinedResultsState,
+        studyAnalysisCombinedResultsData,
       }),
-    [studyUid, panechoEchoprimeCombinedResultsState, panechoEchoprimeCombinedResultsData]
+    [studyUid, studyAnalysisCombinedResultsState, studyAnalysisCombinedResultsData]
   );
 
   const onBack = useCallback(() => {
@@ -95,16 +95,16 @@ export function useStudyResultsViewModel(studyUid) {
   }, [navigate]);
 
   const refetchStudyResults = useCallback(() => {
-    refetchPanechoEchoprime();
+    refetchStudyAnalysis();
     refetchDynamicMeasurements();
-  }, [refetchPanechoEchoprime, refetchDynamicMeasurements]);
+  }, [refetchStudyAnalysis, refetchDynamicMeasurements]);
 
   return {
     studyUid,
     studyResultsState,
 
-    panechoEchoprimeCombinedResultsState,
-    panechoEchoprimeCombinedResultsData,
+    studyAnalysisCombinedResultsState,
+    studyAnalysisCombinedResultsData,
 
     dynamicMeasurementsCombinedResultsState,
 

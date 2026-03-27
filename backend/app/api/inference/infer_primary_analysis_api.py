@@ -13,14 +13,17 @@ from app.helpers.inference_runtime.inference_functions import (fetch_orthanc_ins
                         stack_to_tensor,
                         get_model_and_device)
 from app.helpers.inference_runtime.batch_config import get_batch_size
-from app.schemas.inference.infer_panecho_schemas import (AllTasksPanEchoResponse,
-                                            InferPanEchoRequest)
+from app.schemas.inference.infer_primary_analysis_schemas import (
+    InferPrimaryAnalysisRequest,
+    PrimaryAnalysisResponse,
+)
 
 from app.database.db import get_db
 from app.database_models.instances import Instance
 from app.database_models.series import Series
 from app.database_models.studies import Study
 from app.database_models.derived_results import DerivedResult
+from app.core.artifacts import PRIMARY_ANALYSIS_MODEL_NAME, PRIMARY_ANALYSIS_TYPE
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -53,17 +56,17 @@ def _local_file_path_map(
     }
 
 
-@router.post("/infer/panecho", response_model=AllTasksPanEchoResponse)
-def infer_panecho(
-    payload: InferPanEchoRequest,
+@router.post("/infer/primary-analysis", response_model=PrimaryAnalysisResponse)
+def infer_primary_analysis(
+    payload: InferPrimaryAnalysisRequest,
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     """
-    Run PanEcho inference for all 39 reporting tasks using a study UID and return study-level aggregated results.
+    Run primary analysis inference using a study UID and return study-level aggregated results.
 
     Steps:
     1. Resolve all Orthanc instance IDs for the study from Orthanc.
-    2. For each instance, pick representative frames, stack them into a tensor, and run the PanEcho model.
+    2. For each instance, pick representative frames, stack them into a tensor, and run the primary analysis model.
     3. Normalize and collect per-instance predictions into `all_preds`.
     4. Aggregate predictions across instances for each task (mean for scalars/lists, fallback to first otherwise).
     5. Persist a DerivedResult row with the aggregated predictions and mark the study as completed if applicable.
@@ -72,14 +75,14 @@ def infer_panecho(
 
     study_uid = payload.study_uid
 
-    logger.info(f"[INFER_PANECHO] infer_panecho called with study_uid={study_uid}")
+    logger.info("[PRIMARY_ANALYSIS] infer called with study_uid=%s", study_uid)
 
     # --- Part 1: Resolve input instance set ---
     orthanc_instance_ids = payload.include_instance_orthanc_ids or fetch_orthanc_instance_ids_from_study(study_uid)
     if not orthanc_instance_ids:
         raise HTTPException(status_code=404, detail=f"No instances found for study_uid={study_uid}")
 
-    logger.info(f"[INFER_PANECHO] found {len(orthanc_instance_ids)} instance(s) for study ")
+    logger.info("[PRIMARY_ANALYSIS] found %d instance(s) for study", len(orthanc_instance_ids))
     local_path_by_orthanc_id = _local_file_path_map(
         db=db,
         study_uid=study_uid,
@@ -87,7 +90,7 @@ def infer_panecho(
     )
     if local_path_by_orthanc_id:
         logger.info(
-            "[INFER_PANECHO] Local DICOM fast-path available for %d/%d instance(s)",
+            "[PRIMARY_ANALYSIS] Local DICOM fast-path available for %d/%d instance(s)",
             len(local_path_by_orthanc_id),
             len(orthanc_instance_ids),
         )
@@ -97,9 +100,9 @@ def infer_panecho(
 
         # --- Part 2: Collect predictions (batched) ---
         all_preds = []
-        batch_size = get_batch_size("panecho")
+        batch_size = get_batch_size("primary_analysis")
         logger.info(
-            "[INFER_PANECHO] Starting batched inference | instances=%d batch_size=%d device=%s",
+            "[PRIMARY_ANALYSIS] Starting batched inference | instances=%d batch_size=%d device=%s",
             len(orthanc_instance_ids),
             batch_size,
             device,
@@ -119,7 +122,7 @@ def infer_panecho(
                             frames = pick_frames_from_local_dicom(local_path, 16)
                         except Exception as local_error:
                             logger.warning(
-                                "[INFER_PANECHO] Local frame read failed for %s (%s); falling back to Orthanc",
+                                "[PRIMARY_ANALYSIS] Local frame read failed for %s (%s); falling back to Orthanc",
                                 orthanc_instance_id,
                                 local_error,
                             )
@@ -130,7 +133,7 @@ def infer_panecho(
                     tensors.append(x)
                     valid_ids.append(orthanc_instance_id)
                 except Exception as err:
-                    logger.warning(f"[INFER_PANECHO] Skipping instance {orthanc_instance_id}: {err}")
+                    logger.warning("[PRIMARY_ANALYSIS] Skipping instance %s: %s", orthanc_instance_id, err)
                     continue
 
             if not tensors:
@@ -138,7 +141,7 @@ def infer_panecho(
 
             batch_tensor = torch.cat(tensors, dim=0).to(device)  # (B, 3, 16, 224, 224)
 
-            logger.info(f"[INFER_PANECHO] Running batch inference on {len(valid_ids)} instance(s)")
+            logger.info("[PRIMARY_ANALYSIS] Running batch inference on %d instance(s)", len(valid_ids))
             with torch.no_grad():
                 preds_batch = model(batch_tensor)
             if not isinstance(preds_batch, dict):
@@ -168,7 +171,7 @@ def infer_panecho(
             total_processed += len(valid_ids)
             if total_processed == len(orthanc_instance_ids) or total_processed % max(1, batch_size) == 0:
                 logger.info(
-                    "[INFER_PANECHO] Processed %d/%d instances (device=%s)",
+                    "[PRIMARY_ANALYSIS] Processed %d/%d instances (device=%s)",
                     total_processed,
                     len(orthanc_instance_ids),
                     device,
@@ -206,7 +209,7 @@ def infer_panecho(
                     db.query(DerivedResult)
                     .filter(
                         DerivedResult.study_id == study.id,
-                        DerivedResult.type == "PanEcho_AllTasks",
+                        DerivedResult.type == PRIMARY_ANALYSIS_TYPE,
                         DerivedResult.artifact_set_id == payload.artifact_set_id,
                     )
                     .first()
@@ -214,8 +217,8 @@ def infer_panecho(
                 if not derived_result:
                     derived_result = DerivedResult(
                         study_id=study.id,
-                        type="PanEcho_AllTasks",
-                        model_name="PanEcho",
+                        type=PRIMARY_ANALYSIS_TYPE,
+                        model_name=PRIMARY_ANALYSIS_MODEL_NAME,
                         model_version="v1",
                         artifact_set_id=payload.artifact_set_id,
                     )
@@ -223,8 +226,8 @@ def infer_panecho(
             else:
                 derived_result = DerivedResult(
                     study_id=study.id,
-                    type="PanEcho_AllTasks",
-                    model_name="PanEcho",
+                    type=PRIMARY_ANALYSIS_TYPE,
+                    model_name=PRIMARY_ANALYSIS_MODEL_NAME,
                     model_version="v1",
                 )
                 db.add(derived_result)
@@ -232,7 +235,7 @@ def infer_panecho(
             derived_result.value_json = aggregated
             db.commit()
             db.refresh(derived_result)
-            logger.info(f"[INFER_PANECHO] Saved DerivedResult id={derived_result.id} for study_id={study.id}")
+            logger.info("[PRIMARY_ANALYSIS] Saved DerivedResult id=%s for study_id=%s", derived_result.id, study.id)
 
         # --- Part 5: Return study-level predictions
         return {
@@ -242,6 +245,6 @@ def infer_panecho(
             }
 
     except Exception as err:
-        logger.exception(f"[INFER_PANECHO] Inference failed: {type(err).__name__}: {err}")
+        logger.exception("[PRIMARY_ANALYSIS] Inference failed: %s: %s", type(err).__name__, err)
         raise HTTPException(status_code=500, detail=f"Inference failed: {type(err).__name__}: {err}")
 

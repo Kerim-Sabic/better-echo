@@ -1,17 +1,17 @@
-from .echoprime_service import (
+from .secondary_analysis_service import (
     classify_views_for_study,
-    get_ep,
-    preload_echoprime,
-    run_echoprime_metrics,
-    start_echoprime_preload_background,
-    unload_ep,
+    get_secondary_analysis_model,
+    preload_secondary_analysis,
+    run_secondary_analysis_metrics,
+    start_secondary_analysis_preload_background,
+    unload_secondary_analysis_model,
 )
 
 __all__ = [
-    "get_ep",
-    "preload_echoprime",
-    "start_echoprime_preload_background",
-    "unload_ep",
-    "run_echoprime_metrics",
+    "get_secondary_analysis_model",
+    "preload_secondary_analysis",
+    "start_secondary_analysis_preload_background",
+    "unload_secondary_analysis_model",
+    "run_secondary_analysis_metrics",
     "classify_views_for_study",
 ]

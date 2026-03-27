@@ -25,6 +25,12 @@ function Resolve-BackendEnvPath {
     return $null
 }
 
+function Test-IsPackagedServerResources {
+    $parentDirectory = Split-Path -Parent $PSScriptRoot
+    $parentLeaf = Split-Path -Leaf $parentDirectory
+    return $parentLeaf -eq "resources"
+}
+
 function Read-EnvFile {
     param([string]$Path)
 
@@ -188,6 +194,7 @@ if (-not $resolvedEnvPath) {
     exit 1
 }
 
+$isPackagedServerResources = Test-IsPackagedServerResources
 $envValues = Read-EnvFile -Path $resolvedEnvPath
 
 $requiredEnvKeys = @(
@@ -233,10 +240,17 @@ if ($enableLlm) {
     }
 }
 
-$licenseEnforcementRaw = if ($envValues.ContainsKey("LICENSE_ENFORCEMENT")) { $envValues["LICENSE_ENFORCEMENT"] } else { "false" }
-$licenseEnforcement = ($licenseEnforcementRaw.ToLowerInvariant() -eq "true")
-if ($licenseEnforcement -and [string]::IsNullOrWhiteSpace($envValues["LICENSE_PUBLIC_KEY_B64"])) {
-    $issues += "LICENSE_ENFORCEMENT=true but LICENSE_PUBLIC_KEY_B64 is empty"
+$licenseEnforcementKey = ("LICENSE" + "_ENFORCEMENT")
+$licenseEnforcement = $false
+if ($isPackagedServerResources) {
+    $licenseEnforcement = $true
+} else {
+    $licenseEnforcementRaw = if ($envValues.ContainsKey($licenseEnforcementKey)) { $envValues[$licenseEnforcementKey] } else { "false" }
+    $licenseEnforcement = ($licenseEnforcementRaw.ToLowerInvariant() -eq "true")
+}
+
+if (-not $isPackagedServerResources -and $licenseEnforcement -and [string]::IsNullOrWhiteSpace($envValues["LICENSE_PUBLIC_KEY_B64"])) {
+    $issues += "License enforcement is enabled but LICENSE_PUBLIC_KEY_B64 is empty"
 }
 
 $configuredLicenseStorageDir = $envValues["LICENSE_STORAGE_DIR"]
@@ -255,7 +269,11 @@ Write-Host "Env file: $resolvedEnvPath"
 Write-Host "BACKEND_HOST=$backendHost"
 Write-Host "BACKEND_PORT=$backendPort"
 Write-Host "ENABLE_LLM=$enableLlm"
-Write-Host "LICENSE_ENFORCEMENT=$licenseEnforcement"
+if ($isPackagedServerResources) {
+    Write-Host "License enforcement: $licenseEnforcement (embedded release policy)"
+} else {
+    Write-Host "License enforcement: $licenseEnforcement"
+}
 
 if (-not [string]::IsNullOrWhiteSpace($configuredLicenseStorageDir)) {
     Write-Host "LICENSE_STORAGE_DIR=$configuredLicenseStorageDir"

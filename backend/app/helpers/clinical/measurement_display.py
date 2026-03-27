@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import json
 import logging
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+
+from app.core.runtime_paths import config_path
 
 logger = logging.getLogger(__name__)
 
-_CATALOG_PATH = Path(__file__).resolve().parents[2] / "configs" / "measurement_display_catalog.json"
+_CATALOG_PATH = config_path("measurement_display_catalog.json")
 
 
 def _load_catalog() -> Dict[str, Dict[str, Any]]:

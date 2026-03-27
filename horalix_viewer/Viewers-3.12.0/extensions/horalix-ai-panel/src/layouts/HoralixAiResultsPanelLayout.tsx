@@ -23,8 +23,8 @@ export default function HoralixAiResultsPanelLayout({ payload }: Props) {
     return <EmptyState message="Waiting for AI measurements payload from parent application." />;
   }
 
-  const state = payload.panechoEchoprimeCombinedResultsState ?? 'loading';
-  const aiMeasurements = payload.panechoEchoprimeAiMeasurements;
+  const state = payload.studyAnalysisCombinedResultsState ?? 'loading';
+  const aiMeasurements = payload.studyAnalysisMeasurements;
 
   if (!aiMeasurements) {
     return <EmptyState message="No AI measurements payload received." />;

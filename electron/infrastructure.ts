@@ -19,6 +19,9 @@ export async function startManagedInfrastructure(config: ManagedInfrastructureCo
   const composeFile = resolveComposeFilePath();
   await ensureDockerAvailable();
 
+  // Rebuild the viewer image so packaged source-level viewer changes are not masked
+  // by a stale cached horalix-viewer Docker image from an older app build.
+  await runComposeCommand(composeFile, ['build', 'horalix-viewer']);
   await runComposeCommand(composeFile, ['up', '-d', ...INFRA_SERVICE_NAMES]);
 
   await waitForTcpPort('127.0.0.1', config.postgresPort || DEFAULT_POSTGRES_PORT, 'PostgreSQL');

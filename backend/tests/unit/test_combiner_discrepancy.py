@@ -1,6 +1,6 @@
-import pytest
+﻿import pytest
 
-import app.helpers.ensemble.combine_panecho_echoprime_predictions as comb
+import app.helpers.ensemble.combine_study_analysis_predictions as comb
 
 
 def _get_discrepancy(panecho_raw, echoprime_raw, task_key):
@@ -30,4 +30,5 @@ def test_discrepancy_thresholds_are_loaded():
     pap_thr = comb.TASK_CONFIG.get("pulmonary_artery_pressure", {}).get("discrepancy_threshold")
     assert ef_thr is not None
     assert pap_thr is not None
+
 

@@ -1,2 +1,2 @@
-export * from "./getPanechoEchoprimeCombinedResultsApi";
+export * from "./getStudyAnalysisCombinedResultsApi";
 export * from "./getDynamicMeasurementsCombinedResultsApi";

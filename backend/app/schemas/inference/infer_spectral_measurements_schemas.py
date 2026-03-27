@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel
 
 
-class DopplerTagCheckResponse(BaseModel):
+class SpectralTagCheckResponse(BaseModel):
     success: bool
     sop_instance_uid: str
     is_doppler_candidate: bool
@@ -11,7 +11,7 @@ class DopplerTagCheckResponse(BaseModel):
     details: Dict[str, Any]
 
 
-class DopplerTagAuditItem(BaseModel):
+class SpectralTagAuditItem(BaseModel):
     sop_instance_uid: str
     instance_number: Optional[str] = None
     is_doppler_candidate: bool
@@ -19,15 +19,15 @@ class DopplerTagAuditItem(BaseModel):
     details: Dict[str, Any]
 
 
-class DopplerTagAuditResponse(BaseModel):
+class SpectralTagAuditResponse(BaseModel):
     success: bool
     study_uid: str
     total_instances: int
     doppler_candidates: int
-    items: List[DopplerTagAuditItem]
+    items: List[SpectralTagAuditItem]
 
 
-class DopplerInferenceResponse(BaseModel):
+class SpectralMeasurementsResponse(BaseModel):
     success: bool
     message: str
     sop_instance_uid: str

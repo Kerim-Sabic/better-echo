@@ -1,6 +1,6 @@
-from fastapi.testclient import TestClient
+﻿from fastapi.testclient import TestClient
 
-from app.core.artifacts import PANECHO_ECHOPRIME_COMBINED_TYPE
+from app.core.artifacts import COMBINED_ANALYSIS_TYPE
 from app.database_models.derived_results import DerivedResult, ResultStatus
 from app.database_models.pipeline_artifact_sets import PipelineArtifactSet, PipelineArtifactSetState
 from app.database_models.pipeline_jobs import PipelineJob, PipelineJobStatus
@@ -265,10 +265,10 @@ def test_pipeline_regenerate_enqueues_and_auto_promotes(app, seeded_study, db_se
         db.add(
             DerivedResult(
                 study_id=seeded_study["study_id"],
-                type=PANECHO_ECHOPRIME_COMBINED_TYPE,
+                type=COMBINED_ANALYSIS_TYPE,
                 status=ResultStatus.complete,
                 value_json={"integrated_tasks": {"lvef": {"value": 50.0}}},
-                model_name="PanEcho_EchoPrime_Combined",
+                model_name="StudyAnalysisCombined",
                 model_version="v1",
                 instance_id=None,
                 artifact_set_id=None,
@@ -298,4 +298,5 @@ def test_pipeline_regenerate_enqueues_and_auto_promotes(app, seeded_study, db_se
     assert pipeline["status"] == "completed"
     assert pipeline["artifact_sets"]["draft"] is None
     assert pipeline["artifact_sets"]["active"]["pipeline_job_id"] == job_id
+
 

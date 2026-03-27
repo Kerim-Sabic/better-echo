@@ -7,7 +7,7 @@ module.exports = {
   },
   files: ['dist/electron/**/*', 'frontend/build/**/*', 'package.json'],
   asar: true,
-  asarUnpack: ['**/*.node', '**/backend/dist/**/*', '**/backend/app/AI_models/**/*'],
+  asarUnpack: ['**/*.node', '**/backend/dist/**/*', '**/backend/runtime_assets/**/*'],
   win: {
     target: [
       {

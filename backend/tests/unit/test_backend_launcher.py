@@ -113,3 +113,61 @@ def test_configure_frozen_matplotlib_backend_noops_in_source_mode(monkeypatch):
     launcher.configure_frozen_matplotlib_backend()
 
     assert "MPLBACKEND" not in launcher.os.environ
+
+
+def test_configure_packaged_license_policy_noops_in_source_mode(monkeypatch):
+    launcher = _load_launcher_module()
+    monkeypatch.setattr(launcher, "is_frozen_runtime", lambda: False)
+    monkeypatch.setenv("LICENSE_ENFORCEMENT", "false")
+    monkeypatch.setenv("LICENSE_PUBLIC_KEY_B64", "env-key")
+
+    launcher.configure_packaged_license_policy()
+
+    assert launcher.os.environ["LICENSE_ENFORCEMENT"] == "false"
+    assert launcher.os.environ["LICENSE_PUBLIC_KEY_B64"] == "env-key"
+
+
+def test_configure_packaged_license_policy_sets_embedded_release_values(monkeypatch):
+    launcher = _load_launcher_module()
+    monkeypatch.setattr(launcher, "is_frozen_runtime", lambda: True)
+    monkeypatch.setattr(launcher, "RELEASE_CONFIG_IMPORT_ERROR", None)
+    monkeypatch.setattr(launcher, "PACKAGED_LICENSE_ENFORCEMENT", True)
+    monkeypatch.setattr(launcher, "PACKAGED_LICENSE_PUBLIC_KEY_B64", "embedded-key")
+    monkeypatch.setenv("LICENSE_ENFORCEMENT", "false")
+    monkeypatch.setenv("LICENSE_PUBLIC_KEY_B64", "env-key")
+
+    launcher.configure_packaged_license_policy()
+
+    assert launcher.os.environ["LICENSE_ENFORCEMENT"] == "true"
+    assert launcher.os.environ["LICENSE_PUBLIC_KEY_B64"] == "embedded-key"
+
+
+def test_configure_packaged_license_policy_rejects_missing_embedded_key(monkeypatch):
+    launcher = _load_launcher_module()
+    monkeypatch.setattr(launcher, "is_frozen_runtime", lambda: True)
+    monkeypatch.setattr(launcher, "RELEASE_CONFIG_IMPORT_ERROR", None)
+    monkeypatch.setattr(launcher, "PACKAGED_LICENSE_ENFORCEMENT", True)
+    monkeypatch.setattr(launcher, "PACKAGED_LICENSE_PUBLIC_KEY_B64", "")
+
+    with pytest.raises(RuntimeError, match="embedded license verification key"):
+        launcher.configure_packaged_license_policy()
+
+
+def test_configure_packaged_license_policy_rejects_missing_release_config(monkeypatch):
+    launcher = _load_launcher_module()
+    monkeypatch.setattr(launcher, "is_frozen_runtime", lambda: True)
+    monkeypatch.setattr(launcher, "RELEASE_CONFIG_IMPORT_ERROR", ImportError("missing"))
+
+    with pytest.raises(RuntimeError, match="embedded release config metadata"):
+        launcher.configure_packaged_license_policy()
+
+
+def test_configure_packaged_license_policy_rejects_disabled_embedded_policy(monkeypatch):
+    launcher = _load_launcher_module()
+    monkeypatch.setattr(launcher, "is_frozen_runtime", lambda: True)
+    monkeypatch.setattr(launcher, "RELEASE_CONFIG_IMPORT_ERROR", None)
+    monkeypatch.setattr(launcher, "PACKAGED_LICENSE_ENFORCEMENT", False)
+    monkeypatch.setattr(launcher, "PACKAGED_LICENSE_PUBLIC_KEY_B64", "embedded-key")
+
+    with pytest.raises(RuntimeError, match="mandatory embedded license enforcement"):
+        launcher.configure_packaged_license_policy()

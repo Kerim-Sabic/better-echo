@@ -15,7 +15,7 @@ if not hasattr(np, "complex_"):
 from src.models import FrameTransformer, MultiTaskModel
 
 class Task():
-    """Echocardiography interpretation task object."""
+    """Study-analysis task object."""
     def __init__(self, task_name, task_type, class_names, mean=np.nan):
         self.task_name = task_name
         self.task_type = task_type
@@ -23,10 +23,10 @@ class Task():
         self.class_indices = np.arange(class_names.size)
         self.mean = mean
 
-def PanEcho(pretrained=True, image_encoder_only=False, backbone_only=False, tasks='all', activations=True, clip_len=16):
+def load_primary_analysis_model(pretrained=True, image_encoder_only=False, backbone_only=False, tasks='all', activations=True, clip_len=16):
     assert not (image_encoder_only and backbone_only), 'image_encoder_only and backbone_only cannot both be True'
 
-    # PanEcho architecture specifications
+    # Primary analysis architecture specifications
     model_name = 'frame_transformer'
     arch = 'convnext_tiny'
     n_layers = 4
@@ -48,13 +48,13 @@ def PanEcho(pretrained=True, image_encoder_only=False, backbone_only=False, task
 
     # Load pretrained weights
     if pretrained:
-        ckpt_path = Path(__file__).parent / "weights" / "panecho.pt"
+        ckpt_path = Path(__file__).parent / "weights" / "model.pt"
         try:
             weights = torch.load(ckpt_path, map_location='cpu', weights_only=True)['weights']
         except TypeError:
             weights = torch.load(ckpt_path, map_location='cpu')['weights']
-        del weights['encoder.time_encoder.pe']  # allow for variable clip_len (fixed positional encoding does not need to be loaded from PanEcho)
-        msg = model.load_state_dict(weights, strict=False)
+        del weights['encoder.time_encoder.pe']  # allow for variable clip_len without fixed positional encoding
+        model.load_state_dict(weights, strict=False)
 
     # Subset for desired tasks
     if tasks != 'all':

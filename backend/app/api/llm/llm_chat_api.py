@@ -5,8 +5,7 @@ from typing import Dict, Any, Optional, List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
-from app.core.artifacts import PANECHO_ECHOPRIME_COMBINED_TYPE, ECHOPRIME_TYPE, LLM_REPORT_TYPE
+from app.core.artifacts import COMBINED_ANALYSIS_TYPE, REPORT_SUMMARY_TYPE, REPORT_SUMMARY_MODEL_NAME
 from app.database.db import get_db
 from app.database_models.studies import Study
 from app.database_models.derived_results import DerivedResult, ResultStatus
@@ -29,7 +28,7 @@ def chat_about_report(payload: LLMChatRequest, db: Session = Depends(get_db)):
     Answer a user question about a study using the LLM with short context from a prior report and diagnoses JSON.
 
     Steps:
-    1. Resolve the study by `study_uid` and fetch the combined PanEcho+EchoPrime results row; return 409 if not complete.
+    1. Resolve the study by `study_uid` and fetch the combined study analysis row; return 409 if not complete.
     2. Prefer an existing LLM-generated report; otherwise use a generic fallback text.
     3. Optionally extract `diagnoses_json` from the saved LLM report, if present.
     4. Use `build_chat_messages` to construct the LLM chat messages with report, diagnoses, combined sections, and the question.
@@ -45,7 +44,7 @@ def chat_about_report(payload: LLMChatRequest, db: Session = Depends(get_db)):
     # Combined results (diagnoses JSON)
     combined_row: Optional[DerivedResult] = (
         db.query(DerivedResult)
-        .filter(DerivedResult.study_id == study.id, DerivedResult.type == PANECHO_ECHOPRIME_COMBINED_TYPE)
+        .filter(DerivedResult.study_id == study.id, DerivedResult.type == COMBINED_ANALYSIS_TYPE)
         .first()
     )
     if not combined_row or combined_row.status != ResultStatus.complete:
@@ -55,7 +54,7 @@ def chat_about_report(payload: LLMChatRequest, db: Session = Depends(get_db)):
     # Prefer LLM-generated report if available
     report_row: Optional[DerivedResult] = (
         db.query(DerivedResult)
-        .filter(DerivedResult.study_id == study.id, DerivedResult.type == LLM_REPORT_TYPE)
+        .filter(DerivedResult.study_id == study.id, DerivedResult.type == REPORT_SUMMARY_TYPE)
         .order_by(DerivedResult.id.desc())
         .first()
     )
@@ -98,4 +97,4 @@ def chat_about_report(payload: LLMChatRequest, db: Session = Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"LLM call failed: {e}")
 
-    return LLMChatResponse(study_uid=study_uid, answer=answer, model=settings.LLM_MODEL)
+    return LLMChatResponse(study_uid=study_uid, answer=answer, model=REPORT_SUMMARY_MODEL_NAME)

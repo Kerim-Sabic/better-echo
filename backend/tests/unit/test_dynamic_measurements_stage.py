@@ -1,6 +1,6 @@
-from uuid import uuid4
+﻿from uuid import uuid4
 
-from app.core.artifacts import DYNAMIC_MEASUREMENTS_COMBINED_TYPE
+from app.core.artifacts import MEASUREMENT_WORKFLOW_TYPE
 from app.database_models.derived_results import DerivedResult, ResultStatus
 from app.database_models.instances import Instance
 from app.database_models.pipeline_artifact_sets import PipelineArtifactSet, PipelineArtifactSetState
@@ -67,16 +67,16 @@ def test_dynamic_stage_persists_instance_number_and_output_paths(
 
         # Part 2. Stub inference calls with deterministic media paths.
         monkeypatch.setattr(
-            "app.services.pipeline.stages.dynamic_measurements.infer_lv_segmentation",
-            lambda **_: {"output_file": "echonet_dynamic_LV-segmentation_files/study/instance.mp4"},
+            "app.services.pipeline.stages.dynamic_measurements.infer_motion_segmentation",
+            lambda **_: {"output_file": "motion_segmentation_files/study/instance.mp4"},
         )
         monkeypatch.setattr(
-            "app.services.pipeline.stages.dynamic_measurements.infer_measurements_2d",
-            lambda **_: {"output_file_mp4": "measurements_2D_keypoint_detection/study/instance/rv_base.mp4"},
+            "app.services.pipeline.stages.dynamic_measurements.infer_linear_measurements",
+            lambda **_: {"output_file_mp4": "linear_measurements_files/study/instance/rv_base.mp4"},
         )
         monkeypatch.setattr(
-            "app.services.pipeline.stages.dynamic_measurements.infer_measurements_doppler",
-            lambda **_: {"output_file_image": "measurements_doppler/study/instance/lvotvmax.jpg"},
+            "app.services.pipeline.stages.dynamic_measurements.infer_spectral_measurements",
+            lambda **_: {"output_file_image": "measurement_spectral/study/instance/lvotvmax.jpg"},
         )
 
         payload = {
@@ -106,7 +106,7 @@ def test_dynamic_stage_persists_instance_number_and_output_paths(
             db.query(DerivedResult)
             .filter(
                 DerivedResult.study_id == seeded_study["study_id"],
-                DerivedResult.type == DYNAMIC_MEASUREMENTS_COMBINED_TYPE,
+                DerivedResult.type == MEASUREMENT_WORKFLOW_TYPE,
                 DerivedResult.artifact_set_id == draft_set.id,
             )
             .first()
@@ -121,10 +121,10 @@ def test_dynamic_stage_persists_instance_number_and_output_paths(
         assert summary.get("instance_number") == "14"
 
         by_task = {entry.get("task"): entry for entry in summary.get("results", [])}
-        assert by_task["echonet_dynamic_lv_segmentation"]["output_path"].endswith(".mp4")
-        assert by_task["measurements_2d"]["output_path"].endswith(".mp4")
-        assert by_task["measurements_doppler"]["output_path"].endswith(".jpg")
-        assert by_task["measurements_doppler"]["output_kind"] == "image"
+        assert by_task["motion_segmentation_lv"]["output_path"].endswith(".mp4")
+        assert by_task["measurement_linear"]["output_path"].endswith(".mp4")
+        assert by_task["measurement_spectral"]["output_path"].endswith(".jpg")
+        assert by_task["measurement_spectral"]["output_kind"] == "image"
     finally:
         db.close()
 
@@ -137,22 +137,22 @@ def test_dynamic_stage_handles_pydantic_style_response_objects(
     class _DopplerResponse:
         # Part 1. Minimal pydantic-like response object with model_dump support.
         def model_dump(self):
-            return {"output_file_image": "measurements_doppler/study/instance/avvmax.jpg"}
+            return {"output_file_image": "measurement_spectral/study/instance/avvmax.jpg"}
 
     db = db_session_factory()
     try:
         instance, job, draft_set = _build_job_runtime_graph(db, seeded_study=seeded_study)
 
         monkeypatch.setattr(
-            "app.services.pipeline.stages.dynamic_measurements.infer_lv_segmentation",
-            lambda **_: {"output_file": "echonet_dynamic_LV-segmentation_files/study/instance.mp4"},
+            "app.services.pipeline.stages.dynamic_measurements.infer_motion_segmentation",
+            lambda **_: {"output_file": "motion_segmentation_files/study/instance.mp4"},
         )
         monkeypatch.setattr(
-            "app.services.pipeline.stages.dynamic_measurements.infer_measurements_2d",
-            lambda **_: {"output_file_mp4": "measurements_2D_keypoint_detection/study/instance/rv_base.mp4"},
+            "app.services.pipeline.stages.dynamic_measurements.infer_linear_measurements",
+            lambda **_: {"output_file_mp4": "linear_measurements_files/study/instance/rv_base.mp4"},
         )
         monkeypatch.setattr(
-            "app.services.pipeline.stages.dynamic_measurements.infer_measurements_doppler",
+            "app.services.pipeline.stages.dynamic_measurements.infer_spectral_measurements",
             lambda **_: _DopplerResponse(),
         )
 
@@ -182,7 +182,7 @@ def test_dynamic_stage_handles_pydantic_style_response_objects(
             db.query(DerivedResult)
             .filter(
                 DerivedResult.study_id == seeded_study["study_id"],
-                DerivedResult.type == DYNAMIC_MEASUREMENTS_COMBINED_TYPE,
+                DerivedResult.type == MEASUREMENT_WORKFLOW_TYPE,
                 DerivedResult.artifact_set_id == draft_set.id,
             )
             .first()
@@ -190,7 +190,7 @@ def test_dynamic_stage_handles_pydantic_style_response_objects(
         assert combined_row is not None
         summary = (combined_row.value_json or {}).get("instances", [])[0]
         doppler_result = next(
-            entry for entry in summary.get("results", []) if entry.get("task") == "measurements_doppler"
+            entry for entry in summary.get("results", []) if entry.get("task") == "measurement_spectral"
         )
         assert doppler_result.get("output_path").endswith(".jpg")
     finally:
@@ -208,8 +208,8 @@ def test_dynamic_stage_persists_pending_progress_between_tasks(
         progress_seen = {"value": False}
 
         monkeypatch.setattr(
-            "app.services.pipeline.stages.dynamic_measurements.infer_lv_segmentation",
-            lambda **_: {"output_file": "echonet_dynamic_LV-segmentation_files/study/instance.mp4"},
+            "app.services.pipeline.stages.dynamic_measurements.infer_motion_segmentation",
+            lambda **_: {"output_file": "motion_segmentation_files/study/instance.mp4"},
         )
 
         def _measurements_side_effect(**_):
@@ -218,7 +218,7 @@ def test_dynamic_stage_persists_pending_progress_between_tasks(
                 db.query(DerivedResult)
                 .filter(
                     DerivedResult.study_id == seeded_study["study_id"],
-                    DerivedResult.type == DYNAMIC_MEASUREMENTS_COMBINED_TYPE,
+                    DerivedResult.type == MEASUREMENT_WORKFLOW_TYPE,
                     DerivedResult.artifact_set_id == draft_set.id,
                 )
                 .first()
@@ -228,17 +228,17 @@ def test_dynamic_stage_persists_pending_progress_between_tasks(
             summaries = (combined_row.value_json or {}).get("instances", [])
             assert len(summaries) == 1
             first_results = summaries[0].get("results", [])
-            assert any(r.get("task") == "echonet_dynamic_lv_segmentation" for r in first_results)
+            assert any(r.get("task") == "motion_segmentation_lv" for r in first_results)
             progress_seen["value"] = True
-            return {"output_file_mp4": "measurements_2D_keypoint_detection/study/instance/rv_base.mp4"}
+            return {"output_file_mp4": "linear_measurements_files/study/instance/rv_base.mp4"}
 
         monkeypatch.setattr(
-            "app.services.pipeline.stages.dynamic_measurements.infer_measurements_2d",
+            "app.services.pipeline.stages.dynamic_measurements.infer_linear_measurements",
             _measurements_side_effect,
         )
         monkeypatch.setattr(
-            "app.services.pipeline.stages.dynamic_measurements.infer_measurements_doppler",
-            lambda **_: {"output_file_image": "measurements_doppler/study/instance/lvotvmax.jpg"},
+            "app.services.pipeline.stages.dynamic_measurements.infer_spectral_measurements",
+            lambda **_: {"output_file_image": "measurement_spectral/study/instance/lvotvmax.jpg"},
         )
 
         payload = {
@@ -268,7 +268,7 @@ def test_dynamic_stage_persists_pending_progress_between_tasks(
             db.query(DerivedResult)
             .filter(
                 DerivedResult.study_id == seeded_study["study_id"],
-                DerivedResult.type == DYNAMIC_MEASUREMENTS_COMBINED_TYPE,
+                DerivedResult.type == MEASUREMENT_WORKFLOW_TYPE,
                 DerivedResult.artifact_set_id == draft_set.id,
             )
             .first()
@@ -289,16 +289,16 @@ def test_dynamic_stage_failure_keeps_previous_progress(
         instance, job, draft_set = _build_job_runtime_graph(db, seeded_study=seeded_study)
 
         monkeypatch.setattr(
-            "app.services.pipeline.stages.dynamic_measurements.infer_lv_segmentation",
-            lambda **_: {"output_file": "echonet_dynamic_LV-segmentation_files/study/instance.mp4"},
+            "app.services.pipeline.stages.dynamic_measurements.infer_motion_segmentation",
+            lambda **_: {"output_file": "motion_segmentation_files/study/instance.mp4"},
         )
         monkeypatch.setattr(
-            "app.services.pipeline.stages.dynamic_measurements.infer_measurements_2d",
+            "app.services.pipeline.stages.dynamic_measurements.infer_linear_measurements",
             lambda **_: (_ for _ in ()).throw(RuntimeError("forced_measurements_failure")),
         )
         monkeypatch.setattr(
-            "app.services.pipeline.stages.dynamic_measurements.infer_measurements_doppler",
-            lambda **_: {"output_file_image": "measurements_doppler/study/instance/lvotvmax.jpg"},
+            "app.services.pipeline.stages.dynamic_measurements.infer_spectral_measurements",
+            lambda **_: {"output_file_image": "measurement_spectral/study/instance/lvotvmax.jpg"},
         )
 
         payload = {
@@ -327,7 +327,7 @@ def test_dynamic_stage_failure_keeps_previous_progress(
             db.query(DerivedResult)
             .filter(
                 DerivedResult.study_id == seeded_study["study_id"],
-                DerivedResult.type == DYNAMIC_MEASUREMENTS_COMBINED_TYPE,
+                DerivedResult.type == MEASUREMENT_WORKFLOW_TYPE,
                 DerivedResult.artifact_set_id == draft_set.id,
             )
             .first()
@@ -338,8 +338,8 @@ def test_dynamic_stage_failure_keeps_previous_progress(
         assert value_json.get("meta", {}).get("error_count") == 1
         results = value_json.get("instances", [])[0].get("results", [])
         by_task = {entry.get("task"): entry for entry in results}
-        assert by_task["echonet_dynamic_lv_segmentation"]["status"] == "DONE"
-        assert by_task["measurements_2d"]["status"] == "FAILED"
+        assert by_task["motion_segmentation_lv"]["status"] == "DONE"
+        assert by_task["measurement_linear"]["status"] == "FAILED"
     finally:
         db.close()
 
@@ -368,15 +368,15 @@ def test_dynamic_stage_executes_lane_order_dynamic_then_weight_batches(
             return {"output_file_image": f"doppler/{kwargs.get('model_weights')}/{kwargs.get('sop_instance_uid')}.jpg"}
 
         monkeypatch.setattr(
-            "app.services.pipeline.stages.dynamic_measurements.infer_lv_segmentation",
+            "app.services.pipeline.stages.dynamic_measurements.infer_motion_segmentation",
             _dynamic_side_effect,
         )
         monkeypatch.setattr(
-            "app.services.pipeline.stages.dynamic_measurements.infer_measurements_2d",
+            "app.services.pipeline.stages.dynamic_measurements.infer_linear_measurements",
             _measurements_side_effect,
         )
         monkeypatch.setattr(
-            "app.services.pipeline.stages.dynamic_measurements.infer_measurements_doppler",
+            "app.services.pipeline.stages.dynamic_measurements.infer_spectral_measurements",
             _doppler_side_effect,
         )
 
@@ -440,15 +440,15 @@ def test_dynamic_stage_unloads_measurement_caches_between_weights_in_stage_polic
 
         # Part 1. Stub inference and collect unload calls.
         monkeypatch.setattr(
-            "app.services.pipeline.stages.dynamic_measurements.infer_lv_segmentation",
+            "app.services.pipeline.stages.dynamic_measurements.infer_motion_segmentation",
             lambda **_: {"output_file": "dynamic/out.mp4"},
         )
         monkeypatch.setattr(
-            "app.services.pipeline.stages.dynamic_measurements.infer_measurements_2d",
+            "app.services.pipeline.stages.dynamic_measurements.infer_linear_measurements",
             lambda **kwargs: {"output_file_mp4": f"m2d/{kwargs.get('model_weights')}.mp4"},
         )
         monkeypatch.setattr(
-            "app.services.pipeline.stages.dynamic_measurements.infer_measurements_doppler",
+            "app.services.pipeline.stages.dynamic_measurements.infer_spectral_measurements",
             lambda **kwargs: {"output_file_image": f"doppler/{kwargs.get('model_weights')}.jpg"},
         )
 
@@ -490,3 +490,5 @@ def test_dynamic_stage_unloads_measurement_caches_between_weights_in_stage_polic
         assert unload_calls["doppler"] >= 3
     finally:
         db.close()
+
+

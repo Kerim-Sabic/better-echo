@@ -21,7 +21,7 @@ function deriveCombinedState(responseStatus, backendStatus) {
   return "error";
 }
 
-function formatPanechoEchoprimeDisplayDto(rawDisplay) {
+function formatStudyAnalysisDisplayDto(rawDisplay) {
   const display = toObject(rawDisplay);
   const measurementSections = toArray(display.Measurements).filter(
     section => toArray(section?.items).length > 0
@@ -37,14 +37,14 @@ function formatPanechoEchoprimeDisplayDto(rawDisplay) {
   };
 }
 
-function formatPanechoEchoprimeResultsDto(rawResults) {
+function formatStudyAnalysisResultsDto(rawResults) {
   const results = toObject(rawResults);
 
   return {
     editBaselines: toObject(results.edit_baselines),
     overrides: toObject(results.overrides),
     overridesUpdatedAt: results.overrides_updated_at ?? null,
-    display: formatPanechoEchoprimeDisplayDto(results.display),
+    display: formatStudyAnalysisDisplayDto(results.display),
   };
 }
 
@@ -80,21 +80,21 @@ function buildDynamicMeasurementsViewerRefreshToken(rawDynamicMeasurementsResult
   return tokens.length > 0 ? tokens.sort().join("|") : "no-derived-dicom";
 }
 
-export function formatPanechoEchoprimeCombinedResultsDto(rawApiResponse) {
+export function formatStudyAnalysisCombinedResultsDto(rawApiResponse) {
   const response = toObject(rawApiResponse);
   const responseStatus = response.status ?? null;
   const rawData = toObject(response.data);
   const backendStatus = typeof rawData.status === "string" ? rawData.status : null;
   const state = deriveCombinedState(responseStatus, backendStatus);
 
-  const panechoEchoprimeResults =
+  const studyAnalysisResults =
     state === "ready"
-      ? formatPanechoEchoprimeResultsDto(rawData.panecho_echoprime_results)
+      ? formatStudyAnalysisResultsDto(rawData.analysis_results)
       : null;
 
   return {
     state,
-    panechoEchoprimeResults,
+    studyAnalysisResults,
   };
 }
 
@@ -108,7 +108,7 @@ export function formatDynamicMeasurementsCombinedResultsDto(rawApiResponse) {
   return {
     state,
     viewerRefreshToken: buildDynamicMeasurementsViewerRefreshToken(
-      rawData.dynamic_measurements_results
+      rawData.measurement_results
     ),
   };
 }

@@ -1,9 +1,9 @@
-from fastapi.testclient import TestClient
+﻿from fastapi.testclient import TestClient
 
 from app.core.artifacts import (
-    DYNAMIC_MEASUREMENTS_COMBINED_TYPE,
-    LLM_REPORT_TYPE,
-    PANECHO_ECHOPRIME_COMBINED_TYPE,
+    MEASUREMENT_WORKFLOW_TYPE,
+    REPORT_SUMMARY_TYPE,
+    COMBINED_ANALYSIS_TYPE,
 )
 from app.database_models.derived_results import DerivedResult, ResultStatus
 from app.database_models.pipeline_artifact_sets import PipelineArtifactSet, PipelineArtifactSetState
@@ -14,72 +14,72 @@ def _sample_combined_value_json(*, overrides=None):
     return {
         "integrated_tasks": {
             "ejection_fraction": {
-                "panecho_value_or_prob": 55.0,
-                "echoprime_value_or_prob": 50.0,
+                "primary_value_or_prob": 55.0,
+                "secondary_value_or_prob": 50.0,
                 "integrated_value": 52.5,
                 "integrated_label": None,
                 "units": "%",
                 "discrepancy": False,
             },
             "gls": {
-                "panecho_value_or_prob": -19.0,
-                "echoprime_value_or_prob": -21.0,
+                "primary_value_or_prob": -19.0,
+                "secondary_value_or_prob": -21.0,
                 "integrated_value": -20.0,
                 "integrated_label": None,
                 "units": "%",
                 "discrepancy": False,
             },
             "pulmonary_artery_pressure": {
-                "panecho_value_or_prob": 35.0,
-                "echoprime_value_or_prob": 40.0,
+                "primary_value_or_prob": 35.0,
+                "secondary_value_or_prob": 40.0,
                 "integrated_value": 37.5,
                 "integrated_label": None,
                 "units": "mmHg",
                 "discrepancy": False,
             },
             "lvedv": {
-                "panecho_value_or_prob": 100.0,
-                "echoprime_value_or_prob": 100.0,
+                "primary_value_or_prob": 100.0,
+                "secondary_value_or_prob": 100.0,
                 "integrated_value": 100.0,
                 "integrated_label": None,
                 "units": "mL",
                 "discrepancy": False,
             },
             "lvesv": {
-                "panecho_value_or_prob": 40.0,
-                "echoprime_value_or_prob": 40.0,
+                "primary_value_or_prob": 40.0,
+                "secondary_value_or_prob": 40.0,
                 "integrated_value": 40.0,
                 "integrated_label": None,
                 "units": "mL",
                 "discrepancy": False,
             },
             "lvpwd": {
-                "panecho_value_or_prob": 1.0,
-                "echoprime_value_or_prob": 1.0,
+                "primary_value_or_prob": 1.0,
+                "secondary_value_or_prob": 1.0,
                 "integrated_value": 1.0,
                 "integrated_label": None,
                 "units": "cm",
                 "discrepancy": False,
             },
             "lvidd": {
-                "panecho_value_or_prob": 5.0,
-                "echoprime_value_or_prob": 5.0,
+                "primary_value_or_prob": 5.0,
+                "secondary_value_or_prob": 5.0,
                 "integrated_value": 5.0,
                 "integrated_label": None,
                 "units": "cm",
                 "discrepancy": False,
             },
             "avpkvel": {
-                "panecho_value_or_prob": 2.0,
-                "echoprime_value_or_prob": 2.0,
+                "primary_value_or_prob": 2.0,
+                "secondary_value_or_prob": 2.0,
                 "integrated_value": 2.0,
                 "integrated_label": None,
                 "units": "m/s",
                 "discrepancy": False,
             },
             "tvpkgrad": {
-                "panecho_value_or_prob": 36.0,
-                "echoprime_value_or_prob": 36.0,
+                "primary_value_or_prob": 36.0,
+                "secondary_value_or_prob": 36.0,
                 "integrated_value": 36.0,
                 "integrated_label": None,
                 "units": "mmHg",
@@ -103,7 +103,7 @@ def _display_items_by_key(display_payload):
 
 def test_panecho_echoprime_first_call_returns_pending_and_retry_after_no_side_effect(app, db_session_factory, seeded_study):
     client = TestClient(app)
-    response = client.get(f"/api/studies/{seeded_study['study_uid']}/PanEcho-EchoPrime-combined-results")
+    response = client.get(f"/api/studies/{seeded_study['study_uid']}/study-analysis-results")
 
     assert response.status_code == 202
     assert response.headers.get("retry-after") == "3"
@@ -117,7 +117,7 @@ def test_panecho_echoprime_first_call_returns_pending_and_retry_after_no_side_ef
             db.query(DerivedResult)
             .filter(
                 DerivedResult.study_id == seeded_study["study_id"],
-                DerivedResult.type == PANECHO_ECHOPRIME_COMBINED_TYPE,
+                DerivedResult.type == COMBINED_ANALYSIS_TYPE,
             )
             .first()
         )
@@ -129,7 +129,7 @@ def test_panecho_echoprime_first_call_returns_pending_and_retry_after_no_side_ef
 def test_override_endpoint_returns_409_when_combined_not_ready(app, seeded_study):
     client = TestClient(app)
     response = client.patch(
-        f"/api/studies/{seeded_study['study_uid']}/PanEcho-EchoPrime-overrides",
+        f"/api/studies/{seeded_study['study_uid']}/study-analysis-overrides",
         json={"overrides": {"ejection_fraction": {"value": 60}}},
     )
 
@@ -139,7 +139,7 @@ def test_override_endpoint_returns_409_when_combined_not_ready(app, seeded_study
 
 def test_dynamic_measurements_returns_pending_when_missing_no_side_effect(app, db_session_factory, seeded_study):
     client = TestClient(app)
-    response = client.get(f"/api/studies/{seeded_study['study_uid']}/Dynamic-Measurements-combined-results")
+    response = client.get(f"/api/studies/{seeded_study['study_uid']}/study-measurements-results")
 
     assert response.status_code == 202
     assert response.headers.get("retry-after") == "3"
@@ -153,7 +153,7 @@ def test_dynamic_measurements_returns_pending_when_missing_no_side_effect(app, d
             db.query(DerivedResult)
             .filter(
                 DerivedResult.study_id == seeded_study["study_id"],
-                DerivedResult.type == DYNAMIC_MEASUREMENTS_COMBINED_TYPE,
+                DerivedResult.type == MEASUREMENT_WORKFLOW_TYPE,
             )
             .first()
         )
@@ -177,12 +177,12 @@ def test_results_routes_return_404_for_non_owner(app, seeded_study):
     client = TestClient(app)
 
     combined_response = client.get(
-        f"/api/studies/{seeded_study['study_uid']}/PanEcho-EchoPrime-combined-results"
+        f"/api/studies/{seeded_study['study_uid']}/study-analysis-results"
     )
     assert combined_response.status_code == 404
 
     dynamic_response = client.get(
-        f"/api/studies/{seeded_study['study_uid']}/Dynamic-Measurements-combined-results"
+        f"/api/studies/{seeded_study['study_uid']}/study-measurements-results"
     )
     assert dynamic_response.status_code == 404
 
@@ -190,7 +190,7 @@ def test_results_routes_return_404_for_non_owner(app, seeded_study):
     assert llm_response.status_code == 404
 
     override_response = client.patch(
-        f"/api/studies/{seeded_study['study_uid']}/PanEcho-EchoPrime-overrides",
+        f"/api/studies/{seeded_study['study_uid']}/study-analysis-overrides",
         json={"overrides": {"ejection_fraction": {"value": 60}}},
     )
     assert override_response.status_code == 404
@@ -201,10 +201,10 @@ def test_panecho_echoprime_failed_row_returns_failed_status(app, db_session_fact
     try:
         failed_row = DerivedResult(
             study_id=seeded_study["study_id"],
-            type=PANECHO_ECHOPRIME_COMBINED_TYPE,
+            type=COMBINED_ANALYSIS_TYPE,
             status=ResultStatus.failed,
             value_json={"error": "combined failed"},
-            model_name="PanEcho_EchoPrime_Combined",
+            model_name="StudyAnalysisCombined",
             model_version="v1",
         )
         db.add(failed_row)
@@ -213,7 +213,7 @@ def test_panecho_echoprime_failed_row_returns_failed_status(app, db_session_fact
         db.close()
 
     client = TestClient(app)
-    response = client.get(f"/api/studies/{seeded_study['study_uid']}/PanEcho-EchoPrime-combined-results")
+    response = client.get(f"/api/studies/{seeded_study['study_uid']}/study-analysis-results")
 
     assert response.status_code == 200
     body = response.json()
@@ -225,10 +225,10 @@ def test_dynamic_failed_row_returns_failed_status(app, db_session_factory, seede
     try:
         failed_row = DerivedResult(
             study_id=seeded_study["study_id"],
-            type=DYNAMIC_MEASUREMENTS_COMBINED_TYPE,
+            type=MEASUREMENT_WORKFLOW_TYPE,
             status=ResultStatus.failed,
             value_json={"error": "dynamic failed"},
-            model_name="Dynamic_Measurements_Combined",
+            model_name="StudyMeasurementsWorkflow",
             model_version="v1",
         )
         db.add(failed_row)
@@ -237,7 +237,7 @@ def test_dynamic_failed_row_returns_failed_status(app, db_session_factory, seede
         db.close()
 
     client = TestClient(app)
-    response = client.get(f"/api/studies/{seeded_study['study_uid']}/Dynamic-Measurements-combined-results")
+    response = client.get(f"/api/studies/{seeded_study['study_uid']}/study-measurements-results")
 
     assert response.status_code == 200
     body = response.json()
@@ -251,10 +251,10 @@ def test_llm_failed_row_returns_failed_status_when_enabled(app, db_session_facto
     try:
         failed_row = DerivedResult(
             study_id=seeded_study["study_id"],
-            type=LLM_REPORT_TYPE,
+            type=REPORT_SUMMARY_TYPE,
             status=ResultStatus.failed,
             value_json={"error": "llm failed"},
-            model_name="LLM_Report_Generator",
+            model_name="StudyReportGenerator",
             model_version="v1",
         )
         db.add(failed_row)
@@ -292,7 +292,7 @@ def test_combined_results_prefers_active_artifact_over_draft(app, db_session_fac
         db.add(
             DerivedResult(
                 study_id=seeded_study["study_id"],
-                type=PANECHO_ECHOPRIME_COMBINED_TYPE,
+                type=COMBINED_ANALYSIS_TYPE,
                 status=ResultStatus.complete,
                 value_json={
                     "integrated_tasks": {
@@ -304,7 +304,7 @@ def test_combined_results_prefers_active_artifact_over_draft(app, db_session_fac
                         }
                     }
                 },
-                model_name="PanEcho_EchoPrime_Combined",
+                model_name="StudyAnalysisCombined",
                 model_version="v1",
                 artifact_set_id=active_set.id,
             )
@@ -312,7 +312,7 @@ def test_combined_results_prefers_active_artifact_over_draft(app, db_session_fac
         db.add(
             DerivedResult(
                 study_id=seeded_study["study_id"],
-                type=PANECHO_ECHOPRIME_COMBINED_TYPE,
+                type=COMBINED_ANALYSIS_TYPE,
                 status=ResultStatus.complete,
                 value_json={
                     "integrated_tasks": {
@@ -324,7 +324,7 @@ def test_combined_results_prefers_active_artifact_over_draft(app, db_session_fac
                         }
                     }
                 },
-                model_name="PanEcho_EchoPrime_Combined",
+                model_name="StudyAnalysisCombined",
                 model_version="v1",
                 artifact_set_id=draft_set.id,
             )
@@ -334,12 +334,12 @@ def test_combined_results_prefers_active_artifact_over_draft(app, db_session_fac
         db.close()
 
     client = TestClient(app)
-    response = client.get(f"/api/studies/{seeded_study['study_uid']}/PanEcho-EchoPrime-combined-results")
+    response = client.get(f"/api/studies/{seeded_study['study_uid']}/study-analysis-results")
 
     assert response.status_code == 200
     body = response.json()
     assert body.get("status") == "complete"
-    payload = body.get("panecho_echoprime_results", {})
+    payload = body.get("analysis_results", {})
     assert payload.get("edit_baselines", {}).get("ejection_fraction") == {"rawValue": 51.0}
     assert "integrated_tasks" not in payload
 
@@ -366,7 +366,7 @@ def test_combined_results_preview_prefers_draft_artifact_over_active(app, db_ses
         db.add(
             DerivedResult(
                 study_id=seeded_study["study_id"],
-                type=PANECHO_ECHOPRIME_COMBINED_TYPE,
+                type=COMBINED_ANALYSIS_TYPE,
                 status=ResultStatus.complete,
                 value_json={
                     "integrated_tasks": {
@@ -378,7 +378,7 @@ def test_combined_results_preview_prefers_draft_artifact_over_active(app, db_ses
                         }
                     }
                 },
-                model_name="PanEcho_EchoPrime_Combined",
+                model_name="StudyAnalysisCombined",
                 model_version="v1",
                 artifact_set_id=active_set.id,
             )
@@ -386,7 +386,7 @@ def test_combined_results_preview_prefers_draft_artifact_over_active(app, db_ses
         db.add(
             DerivedResult(
                 study_id=seeded_study["study_id"],
-                type=PANECHO_ECHOPRIME_COMBINED_TYPE,
+                type=COMBINED_ANALYSIS_TYPE,
                 status=ResultStatus.complete,
                 value_json={
                     "integrated_tasks": {
@@ -398,7 +398,7 @@ def test_combined_results_preview_prefers_draft_artifact_over_active(app, db_ses
                         }
                     }
                 },
-                model_name="PanEcho_EchoPrime_Combined",
+                model_name="StudyAnalysisCombined",
                 model_version="v1",
                 artifact_set_id=draft_set.id,
             )
@@ -409,13 +409,13 @@ def test_combined_results_preview_prefers_draft_artifact_over_active(app, db_ses
 
     client = TestClient(app)
     response = client.get(
-        f"/api/studies/{seeded_study['study_uid']}/PanEcho-EchoPrime-combined-results?preview=true"
+        f"/api/studies/{seeded_study['study_uid']}/study-analysis-results?preview=true"
     )
 
     assert response.status_code == 200
     body = response.json()
     assert body.get("status") == "complete"
-    payload = body.get("panecho_echoprime_results", {})
+    payload = body.get("analysis_results", {})
     assert payload.get("edit_baselines", {}).get("ejection_fraction") == {"rawValue": 62.0}
     assert "integrated_tasks" not in payload
 
@@ -426,10 +426,10 @@ def test_combined_results_complete_includes_display_payload(app, db_session_fact
         db.add(
             DerivedResult(
                 study_id=seeded_study["study_id"],
-                type=PANECHO_ECHOPRIME_COMBINED_TYPE,
+                type=COMBINED_ANALYSIS_TYPE,
                 status=ResultStatus.complete,
                 value_json=_sample_combined_value_json(),
-                model_name="PanEcho_EchoPrime_Combined",
+                model_name="StudyAnalysisCombined",
                 model_version="v1",
             )
         )
@@ -438,12 +438,12 @@ def test_combined_results_complete_includes_display_payload(app, db_session_fact
         db.close()
 
     client = TestClient(app)
-    response = client.get(f"/api/studies/{seeded_study['study_uid']}/PanEcho-EchoPrime-combined-results")
+    response = client.get(f"/api/studies/{seeded_study['study_uid']}/study-analysis-results")
 
     assert response.status_code == 200
     body = response.json()
     assert body.get("status") == "complete"
-    payload = body.get("panecho_echoprime_results", {})
+    payload = body.get("analysis_results", {})
     assert "integrated_tasks" not in payload
     assert "edit_baselines" in payload
     assert "overrides" in payload
@@ -467,10 +467,10 @@ def test_combined_overrides_patch_returns_recomputed_display_payload(app, db_ses
         db.add(
             DerivedResult(
                 study_id=seeded_study["study_id"],
-                type=PANECHO_ECHOPRIME_COMBINED_TYPE,
+                type=COMBINED_ANALYSIS_TYPE,
                 status=ResultStatus.complete,
                 value_json=_sample_combined_value_json(),
-                model_name="PanEcho_EchoPrime_Combined",
+                model_name="StudyAnalysisCombined",
                 model_version="v1",
             )
         )
@@ -480,14 +480,14 @@ def test_combined_overrides_patch_returns_recomputed_display_payload(app, db_ses
 
     client = TestClient(app)
     response = client.patch(
-        f"/api/studies/{seeded_study['study_uid']}/PanEcho-EchoPrime-overrides",
+        f"/api/studies/{seeded_study['study_uid']}/study-analysis-overrides",
         json={"overrides": {"tvpkgrad": {"value": 64.0}}},
     )
 
     assert response.status_code == 200
     body = response.json()
     assert body.get("status") == "complete"
-    payload = body.get("panecho_echoprime_results", {})
+    payload = body.get("analysis_results", {})
     assert payload["overrides"]["tvpkgrad"] == {"value": 64.0}
     display = payload.get("display", {})
     items = _display_items_by_key(display)
@@ -503,7 +503,7 @@ def test_combined_overrides_patch_returns_recomputed_display_payload(app, db_ses
             db.query(DerivedResult)
             .filter(
                 DerivedResult.study_id == seeded_study["study_id"],
-                DerivedResult.type == PANECHO_ECHOPRIME_COMBINED_TYPE,
+                DerivedResult.type == COMBINED_ANALYSIS_TYPE,
             )
             .first()
         )
@@ -536,10 +536,10 @@ def test_dynamic_results_preview_prefers_draft_artifact_over_active(app, db_sess
         db.add(
             DerivedResult(
                 study_id=seeded_study["study_id"],
-                type=DYNAMIC_MEASUREMENTS_COMBINED_TYPE,
+                type=MEASUREMENT_WORKFLOW_TYPE,
                 status=ResultStatus.complete,
                 value_json={"instances": [{"sop_instance_uid": "active"}]},
-                model_name="Dynamic_Measurements_Combined",
+            model_name="StudyMeasurementsWorkflow",
                 model_version="v1",
                 artifact_set_id=active_set.id,
             )
@@ -547,10 +547,10 @@ def test_dynamic_results_preview_prefers_draft_artifact_over_active(app, db_sess
         db.add(
             DerivedResult(
                 study_id=seeded_study["study_id"],
-                type=DYNAMIC_MEASUREMENTS_COMBINED_TYPE,
+                type=MEASUREMENT_WORKFLOW_TYPE,
                 status=ResultStatus.complete,
                 value_json={"instances": [{"sop_instance_uid": "draft"}]},
-                model_name="Dynamic_Measurements_Combined",
+            model_name="StudyMeasurementsWorkflow",
                 model_version="v1",
                 artifact_set_id=draft_set.id,
             )
@@ -561,13 +561,13 @@ def test_dynamic_results_preview_prefers_draft_artifact_over_active(app, db_sess
 
     client = TestClient(app)
     response = client.get(
-        f"/api/studies/{seeded_study['study_uid']}/Dynamic-Measurements-combined-results?preview=true"
+        f"/api/studies/{seeded_study['study_uid']}/study-measurements-results?preview=true"
     )
 
     assert response.status_code == 200
     body = response.json()
     assert body.get("status") == "complete"
-    instances = body.get("dynamic_measurements_results", {}).get("instances", [])
+    instances = body.get("measurement_results", {}).get("instances", [])
     assert len(instances) == 1
     assert instances[0].get("sop_instance_uid") == "draft"
 
@@ -587,7 +587,7 @@ def test_dynamic_results_complete_exposes_instance_number_and_output_path(app, d
         db.add(
             DerivedResult(
                 study_id=seeded_study["study_id"],
-                type=DYNAMIC_MEASUREMENTS_COMBINED_TYPE,
+                type=MEASUREMENT_WORKFLOW_TYPE,
                 status=ResultStatus.complete,
                 value_json={
                     "instances": [
@@ -598,16 +598,16 @@ def test_dynamic_results_complete_exposes_instance_number_and_output_path(app, d
                             "predicted_view_confidence": 0.99,
                             "results": [
                                 {
-                                    "task": "echonet_dynamic_lv_segmentation",
+                                    "task": "motion_segmentation_lv",
                                     "status": "DONE",
                                     "ui_label": "Left Ventricle (LV) segmentation",
-                                    "output_path": "echonet_dynamic_LV-segmentation_files/study/instance.mp4",
+                                    "output_path": "motion_segmentation_files/study/instance.mp4",
                                 }
                             ],
                         }
                     ]
                 },
-                model_name="Dynamic_Measurements_Combined",
+                model_name="StudyMeasurementsWorkflow",
                 model_version="v1",
                 artifact_set_id=active_set.id,
             )
@@ -618,17 +618,18 @@ def test_dynamic_results_complete_exposes_instance_number_and_output_path(app, d
 
     client = TestClient(app)
     response = client.get(
-        f"/api/studies/{seeded_study['study_uid']}/Dynamic-Measurements-combined-results"
+        f"/api/studies/{seeded_study['study_uid']}/study-measurements-results"
     )
 
     assert response.status_code == 200
     body = response.json()
     assert body.get("status") == "complete"
-    instances = body.get("dynamic_measurements_results", {}).get("instances", [])
+    instances = body.get("measurement_results", {}).get("instances", [])
     assert len(instances) == 1
     assert instances[0].get("instance_number") == "17"
     first_result = instances[0].get("results", [])[0]
     assert sorted(first_result.keys()) == [
+        "derived_dicom",
         "message",
         "output_kind",
         "output_path",
@@ -655,7 +656,7 @@ def test_dynamic_results_pending_preview_includes_partial_payload(app, db_sessio
         db.add(
             DerivedResult(
                 study_id=seeded_study["study_id"],
-                type=DYNAMIC_MEASUREMENTS_COMBINED_TYPE,
+                type=MEASUREMENT_WORKFLOW_TYPE,
                 status=ResultStatus.pending,
                 value_json={
                     "instances": [
@@ -666,16 +667,16 @@ def test_dynamic_results_pending_preview_includes_partial_payload(app, db_sessio
                             "predicted_view_confidence": 0.95,
                             "results": [
                                 {
-                                    "task": "echonet_dynamic_lv_segmentation",
+                                    "task": "motion_segmentation_lv",
                                     "status": "DONE",
-                                    "output_path": "echonet_dynamic_LV-segmentation_files/study/partial.mp4",
+                                    "output_path": "motion_segmentation_files/study/partial.mp4",
                                 }
                             ],
                         }
                     ],
-                    "meta": {"dynamic_runs": 1, "measurements_2d_runs": 0, "measurements_doppler_runs": 0, "skipped_instances": 0, "error_count": 0},
+                    "meta": {"motion_runs": 1, "linear_runs": 0, "spectral_runs": 0, "skipped_instances": 0, "error_count": 0},
                 },
-                model_name="Dynamic_Measurements_Combined",
+                model_name="StudyMeasurementsWorkflow",
                 model_version="v1",
                 artifact_set_id=draft_set.id,
             )
@@ -686,13 +687,13 @@ def test_dynamic_results_pending_preview_includes_partial_payload(app, db_sessio
 
     client = TestClient(app)
     response = client.get(
-        f"/api/studies/{seeded_study['study_uid']}/Dynamic-Measurements-combined-results?preview=true"
+        f"/api/studies/{seeded_study['study_uid']}/study-measurements-results?preview=true"
     )
 
     assert response.status_code == 202
     body = response.json()
     assert body.get("status") == "pending"
-    partial = body.get("dynamic_measurements_results") or {}
+    partial = body.get("measurement_results") or {}
     instances = partial.get("instances", [])
     assert len(instances) == 1
     assert instances[0].get("instance_number") == "20"
@@ -725,10 +726,10 @@ def test_llm_results_prefers_active_artifact_over_draft(app, db_session_factory,
         db.add(
             DerivedResult(
                 study_id=seeded_study["study_id"],
-                type=LLM_REPORT_TYPE,
+                type=REPORT_SUMMARY_TYPE,
                 status=ResultStatus.complete,
                 value_json={"report_md": "active"},
-                model_name="LLM_Report_Generator",
+                model_name="StudyReportGenerator",
                 model_version="v1",
                 artifact_set_id=active_set.id,
             )
@@ -736,10 +737,10 @@ def test_llm_results_prefers_active_artifact_over_draft(app, db_session_factory,
         db.add(
             DerivedResult(
                 study_id=seeded_study["study_id"],
-                type=LLM_REPORT_TYPE,
+                type=REPORT_SUMMARY_TYPE,
                 status=ResultStatus.complete,
                 value_json={"report_md": "draft"},
-                model_name="LLM_Report_Generator",
+                model_name="StudyReportGenerator",
                 model_version="v1",
                 artifact_set_id=draft_set.id,
             )
@@ -782,10 +783,10 @@ def test_llm_results_preview_prefers_draft_artifact_over_active(app, db_session_
         db.add(
             DerivedResult(
                 study_id=seeded_study["study_id"],
-                type=LLM_REPORT_TYPE,
+                type=REPORT_SUMMARY_TYPE,
                 status=ResultStatus.complete,
                 value_json={"report_md": "active"},
-                model_name="LLM_Report_Generator",
+                model_name="StudyReportGenerator",
                 model_version="v1",
                 artifact_set_id=active_set.id,
             )
@@ -793,10 +794,10 @@ def test_llm_results_preview_prefers_draft_artifact_over_active(app, db_session_
         db.add(
             DerivedResult(
                 study_id=seeded_study["study_id"],
-                type=LLM_REPORT_TYPE,
+                type=REPORT_SUMMARY_TYPE,
                 status=ResultStatus.complete,
                 value_json={"report_md": "draft"},
-                model_name="LLM_Report_Generator",
+                model_name="StudyReportGenerator",
                 model_version="v1",
                 artifact_set_id=draft_set.id,
             )
@@ -823,20 +824,20 @@ def test_list_studies_marks_completed_without_llm_when_llm_disabled(app, db_sess
         db.add(
             DerivedResult(
                 study_id=seeded_study["study_id"],
-                type=PANECHO_ECHOPRIME_COMBINED_TYPE,
+                type=COMBINED_ANALYSIS_TYPE,
                 status=ResultStatus.complete,
                 value_json={"integrated_tasks": {}},
-                model_name="PanEcho_EchoPrime_Combined",
+                model_name="StudyAnalysisCombined",
                 model_version="v1",
             )
         )
         db.add(
             DerivedResult(
                 study_id=seeded_study["study_id"],
-                type=DYNAMIC_MEASUREMENTS_COMBINED_TYPE,
+                type=MEASUREMENT_WORKFLOW_TYPE,
                 status=ResultStatus.complete,
                 value_json={"instances": []},
-                model_name="Dynamic_Measurements_Combined",
+                model_name="StudyMeasurementsWorkflow",
                 model_version="v1",
             )
         )
@@ -861,20 +862,20 @@ def test_list_studies_keeps_processing_until_llm_complete_when_llm_enabled(app, 
         db.add(
             DerivedResult(
                 study_id=seeded_study["study_id"],
-                type=PANECHO_ECHOPRIME_COMBINED_TYPE,
+                type=COMBINED_ANALYSIS_TYPE,
                 status=ResultStatus.complete,
                 value_json={"integrated_tasks": {}},
-                model_name="PanEcho_EchoPrime_Combined",
+                model_name="StudyAnalysisCombined",
                 model_version="v1",
             )
         )
         db.add(
             DerivedResult(
                 study_id=seeded_study["study_id"],
-                type=DYNAMIC_MEASUREMENTS_COMBINED_TYPE,
+                type=MEASUREMENT_WORKFLOW_TYPE,
                 status=ResultStatus.complete,
                 value_json={"instances": []},
-                model_name="Dynamic_Measurements_Combined",
+                model_name="StudyMeasurementsWorkflow",
                 model_version="v1",
             )
         )
@@ -899,20 +900,20 @@ def test_retrieve_study_self_heals_status_for_llm_disabled(app, db_session_facto
         db.add(
             DerivedResult(
                 study_id=seeded_study["study_id"],
-                type=PANECHO_ECHOPRIME_COMBINED_TYPE,
+                type=COMBINED_ANALYSIS_TYPE,
                 status=ResultStatus.complete,
                 value_json={"integrated_tasks": {}},
-                model_name="PanEcho_EchoPrime_Combined",
+                model_name="StudyAnalysisCombined",
                 model_version="v1",
             )
         )
         db.add(
             DerivedResult(
                 study_id=seeded_study["study_id"],
-                type=DYNAMIC_MEASUREMENTS_COMBINED_TYPE,
+                type=MEASUREMENT_WORKFLOW_TYPE,
                 status=ResultStatus.complete,
                 value_json={"instances": []},
-                model_name="Dynamic_Measurements_Combined",
+                model_name="StudyMeasurementsWorkflow",
                 model_version="v1",
             )
         )
@@ -925,3 +926,5 @@ def test_retrieve_study_self_heals_status_for_llm_disabled(app, db_session_facto
 
     assert response.status_code == 200
     assert response.json().get("status") == "completed"
+
+

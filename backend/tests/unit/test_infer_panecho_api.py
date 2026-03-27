@@ -1,11 +1,11 @@
-from PIL import Image
+﻿from PIL import Image
 import torch
 
-from app.api.inference.infer_panecho_api import infer_panecho
-from app.schemas.inference.infer_panecho_schemas import InferPanEchoRequest
+from app.api.inference.infer_primary_analysis_api import infer_primary_analysis
+from app.schemas.inference.infer_primary_analysis_schemas import InferPrimaryAnalysisRequest
 
 
-def test_infer_panecho_falls_back_to_orthanc_when_local_read_fails(
+def test_infer_primary_analysis_falls_back_to_orthanc_when_local_read_fails(
     db_session_factory,
     seeded_study,
     monkeypatch,
@@ -16,11 +16,11 @@ def test_infer_panecho_falls_back_to_orthanc_when_local_read_fails(
 
         # Part 1. Use a single deterministic instance id for this test.
         monkeypatch.setattr(
-            "app.api.inference.infer_panecho_api.fetch_orthanc_instance_ids_from_study",
+            "app.api.inference.infer_primary_analysis_api.fetch_orthanc_instance_ids_from_study",
             lambda _study_uid: ["orthanc-instance-1"],
         )
         monkeypatch.setattr(
-            "app.api.inference.infer_panecho_api._local_file_path_map",
+            "app.api.inference.infer_primary_analysis_api._local_file_path_map",
             lambda **_: {"orthanc-instance-1": "C:/nonexistent/local-instance.dcm"},
         )
 
@@ -34,16 +34,16 @@ def test_infer_panecho_falls_back_to_orthanc_when_local_read_fails(
             return [Image.new("RGB", (224, 224), "black") for _ in range(16)]
 
         monkeypatch.setattr(
-            "app.api.inference.infer_panecho_api.pick_frames_from_local_dicom",
+            "app.api.inference.infer_primary_analysis_api.pick_frames_from_local_dicom",
             _fail_local_read,
         )
         monkeypatch.setattr(
-            "app.api.inference.infer_panecho_api.pick_frames_from_instance",
+            "app.api.inference.infer_primary_analysis_api.pick_frames_from_instance",
             _orthanc_read,
         )
 
         monkeypatch.setattr(
-            "app.api.inference.infer_panecho_api.stack_to_tensor",
+            "app.api.inference.infer_primary_analysis_api.stack_to_tensor",
             lambda _frames: torch.zeros((1, 3, 16, 224, 224), dtype=torch.float32),
         )
 
@@ -53,12 +53,12 @@ def test_infer_panecho_falls_back_to_orthanc_when_local_read_fails(
                 return {"metric": torch.ones((batch_size,), dtype=torch.float32)}
 
         monkeypatch.setattr(
-            "app.api.inference.infer_panecho_api.get_model_and_device",
+            "app.api.inference.infer_primary_analysis_api.get_model_and_device",
             lambda: (_DummyPanEchoModel(), torch.device("cpu")),
         )
 
-        response = infer_panecho(
-            payload=InferPanEchoRequest(study_uid=seeded_study["study_uid"]),
+        response = infer_primary_analysis(
+            payload=InferPrimaryAnalysisRequest(study_uid=seeded_study["study_uid"]),
             db=db,
         )
 
@@ -68,3 +68,5 @@ def test_infer_panecho_falls_back_to_orthanc_when_local_read_fails(
         assert "metric" in response["predictions"]
     finally:
         db.close()
+
+

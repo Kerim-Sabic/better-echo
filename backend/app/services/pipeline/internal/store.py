@@ -6,7 +6,7 @@ from typing import Optional
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from app.core.artifacts import PANECHO_ECHOPRIME_COMBINED_TYPE
+from app.core.artifacts import COMBINED_ANALYSIS_TYPE
 from app.database_models.derived_results import DerivedResult
 from app.database_models.instances import Instance
 from app.database_models.pipeline_artifact_sets import (
@@ -96,7 +96,7 @@ def _has_active_combined_baseline(db: Session, *, study_id: int) -> bool:
             db.query(DerivedResult)
             .filter(
                 DerivedResult.study_id == study_id,
-                DerivedResult.type == PANECHO_ECHOPRIME_COMBINED_TYPE,
+                DerivedResult.type == COMBINED_ANALYSIS_TYPE,
                 DerivedResult.artifact_set_id == active_set.id,
             )
             .order_by(DerivedResult.id.desc())
@@ -110,7 +110,7 @@ def _has_active_combined_baseline(db: Session, *, study_id: int) -> bool:
         db.query(DerivedResult)
         .filter(
             DerivedResult.study_id == study_id,
-            DerivedResult.type == PANECHO_ECHOPRIME_COMBINED_TYPE,
+            DerivedResult.type == COMBINED_ANALYSIS_TYPE,
             DerivedResult.artifact_set_id.is_(None),
         )
         .order_by(DerivedResult.id.desc())

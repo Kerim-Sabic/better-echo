@@ -1,6 +1,6 @@
-from fastapi import HTTPException
+﻿from fastapi import HTTPException
 
-from app.core.artifacts import PANECHO_ECHOPRIME_COMBINED_TYPE
+from app.core.artifacts import COMBINED_ANALYSIS_TYPE
 from app.database_models.derived_results import DerivedResult, ResultStatus
 from app.database_models.pipeline_artifact_sets import PipelineArtifactSet, PipelineArtifactSetState
 from app.database_models.pipeline_jobs import PipelineCleanupScope, PipelineJob, PipelineJobStatus, PipelineRunMode
@@ -110,10 +110,10 @@ def test_start_pipeline_job_regenerate_combined_stage_only(
     try:
         baseline_combined = DerivedResult(
             study_id=seeded_study["study_id"],
-            type=PANECHO_ECHOPRIME_COMBINED_TYPE,
+            type=COMBINED_ANALYSIS_TYPE,
             status=ResultStatus.complete,
             value_json={"integrated_tasks": {}},
-            model_name="PanEcho_EchoPrime_Combined",
+            model_name="StudyAnalysisCombined",
             model_version="v1",
             instance_id=None,
             artifact_set_id=None,
@@ -208,10 +208,10 @@ def test_start_pipeline_job_backfills_study_level_legacy_results_into_active_set
     try:
         legacy_row = DerivedResult(
             study_id=seeded_study["study_id"],
-            type=PANECHO_ECHOPRIME_COMBINED_TYPE,
+            type=COMBINED_ANALYSIS_TYPE,
             status=ResultStatus.complete,
             value_json={"integrated_tasks": {}},
-            model_name="PanEcho_EchoPrime_Combined",
+            model_name="StudyAnalysisCombined",
             model_version="v1",
             instance_id=None,
             artifact_set_id=None,
@@ -431,14 +431,14 @@ def test_regenerate_combined_auto_promotes_and_preserves_overrides(
         baseline_overrides = {"lvef": {"value": 44.0}}
         baseline_combined = DerivedResult(
             study_id=seeded_study["study_id"],
-            type=PANECHO_ECHOPRIME_COMBINED_TYPE,
+            type=COMBINED_ANALYSIS_TYPE,
             status=ResultStatus.complete,
             value_json={
                 "integrated_tasks": {"lvef": {"value": 50.0}},
                 "overrides": baseline_overrides,
                 "overrides_updated_at": "2026-02-25T12:00:00Z",
             },
-            model_name="PanEcho_EchoPrime_Combined",
+            model_name="StudyAnalysisCombined",
             model_version="v1",
             instance_id=None,
             artifact_set_id=None,
@@ -475,7 +475,7 @@ def test_regenerate_combined_auto_promotes_and_preserves_overrides(
             db.query(DerivedResult)
             .filter(
                 DerivedResult.study_id == seeded_study["study_id"],
-                DerivedResult.type == PANECHO_ECHOPRIME_COMBINED_TYPE,
+                DerivedResult.type == COMBINED_ANALYSIS_TYPE,
                 DerivedResult.artifact_set_id == active_set.id,
             )
             .order_by(DerivedResult.id.desc())
@@ -497,10 +497,10 @@ def test_regenerate_combined_failure_keeps_previous_active_set(
     try:
         baseline_combined = DerivedResult(
             study_id=seeded_study["study_id"],
-            type=PANECHO_ECHOPRIME_COMBINED_TYPE,
+            type=COMBINED_ANALYSIS_TYPE,
             status=ResultStatus.complete,
             value_json={"integrated_tasks": {"lvef": {"value": 50.0}}},
-            model_name="PanEcho_EchoPrime_Combined",
+            model_name="StudyAnalysisCombined",
             model_version="v1",
             instance_id=None,
             artifact_set_id=None,
@@ -600,3 +600,4 @@ def test_run_pending_jobs_once_handles_deleted_job_row_during_stage_failure(
         assert db.query(PipelineJob).filter(PipelineJob.id == job_id).first() is None
     finally:
         db.close()
+

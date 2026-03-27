@@ -4,6 +4,19 @@ import sys
 import types
 import uvicorn
 
+try:
+    from generated_release_config import (
+        PACKAGED_LICENSE_ENFORCEMENT,
+        PACKAGED_LICENSE_PUBLIC_KEY_B64,
+        PACKAGED_REPORTING_MODEL_ID,
+    )
+    RELEASE_CONFIG_IMPORT_ERROR = None
+except ImportError as exc:
+    PACKAGED_LICENSE_ENFORCEMENT = None
+    PACKAGED_LICENSE_PUBLIC_KEY_B64 = ""
+    PACKAGED_REPORTING_MODEL_ID = ""
+    RELEASE_CONFIG_IMPORT_ERROR = exc
+
 FROZEN_TORCH_DYNAMO_PACKAGE = "torch._dynamo"
 FROZEN_TORCH_DYNAMO_UTILS_MODULE = "torch._dynamo.utils"
 
@@ -91,13 +104,50 @@ def configure_frozen_matplotlib_backend() -> None:
     os.environ.setdefault("MPLBACKEND", "Agg")
 
 
+def configure_packaged_license_policy() -> None:
+    """Make packaged license enforcement independent from editable .env values."""
+    if not is_frozen_runtime():
+        return
+
+    if RELEASE_CONFIG_IMPORT_ERROR is not None:
+        raise RuntimeError("Packaged backend is missing embedded release config metadata.") from RELEASE_CONFIG_IMPORT_ERROR
+
+    if PACKAGED_LICENSE_ENFORCEMENT is not True:
+        raise RuntimeError("Packaged backend is missing mandatory embedded license enforcement.")
+
+    embedded_public_key = str(PACKAGED_LICENSE_PUBLIC_KEY_B64 or "").strip()
+    if not embedded_public_key:
+        raise RuntimeError("Packaged backend is missing an embedded license verification key.")
+
+    os.environ["LICENSE_ENFORCEMENT"] = "true"
+    os.environ["LICENSE_PUBLIC_KEY_B64"] = embedded_public_key
+
+
+def configure_packaged_reporting_model() -> None:
+    """Hide the actual reporting model identifier from the shipped runtime env."""
+    if not is_frozen_runtime():
+        return
+
+    embedded_reporting_model_id = str(PACKAGED_REPORTING_MODEL_ID or "").strip()
+    if embedded_reporting_model_id:
+        os.environ["REPORTING_MODEL_ID"] = embedded_reporting_model_id
+
+
 def configure_backend_runtime() -> None:
     backend_root = resolve_backend_root()
-    if backend_root not in sys.path:
+    if (not is_frozen_runtime()) and (backend_root not in sys.path):
         sys.path.insert(0, backend_root)
 
     if is_frozen_runtime():
+        os.environ.setdefault("HORALIX_BACKEND_ROOT", backend_root)
+        os.environ.setdefault(
+            "HORALIX_PYI_INTERNAL_DIR",
+            os.path.join(os.path.dirname(sys.executable), "_internal"),
+        )
+        os.environ.setdefault("HORALIX_RELEASE_MODE", "1")
         os.chdir(backend_root)
+        configure_packaged_license_policy()
+        configure_packaged_reporting_model()
         configure_frozen_matplotlib_backend()
         install_frozen_torchvision_import_guard()
 

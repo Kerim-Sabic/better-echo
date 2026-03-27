@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.core.artifacts import PANECHO_ECHOPRIME_COMBINED_TYPE
+from app.core.artifacts import COMBINED_ANALYSIS_TYPE, REPORT_SUMMARY_MODEL_NAME
 from app.database.db import get_db
 from app.database_models.studies import Study
 from app.database_models.derived_results import DerivedResult, ResultStatus
@@ -21,10 +21,10 @@ router = APIRouter()
 @router.post("/studies/{study_uid}/llm/report/generate", response_model=LLMReportResponse)
 def generate_llm_report(study_uid: str, db: Session = Depends(get_db)):
     """
-    Generate and persist an AI echo report for a study using combined PanEcho + EchoPrime results.
+    Generate and persist an AI echo report for a study using the combined study analysis results.
 
     Steps:
-    1. Resolve the study by `study_uid` and ensure a combined PanEcho+EchoPrime DerivedResult row exists.
+    1. Resolve the study by `study_uid` and ensure a combined study analysis DerivedResult row exists.
     2. Validate that the combined row is complete; otherwise return a 409 indicating pending results.
     3. Delegate to `generate_for_study` to build the prompt, call the LLM, and persist the LLM report DerivedResult.
     4. Return an `LLMReportResponse` with the study UID, model, report text, and diagnoses JSON (if present).
@@ -36,7 +36,7 @@ def generate_llm_report(study_uid: str, db: Session = Depends(get_db)):
 
     combined_row: Optional[DerivedResult] = (
         db.query(DerivedResult)
-        .filter(DerivedResult.study_id == study.id, DerivedResult.type == PANECHO_ECHOPRIME_COMBINED_TYPE)
+        .filter(DerivedResult.study_id == study.id, DerivedResult.type == COMBINED_ANALYSIS_TYPE)
         .first()
     )
     if not combined_row:
@@ -53,7 +53,7 @@ def generate_llm_report(study_uid: str, db: Session = Depends(get_db)):
     # --- Step 3: Return generated report ---
     return LLMReportResponse(
         study_uid=study_uid,
-        model=result.get("model", settings.LLM_MODEL),
+        model=result.get("model", REPORT_SUMMARY_MODEL_NAME),
         report=result.get("report", ""),
         diagnoses_json=result.get("diagnoses_json"),
         report_generated_at=result.get("report_generated_at"),

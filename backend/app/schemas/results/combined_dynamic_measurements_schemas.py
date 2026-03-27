@@ -32,9 +32,9 @@ class DynamicMeasurementInstance(BaseModel):
 
 
 class DynamicMeasurementsMeta(BaseModel):
-    dynamic_runs: Optional[int] = None
-    measurements_2d_runs: Optional[int] = None
-    measurements_doppler_runs: Optional[int] = None
+    motion_runs: Optional[int] = None
+    linear_runs: Optional[int] = None
+    spectral_runs: Optional[int] = None
     skipped_instances: Optional[int] = None
     error_count: Optional[int] = None
 
@@ -46,13 +46,13 @@ class DynamicMeasurementsPayload(BaseModel):
 
 class CompleteResponse(BaseModel):
     status: Literal["complete"]
-    dynamic_measurements_results: DynamicMeasurementsPayload = Field(default_factory=DynamicMeasurementsPayload)
+    measurement_results: DynamicMeasurementsPayload = Field(default_factory=DynamicMeasurementsPayload)
 
 
 class PendingResponse(BaseModel):
     status: Literal["pending"]
     retry_after: int = Field(..., ge=1)
-    dynamic_measurements_results: DynamicMeasurementsPayload | None = None
+    measurement_results: DynamicMeasurementsPayload | None = None
 
 
 class FailedResponse(BaseModel):

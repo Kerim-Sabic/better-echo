@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+﻿from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.api.inference import router as inference_router
@@ -37,7 +37,7 @@ def test_echoprime_views_route_returns_service_payload(monkeypatch):
         return fake_views
 
     monkeypatch.setattr(
-        "app.api.inference.infer_echoprime_api.classify_views_for_study",
+        "app.api.inference.infer_secondary_analysis_api.classify_views_for_study",
         _fake_classify,
     )
 
@@ -53,3 +53,4 @@ def test_echoprime_views_route_returns_service_payload(monkeypatch):
     assert body["num_instances"] == 2
     assert body["updated_instances"] == 2
     assert body["views"] == fake_views
+

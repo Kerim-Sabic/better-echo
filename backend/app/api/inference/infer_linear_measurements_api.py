@@ -10,16 +10,20 @@ from app.database.db import get_db
 from app.database_models.instances import Instance
 from app.database_models.derived_results import DerivedResult
 from app.helpers.inference_runtime.inference_functions import check_instance_exists_in_orthanc
-from app.schemas.inference.infer_measurements_schemas import Measurements2DResponse
+from app.schemas.inference.infer_linear_measurements_schemas import LinearMeasurementsResponse
 from app.core.config import settings
-from app.core.artifacts import BASE_DIR
+from app.core.artifacts import (
+    LINEAR_MEASUREMENTS_MODEL_NAME,
+    UPLOAD_DIR,
+    LINEAR_MEASUREMENTS_UPLOAD_DIRNAME,
+    linear_measurements_result_type,
+)
 
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-# Paths
-UPLOADS_ROOT = os.path.normpath(os.path.join(BASE_DIR, "..", "uploads"))  # backend/app/uploads
+UPLOADS_ROOT = UPLOAD_DIR
 os.makedirs(UPLOADS_ROOT, exist_ok=True)
 
 def _rel_uploads(p: str | None) -> str | None:
@@ -32,8 +36,8 @@ def _rel_uploads(p: str | None) -> str | None:
         return p
 
 
-@router.post("/infer/measurements/2d", response_model=Measurements2DResponse)
-def infer_measurements_2d(
+@router.post("/infer/measurements/2d", response_model=LinearMeasurementsResponse)
+def infer_linear_measurements(
     sop_instance_uid: str = Query(..., description="DICOM SOPInstanceUID to run 2D measurement annotation on"),
     model_weights: str = Query(..., description=f"One of: {', '.join(sorted(list(VALID_2D_WEIGHTS)))}"),
     force: bool = Query(False, description="Force re-run even if a cached result exists"),
@@ -43,11 +47,11 @@ def infer_measurements_2d(
     db: Session = Depends(get_db),
 ):
     """
-    Perform 2D linear measurement annotation using EchoNet-Measurements and return an annotated MP4 plus summary metrics.
+    Perform 2D linear measurement annotation and return an annotated MP4 plus summary metrics.
 
     Steps:
     1. Validate that the instance exists in Orthanc and resolve the local DICOM file path.
-    2. Derive a study-specific output directory under `uploads/measurements_2D_keypoint_detection`.
+    2. Derive a study-specific output directory under the linear measurements uploads root.
     3. Check for a cached DerivedResult unless `force=true`, returning cached MP4/min/max if available.
     4. Use a lockfile to avoid duplicate concurrent inferences for the same instance/weights.
     5. Run `run_2d_inference` to produce an annotated MP4 and CSV, then derive min/max lengths from the CSV.
@@ -73,19 +77,19 @@ def infer_measurements_2d(
         raise HTTPException(status_code=400, detail="Local file path for the instance not found.")
 
     input_path = instance.file_path
-    logger.info(f"[Measurements2D] Starting inference: {sop_instance_uid}, model_weights={model_weights}")
+    logger.info("[LinearMeasurements] Starting inference: %s, weights=%s", sop_instance_uid, model_weights)
 
-    # --- Step 3: Ensure output directory under uploads/measurements_2D_keypoint_detection/<study_uid>/<sop_instance_uid> ---
+    # --- Step 3: Ensure output directory under uploads/<linear measurements>/<study_uid>/<sop_instance_uid> ---
     try:
         study_uid = instance.series.study.study_uid
     except Exception:
         raise HTTPException(status_code=500, detail="Failed to resolve Study UID for the instance.")
-    uploads_measurements_root = os.path.join(UPLOADS_ROOT, "measurements_2D_keypoint_detection")
+    uploads_measurements_root = os.path.join(UPLOADS_ROOT, LINEAR_MEASUREMENTS_UPLOAD_DIRNAME)
     out_dir = os.path.join(uploads_measurements_root, study_uid, sop_instance_uid)
     os.makedirs(out_dir, exist_ok=True)
 
     # --- Step 4: Try cached DerivedResult (unless forced) ---
-    dr_type = f"EchoNetMeasurements2D_{model_weights}"
+    dr_type = linear_measurements_result_type(model_weights)
     existing = (
         db.query(DerivedResult)
         .filter(DerivedResult.instance_id == instance.id, DerivedResult.type == dr_type)
@@ -104,7 +108,7 @@ def infer_measurements_2d(
                 raise Exception("Cached artifact missing, recomputing")
             min_len_cm = payload.get("min_length_cm")
             max_len_cm = payload.get("max_length_cm")
-            return Measurements2DResponse(
+            return LinearMeasurementsResponse(
                 success=True,
                 message="Cached result returned",
                 sop_instance_uid=sop_instance_uid,
@@ -122,7 +126,7 @@ def infer_measurements_2d(
     try:
         if os.path.exists(lock_path):
             # If lock exists, signal that an inference is in progress
-            return Measurements2DResponse(
+            return LinearMeasurementsResponse(
                 success=True,
                 message="Inference in progress",
                 sop_instance_uid=sop_instance_uid,
@@ -143,7 +147,7 @@ def infer_measurements_2d(
     try:
         out_video, out_csv = run_2d_inference(model_weights=model_weights, input_path=input_path, output_dir=out_dir)
     except Exception as e:
-        logger.exception("[Measurements2D] Inference failed")
+        logger.exception("[LinearMeasurements] Inference failed")
         try:
             if os.path.exists(lock_path):
                 os.remove(lock_path)
@@ -154,16 +158,16 @@ def infer_measurements_2d(
         if unload_after_request and (not defer_model_unload):
             unload_2d_models()
 
-    logger.info(f"[Measurements2D] Completed. Output video: {out_video}")
+    logger.info("[LinearMeasurements] Completed. Output video: %s", out_video)
 
     # --- Step 7: Finalize MP4 output path ---
     out_mp4 = None
     try:
         if not out_video.lower().endswith(".mp4"):
-            logger.warning("[Measurements2D] Unexpected non-MP4 output: %s", out_video)
+            logger.warning("[LinearMeasurements] Unexpected non-MP4 output: %s", out_video)
         out_mp4 = os.path.normpath(out_video).replace("\\", "/")
     except Exception as e:
-        logger.warning(f"[Measurements2D] Failed to finalize MP4 output path: {e}")
+        logger.warning("[LinearMeasurements] Failed to finalize MP4 output path: %s", e)
 
     # --- Step 8: Compute ES/ED (min/max) from CSV when available ---
     min_len_cm = None
@@ -178,7 +182,7 @@ def infer_measurements_2d(
                 min_len_cm = float(vals.min())
                 max_len_cm = float(vals.max())
     except Exception as e:
-        logger.warning(f"[Measurements2D] Failed to parse lengths from CSV: {e}")
+        logger.warning("[LinearMeasurements] Failed to parse lengths from CSV: %s", e)
 
     # Delete CSV after MP4 creation (doctor only needs MP4)
     if out_mp4:
@@ -212,7 +216,7 @@ def infer_measurements_2d(
                     study_id=instance.series.study.id,
                     instance_id=instance.id,
                     type=dr_type,
-                    model_name="EchoNetMeasurements2D",
+                    model_name=LINEAR_MEASUREMENTS_MODEL_NAME,
                     model_version="v1",
                     artifact_set_id=artifact_set_id,
                 )
@@ -224,13 +228,13 @@ def infer_measurements_2d(
                 instance_id=instance.id,
                 type=dr_type,
                 value_json=payload,
-                model_name="EchoNetMeasurements2D",
+                model_name=LINEAR_MEASUREMENTS_MODEL_NAME,
                 model_version="v1",
             )
             db.add(dr)
         db.commit()
     except Exception as e:
-        logger.warning(f"[Measurements2D] Failed to persist DerivedResult: {e}")
+        logger.warning("[LinearMeasurements] Failed to persist DerivedResult: %s", e)
 
     # --- Step 10: Cleanup lock and respond ---
     try:

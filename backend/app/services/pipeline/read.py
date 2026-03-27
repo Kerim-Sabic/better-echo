@@ -53,19 +53,26 @@ def get_latest_draft_artifact_set(*, db: Session, study_id: int) -> Optional[Pip
     )
 
 
+def _normalize_result_types(result_type: str | Sequence[str]) -> tuple[str, ...]:
+    if isinstance(result_type, str):
+        return (result_type,)
+    return tuple(result_type)
+
+
 def _get_result_row_for_artifact_set(
     *,
     db: Session,
     study_id: int,
-    result_type: str,
+    result_type: str | Sequence[str],
     artifact_set_id: int,
 ) -> Optional[DerivedResult]:
     # Part 4. Resolve a result row scoped to one artifact set.
+    result_types = _normalize_result_types(result_type)
     return (
         db.query(DerivedResult)
         .filter(
             DerivedResult.study_id == study_id,
-            DerivedResult.type == result_type,
+            DerivedResult.type.in_(result_types),
             DerivedResult.artifact_set_id == artifact_set_id,
         )
         .order_by(DerivedResult.id.desc())
@@ -77,14 +84,15 @@ def _get_legacy_result_row(
     *,
     db: Session,
     study_id: int,
-    result_type: str,
+    result_type: str | Sequence[str],
 ) -> Optional[DerivedResult]:
     # Part 5. Transitional fallback for legacy non-artifact rows.
+    result_types = _normalize_result_types(result_type)
     return (
         db.query(DerivedResult)
         .filter(
             DerivedResult.study_id == study_id,
-            DerivedResult.type == result_type,
+            DerivedResult.type.in_(result_types),
             DerivedResult.artifact_set_id.is_(None),
         )
         .order_by(DerivedResult.id.desc())
@@ -96,7 +104,7 @@ def get_result_row_for_read_mode(
     *,
     db: Session,
     study_id: int,
-    result_type: str,
+    result_type: str | Sequence[str],
     preview: bool,
 ) -> Optional[DerivedResult]:
     # Part 6. Resolve result row using preview-aware read order.
@@ -134,7 +142,7 @@ def get_active_or_legacy_result_row(
     *,
     db: Session,
     study_id: int,
-    result_type: str,
+    result_type: str | Sequence[str],
 ) -> Optional[DerivedResult]:
     # Part 7. Backward-compatible wrapper for active-first read mode.
     return get_result_row_for_read_mode(

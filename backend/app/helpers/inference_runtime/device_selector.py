@@ -36,7 +36,7 @@ def _device_from_pref(pref: str) -> torch.device:
 
 
 def _avoid_reserved(device: torch.device) -> torch.device:
-    reserved = _normalize_pref(settings.RESERVED_LLM_DEVICE) if settings.RESERVED_LLM_DEVICE else None
+    reserved = _normalize_pref(settings.REPORTING_RESERVED_DEVICE) if settings.REPORTING_RESERVED_DEVICE else None
     if not reserved or device.type != "cuda":
         return device
     if device.type == "cuda" and device.index is not None:
@@ -51,10 +51,10 @@ def _avoid_reserved(device: torch.device) -> torch.device:
 
 def get_device_for_model(model_name: str, *, log_device: bool = False) -> torch.device:
     pref_map = {
-        "panecho": settings.PANECHO_DEVICE,
-        "echoprime": settings.ECHO_PRIME_DEVICE,
-        "echonet": settings.ECHONET_DEVICE,
-        "measurements": settings.MEASUREMENTS_DEVICE,
+        "primary_analysis": settings.PRIMARY_ANALYSIS_DEVICE,
+        "secondary_analysis": settings.SECONDARY_ANALYSIS_DEVICE,
+        "motion_segmentation": settings.MOTION_SEGMENTATION_DEVICE,
+        "study_measurements": settings.STUDY_MEASUREMENTS_DEVICE,
     }
     pref = pref_map.get(model_name, "auto")
     device = _device_from_pref(pref)
