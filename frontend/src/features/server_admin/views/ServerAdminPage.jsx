@@ -7,10 +7,10 @@ function StatusPill({ status }) {
   const normalized = String(status || "unknown").toLowerCase();
   const className =
     normalized === "valid"
-      ? "bg-emerald-100 text-emerald-700"
+      ? "bg-emerald-100 text-emerald-800"
       : normalized === "expired"
-        ? "bg-amber-100 text-amber-700"
-        : "bg-rose-100 text-rose-700";
+        ? "bg-amber-100 text-amber-800"
+        : "bg-rose-100 text-rose-800";
 
   return (
     <span className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${className}`}>
@@ -21,11 +21,11 @@ function StatusPill({ status }) {
 
 function SectionCard({ title, description, children, actions = null }) {
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+    <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
-          {description ? <p className="mt-1 text-sm text-slate-500">{description}</p> : null}
+          <h2 className="text-lg font-semibold text-foreground">{title}</h2>
+          {description ? <p className="mt-1 text-sm text-muted-foreground">{description}</p> : null}
         </div>
         {actions}
       </div>
@@ -42,12 +42,12 @@ export default function ServerAdminPage() {
   }
 
   return (
-    <div className="bg-[#f8f8f8]" style={{ minHeight: `calc(100vh - ${TITLEBAR_HEIGHT}px)` }}>
+    <div className="bg-background text-foreground" style={{ minHeight: `calc(100vh - ${TITLEBAR_HEIGHT}px)` }}>
       <main className="container mx-auto px-6 py-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900">Server Admin</h1>
-            <p className="mt-2 text-sm text-slate-500">
+            <h1 className="text-3xl font-bold text-foreground">Horalix Pulse Server</h1>
+            <p className="mt-2 text-sm text-muted-foreground">
               Local server setup, licensing, and user management for the hospital pilot.
             </p>
           </div>
@@ -74,7 +74,7 @@ export default function ServerAdminPage() {
         ) : null}
 
         {vm.isPageLoading ? (
-          <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-sm">
+          <div className="mt-6 rounded-2xl border border-border bg-card p-6 text-sm text-muted-foreground shadow-sm">
             Loading server admin state...
           </div>
         ) : (
@@ -84,21 +84,21 @@ export default function ServerAdminPage() {
               description="Export the activation request for signing, then import the signed license file."
               actions={<StatusPill status={vm.licenseStatus?.status} />}
             >
-              <div className="grid gap-4 text-sm text-slate-700 md:grid-cols-2">
+              <div className="grid gap-4 text-sm text-muted-foreground md:grid-cols-2">
                 <div>
-                  <div className="font-medium text-slate-900">Customer</div>
+                  <div className="font-medium text-foreground">Customer</div>
                   <div>{vm.licenseStatus?.customer_name || "Not licensed yet"}</div>
                 </div>
                 <div>
-                  <div className="font-medium text-slate-900">Expires</div>
+                  <div className="font-medium text-foreground">Expires</div>
                   <div>{vm.licenseStatus?.expires_at || "Not set"}</div>
                 </div>
                 <div>
-                  <div className="font-medium text-slate-900">License ID</div>
+                  <div className="font-medium text-foreground">License ID</div>
                   <div>{vm.licenseStatus?.license_id || "Not set"}</div>
                 </div>
                 <div>
-                  <div className="font-medium text-slate-900">Features</div>
+                  <div className="font-medium text-foreground">Features</div>
                   <div>{(vm.licenseStatus?.features || []).join(", ") || "None"}</div>
                 </div>
               </div>
@@ -133,8 +133,8 @@ export default function ServerAdminPage() {
               title="Server Setup"
               description="Bootstrap the first admin on a fresh server before normal login starts."
             >
-              <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-                <div className="font-medium text-slate-900">Setup status</div>
+              <div className="mb-4 rounded-xl border border-border bg-muted px-4 py-3 text-sm text-muted-foreground">
+                <div className="font-medium text-foreground">Setup status</div>
                 <div className="mt-1">
                   {vm.bootstrapRequired
                     ? "No users exist yet. Create the first admin now."
@@ -148,14 +148,14 @@ export default function ServerAdminPage() {
                     value={vm.bootstrapForm.username}
                     onChange={event => vm.onBootstrapFieldChange("username", event.target.value)}
                     placeholder="Admin username"
-                    className="rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-500"
+                    className="rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
                     required
                   />
                   <input
                     value={vm.bootstrapForm.fullName}
                     onChange={event => vm.onBootstrapFieldChange("fullName", event.target.value)}
                     placeholder="Admin full name"
-                    className="rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-500"
+                    className="rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
                     required
                   />
                   <input
@@ -163,7 +163,7 @@ export default function ServerAdminPage() {
                     value={vm.bootstrapForm.password}
                     onChange={event => vm.onBootstrapFieldChange("password", event.target.value)}
                     placeholder="Admin password"
-                    className="rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-500 md:col-span-2"
+                    className="rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary md:col-span-2"
                     required
                   />
                   <div className="md:col-span-2">
@@ -173,7 +173,7 @@ export default function ServerAdminPage() {
                   </div>
                 </form>
               ) : (
-                <div className="text-sm text-slate-600">
+                <div className="text-sm text-muted-foreground">
                   First-admin bootstrap is closed because the server already has users.
                 </div>
               )}
@@ -183,8 +183,8 @@ export default function ServerAdminPage() {
               title="User Management"
               description="Create, edit, and remove hospital users. The pilot seat cap is enforced by the backend."
             >
-              <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-                <div className="font-medium text-slate-900">Seat usage</div>
+              <div className="mb-4 rounded-xl border border-border bg-muted px-4 py-3 text-sm text-muted-foreground">
+                <div className="font-medium text-foreground">Seat usage</div>
                 <div className="mt-1">{vm.seatUsageLabel}</div>
               </div>
 
@@ -203,22 +203,22 @@ export default function ServerAdminPage() {
 
               {vm.canManageUsers ? (
                 <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
-                  <div className="overflow-hidden rounded-xl border border-slate-200">
-                    <table className="min-w-full divide-y divide-slate-200 text-sm">
-                      <thead className="bg-slate-50">
+                  <div className="overflow-hidden rounded-xl border border-border">
+                    <table className="min-w-full divide-y divide-border text-sm">
+                      <thead className="bg-muted">
                         <tr>
-                          <th className="px-4 py-3 text-left font-semibold text-slate-600">Username</th>
-                          <th className="px-4 py-3 text-left font-semibold text-slate-600">Full Name</th>
-                          <th className="px-4 py-3 text-left font-semibold text-slate-600">Role</th>
-                          <th className="px-4 py-3 text-right font-semibold text-slate-600">Actions</th>
+                          <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Username</th>
+                          <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Full Name</th>
+                          <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Role</th>
+                          <th className="px-4 py-3 text-right font-semibold text-muted-foreground">Actions</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-200 bg-white">
+                      <tbody className="divide-y divide-border bg-card">
                         {vm.users.map(userRecord => (
                           <tr key={userRecord.id}>
-                            <td className="px-4 py-3 text-slate-900">{userRecord.username}</td>
-                            <td className="px-4 py-3 text-slate-700">{userRecord.full_name}</td>
-                            <td className="px-4 py-3 text-slate-700">{userRecord.role}</td>
+                            <td className="px-4 py-3 text-foreground">{userRecord.username}</td>
+                            <td className="px-4 py-3 text-muted-foreground">{userRecord.full_name}</td>
+                            <td className="px-4 py-3 text-muted-foreground">{userRecord.role}</td>
                             <td className="px-4 py-3">
                               <div className="flex justify-end gap-2">
                                 <Button variant="outline" size="sm" onClick={() => vm.onSelectEditUser(userRecord)}>
@@ -241,21 +241,21 @@ export default function ServerAdminPage() {
                   </div>
 
                   <div className="grid gap-6">
-                    <form className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm" onSubmit={vm.onCreateUserSubmit}>
-                      <h3 className="text-base font-semibold text-slate-900">Create User</h3>
+                    <form className="rounded-xl border border-border bg-card p-5 shadow-sm" onSubmit={vm.onCreateUserSubmit}>
+                      <h3 className="text-base font-semibold text-foreground">Create User</h3>
                       <div className="mt-4 grid gap-3">
                         <input
                           value={vm.createForm.username}
                           onChange={event => vm.onCreateFieldChange("username", event.target.value)}
                           placeholder="Username"
-                          className="rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-500"
+                          className="rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
                           required
                         />
                         <input
                           value={vm.createForm.fullName}
                           onChange={event => vm.onCreateFieldChange("fullName", event.target.value)}
                           placeholder="Full name"
-                          className="rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-500"
+                          className="rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
                           required
                         />
                         <input
@@ -263,13 +263,13 @@ export default function ServerAdminPage() {
                           value={vm.createForm.password}
                           onChange={event => vm.onCreateFieldChange("password", event.target.value)}
                           placeholder="Password"
-                          className="rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-500"
+                          className="rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
                           required
                         />
                         <select
                           value={vm.createForm.role}
                           onChange={event => vm.onCreateFieldChange("role", event.target.value)}
-                          className="rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-500"
+                          className="rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground outline-none focus:border-primary"
                         >
                           <option value="doctor">Doctor</option>
                           <option value="admin">Admin</option>
@@ -282,9 +282,9 @@ export default function ServerAdminPage() {
                       </div>
                     </form>
 
-                    <form className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm" onSubmit={vm.onUpdateUserSubmit}>
+                    <form className="rounded-xl border border-border bg-card p-5 shadow-sm" onSubmit={vm.onUpdateUserSubmit}>
                       <div className="flex items-center justify-between gap-3">
-                        <h3 className="text-base font-semibold text-slate-900">Edit User</h3>
+                        <h3 className="text-base font-semibold text-foreground">Edit User</h3>
                         {vm.editForm.userId ? (
                           <Button type="button" variant="ghost" size="sm" onClick={vm.onCancelEdit}>
                             Clear
@@ -296,7 +296,7 @@ export default function ServerAdminPage() {
                           value={vm.editForm.username}
                           onChange={event => vm.onEditFieldChange("username", event.target.value)}
                           placeholder="Select a user first"
-                          className="rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-500"
+                          className="rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
                           disabled={!vm.editForm.userId}
                           required
                         />
@@ -304,7 +304,7 @@ export default function ServerAdminPage() {
                           value={vm.editForm.fullName}
                           onChange={event => vm.onEditFieldChange("fullName", event.target.value)}
                           placeholder="Full name"
-                          className="rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-500"
+                          className="rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
                           disabled={!vm.editForm.userId}
                           required
                         />
@@ -313,13 +313,13 @@ export default function ServerAdminPage() {
                           value={vm.editForm.password}
                           onChange={event => vm.onEditFieldChange("password", event.target.value)}
                           placeholder="New password (optional)"
-                          className="rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-500"
+                          className="rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
                           disabled={!vm.editForm.userId}
                         />
                         <select
                           value={vm.editForm.role}
                           onChange={event => vm.onEditFieldChange("role", event.target.value)}
-                          className="rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-slate-500"
+                          className="rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground outline-none focus:border-primary"
                           disabled={!vm.editForm.userId}
                         >
                           <option value="doctor">Doctor</option>

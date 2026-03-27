@@ -35,10 +35,11 @@ export default function TitleBar({ variant = "light" }) {
     }, [toggleMaximize]);
 
     const isSplash = variant === "splash";
+    const isDark = variant === "dark";
     const barClass = [
         "fixed top-0 left-0 right-0 flex items-center justify-end px-2 z-[1000]",
         "transition-colors duration-300",
-        isSplash ? "bg-transparent text-white" : "bg-white text-slate-700",
+        isSplash ? "bg-transparent text-white" : isDark ? "bg-slate-950 text-white" : "bg-white text-slate-700",
     ].join(" ");
 
     return (

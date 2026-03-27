@@ -1,11 +1,15 @@
 from datetime import timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy.orm import Session
 
 from app.database.db import get_db
 from app.database_models.users import User
-from app.helpers.auth.authentication_functions import verify_password, create_token
+from app.helpers.auth.authentication_functions import (
+    create_token,
+    is_desktop_client_request,
+    verify_password,
+)
 from app.core.config import settings
 from app.schemas.authentication.authentication_schemas import LoginRequest, AuthResponse
 from app.core.artifacts import AUTH_COOKIE_NAME
@@ -14,7 +18,12 @@ router = APIRouter(tags=["Authentication"])
 
 
 @router.post("/login", response_model=AuthResponse)
-def login(data: LoginRequest, response: Response, db: Session = Depends(get_db)):
+def login(
+    data: LoginRequest,
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+):
     """
     Validate credentials, issue a JWT in an HTTP-only cookie, and return user info.
 
@@ -54,5 +63,6 @@ def login(data: LoginRequest, response: Response, db: Session = Depends(get_db))
             "username": user.username,
             "role": user.role,
             "full_name": user.full_name
-        }
+        },
+        "auth_token": auth_token if is_desktop_client_request(request) else None,
     }

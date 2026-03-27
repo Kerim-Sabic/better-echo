@@ -23,12 +23,14 @@ function readErrorMessage(error, fallbackMessage) {
 
 function normalizeLicenseEnvelope(rawValue) {
   const parsed = JSON.parse(rawValue);
-  if (!parsed?.payload || !parsed?.signature) {
-    throw new Error("License file must contain payload and signature.");
+
+  const normalizedLicense = parsed?.license || parsed?.payload;
+  if (!normalizedLicense || !parsed?.signature) {
+    throw new Error("License file must contain license/payload and signature.");
   }
 
   return {
-    license: parsed.payload,
+    license: normalizedLicense,
     signature: parsed.signature,
   };
 }

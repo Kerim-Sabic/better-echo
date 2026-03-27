@@ -19,6 +19,9 @@ hiddenimports = [
     'sqlalchemy.sql.default_comparator',
     'passlib.handlers.bcrypt',
     'app.main',
+    'matplotlib',
+    'matplotlib.pyplot',
+    'matplotlib.backends.backend_agg',
 ]
 
 # Data files
@@ -28,6 +31,7 @@ datas = [
     ('../.env', '.'),
 ]
 datas += collect_data_files('fido2')
+datas += collect_data_files('matplotlib')
 
 # Binaries - include torch and CUDA libraries if present
 binaries = []
@@ -42,7 +46,6 @@ a = Analysis(
     hooksconfig={},
     runtime_hooks=[],
     excludes=[
-        'matplotlib',
         'tkinter',
         'PyQt5',
         'PyQt6',

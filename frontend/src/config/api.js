@@ -34,6 +34,13 @@ async function resolveElectronRuntimeConfig() {
     return null;
 }
 
+export function resetResolvedApiUrls() {
+    backendUrl = null;
+    uploadsUrl = null;
+    viewerBaseUrl = null;
+    runtimeConfigPromise = null;
+}
+
 export const getBackendUrl = async () => {
     if (backendUrl) {
         return backendUrl;

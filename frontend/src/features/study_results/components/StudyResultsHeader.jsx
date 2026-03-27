@@ -1,5 +1,6 @@
 import { ArrowLeft, RefreshCw } from "lucide-react";
 import { Button } from "@/general_components/ui/button";
+import BrandLogo from "@/general_components/BrandLogo";
 
 function formatStateLabel(stateValue, isPolling) {
   if (isPolling || stateValue === "pending") {
@@ -60,17 +61,17 @@ export default function StudyResultsHeader({ studyResultsPageViewModel }) {
         <Button
           variant="ghost"
           onClick={onBack}
-          className="gap-2 hover:scale-105 hover:bg-primary/10 hover:text-primary fast-transition"
+          className="gap-2 text-slate-100 hover:scale-105 hover:bg-white/10 hover:text-white fast-transition"
         >
           <ArrowLeft className="w-5 h-5" />
           Back
         </Button>
 
-        <img src="/horalix-taskbar-app-icon.png" alt="Horalix Logo" className="w-10 h-10" />
+        <BrandLogo forceDark className="w-10 h-10" />
 
         <div className="min-w-0">
-          <h1 className="text-2xl font-bold heading-accent truncate">Study Results</h1>
-          <div className="mt-0.5 pb-1 text-xs text-muted-foreground">
+          <h1 className="text-2xl font-bold text-white truncate">Study Results</h1>
+          <div className="mt-0.5 pb-1 text-xs text-slate-300">
             UID: <span className="font-medium">{studyUid || "-"}</span>
           </div>
         </div>
@@ -81,7 +82,11 @@ export default function StudyResultsHeader({ studyResultsPageViewModel }) {
           {stateLabel}
         </span>
 
-        <Button variant="outline" onClick={refetchStudyResults} className="gap-2">
+        <Button
+          variant="outline"
+          onClick={refetchStudyResults}
+          className="gap-2 border-white/20 bg-white/5 text-slate-100 hover:bg-white/10 hover:text-white"
+        >
           <RefreshCw className={`w-4 h-4 ${anyLoading ? "animate-spin" : ""}`} />
           Refresh
         </Button>

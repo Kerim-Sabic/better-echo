@@ -1,6 +1,7 @@
 import { app, BrowserWindow, Menu, Tray, nativeImage, screen } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
+import { getRuntimeMode } from './runtime';
 
 export type WindowState = {
     x?: number;
@@ -16,6 +17,10 @@ const MIN_HEIGHT = 800;
 let windowStatePath: string;
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
+
+function getAppDisplayName(): string {
+    return getRuntimeMode() === 'client' ? 'Horalix Pulse' : 'Horalix Pulse Server';
+}
 
 function getWindowStatePath(): string {
     const userData = app.getPath('userData');
@@ -80,10 +85,11 @@ export function getTrayIconPath(isDev: boolean): string {
 export function createTray(options: { iconPath: string; onOpen: () => void; onQuit: () => void }): Tray | null {
     const image = nativeImage.createFromPath(options.iconPath);
     tray = new Tray(image);
-    tray.setToolTip('Echocardiology App');
+    const appDisplayName = getAppDisplayName();
+    tray.setToolTip(appDisplayName);
     const contextMenu = Menu.buildFromTemplate([
         {
-            label: 'Open Echocardiology App',
+            label: `Open ${appDisplayName}`,
             click: () => options.onOpen(),
         },
         {
@@ -117,6 +123,7 @@ export function createMainWindow(options: {
         titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
         backgroundColor: '#ffffff',
         icon: options.iconPath,
+        title: getAppDisplayName(),
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
             contextIsolation: true,
@@ -142,8 +149,18 @@ export function createMainWindow(options: {
             mainWindow.webContents.openDevTools();
         }
     } else {
-        const indexPath = path.join(__dirname, '..', 'frontend', 'build', 'index.html');
-        mainWindow.loadFile(indexPath);
+        const packagedIndexCandidates = [
+            path.join(__dirname, '..', '..', 'frontend', 'build', 'index.html'),
+            path.join(__dirname, '..', 'frontend', 'build', 'index.html'),
+        ];
+        const indexPath =
+            packagedIndexCandidates.find(candidatePath => fs.existsSync(candidatePath)) ||
+            packagedIndexCandidates[0];
+
+        console.log('Loading packaged renderer from:', indexPath);
+        void mainWindow.loadFile(indexPath).catch(error => {
+            console.error('Failed to load packaged renderer:', error);
+        });
     }
 
     mainWindow.on('closed', () => {

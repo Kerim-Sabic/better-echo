@@ -23,7 +23,7 @@ export function useLoginPageViewModel() {
   const navigate = useNavigate();
   const location = useLocation();
   const { setUser } = useContext(AuthContext);
-  const { runtimeConfig } = useElectronRuntimeConfig();
+  const { runtimeConfig, openClientRuntimeConfigEditor } = useElectronRuntimeConfig();
 
   // 1. Data Fetching & Mutations (Server State)
   const loginMutation = useLoginMutation();
@@ -128,5 +128,7 @@ export function useLoginPageViewModel() {
     handleBiometricLogin,
     canOpenServerAdmin: runtimeConfig?.runtimeMode === "server",
     onOpenServerAdmin: () => navigate("/server-admin"),
+    canReconfigureClientRuntime: runtimeConfig?.runtimeMode === "client",
+    onOpenClientRuntimeConfigEditor: openClientRuntimeConfigEditor,
   };
 }

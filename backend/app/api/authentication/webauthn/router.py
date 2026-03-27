@@ -8,7 +8,11 @@ from app.core.artifacts import AUTH_COOKIE_NAME
 from app.core.config import settings
 from app.database.db import get_db
 from app.database_models import User, WebAuthnCredential
-from app.helpers.auth.authentication_functions import create_token, get_current_user_id
+from app.helpers.auth.authentication_functions import (
+    create_token,
+    get_current_user_id,
+    is_desktop_client_request,
+)
 from app.schemas.authentication.authentication_schemas import AuthResponse
 from app.schemas.authentication.webauthn_schemas import (
     AuthCompleteRequest,
@@ -329,6 +333,7 @@ def complete_authenticate(
             "role": user.role,
             "full_name": user.full_name,
         },
+        "auth_token": auth_token if is_desktop_client_request(request) else None,
     }
 
 

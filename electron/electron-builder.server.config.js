@@ -2,14 +2,21 @@ const baseConfig = require('./electron-builder.shared.config');
 
 module.exports = {
   ...baseConfig,
+  appId: 'com.horalix.pulse.server',
+  productName: 'Horalix Pulse Server',
   directories: {
     ...baseConfig.directories,
     output: 'dist/server',
   },
   extraMetadata: {
+    name: 'horalix-pulse-server',
     horalixRuntimeMode: 'server',
   },
-  artifactName: 'Echocardiology-App-Server-${version}-${os}-${arch}.${ext}',
+  artifactName: 'Horalix-Pulse-Server-${version}-${os}-${arch}.${ext}',
+  nsis: {
+    ...baseConfig.nsis,
+    shortcutName: 'Horalix Pulse Server',
+  },
   extraResources: [
     {
       from: 'orthanc',

@@ -1,5 +1,6 @@
 import { createContext, useState, useEffect, useCallback } from "react";
 import { checkAuthApi, loginApi, logoutApi } from "@/api/authentication";
+import { clearDesktopAuthToken } from "@/api/desktopAuth";
 import { getBackendUrl } from "../config/api";
 
 export const AuthContext = createContext();
@@ -49,6 +50,7 @@ export const AuthProvider = ({ children }) => {
         } catch (error) {
             if (error?.response?.status === 401) {
                 try { localStorage.removeItem(SESSION_HINT_KEY); } catch {}
+                clearDesktopAuthToken();
             }
             setUser(null);
         } finally {

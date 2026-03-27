@@ -15,6 +15,7 @@ from app.services.licensing.service import (
     invalidate_license_status_cache,
     is_license_exempt_path,
 )
+from app.services.licensing import service as licensing_service
 
 
 def _iso_at(offset_days: int) -> str:
@@ -201,6 +202,42 @@ def test_import_signed_license_reactivates_system_after_expired_license(monkeypa
     assert renewed_status["valid"] is True
     assert renewed_status["status"] == "valid"
     assert renewed_status["license_id"] == "pilot-renewed-short"
+
+
+def test_get_license_status_expires_cached_valid_license_without_restart(monkeypatch, tmp_path):
+    private_key = _configure_license_env(monkeypatch, tmp_path)
+    activation_request = build_activation_request()
+    base_time = datetime(2026, 1, 1, 12, 0, tzinfo=timezone.utc)
+    expires_at = base_time + timedelta(minutes=5)
+
+    payload = {
+        "license_id": "pilot-cache-expiry",
+        "customer_name": "Expiry Hospital",
+        "issued_at": base_time.isoformat().replace("+00:00", "Z"),
+        "expires_at": expires_at.isoformat().replace("+00:00", "Z"),
+        "machine_fingerprint": activation_request["machine_fingerprint"],
+        "features": ["core"],
+    }
+    envelope = {
+        "payload": payload,
+        "signature": _canonical_signature(payload, private_key),
+    }
+    license_path = get_license_file_path()
+    license_path.parent.mkdir(parents=True, exist_ok=True)
+    license_path.write_text(json.dumps(envelope, indent=2), encoding="utf-8")
+    invalidate_license_status_cache()
+
+    monkeypatch.setattr(licensing_service, "_now_utc", lambda: base_time)
+    status_before_expiry = get_license_status(force_reload=True)
+    assert status_before_expiry["valid"] is True
+    assert status_before_expiry["status"] == "valid"
+
+    monkeypatch.setattr(licensing_service, "_now_utc", lambda: expires_at + timedelta(seconds=1))
+    status_after_expiry = get_license_status()
+
+    assert status_after_expiry["valid"] is False
+    assert status_after_expiry["status"] == "expired"
+    assert "expired" in (status_after_expiry["detail"] or "").lower()
 
 
 @pytest.mark.parametrize(

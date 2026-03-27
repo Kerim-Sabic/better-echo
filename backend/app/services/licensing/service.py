@@ -92,7 +92,12 @@ def get_license_status(*, force_reload: bool = False) -> dict[str, Any]:
     file_mtime = license_path.stat().st_mtime if license_path.exists() else None
     cache_token = (file_mtime, settings.LICENSE_PUBLIC_KEY_B64)
 
-    if not force_reload and _cached_status is not None and _cached_token == cache_token:
+    if (
+        not force_reload
+        and _cached_status is not None
+        and _cached_token == cache_token
+        and _can_return_cached_status(_cached_status)
+    ):
         return dict(_cached_status)
 
     status = _load_license_status(license_path)
@@ -199,7 +204,7 @@ def _verify_license_envelope(envelope: dict[str, Any]) -> dict[str, Any]:
     expires_at = _parse_iso8601(payload.get("expires_at"))
     if expires_at is None:
         raise ValueError("License payload is missing a valid expires_at value.")
-    if expires_at <= datetime.now(timezone.utc):
+    if expires_at <= _now_utc():
         raise ValueError("License has expired.")
 
     return payload
@@ -235,6 +240,17 @@ def _parse_iso8601(value: Any) -> Optional[datetime]:
     return parsed.astimezone(timezone.utc)
 
 
+def _can_return_cached_status(status: dict[str, Any]) -> bool:
+    if not status.get("valid"):
+        return True
+
+    expires_at = _parse_iso8601(status.get("expires_at"))
+    if expires_at is None:
+        return False
+
+    return expires_at > _now_utc()
+
+
 def _build_status(
     *,
     status: str,
@@ -255,4 +271,8 @@ def _build_status(
 
 
 def _utcnow_iso() -> str:
-    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    return _now_utc().isoformat().replace("+00:00", "Z")
+
+
+def _now_utc() -> datetime:
+    return datetime.now(timezone.utc)
