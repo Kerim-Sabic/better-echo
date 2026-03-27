@@ -29,6 +29,16 @@ class StudySchema(BaseModel):
     class Config:
         from_attributes = True
 
+
+class StudyDetailsSchema(StudySchema):
+    study_time: Optional[str] = None
+    accession_number: Optional[str] = None
+    referring_physician_name: Optional[str] = None
+    sonographer_name: Optional[str] = None
+    indication: Optional[str] = None
+    machine_name: Optional[str] = None
+    modality: Optional[str] = None
+
 class StudyListResponse(RootModel[List[StudySchema]]):
     pass
 

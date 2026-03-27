@@ -1,11 +1,15 @@
 from fastapi.testclient import TestClient
+from pydicom.dataset import Dataset, FileDataset
+from pydicom.uid import ExplicitVRLittleEndian, generate_uid
 
 from app.core.artifacts import (
     DYNAMIC_MEASUREMENTS_COMBINED_TYPE,
     PANECHO_ECHOPRIME_COMBINED_TYPE,
 )
 from app.database_models.derived_results import DerivedResult, ResultStatus
+from app.database_models.instances import Instance
 from app.database_models.patients import Patient
+from app.database_models.series import Series
 from app.database_models.studies import Study
 from app.helpers.auth.authentication_functions import get_current_user_id
 
@@ -86,6 +90,69 @@ def test_retrieve_study_computes_effective_status_without_persisting(app, db_ses
         assert study.status == "processing"
     finally:
         db.close()
+
+
+def test_retrieve_study_includes_pdf_metadata_from_source_dicom(
+    app,
+    db_session_factory,
+    seeded_study,
+    tmp_path,
+):
+    dicom_path = tmp_path / "source-instance.dcm"
+
+    file_meta = Dataset()
+    file_meta.MediaStorageSOPClassUID = generate_uid()
+    file_meta.MediaStorageSOPInstanceUID = generate_uid()
+    file_meta.TransferSyntaxUID = ExplicitVRLittleEndian
+
+    ds = FileDataset(str(dicom_path), {}, file_meta=file_meta, preamble=b"\0" * 128)
+    ds.StudyTime = "182632"
+    ds.AccessionNumber = "ACC-12345"
+    ds.ReferringPhysicianName = "Dr. Referrer"
+    ds.OperatorsName = "Jane Sonographer"
+    ds.RequestedProcedureDescription = "Dyspnea workup"
+    ds.ManufacturerModelName = "Vivid E95"
+    ds.Modality = "US"
+    ds.save_as(str(dicom_path), write_like_original=False)
+
+    db = db_session_factory()
+    try:
+        study = db.query(Study).filter(Study.id == seeded_study["study_id"]).first()
+        series = Series(
+            series_uid=f"{seeded_study['study_uid']}-series",
+            modality="US",
+            description=None,
+            series_orthanc_id=f"{seeded_study['study_uid']}-series-orthanc",
+            study=study,
+        )
+        db.add(series)
+        db.flush()
+
+        db.add(
+            Instance(
+                sop_instance_uid=f"{seeded_study['study_uid']}-instance",
+                file_path=str(dicom_path),
+                instance_orthanc_id=f"{seeded_study['study_uid']}-instance-orthanc",
+                instance_number="1",
+                series=series,
+            )
+        )
+        db.commit()
+    finally:
+        db.close()
+
+    client = TestClient(app)
+    response = client.get(f"/api/studies/{seeded_study['study_uid']}")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body.get("study_time") == "182632"
+    assert body.get("accession_number") == "ACC-12345"
+    assert body.get("referring_physician_name") == "Dr. Referrer"
+    assert body.get("sonographer_name") == "Jane Sonographer"
+    assert body.get("indication") == "Dyspnea workup"
+    assert body.get("machine_name") == "Vivid E95"
+    assert body.get("modality") == "US"
 
 
 def test_delete_study_deletes_study_and_patient_when_last_study(app, db_session_factory, seeded_study, monkeypatch):

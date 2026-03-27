@@ -4,6 +4,7 @@ import {
   toNullableString,
 } from "@/general_components/utility/dataShapeUtils";
 import { formatDateTime } from "@/general_components/utility/dateUtils";
+import { formatDicomTagStudyDate } from "@/general_components/utility/dicomTagsUtils";
 
 // Maps backend/http status into the frontend page/query state used by the ViewModels.
 function deriveCombinedState(responseStatus, backendStatus) {
@@ -176,6 +177,49 @@ export function formatDynamicMeasurementsCombinedResultsDto(rawApiResponse) {
             rawData.dynamic_measurements_results
           )
         : "dynamic-measurements-not-ready",
+  };
+}
+
+// Used by:
+// - studyResultsRepository.getStudyDetails(...)
+// Formats the single-study metadata payload used by the Study Results page.
+export function formatStudyDetailsDto(rawStudy) {
+  const study = toObject(rawStudy);
+  const patient = toObject(study.patient);
+
+  return {
+    id: study.id ?? null,
+    studyUid: toNullableString(study.study_uid),
+    studyDate: toNullableString(study.study_date),
+    studyTime: toNullableString(study.study_time),
+    uploadedAt: study.uploaded_at ?? null,
+    studyDateLabel: formatDicomTagStudyDate(study.study_date),
+    uploadedAtLabel: formatDateTime(study.uploaded_at),
+    description: toNullableString(study.description),
+    status: toNullableString(study.status) || "unknown",
+    patientHeightCm:
+      typeof study.patient_height_cm === "number" ? study.patient_height_cm : null,
+    patientWeightKg:
+      typeof study.patient_weight_kg === "number" ? study.patient_weight_kg : null,
+    heartRateBpm:
+      typeof study.heart_rate_bpm === "number" ? study.heart_rate_bpm : null,
+    accessionNumber: toNullableString(study.accession_number),
+    referringPhysicianName: toNullableString(study.referring_physician_name),
+    sonographerName: toNullableString(study.sonographer_name),
+    indication: toNullableString(study.indication),
+    machineName: toNullableString(study.machine_name),
+    modality: toNullableString(study.modality),
+    diagnoses: toArray(study.diagnoses),
+    patient:
+      Object.keys(patient).length > 0
+        ? {
+            id: patient.id ?? null,
+            patientId: toNullableString(patient.patient_id),
+            patientName: toNullableString(patient.patient_name),
+            patientSex: toNullableString(patient.patient_sex),
+            patientBirthDate: toNullableString(patient.patient_birth_date),
+          }
+        : null,
   };
 }
 

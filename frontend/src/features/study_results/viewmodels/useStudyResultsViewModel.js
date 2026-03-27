@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { usePanechoEchoprimeCombinedResultsQuery } from "@/features/study_results/tanstack/queries/usePanechoEchoprimeCombinedResultsQuery";
 import { useDynamicMeasurementsCombinedResultsQuery } from "@/features/study_results/tanstack/queries/useDynamicMeasurementsCombinedResultsQuery";
 import { useLlmReportResultsQuery } from "@/features/study_results/tanstack/queries/useLlmReportResultsQuery";
+import { useStudyDetailsQuery } from "@/features/study_results/tanstack/queries/useStudyDetailsQuery";
 import { buildStudyResultsOhifAiPayload } from "@/features/study_results/viewmodels/ohifAiPayloadSerializer";
 import { buildStudyResultsPdfData } from "@/features/study_results/viewmodels/pdf_printing/studyResultsPdfSerializer";
 import {
@@ -40,6 +41,9 @@ function resolveOverallState(states) {
 
 export function useStudyResultsViewModel(studyUid) {
   const navigate = useNavigate();
+
+  // Fetches the study-level metadata used for the page header/PDF context.
+  const { data: studyDetails = null } = useStudyDetailsQuery(studyUid);
 
   // --- Part 1. Query and normalize all study-results server state. ---
   const {
@@ -145,7 +149,28 @@ export function useStudyResultsViewModel(studyUid) {
     ]
   );
 
-  // --- Part 4. Expose separate print-preview documents from the same normalized page state. ---
+  // Normalizes the subset of study metadata needed by the PDF serializer.
+  const patientContext = useMemo(() => {
+    return {
+      patientName: studyDetails?.patient?.patientName || null,
+      patientId: studyDetails?.patient?.patientId || null,
+      patientBirthDate: studyDetails?.patient?.patientBirthDate || null,
+      patientSex: studyDetails?.patient?.patientSex || null,
+      patientHeightCm: studyDetails?.patientHeightCm ?? null,
+      patientWeightKg: studyDetails?.patientWeightKg ?? null,
+      heartRateBpm: studyDetails?.heartRateBpm ?? null,
+      studyDate: studyDetails?.studyDate || null,
+      studyTime: studyDetails?.studyTime || null,
+      uploadedAt: studyDetails?.uploadedAt || null,
+      referringPhysicianName: studyDetails?.referringPhysicianName || null,
+      sonographerName: studyDetails?.sonographerName || null,
+      indication: studyDetails?.indication || null,
+      machineName: studyDetails?.machineName || studyDetails?.modality || null,
+      accessionNumber: studyDetails?.accessionNumber || null,
+    };
+  }, [studyDetails]);
+
+  // Builds a fresh PDF input snapshot from the current study state at click time.
   const buildCurrentStudyResultsPdfData = useCallback(() => {
     if (!studyUid) {
       return null;
@@ -153,6 +178,7 @@ export function useStudyResultsViewModel(studyUid) {
 
     return buildStudyResultsPdfData({
       studyUid,
+      patientContext,
       downloadRequestedAt: new Date(),
       studyResultsState,
       panechoEchoprimeCombinedResultsState,
@@ -164,6 +190,7 @@ export function useStudyResultsViewModel(studyUid) {
     });
   }, [
     studyUid,
+    patientContext,
     studyResultsState,
     panechoEchoprimeCombinedResultsState,
     panechoEchoprimeCombinedResultsData,
@@ -173,6 +200,7 @@ export function useStudyResultsViewModel(studyUid) {
     panechoEchoprimeEditorViewModel,
   ]);
 
+  // Opens the measurements-specific print preview from the shared PDF data snapshot.
   const printAiMeasurementsDocument = useCallback(async () => {
     const studyResultsPdfData = buildCurrentStudyResultsPdfData();
 
@@ -183,6 +211,7 @@ export function useStudyResultsViewModel(studyUid) {
     await openAiMeasurementsPrintPreview(studyResultsPdfData);
   }, [buildCurrentStudyResultsPdfData]);
 
+  // Opens the narrative AI report print preview from the same normalized study snapshot.
   const printAiReportDocument = useCallback(async () => {
     const studyResultsPdfData = buildCurrentStudyResultsPdfData();
 
@@ -192,7 +221,6 @@ export function useStudyResultsViewModel(studyUid) {
 
     await openAiReportPrintPreview(studyResultsPdfData);
   }, [buildCurrentStudyResultsPdfData]);
-
 
 // --- Part 5. onBack and refetchStudyResults handlers ---
   const onBack = useCallback(() => {

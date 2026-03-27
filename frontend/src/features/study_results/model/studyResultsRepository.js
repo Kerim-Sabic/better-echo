@@ -3,15 +3,24 @@ import {
   getDynamicMeasurementsCombinedResultsApi,
   getLlmReportApi,
 } from "@/api/get_study_results_apis";
+import { getStudyByUidApi } from "@/api/studies";
 import { patchPanechoEchoprimeOverridesApi } from "@/api/panecho_echoprime_overrides/patchPanechoEchoprimeOverridesApi";
 import { postGenerateLlmReportApi } from "@/api/llm_report_generate/postGenerateLlmReportApi";
 import {
   formatDynamicMeasurementsCombinedResultsDto,
   formatPanechoEchoprimeCombinedResultsDto,
   formatLlmReportResultsDto,
+  formatStudyDetailsDto,
 } from "./studyResults.dto";
 
 export const studyResultsRepository = {
+  // Fetches and formats the study metadata used by the Study Results page.
+  async getStudyDetails(studyUid) {
+    const rawStudyDetails = await getStudyByUidApi(studyUid);
+    const formattedStudyDetails = formatStudyDetailsDto(rawStudyDetails);
+    return formattedStudyDetails;
+  },
+
   // Fetches and formats the combined PanEcho/EchoPrime results for the study results page.
   async getPanechoEchoprimeCombinedResults(studyUid) {
     const rawPanechoEchoprimeCombinedResults =
