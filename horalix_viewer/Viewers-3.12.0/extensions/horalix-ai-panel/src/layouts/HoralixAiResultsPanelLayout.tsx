@@ -38,22 +38,24 @@ export default function HoralixAiResultsPanelLayout({
   return (
     <div className="h-full overflow-y-auto bg-[#090D14] p-2 text-white">
       <div className="space-y-2">
-        <AiPanelSectionSwitcher
-          activeValue={activeTab}
-          onChange={value => setActiveTab(value as PanelTab)}
-          options={[
-            {
-              value: 'measurements',
-              label: 'AI Measurements',
-              state: payload.panechoEchoprimeCombinedResultsState,
-            },
-            {
-              value: 'report',
-              label: 'AI Report',
-              state: payload.llmReportResultsState,
-            },
-          ]}
-        />
+        <div className="sticky top-0 z-10 -mx-2 -mt-2 bg-[#090D14]/95 px-2 pt-2 pb-2 backdrop-blur-sm">
+          <AiPanelSectionSwitcher
+            activeValue={activeTab}
+            onChange={value => setActiveTab(value as PanelTab)}
+            options={[
+              {
+                value: 'measurements',
+                label: 'AI Measurements',
+                state: payload.panechoEchoprimeCombinedResultsState,
+              },
+              {
+                value: 'report',
+                label: 'AI Report',
+                state: payload.llmReportResultsState,
+              },
+            ]}
+          />
+        </div>
 
         {activeTab === 'measurements' ? (
           payload.panechoEchoprimeCombinedResultsState === 'ready' ? (
