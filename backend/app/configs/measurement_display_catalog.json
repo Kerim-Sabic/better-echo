@@ -1503,7 +1503,7 @@
     }
   },
   "rv_systolic_function_depressed": {
-    "display_name": "RV Systolic Function Depressed",
+    "display_name": "RV Systolic Function",
     "kind": "categorical",
     "section": "Right Heart",
     "section_order": 4,

@@ -1,51 +1,49 @@
 import React from 'react';
 
 type Props = {
-  studyUid?: string | null;
+  title: string;
   state?: string | null;
-  sectionCount: number;
-  totalMeasurements?: number | null;
+  chips?: Array<string | null | undefined | false>;
 };
 
-function getStateClassName(state?: string | null) {
-  if (state === 'ready') {
-    return 'bg-green-950/70 text-green-300 border border-green-500/40';
-  }
-
-  if (state === 'pending' || state === 'loading') {
-    return 'bg-yellow-950/70 text-yellow-300 border border-yellow-500/40';
-  }
-
-  if (state === 'error' || state === 'failed') {
-    return 'bg-red-950/70 text-red-300 border border-red-500/40';
-  }
-
-  return 'bg-[#182033] text-[#AFC1E6] border border-[#2A395A]';
+function getStateDotColor(state?: string | null) {
+  if (state === 'ready') return '#34d399';
+  if (state === 'pending' || state === 'loading') return '#fde047';
+  if (state === 'error' || state === 'failed') return '#f87171';
+  return '#60708F';
 }
 
-export default function AiPanelHeader({
-  state,
-  sectionCount,
-  totalMeasurements,
-}: Props) {
+export default function AiPanelHeader({ title, state, chips = [] }: Props) {
+  const visibleChips = chips.filter((chip): chip is string => Boolean(chip));
+
   return (
-    <header className="rounded border border-[#1A2030] bg-[#0B0F17] p-2">
-      <div className="text-[13px] font-bold text-white">AI Echo Report</div>
-      <div className="mt-2 flex flex-wrap items-center gap-1">
-        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${getStateClassName(state)}`}>
-          {state || 'loading'}
-        </span>
+    <header className="overflow-hidden rounded border border-[#1A2030] bg-[#0B0F17] px-2.5 py-1.5">
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0 truncate text-[11px] font-bold text-white">{title}</div>
 
-        <span className="rounded-full border border-[#2A344A] bg-[#121928] px-2 py-0.5 text-[10px] text-[#AFC1E6]">
-          {sectionCount} Sections
-        </span>
-
-        {typeof totalMeasurements === 'number' && (
-          <span className="rounded-full border border-[#2A344A] bg-[#121928] px-2 py-0.5 text-[10px] text-[#AFC1E6]">
-            {totalMeasurements} Total Measurements
+        <div className="flex shrink-0 items-center gap-1.5">
+          <span className="text-[9px] uppercase tracking-wide text-[#6B7FA3]">
+            {state || 'loading'}
           </span>
-        )}
+          <span
+            className="inline-block h-2 w-2 shrink-0 rounded-full"
+            style={{ backgroundColor: getStateDotColor(state) }}
+          />
+        </div>
       </div>
+
+      {visibleChips.length > 0 && (
+        <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1">
+          {visibleChips.map((chip, index) => (
+            <span
+              key={`${chip}-${index}`}
+              className="truncate rounded border border-[#1E2A3E] bg-[#0E1420] px-1.5 py-[1px] text-[9px] text-[#8D98B3]"
+            >
+              {chip}
+            </span>
+          ))}
+        </div>
+      )}
     </header>
   );
 }

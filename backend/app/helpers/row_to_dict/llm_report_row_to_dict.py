@@ -6,10 +6,10 @@ from app.database_models.derived_results import DerivedResult
 def _parse_report_display(report_text: Any) -> Dict[str, Any]:
     text = str(report_text or "").replace("\r\n", "\n").strip()
     if not text:
-        return {"mainTitle": "Clinical Echo Report", "sections": []}
+        return {"mainTitle": "Clinical Echocardiography Report", "sections": []}
 
     lines = text.split("\n")
-    main_title = "Clinical Echo Report"
+    main_title = "Clinical Echocardiography Report"
     start_index = 0
 
     if lines[0].startswith("# "):

@@ -19,16 +19,11 @@ module.exports = {
       base: '0.8125rem', // 13px
       lg: '0.875rem', // 14px
       xl: '1rem', // 16px
-      // 2xl and above will be updated in an upcoming version
       '2xl': '1.5rem',
       '3xl': '1.875rem',
       '4xl': '2.25rem',
       '5xl': '3rem',
       '6xl': '4rem',
-      // '2xl': '1.125rem', // 18px
-      // '3xl': '1.375rem', // 22px
-      // '4xl': '1.5rem', // 24px
-      // '5xl': '1.875rem', // 30px
     },
     fontWeight: {
       hairline: '100',
@@ -101,9 +96,9 @@ module.exports = {
         'accordion-up': 'accordion-up 0.2s ease-out',
       },
       bkg: {
-        low: '#050615',
-        med: '#090C29',
-        full: '#041C4A',
+        low: '#0d1117',
+        med: '#161b22',
+        full: '#21262d',
       },
       info: {
         primary: '#FFFFFF',

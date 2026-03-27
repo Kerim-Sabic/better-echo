@@ -1,9 +1,14 @@
 import React from 'react';
-import { MeasurementSection } from '../horalixAiResults.types';
+import { MeasurementSection } from '../../horalixAiResults.types';
 import SectionBox from './SectionBox';
 
 type Props = {
   sections: MeasurementSection[];
+  onRequestSavePanechoOverride?: (
+    key: string,
+    override: { value?: number; label?: string }
+  ) => void;
+  onRequestClearPanechoOverride?: (key: string) => void;
 };
 
 const SECTION_TITLES: Record<string, string> = {
@@ -23,7 +28,11 @@ function formatSectionTitle(section?: string) {
   return SECTION_TITLES[section] || section.toUpperCase();
 }
 
-export default function SectionsList({ sections }: Props) {
+export default function SectionsList({
+  sections,
+  onRequestSavePanechoOverride,
+  onRequestClearPanechoOverride,
+}: Props) {
   if (!sections.length) {
     return null;
   }
@@ -35,6 +44,8 @@ export default function SectionsList({ sections }: Props) {
           key={`${section.section || 'section'}-${index}`}
           title={formatSectionTitle(section.section)}
           items={section.items ?? []}
+          onRequestSavePanechoOverride={onRequestSavePanechoOverride}
+          onRequestClearPanechoOverride={onRequestClearPanechoOverride}
         />
       ))}
     </>

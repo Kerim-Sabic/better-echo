@@ -1,56 +1,110 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { HoralixAiResultsPayload } from '../horalixAiResults.types';
-import AiPanelHeader from '../components/AiPanelHeader';
-import MainMeasurements from '../components/MainMeasurements';
-import SectionsList from '../components/SectionsList';
+import AiPanelEmptyState from '../components/AiPanelEmptyState';
+import AiPanelSectionSwitcher from '../components/AiPanelSectionSwitcher';
+import AiMeasurementsPanel from '../components/ai_measurements/AiMeasurementsPanel';
+import AiMeasurementsLoadingState from '../components/ai_measurements/AiMeasurementsLoadingState';
+import AiReportPanel from '../components/ai_report/AiReportPanel';
+import AiReportLoadingState from '../components/ai_report/AiReportLoadingState';
 
 type Props = {
   payload: HoralixAiResultsPayload | null;
+  onRequestSavePanechoOverride?: (
+    key: string,
+    override: { value?: number; label?: string }
+  ) => void;
+  onRequestClearPanechoOverride?: (key: string) => void;
+  onRequestRegenerateLlmReport?: () => void;
 };
 
-function EmptyState({ message }: { message: string }) {
-  return (
-    <div className="h-full bg-[#090D14] p-2 text-white">
-      <div className="rounded border border-[#1A2030] bg-[#0B0F17] p-3 text-sm text-[#A8B4D0]">
-        {message}
-      </div>
-    </div>
-  );
-}
+type PanelTab = 'measurements' | 'report';
 
-export default function HoralixAiResultsPanelLayout({ payload }: Props) {
+export default function HoralixAiResultsPanelLayout({
+  payload,
+  onRequestSavePanechoOverride,
+  onRequestClearPanechoOverride,
+  onRequestRegenerateLlmReport,
+}: Props) {
+  const [activeTab, setActiveTab] = useState<PanelTab>('measurements');
+
   if (!payload) {
-    return <EmptyState message="Waiting for AI measurements payload from parent application." />;
+    return (
+      <AiPanelEmptyState message="Waiting for AI payload from parent application." />
+    );
   }
 
-  const state = payload.panechoEchoprimeCombinedResultsState ?? 'loading';
-  const aiMeasurements = payload.panechoEchoprimeAiMeasurements;
-
-  if (!aiMeasurements) {
-    return <EmptyState message="No AI measurements payload received." />;
-  }
-
-  const mainMeasurements = aiMeasurements.mainMeasurements ?? [];
-  const measurementSections = (aiMeasurements.measurementSections ?? []).filter(
-    section => (section.items ?? []).length > 0
-  );
+  const editorState = payload.panechoEchoprimeEditorState ?? null;
 
   return (
     <div className="h-full overflow-y-auto bg-[#090D14] p-2 text-white">
       <div className="space-y-2">
-        <AiPanelHeader
-          state={state}
-          sectionCount={measurementSections.length}
-          totalMeasurements={aiMeasurements.totalMeasurements}
-        />
+        <div className="sticky top-0 z-10 -mx-2 -mt-2 bg-[#090D14]/95 px-2 pt-2 pb-2 backdrop-blur-sm">
+          <AiPanelSectionSwitcher
+            activeValue={activeTab}
+            onChange={value => setActiveTab(value as PanelTab)}
+            options={[
+              {
+                value: 'measurements',
+                label: 'AI Measurements',
+                state: payload.panechoEchoprimeCombinedResultsState,
+              },
+              {
+                value: 'report',
+                label: 'AI Report',
+                state: payload.llmReportResultsState,
+              },
+            ]}
+          />
+        </div>
 
-        <MainMeasurements items={mainMeasurements} />
-        <SectionsList sections={measurementSections} />
-
-        {state !== 'ready' && (
-          <div className="rounded border border-[#2A344A] bg-[#121928] p-2 text-[11px] text-[#AFC1E6]">
-            Measurements are not ready yet. This panel updates automatically when new payload arrives.
-          </div>
+        {activeTab === 'measurements' ? (
+          payload.panechoEchoprimeCombinedResultsState === 'ready' ? (
+            <AiMeasurementsPanel
+              state={payload.panechoEchoprimeCombinedResultsState}
+              totalMeasurements={
+                payload.panechoEchoprimeAiMeasurements?.totalMeasurements
+              }
+              mainMeasurements={
+                payload.panechoEchoprimeAiMeasurements?.mainMeasurements ?? []
+              }
+              measurementSections={
+                payload.panechoEchoprimeAiMeasurements?.measurementSections ?? []
+              }
+              onRequestSavePanechoOverride={onRequestSavePanechoOverride}
+              onRequestClearPanechoOverride={onRequestClearPanechoOverride}
+            />
+          ) : (
+            <AiMeasurementsLoadingState
+              state={payload.panechoEchoprimeCombinedResultsState}
+            />
+          )
+        ) : payload.llmReportResultsState === 'ready' ? (
+          <AiReportPanel
+            state={payload.llmReportResultsState}
+            sections={payload.llmEchoReport?.sections ?? []}
+            reportGeneratedAt={payload.llmEchoReport?.reportGeneratedAt ?? null}
+            hasOverrides={editorState?.hasOverrides ?? false}
+            isReportStale={editorState?.isReportStale ?? false}
+            canRegenerateAiReport={editorState?.canRegenerateAiReport ?? false}
+            isRegeneratingAiReport={editorState?.isRegeneratingAiReport ?? false}
+            regenerateAiReportErrorMessage={
+              editorState?.regenerateAiReportErrorMessage ?? null
+            }
+            onRequestRegenerateLlmReport={onRequestRegenerateLlmReport}
+          />
+        ) : (
+          <AiReportLoadingState
+            state={payload.llmReportResultsState}
+            detail={payload.llmReportResultsDetail ?? null}
+            hasOverrides={editorState?.hasOverrides ?? false}
+            isReportStale={editorState?.isReportStale ?? false}
+            canRegenerateAiReport={editorState?.canRegenerateAiReport ?? false}
+            isRegeneratingAiReport={editorState?.isRegeneratingAiReport ?? false}
+            regenerateAiReportErrorMessage={
+              editorState?.regenerateAiReportErrorMessage ?? null
+            }
+            onRequestRegenerateLlmReport={onRequestRegenerateLlmReport}
+          />
         )}
       </div>
     </div>
