@@ -7,28 +7,27 @@ type Props = {
 };
 
 export default function AiMeasurementsLoadingState({ state }: Props) {
-  let message = 'Waiting for AI Echo Measurements.';
+  let message = 'Waiting for AI Measurements.';
   let tone: 'info' | 'warning' | 'error' = 'info';
 
   if (state === 'pending' || state === 'loading') {
-    message =
-      'Calculating the AI Echo Measurements.';
+    message = 'Calculating the AI Measurements.';
     tone = 'warning';
   }
 
   if (state === 'failed' || state === 'error') {
-    message = 'AI Echo Measurements could not be loaded.';
+    message = 'AI Measurements could not be loaded.';
     tone = 'error';
   }
 
   if (state === 'not_found') {
-    message = 'No AI Echo Measurements available for this study.';
+    message = 'No AI Measurements available for this study.';
     tone = 'info';
   }
 
   return (
     <div className="space-y-2">
-      <AiPanelHeader title="AI Echo Measurements" state={state} />
+      <AiPanelHeader title="AI Measurements" state={state} />
       <AiPanelStatusMessage message={message} tone={tone} />
     </div>
   );

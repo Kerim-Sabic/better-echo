@@ -23,27 +23,27 @@ export default function AiReportLoadingState({
   regenerateAiReportErrorMessage = null,
   onRequestRegenerateLlmReport,
 }: Props) {
-  let message = 'Waiting for AI Echo Report.';
+  let message = 'Waiting for AI Report.';
   let tone: 'info' | 'warning' | 'error' = 'info';
 
   if (state === 'pending' || state === 'loading') {
-    message = 'AI Echo Report is being generated.';
+    message = 'AI Report is being generated.';
     tone = 'warning';
   }
 
   if (state === 'failed' || state === 'error') {
-    message = detail || 'AI Echo Report generation failed.';
+    message = detail || 'AI Report generation failed.';
     tone = 'error';
   }
 
   if (state === 'not_found') {
-    message = 'No AI Echo Report available.';
+    message = 'No AI Report available.';
     tone = 'info';
   }
 
   return (
     <div className="space-y-2">
-      <AiPanelHeader title="AI Echo Report" state={state} />
+      <AiPanelHeader title="AI Report" state={state} />
 
       {hasOverrides && (
         <div className="rounded border border-[#1A2030] bg-[#0B0F17] p-2">
