@@ -4,6 +4,11 @@ import { usePanechoEchoprimeCombinedResultsQuery } from "@/features/study_result
 import { useDynamicMeasurementsCombinedResultsQuery } from "@/features/study_results/tanstack/queries/useDynamicMeasurementsCombinedResultsQuery";
 import { useLlmReportResultsQuery } from "@/features/study_results/tanstack/queries/useLlmReportResultsQuery";
 import { buildStudyResultsOhifAiPayload } from "@/features/study_results/viewmodels/ohifAiPayloadSerializer";
+import { buildStudyResultsPdfData } from "@/features/study_results/viewmodels/pdf_printing/studyResultsPdfSerializer";
+import {
+  openAiMeasurementsPrintPreview,
+  openAiReportPrintPreview,
+} from "@/features/study_results/viewmodels/pdf_printing/studyResultsPdfGenerator";
 import { usePanechoEchoprimeEditorViewModel } from "@/features/study_results/viewmodels/usePanechoEchoprimeEditorViewModel";
 
 // Resolves a single page-level state from the three study results query states.
@@ -139,6 +144,56 @@ export function useStudyResultsViewModel(studyUid) {
     ]
   );
 
+  // --- Part 4. Expose separate print-preview documents from the same normalized page state. ---
+  const buildCurrentStudyResultsPdfData = useCallback(() => {
+    if (!studyUid) {
+      return null;
+    }
+
+    return buildStudyResultsPdfData({
+      studyUid,
+      downloadRequestedAt: new Date(),
+      studyResultsState,
+      panechoEchoprimeCombinedResultsState,
+      panechoEchoprimeCombinedResultsData,
+      llmReportResultsState,
+      llmReportResultsData,
+      llmReportResultsDetail,
+      panechoEchoprimeEditorViewModel,
+    });
+  }, [
+    studyUid,
+    studyResultsState,
+    panechoEchoprimeCombinedResultsState,
+    panechoEchoprimeCombinedResultsData,
+    llmReportResultsState,
+    llmReportResultsData,
+    llmReportResultsDetail,
+    panechoEchoprimeEditorViewModel,
+  ]);
+
+  const printAiMeasurementsDocument = useCallback(async () => {
+    const studyResultsPdfData = buildCurrentStudyResultsPdfData();
+
+    if (!studyResultsPdfData) {
+      return;
+    }
+
+    await openAiMeasurementsPrintPreview(studyResultsPdfData);
+  }, [buildCurrentStudyResultsPdfData]);
+
+  const printAiReportDocument = useCallback(async () => {
+    const studyResultsPdfData = buildCurrentStudyResultsPdfData();
+
+    if (!studyResultsPdfData) {
+      return;
+    }
+
+    await openAiReportPrintPreview(studyResultsPdfData);
+  }, [buildCurrentStudyResultsPdfData]);
+
+
+// --- Part 5. onBack and refetchStudyResults handlers ---
   const onBack = useCallback(() => {
     navigate("/dashboard");
   }, [navigate]);
@@ -169,6 +224,11 @@ export function useStudyResultsViewModel(studyUid) {
     viewerRefreshToken,
 
     panechoEchoprimeEditorViewModel,
+
+    canPrintAiMeasurementsDocument: Boolean(studyUid),
+    canPrintAiReportDocument: Boolean(studyUid),
+    printAiMeasurementsDocument,
+    printAiReportDocument,
 
     onBack,
     refetchStudyResults,

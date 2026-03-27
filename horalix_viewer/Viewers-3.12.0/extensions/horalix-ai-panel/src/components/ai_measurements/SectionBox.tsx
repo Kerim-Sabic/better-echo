@@ -1,6 +1,59 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { MeasurementItem } from '../../horalixAiResults.types';
 
+function PenIcon({ size = 10 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M11.5 1.5L14.5 4.5L5 14H2V11L11.5 1.5Z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+      <line
+        x1="9.5"
+        y1="3.5"
+        x2="12.5"
+        y2="6.5"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      />
+    </svg>
+  );
+}
+
+function ResetIcon({ size = 10 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M2 2V6H6"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M2.5 5.5C3.5 3 5.8 1.5 8.5 1.5C11.8 1.5 14.5 4.2 14.5 7.5C14.5 10.8 11.8 13.5 8.5 13.5C6.2 13.5 4.2 12.2 3.2 10.2"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 type Props = {
   title: string;
   items: MeasurementItem[];
@@ -201,29 +254,19 @@ function MeasurementRow({
   };
 
   return (
-    <div className="border-b border-[#1A2030] py-1.5 last:border-b-0">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex items-center gap-1.5">
-            <div className="text-[10px] leading-snug tracking-wide text-[#8D98B3] uppercase">
-              {item.label || item.key || 'Measurement'}
-            </div>
-
-            {item.isOverridden && (
-              <span className="rounded border border-amber-400/30 bg-amber-400/10 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-200">
-                Edited
-              </span>
-            )}
+    <div className="border-b border-[#1A2030] py-1 last:border-b-0">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-1">
+          <div className="min-w-0 truncate text-[10px] leading-snug tracking-wide text-[#8D98B3]">
+            {item.label || item.key || 'Measurement'}
           </div>
 
-          {validationError && (
-            <div className="mt-1 text-[10px] text-red-300">
-              {validationError}
-            </div>
+          {item.isOverridden && (
+            <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" title="Edited" />
           )}
         </div>
 
-        <div className="flex shrink-0 items-center gap-1.5 text-right">
+        <div className="flex shrink-0 items-center gap-1 text-right">
           {!isEditing && (
             <>
               <span className="text-[11px] font-semibold text-white">
@@ -238,44 +281,47 @@ function MeasurementRow({
 
               {item.discrepancy && (
                 <span
-                  className="inline-block cursor-help text-[11px] font-bold leading-none text-red-400"
+                  className="inline-block cursor-help text-[10px] font-bold leading-none text-red-400"
                   title="Discrepancy, there is uncertainty about this measurement."
-                  aria-label="Discrepancy, there is uncertainty about this measurement."
                 >
                   !
                 </span>
+              )}
+
+              {canEdit && (
+                <button
+                  type="button"
+                  onClick={handleStartEdit}
+                  title="Edit measurement"
+                  className="ml-0.5 flex items-center justify-center rounded p-[2px] text-[#4B5975] transition hover:text-white"
+                >
+                  <PenIcon size={9} />
+                </button>
+              )}
+
+              {canReset && (
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  title="Reset to original"
+                  className="flex items-center justify-center rounded p-[2px] text-[#FCA5A5] transition hover:text-white"
+                >
+                  <ResetIcon size={9} />
+                </button>
               )}
             </>
           )}
         </div>
       </div>
 
-      {(canEdit || canReset) && !isEditing && (
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          {canEdit && (
-            <button
-              type="button"
-              onClick={handleStartEdit}
-              className="rounded border border-[#334155] px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-[#CBD5E1] transition hover:border-[#60A5FA] hover:text-white"
-            >
-              Edit
-            </button>
-          )}
-
-          {canReset && (
-            <button
-              type="button"
-              onClick={handleReset}
-              className="rounded border border-[#5B2333] px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-[#FCA5A5] transition hover:border-[#EF4444] hover:text-white"
-            >
-              Reset
-            </button>
-          )}
+      {validationError && (
+        <div className="mt-0.5 text-[9px] text-red-300">
+          {validationError}
         </div>
       )}
 
       {isEditing && canEdit && (
-        <div className="mt-2 space-y-2 rounded border border-[#1F2937] bg-[#0E1420] p-2">
+        <div className="mt-1.5 space-y-1.5 rounded border border-[#1F2937] bg-[#0E1420] p-1.5">
           {editType === 'label' ? (
             <select
               value={draftLabel}
@@ -283,7 +329,7 @@ function MeasurementRow({
                 setDraftLabel(event.target.value);
                 setValidationError(null);
               }}
-              className="w-full rounded border border-[#334155] bg-[#0B0F17] px-2 py-1.5 text-[11px] text-white outline-none focus:border-[#60A5FA]"
+              className="w-full rounded border border-[#334155] bg-[#0B0F17] px-1.5 py-1 text-[11px] text-white outline-none focus:border-[#60A5FA]"
             >
               <option value="">Select value</option>
               {labelOptions.map(option => (
@@ -301,15 +347,15 @@ function MeasurementRow({
                 setDraftValue(event.target.value);
                 setValidationError(null);
               }}
-              className="w-full rounded border border-[#334155] bg-[#0B0F17] px-2 py-1.5 text-[11px] text-white outline-none focus:border-[#60A5FA]"
+              className="w-full rounded border border-[#334155] bg-[#0B0F17] px-1.5 py-1 text-[11px] text-white outline-none focus:border-[#60A5FA]"
             />
           )}
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1">
             <button
               type="button"
               onClick={handleSave}
-              className="rounded border border-[#1D4ED8] bg-[#1D4ED8] px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-white transition hover:bg-[#2563EB]"
+              className="rounded bg-[#1D4ED8] px-2 py-[3px] text-[9px] font-semibold text-white transition hover:bg-[#2563EB]"
             >
               Save
             </button>
@@ -317,7 +363,7 @@ function MeasurementRow({
             <button
               type="button"
               onClick={handleCancelEdit}
-              className="rounded border border-[#334155] px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-[#CBD5E1] transition hover:border-[#60A5FA] hover:text-white"
+              className="rounded border border-[#334155] px-2 py-[3px] text-[9px] font-semibold text-[#8D98B3] transition hover:text-white"
             >
               Cancel
             </button>
@@ -326,9 +372,9 @@ function MeasurementRow({
               <button
                 type="button"
                 onClick={handleReset}
-                className="rounded border border-[#5B2333] px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-[#FCA5A5] transition hover:border-[#EF4444] hover:text-white"
+                className="ml-auto rounded border border-[#5B2333] px-2 py-[3px] text-[9px] font-semibold text-[#FCA5A5] transition hover:text-white"
               >
-                Reset Override
+                Reset
               </button>
             )}
           </div>

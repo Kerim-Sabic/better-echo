@@ -8,6 +8,9 @@ export type MeasurementItem = {
   units?: string | null;
   probabilities?: Record<string, number> | null;
   color?: string | null;
+  rangeStatus?: 'normal' | 'borderline' | 'abnormal' | string | null;
+  referenceRangeText?: string | null;
+  rangeDirection?: 'high' | 'low' | 'normal' | string | null;
   discrepancy?: boolean;
   isOverridden?: boolean;
   editable?: boolean;

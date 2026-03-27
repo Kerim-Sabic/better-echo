@@ -1,4 +1,4 @@
-import { ArrowLeft, RefreshCw } from "lucide-react";
+import { ArrowLeft, Printer, RefreshCw } from "lucide-react";
 import { Button } from "@/general_components/ui/button";
 
 function formatStateLabel(stateValue, isPolling) {
@@ -47,6 +47,10 @@ export default function StudyResultsHeader({ studyResultsPageViewModel }) {
     studyResultsState,
     isPolling,
     anyLoading,
+    canPrintAiMeasurementsDocument,
+    canPrintAiReportDocument,
+    printAiMeasurementsDocument,
+    printAiReportDocument,
     onBack,
     refetchStudyResults,
   } = studyResultsPageViewModel;
@@ -76,14 +80,34 @@ export default function StudyResultsHeader({ studyResultsPageViewModel }) {
         </div>
       </div>
 
-      <div className="hidden md:flex items-center gap-2 ml-auto">
-        <span className={`px-2 py-1 text-xs rounded-full border ${stateClassName}`}>
+      <div className="flex items-center gap-2 ml-auto shrink-0">
+        <span className={`hidden md:inline-flex px-2 py-1 text-xs rounded-full border ${stateClassName}`}>
           {stateLabel}
         </span>
 
+        <Button
+          variant="outline"
+          onClick={printAiMeasurementsDocument}
+          disabled={!canPrintAiMeasurementsDocument}
+          className="gap-2"
+        >
+          <Printer className="w-4 h-4" />
+          <span className="hidden sm:inline">Print AI Measurements</span>
+        </Button>
+
+        <Button
+          variant="outline"
+          onClick={printAiReportDocument}
+          disabled={!canPrintAiReportDocument}
+          className="gap-2"
+        >
+          <Printer className="w-4 h-4" />
+          <span className="hidden sm:inline">Print AI Report</span>
+        </Button>
+
         <Button variant="outline" onClick={refetchStudyResults} className="gap-2">
           <RefreshCw className={`w-4 h-4 ${anyLoading ? "animate-spin" : ""}`} />
-          Refresh
+          <span className="hidden sm:inline">Refresh</span>
         </Button>
       </div>
     </div>

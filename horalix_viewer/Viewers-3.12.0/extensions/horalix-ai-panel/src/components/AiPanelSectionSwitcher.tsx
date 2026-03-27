@@ -42,28 +42,23 @@ export default function AiPanelSectionSwitcher({
   onChange,
 }: Props) {
   return (
-    <div className="grid grid-cols-2 gap-2">
+    <div className="grid grid-cols-2 gap-1.5">
       {options.map(option => (
         <button
           key={option.value}
           type="button"
           onClick={() => onChange(option.value)}
-          className={`flex items-center justify-between rounded border px-3 py-2 text-left transition-colors ${getButtonClassName(
+          className={`flex items-center justify-between rounded border px-2 py-1.5 text-left transition-colors ${getButtonClassName(
             activeValue === option.value
           )}`}
         >
-          <span className="text-[12px] font-semibold">{option.label}</span>
+          <span className="min-w-0 truncate text-[11px] font-semibold">{option.label}</span>
 
-          <span className="flex items-center gap-2">
-            <span className="text-[10px] uppercase tracking-wide text-[#8D98B3]">
-              {option.state || 'idle'}
-            </span>
-            <span
-              className={`inline-block h-2 w-2 rounded-full ${getDotClassName(
-                option.state
-              )}`}
-            />
-          </span>
+          <span
+            className={`ml-1.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full ${getDotClassName(
+              option.state
+            )}`}
+          />
         </button>
       ))}
     </div>

@@ -17,7 +17,11 @@ export interface ElectronAPI {
     onMaximizeChange: (callback: (isMax: boolean) => void) => () => void;
   };
   report: {
-    previewPdf: (html: string, options?: any) => Promise<{ ok: boolean; path?: string; error?: string }>;
+    previewPdf: (
+      html: string,
+      options?: any,
+      title?: string
+    ) => Promise<{ ok: boolean; path?: string; error?: string }>;
   };
 }
 
@@ -39,7 +43,8 @@ const electronAPI: ElectronAPI = {
     },
   },
   report: {
-    previewPdf: (html: string, options?: any) => ipcRenderer.invoke('report:printToPdf', { html, options }),
+    previewPdf: (html: string, options?: any, title?: string) =>
+      ipcRenderer.invoke('report:printToPdf', { html, options, title }),
   },
 };
 
