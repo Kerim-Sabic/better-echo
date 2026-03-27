@@ -91,7 +91,8 @@ export function useStudyResultsViewModel(studyUid) {
   const llmReportResultsDetail = llmReportQueryData?.detail ?? null;
 
   const viewerRefreshToken =
-    dynamicMeasurementsQueryData?.viewerRefreshToken ?? "no-derived-dicom";
+    dynamicMeasurementsQueryData?.viewerRefreshToken ??
+    "dynamic-measurements-not-ready";
 
   // --- Part 2. Compose the PanEcho/EchoPrime editing workflow ViewModel. ---
   const panechoEchoprimeEditorViewModel = usePanechoEchoprimeEditorViewModel({

@@ -170,9 +170,12 @@ export function formatDynamicMeasurementsCombinedResultsDto(rawApiResponse) {
 
   return {
     state,
-    viewerRefreshToken: buildDynamicMeasurementsViewerRefreshToken(
-      rawData.dynamic_measurements_results
-    ),
+    viewerRefreshToken:
+      state === "ready"
+        ? buildDynamicMeasurementsViewerRefreshToken(
+            rawData.dynamic_measurements_results
+          )
+        : "dynamic-measurements-not-ready",
   };
 }
 

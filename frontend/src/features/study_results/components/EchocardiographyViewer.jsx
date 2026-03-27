@@ -80,7 +80,9 @@ export default function EchocardiographyViewer({ studyResultsPageViewModel }) {
     process.env.REACT_APP_OHIF_CONFIG_URL || `${viewerRoot}/orthanc-standalone.json`
   );
 
-  const viewerDataVersion = String(viewerRefreshToken || "no-derived-dicom");
+  const viewerDataVersion = String(
+    viewerRefreshToken || "dynamic-measurements-not-ready"
+  );
   const cacheBuster = `${studyUid || "study"}-${location.key || "location"}-${viewerDataVersion}`;
 
   const configUrl = configUrlRaw.includes("?")
