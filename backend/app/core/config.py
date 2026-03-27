@@ -1,11 +1,13 @@
+import json
 from functools import lru_cache
-from typing import Optional
+from typing import Annotated, Optional
 
-from pydantic_settings import BaseSettings
+from pydantic import field_validator
+from pydantic_settings import BaseSettings, NoDecode
 
 
 class Settings(BaseSettings):
-    CORS_ORIGIN: list[str]
+    CORS_ORIGIN: Annotated[list[str], NoDecode]
 
     ORTHANC_URL: str
     ORTHANC_USER: str
@@ -13,6 +15,11 @@ class Settings(BaseSettings):
 
     DATABASE_URL: str = "postgresql+psycopg://horalix:horalix_dev@localhost:5433/horalix"
     TEST_DATABASE_URL: Optional[str] = None
+    BACKEND_HOST: str = "127.0.0.1"
+    BACKEND_PORT: int = 8000
+    POSTGRES_PORT: int = 5433
+    VIEWER_PUBLIC_BASE_URL: str = "http://localhost:3001"
+    STOP_LOCAL_INFRA_ON_QUIT: bool = True
 
     SECRET_KEY: str
     TOKEN_EXPIRE_HOURS: int
@@ -52,9 +59,18 @@ class Settings(BaseSettings):
     MEASUREMENTS_DEVICE: str = "auto"
     RESERVED_LLM_DEVICE: Optional[str] = None
 
+    ENABLE_LLM: bool = True
     LLM_BASE_URL: str = "http://localhost:8012/v1"
     LLM_API_KEY: str = "local-echo-key"
     LLM_MODEL: str = "Qwen/Qwen2.5-14B-Instruct-AWQ"
+    LLM_WSL_DISTRO: str = "Ubuntu"
+    LLM_VENV_PATH: str = "~/vllm"
+    LLM_GPU_INDEX: int = 1
+    HF_HOME: Optional[str] = None
+
+    LICENSE_ENFORCEMENT: bool = False
+    LICENSE_STORAGE_DIR: Optional[str] = None
+    LICENSE_PUBLIC_KEY_B64: Optional[str] = None
 
     LLM_PROMPT_TEMPLATE_PATH: str = "app/prompting/echo_report_prompt.md.j2"
     LLM_TEMPERATURE_REPORT: float = 0.0
@@ -71,6 +87,30 @@ class Settings(BaseSettings):
     LLM_HISTORY_MAX_TURNS: int = 2
     # Versioning for prompts/policies
     LLM_PROMPT_VERSION: str = "v1"
+
+    @field_validator("CORS_ORIGIN", mode="before")
+    @classmethod
+    def parse_cors_origin(cls, value):
+        if isinstance(value, list):
+            return value
+
+        raw_value = str(value or "").strip()
+        if not raw_value:
+            return []
+
+        raw_value = raw_value.split(" #", 1)[0].strip()
+
+        if raw_value.startswith("["):
+            parsed_value = json.loads(raw_value)
+            if not isinstance(parsed_value, list):
+                raise ValueError("CORS_ORIGIN must decode to a list of origins")
+            return [str(item).strip() for item in parsed_value if str(item).strip()]
+
+        return [
+            item.strip().strip('"').strip("'")
+            for item in raw_value.split(",")
+            if item.strip().strip('"').strip("'")
+        ]
 
     class Config:
         env_file = ".env"

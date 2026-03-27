@@ -1,5 +1,6 @@
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/general_components/ui/button";
+import BrandLogo from "@/general_components/BrandLogo";
 
 export default function NewStudyHeader({ newStudyPageViewModel }) {
   const { status, onBack } = newStudyPageViewModel;
@@ -17,7 +18,7 @@ export default function NewStudyHeader({ newStudyPageViewModel }) {
             Back
           </Button>
 
-          <img src="/horalix-taskbar-app-icon.png" alt="Horalix Logo" className="w-8 h-8" />
+          <BrandLogo className="w-8 h-8" />
 
           <div>
             <h1 className="text-2xl font-bold heading-accent">New Study</h1>

@@ -1,8 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
 
-import sys
-import os
-from PyInstaller.utils.hooks import collect_data_files, collect_submodules
+from PyInstaller.utils.hooks import collect_data_files
 
 block_cipher = None
 
@@ -20,22 +18,10 @@ hiddenimports = [
     'uvicorn.lifespan.on',
     'sqlalchemy.sql.default_comparator',
     'passlib.handlers.bcrypt',
-    'app.api.upload',
-    'app.api.studies',
-    'app.api.infer_panecho',
-    'app.api.infer_echoprime',
-    'app.api.infer_echonet_dynamic',
-    'app.api.infer_measurements',
-    'app.api.authentication',
-    'app.api.llm',
-    'app.api.results.combined_panecho_echoprime_api',
-    'app.api.results.combined_dynamic_measurements_api',
-    'app.api.results.llm_report_get_api',
-    'app.api.pipeline.pipeline_start_api',
-    'app.api.pipeline.pipeline_status_api',
-    'app.api.pipeline.pipeline_promote_api',
-    'app.api.pipeline.pipeline_cancel_api',
-    'app.api.pipeline.pipeline_regenerate_api',
+    'app.main',
+    'matplotlib',
+    'matplotlib.pyplot',
+    'matplotlib.backends.backend_agg',
 ]
 
 # Data files
@@ -44,13 +30,15 @@ datas = [
     ('../app/prompting', 'app/prompting'),
     ('../.env', '.'),
 ]
+datas += collect_data_files('fido2')
+datas += collect_data_files('matplotlib')
 
 # Binaries - include torch and CUDA libraries if present
 binaries = []
 
 a = Analysis(
     ['launcher.py'],
-    pathex=[],
+    pathex=['..'],
     binaries=binaries,
     datas=datas,
     hiddenimports=hiddenimports,
@@ -58,7 +46,6 @@ a = Analysis(
     hooksconfig={},
     runtime_hooks=[],
     excludes=[
-        'matplotlib',
         'tkinter',
         'PyQt5',
         'PyQt6',

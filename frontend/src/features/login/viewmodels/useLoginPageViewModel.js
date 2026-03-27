@@ -1,5 +1,5 @@
 import { useContext, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import { AuthContext } from "@/contexts/AuthenticationContext";
 import { b64uToBuf, serializePublicKeyCredential } from "@/lib/webauthn";
@@ -7,6 +7,7 @@ import { b64uToBuf, serializePublicKeyCredential } from "@/lib/webauthn";
 import { loginRepository } from "@/features/login/model/loginRepository";
 import { useLoginMutation } from "@/features/login/tanstack/mutations/useLoginMutation";
 import { useBiometricLoginMutation } from "@/features/login/tanstack/mutations/useBiometricLoginMutation";
+import { useElectronRuntimeConfig } from "@/hooks/useElectronRuntimeConfig";
 
 const SESSION_HINT_KEY = "authSessionHint";
 
@@ -20,7 +21,9 @@ function persistSessionHint() {
 
 export function useLoginPageViewModel() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { setUser } = useContext(AuthContext);
+  const { runtimeConfig, openClientRuntimeConfigEditor } = useElectronRuntimeConfig();
 
   // 1. Data Fetching & Mutations (Server State)
   const loginMutation = useLoginMutation();
@@ -39,7 +42,8 @@ export function useLoginPageViewModel() {
   const handleLoginSuccess = (formattedLoginResponse) => {
     setUser(formattedLoginResponse.user);
     persistSessionHint();
-    navigate("/dashboard");
+    const returnPath = location.state?.from?.pathname;
+    navigate(returnPath || "/dashboard");
   };
 
   // 3.2 Credential login handler
@@ -122,5 +126,9 @@ export function useLoginPageViewModel() {
     setPassword,
     handleSubmit,
     handleBiometricLogin,
+    canOpenServerAdmin: runtimeConfig?.runtimeMode === "server",
+    onOpenServerAdmin: () => navigate("/server-admin"),
+    canReconfigureClientRuntime: runtimeConfig?.runtimeMode === "client",
+    onOpenClientRuntimeConfigEditor: openClientRuntimeConfigEditor,
   };
 }

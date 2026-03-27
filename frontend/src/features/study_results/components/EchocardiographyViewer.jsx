@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
+import { getViewerBaseUrl } from "../../../config/api";
 
 const MESSAGE_CHANNEL = "horalix-ai";
 const MESSAGE_VERSION = 1;
@@ -67,8 +68,11 @@ export default function EchocardiographyViewer({ studyResultsPageViewModel }) {
   const location = useLocation();
   const iframeRef = useRef(null);
   const iframeLoadedRef = useRef(false);
+  const [viewerBaseUrl, setViewerBaseUrl] = useState(
+    () => String(process.env.REACT_APP_OHIF_BASE_URL || "").replace(/\/+$/, "")
+  );
 
-  const base = String(process.env.REACT_APP_OHIF_BASE_URL || "").replace(/\/+$/, "");
+  const base = viewerBaseUrl;
   const hasStudyUid = Boolean(studyUid);
   const hasBase = Boolean(base);
 
@@ -229,6 +233,22 @@ export default function EchocardiographyViewer({ studyResultsPageViewModel }) {
     iframeLoadedRef.current = true;
     postAiPayload();
   }, [postAiPayload]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    getViewerBaseUrl()
+      .then(resolvedBaseUrl => {
+        if (isActive) {
+          setViewerBaseUrl(String(resolvedBaseUrl || "").replace(/\/+$/, ""));
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
 
   useEffect(() => {
     iframeLoadedRef.current = false;

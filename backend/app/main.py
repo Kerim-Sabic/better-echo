@@ -9,21 +9,24 @@ from fastapi.staticfiles import StaticFiles
 import uvicorn
 
 from app.api.health.health_api import router as health_router
+from app.api.admin import router as admin_router
 from app.services.inference.echoprime_service import start_echoprime_preload_background, unload_ep
 from app.api.upload_dicom import router as upload_dicom_router
 from app.api.studies import router as studies_router
 from app.api.patients import router as patients_router
 from app.api.inference import router as inference_router
 from app.api.authentication import router as authentication_router
+from app.api.licensing import router as licensing_router
 from app.api.llm import router as llm_router
 from app.api.pipeline import router as pipeline_router
 from app.api.results import router as results_router
+from app.database.setup_db import init_db
 from app.helpers.media.ffmpeg_mp4_writer import kill_tracked_ffmpeg_processes
 from app.helpers.inference_runtime.device_selector import get_device_for_model
 from app.helpers.inference_runtime.inference_functions import unload_panecho_model
 from app.helpers.inference_runtime.preload_utils import safe_preload, has_min_vram
-from app.AI_models.measurements.runner_2d import unload_2d_models
-from app.AI_models.measurements.runner_doppler import unload_doppler_models
+from app.services.licensing.middleware import enforce_license_middleware
+from app.services.licensing.service import log_current_license_status
 from app.services.auth.webauthn.state import assert_webauthn_state_runtime_safe
 from app.services.pipeline.scheduler import start_pipeline_scheduler, stop_pipeline_scheduler
 
@@ -82,6 +85,7 @@ if _detected_lan_ip:
         _cors_origins.append(_lan_frontend_origin)
 
 app = FastAPI()
+app.middleware("http")(enforce_license_middleware)
 
 app.add_middleware(
     CORSMiddleware,
@@ -95,6 +99,8 @@ app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 # Routes
 app.include_router(health_router, prefix="/api", tags=["Health"])
+app.include_router(admin_router, prefix="/api", tags=["Admin"])
+app.include_router(licensing_router, prefix="/api", tags=["Licensing"])
 app.include_router(authentication_router, prefix="/api")
 app.include_router(upload_dicom_router, prefix="/api", tags=["Upload dicom"])
 app.include_router(studies_router, prefix="/api", tags=["Studies"])
@@ -110,6 +116,12 @@ def startup_preload_models():
     Sequential, guarded preloads based on env flags.
     Each stage checks VRAM and skips on low memory or errors.
     """
+    # Part 0. Ensure schema exists before the scheduler touches queue tables.
+    init_db()
+
+    # Part 0.1 Load and log license status once at startup so runtime gating stays lightweight.
+    log_current_license_status()
+
     # Part 1. Validate WebAuthn state runtime mode.
     assert_webauthn_state_runtime_safe(
         state_backend=settings.WEBAUTHN_STATE_BACKEND,
@@ -191,6 +203,9 @@ def shutdown_cleanup():
     except Exception as exc:
         logger.warning("Shutdown cleanup: failed to unload PanEcho: %s", exc)
     try:
+        from app.AI_models.measurements.runner_2d import unload_2d_models
+        from app.AI_models.measurements.runner_doppler import unload_doppler_models
+
         unload_2d_models()
         unload_doppler_models()
         logger.info("Shutdown cleanup: unloaded Measurements models.")

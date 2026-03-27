@@ -4,13 +4,12 @@ import shutil
 import tempfile
 import threading
 import time
-from typing import Callable, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
 
 import requests
 import torch
 from sqlalchemy.orm import Session
 
-from app.AI_models.EchoPrime.echo_prime import EchoPrime
 from app.core.artifacts import UPLOAD_DIR
 from app.core.config import settings
 from app.database_models.derived_results import DerivedResult
@@ -25,18 +24,24 @@ orthanc_pass = settings.ORTHANC_PASS
 
 logger = logging.getLogger(__name__)
 
-_ep: Optional[EchoPrime] = None
+if TYPE_CHECKING:
+    from app.AI_models.EchoPrime.echo_prime import EchoPrime
+
+
+_ep: Optional[Any] = None
 _ep_lock = threading.Lock()
 _preload_thread: Optional[threading.Thread] = None
 
 
 # Part 1. EchoPrime model lifecycle helpers.
-def get_ep() -> EchoPrime:
+def get_ep() -> "EchoPrime":
     global _ep
     if _ep is not None:
         return _ep
     with _ep_lock:
         if _ep is None:
+            from app.AI_models.EchoPrime.echo_prime import EchoPrime
+
             start = time.time()
             _ep = EchoPrime()
             device = getattr(_ep, "device", None)
@@ -44,7 +49,7 @@ def get_ep() -> EchoPrime:
     return _ep
 
 
-def _warmup_ep(ep: EchoPrime) -> None:
+def _warmup_ep(ep: "EchoPrime") -> None:
     try:
         dummy = torch.zeros((1, 3, 16, 224, 224), device=ep.device)
         with torch.no_grad():
@@ -57,7 +62,7 @@ def _warmup_ep(ep: EchoPrime) -> None:
         logger.warning("[EchoPrime] Warmup skipped due to error: %s", exc)
 
 
-def preload_echoprime(warmup: bool = False) -> Optional[EchoPrime]:
+def preload_echoprime(warmup: bool = False) -> Optional["EchoPrime"]:
     try:
         start = time.time()
         ep = get_ep()
@@ -328,4 +333,3 @@ def classify_views_for_study(
         study_uid,
     )
     return result_map
-

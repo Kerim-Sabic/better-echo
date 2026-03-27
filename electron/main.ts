@@ -1,12 +1,20 @@
 import { app, ipcMain, session } from 'electron';
 import * as path from 'path';
+import { loadBackendEnvIntoProcessEnv } from './env';
 import { registerIpcHandlers } from './ipc';
-import { attemptStartOrthanc, setupOrthancAuth, stopOrthanc } from './orthanc';
+import { setupOrthancAuth } from './orthanc';
 import { startBackend, stopBackend, getBackendPort } from './backend';
 import { createMainWindow, createTray, getMainWindow, getTrayIconPath } from './window';
 import { startLLM, stopLLM, isLLMRunning } from './llm';
+import { getRuntimeMode } from './runtime';
+import { startManagedInfrastructure, stopManagedInfrastructure } from './infrastructure';
+import { runServerPreflight } from './preflight';
+
+loadBackendEnvIntoProcessEnv();
 
 const isDev = process.env.NODE_ENV === 'development';
+const runtimeMode = getRuntimeMode();
+const managesLocalServices = runtimeMode === 'server';
 const REACT_DEV_PORT = 3000;
 const BACKEND_DEV_PORT = 8000;
 // Toggle to default-open DevTools in development. Flip to true locally if desired.
@@ -24,13 +32,29 @@ const ORTHANC_CONFIG = {
     pass: process.env.ORTHANC_PASS || 'orthanc',
 };
 
-// Feature flag: stop Orthanc Docker container on quit (default true in prod)
-const STOP_ORTHANC_ON_QUIT: boolean = (
-    (process.env.STOP_ORTHANC_ON_QUIT ?? (isDev ? '0' : '1')) === '1'
+// Feature flag: stop packaged-server Docker services on quit (default true in prod)
+const STOP_LOCAL_INFRA_ON_QUIT: boolean = (
+    (process.env.STOP_LOCAL_INFRA_ON_QUIT ?? (isDev ? '0' : '1')) === '1'
 );
-// Best-effort cleanup; Orthanc may be left running if this flag is off or stop fails.
+// Best-effort cleanup; local Docker services may be left running if this flag is off or stop fails.
 
 let isQuitting = false;
+
+function parseBooleanEnvFlag(value: string | undefined, fallback: boolean): boolean {
+    if (value === undefined) {
+        return fallback;
+    }
+
+    const normalized = value.trim().toLowerCase();
+    if (normalized === 'true' || normalized === '1' || normalized === 'yes') {
+        return true;
+    }
+    if (normalized === 'false' || normalized === '0' || normalized === 'no') {
+        return false;
+    }
+
+    return fallback;
+}
 
 // Ensure single instance
 const gotTheLock = app.requestSingleInstanceLock();
@@ -75,35 +99,52 @@ async function clearRendererWebCaches(): Promise<void> {
 }
 
 app.on('ready', async () => {
-    try {
-        if (CLEAR_ELECTRON_WEB_CACHE_ON_START) {
-            await clearRendererWebCaches();
-        }
-        if (!isDev) {
-            attemptStartOrthanc().catch((err) => console.warn('Orthanc start warning:', err));
-        }
-        setupOrthancAuth(ORTHANC_CONFIG);
-        const resourcesPath = process.resourcesPath || path.join(__dirname, '..');
-        await startBackend({ isDev, devPort: BACKEND_DEV_PORT, resourcesPath });
+  try {
+    console.log(`Electron runtime mode: ${runtimeMode}`);
 
-        // Start LLM if enabled and not already running
-        const enableLLM = process.env.ENABLE_LLM === 'true';
-        const llmRunning = await isLLMRunning();
+    if (CLEAR_ELECTRON_WEB_CACHE_ON_START) {
+      await clearRendererWebCaches();
+    }
 
-        if (enableLLM && !llmRunning) {
-            console.log('ENABLE_LLM is true and LLM not running, starting LLM in background...');
-            // Don't await - let LLM start in background while window opens
-            startLLM({ resourcesPath }).catch((err) => {
-                console.warn('LLM start warning:', err);
-                // Continue without LLM if startup fails
-            });
-        } else if (llmRunning) {
-            console.log('LLM is already running, skipping startup');
-        } else {
-            console.log('ENABLE_LLM is not set, skipping LLM startup');
-        }
+    const resourcesPath = process.resourcesPath || path.join(__dirname, '..');
 
-        registerIpcHandlers(ipcMain, () => getBackendPort());
+    if (managesLocalServices && !isDev) {
+      await runServerPreflight({ isDev, resourcesPath });
+      await startManagedInfrastructure({
+        postgresPort: parseInt(process.env.POSTGRES_PORT || '5433', 10),
+        orthancUrl: ORTHANC_CONFIG.url,
+        viewerUrl: process.env.VIEWER_PUBLIC_BASE_URL || 'http://localhost:3001',
+      });
+    }
+    if (managesLocalServices) {
+      setupOrthancAuth(ORTHANC_CONFIG);
+    }
+
+    if (managesLocalServices) {
+      await startBackend({ isDev, devPort: BACKEND_DEV_PORT, resourcesPath });
+    } else {
+      console.log('Client runtime mode: skipping local backend startup');
+    }
+
+    if (managesLocalServices) {
+      const enableLLM = parseBooleanEnvFlag(process.env.ENABLE_LLM, true);
+      const llmRunning = await isLLMRunning();
+
+      if (enableLLM && !llmRunning) {
+        console.log('ENABLE_LLM is true and LLM not running, starting LLM in background...');
+        startLLM({ resourcesPath }).catch((err) => {
+          console.warn('LLM start warning:', err);
+        });
+      } else if (llmRunning) {
+        console.log('LLM is already running, skipping startup');
+      } else {
+        console.log('ENABLE_LLM is not set, skipping LLM startup');
+      }
+    } else {
+      console.log('Client runtime mode: skipping local LLM startup');
+    }
+
+    registerIpcHandlers(ipcMain, () => getBackendPort());
         createTray({
             iconPath: trayIconPath,
             onOpen: () => ensureMainWindow(),
@@ -120,11 +161,13 @@ app.on('ready', async () => {
 });
 
 app.on('window-all-closed', () => {
-    // Keep running in background (tray) until user quits
-    if (isQuitting) {
-        stopBackend();
-        app.quit();
+  // Keep running in background (tray) until user quits
+  if (isQuitting) {
+    if (managesLocalServices) {
+      stopBackend();
     }
+    app.quit();
+  }
 });
 
 app.on('activate', () => {
@@ -134,13 +177,14 @@ app.on('activate', () => {
 });
 
 app.on('before-quit', () => {
-    isQuitting = true;
+  isQuitting = true;
+  if (managesLocalServices) {
     stopBackend();
     stopLLM();
-    // Best-effort: stop Orthanc container via docker compose in production
-    if (STOP_ORTHANC_ON_QUIT && !isDev) {
-        stopOrthanc().catch((e) => console.warn('Failed to stop Orthanc on quit:', e));
-    }
+  }
+  if (managesLocalServices && STOP_LOCAL_INFRA_ON_QUIT && !isDev) {
+    stopManagedInfrastructure().catch((e) => console.warn('Failed to stop managed infrastructure on quit:', e));
+  }
 });
 
 // Graceful shutdown handler for SIGTERM/SIGINT
@@ -150,7 +194,7 @@ app.on('before-quit', () => {
 //   → On Windows dev, the PowerShell script's finally block handles cleanup instead
 // - Windows (production): These handlers work correctly ✅
 // - System tray quit: Uses 'before-quit' handler (works on all platforms) ✅
-function gracefulShutdown(signal: string): void {
+async function gracefulShutdown(signal: string): Promise<void> {
     console.log(`Received ${signal}, shutting down gracefully...`);
 
     // Prevent multiple shutdown attempts
@@ -160,16 +204,22 @@ function gracefulShutdown(signal: string): void {
     }
     isQuitting = true;
 
-    try {
-        // Stop services synchronously
-        console.log('Stopping backend...');
-        stopBackend();
+  try {
+    if (managesLocalServices) {
+      console.log('Stopping backend...');
+      stopBackend();
 
-        console.log('Stopping LLM...');
-        stopLLM();
+      console.log('Stopping LLM...');
+      stopLLM();
 
-        console.log('Shutdown complete');
-    } catch (err) {
+      if (STOP_LOCAL_INFRA_ON_QUIT && !isDev) {
+        console.log('Stopping local infrastructure...');
+        await stopManagedInfrastructure();
+      }
+    }
+
+    console.log('Shutdown complete');
+  } catch (err) {
         console.error('Error during shutdown:', err);
     } finally {
         // Force exit after cleanup (more reliable than app.quit for signal handlers)
@@ -178,8 +228,12 @@ function gracefulShutdown(signal: string): void {
 }
 
 // Handle termination signals
-process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => {
+    void gracefulShutdown('SIGTERM');
+});
+process.on('SIGINT', () => {
+    void gracefulShutdown('SIGINT');
+});
 
 // ----------------- Window control IPC -----------------
 ipcMain.handle('window:minimize', () => {

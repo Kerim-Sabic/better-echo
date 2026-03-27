@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { TITLEBAR_HEIGHT } from "@/general_components/TitleBar";
 import {
   AboutHoralixDialog,
@@ -17,7 +18,27 @@ export default function LoginLayout({ loginPageVM }) {
     setPassword,
     handleSubmit,
     handleBiometricLogin,
+    canOpenServerAdmin,
+    onOpenServerAdmin,
+    canReconfigureClientRuntime,
+    onOpenClientRuntimeConfigEditor,
   } = loginPageVM;
+
+  useEffect(() => {
+    if (!canReconfigureClientRuntime) {
+      return undefined;
+    }
+
+    const handleKeyDown = event => {
+      if (event.key === "F8") {
+        event.preventDefault();
+        onOpenClientRuntimeConfigEditor();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [canReconfigureClientRuntime, onOpenClientRuntimeConfigEditor]);
 
   return (
     <div
@@ -45,8 +66,19 @@ export default function LoginLayout({ loginPageVM }) {
           </div>
         </div>
 
-        <div className="mt-6 text-center">
+        <div className="mt-6 flex flex-col items-center gap-4 text-center">
           <AboutHoralixDialog />
+          {canOpenServerAdmin ? (
+            <div className="flex justify-center">
+              <button
+                type="button"
+                onClick={onOpenServerAdmin}
+                className="text-sm font-medium text-muted-foreground transition hover:text-primary"
+              >
+                Open Server Setup
+              </button>
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

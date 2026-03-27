@@ -3,7 +3,7 @@ window.config = {
   extensions: ["@horalix/extension-ai-panel"],
   modes: ["@horalix/mode-ai-results"],
   horalixAiBridge: {
-    allowedParentOrigins: ["http://localhost:3000"],
+    allowedParentOrigins: ["http://localhost:3000", "file://"],
     channel: "horalix-ai"
   },
   showStudyList: false,
@@ -22,9 +22,9 @@ window.config = {
       configuration: {
         friendlyName: "Orthanc",
         name: "Orthanc",
-        wadoUriRoot: "http://localhost:3001/dicom-web",
-        qidoRoot: "http://localhost:3001/dicom-web",
-        wadoRoot: "http://localhost:3001/dicom-web",
+        wadoUriRoot: "/dicom-web",
+        qidoRoot: "/dicom-web",
+        wadoRoot: "/dicom-web",
         qidoSupportsIncludeField: false,
         imageRendering: "wadors",
         thumbnailRendering: "wadors",
@@ -39,9 +39,9 @@ window.config = {
     dicomWeb: [
       {
         name: "Orthanc",
-        wadoUriRoot: "http://localhost:3001/dicom-web",
-        qidoRoot: "http://localhost:3001/dicom-web",
-        wadoRoot: "http://localhost:3001/dicom-web",
+        wadoUriRoot: "/dicom-web",
+        qidoRoot: "/dicom-web",
+        wadoRoot: "/dicom-web",
         qidoSupportsIncludeField: false,
         imageRendering: "wadors",
         thumbnailRendering: "wadors",

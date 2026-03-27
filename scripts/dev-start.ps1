@@ -14,15 +14,15 @@ function Test-PortAvailable([int]$Port, [string]$Name) {
     if (-not $listener) {
         return
     }
-    $pid = $listener.OwningProcess
+    $owningProcessId = $listener.OwningProcess
     $procName = "unknown"
     try {
-        $proc = Get-Process -Id $pid -ErrorAction Stop
+        $proc = Get-Process -Id $owningProcessId -ErrorAction Stop
         $procName = $proc.ProcessName
     } catch {
-        $procName = "pid-$pid"
+        $procName = "pid-$owningProcessId"
     }
-    throw "$Name port $Port is already in use by $procName (PID $pid). Stop it first, then rerun this script."
+    throw "$Name port $Port is already in use by $procName (PID $owningProcessId). Stop it first, then rerun this script."
 }
 
 # Change to project root

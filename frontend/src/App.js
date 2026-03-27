@@ -1,18 +1,26 @@
 // src/App.js
-import React from "react";
+import React, { useEffect } from "react";
 import TitleBar, { TITLEBAR_HEIGHT } from "./general_components/TitleBar";
-import { BrowserRouter, Routes, Route, useNavigate, Navigate, useLocation } from "react-router-dom";
+import { BrowserRouter, HashRouter, Routes, Route, useNavigate, Navigate, useLocation } from "react-router-dom";
 import RoutePersistence from "./RoutePersistence";
 
 import { AuthProvider } from "./contexts/AuthenticationContext";
 import ProtectedRoute from "./contexts/ProtectedRoute";
 
 import SplashScreen from "./general_components/SplashScreen";
+import RuntimeConfigGate from "./general_components/RuntimeConfigGate";
 import LoginPage from "@/features/login/views/LoginPage";
 import DashboardPage from "@/features/dashboard/views/DashboardPage";
 import NewStudyPage from "@/features/new_study/views/NewStudyPage";
 import StudyResultsPage from "@/features/study_results/views/StudyResultsPage";
+import ServerAdminPage from "@/features/server_admin/views/ServerAdminPage";
+import { useElectronRuntimeConfig } from "@/hooks/useElectronRuntimeConfig";
+import { getRuntimeDisplayName } from "@/lib/branding";
 
+const AppRouter =
+    typeof window !== "undefined" && window.electronAPI && window.location.protocol === "file:"
+        ? HashRouter
+        : BrowserRouter;
 
 function SplashRoute() {
     const navigate = useNavigate();
@@ -36,15 +44,23 @@ function SplashRoute() {
 
 function Shell() {
     const location = useLocation();
+    const { runtimeConfig } = useElectronRuntimeConfig();
     const onSplash = location.pathname === "/";
+    const onStudyResults =
+        /^\/studies\/[^/]+$/.test(location.pathname) && location.pathname !== "/studies/new";
     const contentStyle = {
         height: `calc(100vh - ${TITLEBAR_HEIGHT}px)`,
         marginTop: `${TITLEBAR_HEIGHT}px`,
         overflow: "auto",
     };
+
+    useEffect(() => {
+        document.title = getRuntimeDisplayName(runtimeConfig?.runtimeMode);
+    }, [runtimeConfig?.runtimeMode]);
+
     return (
         <div style={{ height: "100vh", overflow: "hidden"}}>
-        <TitleBar variant={onSplash ? "splash" : "light"} />
+        <TitleBar variant={onSplash ? "splash" : onStudyResults ? "dark" : "light"} />
         <div style={contentStyle}>
             <AuthProvider> {/* Authentication context */}
             <RoutePersistence />
@@ -54,6 +70,7 @@ function Shell() {
 
             {/* Auth */}
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/server-admin" element={<ServerAdminPage />} />
 
             {/* App */}{/*Protected routes */}
             <Route element={<ProtectedRoute />}>
@@ -73,8 +90,10 @@ function Shell() {
 
 export default function App() {
     return (
-        <BrowserRouter>
+        <AppRouter>
+        <RuntimeConfigGate>
         <Shell />
-        </BrowserRouter>
+        </RuntimeConfigGate>
+        </AppRouter>
     );
 }

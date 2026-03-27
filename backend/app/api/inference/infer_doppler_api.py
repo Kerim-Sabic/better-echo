@@ -5,11 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 import logging
 
-from app.AI_models.measurements.runner_doppler import (
-    VALID_DOPPLER_WEIGHTS,
-    run_doppler_inference,
-    unload_doppler_models,
-)
+from app.AI_models.measurements.constants import VALID_DOPPLER_WEIGHTS
 from app.core.config import settings
 from app.core.artifacts import BASE_DIR
 from app.database.db import get_db
@@ -190,6 +186,8 @@ def infer_measurements_doppler(
     model_weights = model_weights.strip().lower()
     if model_weights not in VALID_DOPPLER_WEIGHTS:
         raise HTTPException(status_code=400, detail=f"Invalid model_weights '{model_weights}'")
+    from app.AI_models.measurements.runner_doppler import run_doppler_inference, unload_doppler_models
+
     unload_after_request = (
         str(settings.PIPELINE_UNLOAD_POLICY).strip().lower() == "stage"
         or str(settings.INFERENCE_PROFILE).strip().lower() == "low_vram"

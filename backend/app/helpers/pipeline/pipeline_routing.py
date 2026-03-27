@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 from collections import Counter
 from typing import Any, Dict, List, Optional
@@ -12,6 +13,8 @@ from app.database_models.series import Series
 from app.database_models.studies import Study
 from app.helpers.doppler.doppler_tags import inspect_doppler_tags
 from app.services.inference.echoprime_service import classify_views_for_study
+
+logger = logging.getLogger(__name__)
 
 # Part 0. Queue prefilter skip reason codes.
 INCOMPATIBLE_DICOM = "INCOMPATIBLE_DICOM"
@@ -165,6 +168,10 @@ def build_prefilter_routing_map(
         except Exception as exc:
             classifier_failed = True
             classifier_error = str(exc)
+            logger.exception(
+                "[PIPELINE_PREFILTER] View classifier failed for study_uid=%s",
+                study_uid,
+            )
 
     # Part 6. Build final routing decisions.
     decisions: List[Dict[str, Any]] = []

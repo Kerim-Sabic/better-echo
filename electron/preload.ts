@@ -1,6 +1,9 @@
 import { contextBridge, ipcRenderer } from 'electron';
+import type { PersistedClientRuntimeConfig, RuntimeConfig } from './runtime';
 
 export interface ElectronAPI {
+  getRuntimeConfig: () => Promise<RuntimeConfig>;
+  saveRuntimeConfig: (config: PersistedClientRuntimeConfig) => Promise<RuntimeConfig>;
   getBackendUrl: () => Promise<string>;
   checkBackendHealth: () => Promise<boolean>;
   getAppVersion: () => Promise<string>;
@@ -9,6 +12,11 @@ export interface ElectronAPI {
     appData: string;
     temp: string;
   }>;
+  saveTextFile: (payload: {
+    suggestedName?: string;
+    contents: string;
+    title?: string;
+  }) => Promise<{ canceled: boolean; filePath?: string }>;
   windowControls: {
     minimize: () => Promise<void>;
     toggleMaximize: () => Promise<void>;
@@ -26,10 +34,13 @@ export interface ElectronAPI {
 }
 
 const electronAPI: ElectronAPI = {
+  getRuntimeConfig: () => ipcRenderer.invoke('get-runtime-config'),
+  saveRuntimeConfig: (config: PersistedClientRuntimeConfig) => ipcRenderer.invoke('save-runtime-config', config),
   getBackendUrl: () => ipcRenderer.invoke('get-backend-url'),
   checkBackendHealth: () => ipcRenderer.invoke('backend:isHealthy'),
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),
   getAppPaths: () => ipcRenderer.invoke('get-app-paths'),
+  saveTextFile: payload => ipcRenderer.invoke('save-text-file', payload),
   windowControls: {
     minimize: () => ipcRenderer.invoke('window:minimize'),
     toggleMaximize: () => ipcRenderer.invoke('window:toggleMaximize'),

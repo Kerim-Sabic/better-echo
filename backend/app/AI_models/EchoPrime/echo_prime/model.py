@@ -14,11 +14,8 @@ import torch.nn.functional as F
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from tqdm import tqdm
 import cv2
 import pydicom
-import sklearn
-import sklearn.metrics
 import transformers
 
 
@@ -104,7 +101,7 @@ class EchoPrime:
 
         dicom_paths = glob.glob(f'{INPUT}/**/*.dcm',recursive=True)
         stack_of_videos=[]
-        for idx, dicom_path in tqdm(enumerate(dicom_paths),total=len(dicom_paths)):
+        for idx, dicom_path in enumerate(dicom_paths):
             try:
                 # simple dicom_processing
                 dcm=pydicom.dcmread(dicom_path)
