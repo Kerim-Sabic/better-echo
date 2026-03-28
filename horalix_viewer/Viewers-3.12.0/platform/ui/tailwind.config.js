@@ -30,26 +30,26 @@ module.exports = {
 
       primary: {
         light: '#5acce6',
-        main: '#0944b3',
-        dark: '#090c29',
+        main: '#348cfd',
+        dark: '#0d1117',
         active: '#348cfd',
       },
       inputfield: {
-        main: '#3a3f99',
-        disabled: '#2b166b',
+        main: '#3a4150',
+        disabled: '#2b3140',
         focus: '#5acce6',
         placeholder: '#39383f',
       },
 
       secondary: {
-        light: '#3a3f99',
-        main: '#2b166b',
-        dark: '#041c4a',
+        light: '#3a4150',
+        main: '#2b3140',
+        dark: '#161b22',
         active: '#1f1f27',
       },
 
       indigo: {
-        dark: '#0b1a42',
+        dark: '#161b22',
       },
 
       common: {
@@ -57,12 +57,12 @@ module.exports = {
         light: '#a19fad',
         main: '#fff',
         dark: '#726f7e',
-        active: '#2c3074',
+        active: '#2c3340',
       },
       bkg: {
-        low: '#050615',
-        med: '#090C29',
-        full: '#041C4A',
+        low: '#0d1117',
+        med: '#161b22',
+        full: '#21262d',
       },
       info: {
         primary: '#FFFFFF',
@@ -79,20 +79,20 @@ module.exports = {
       },
 
       customblue: {
-        10: '#0A163F',
-        20: '#0B1F54',
-        30: '#09286e',
-        40: '#0E307F',
-        50: '#0F3A94',
-        80: '#1454D4',
+        10: '#0d1117',
+        20: '#131921',
+        30: '#1c2128',
+        40: '#21262d',
+        50: '#2a3140',
+        80: '#348cfd',
         100: '#c4fdff',
         200: '#38daff',
-        300: '#1D204D',
-        400: '#90A0C1',
+        300: '#21262d',
+        400: '#8b949e',
       },
 
       customgray: {
-        100: '#262943',
+        100: '#30363d',
       },
 
       gray: {
@@ -182,7 +182,7 @@ module.exports = {
         700: '#4c51bf',
         800: '#434190',
         900: '#3c366b',
-        dark: '#0b1a42',
+        dark: '#161b22',
       },
       purple: {
         100: '#faf5ff',
@@ -237,7 +237,7 @@ module.exports = {
       xl: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
       '2xl': '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
       inner: 'inset 0 2px 4px 0 rgba(0, 0, 0, 0.06)',
-      outline: '0 0 0 3px rgba(66, 153, 225, 0.5)',
+      outline: '0 0 0 3px rgba(139, 148, 158, 0.4)',
       none: 'none',
     },
     container: {},

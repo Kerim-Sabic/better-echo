@@ -1,7 +1,11 @@
 export function buildStudyResultsOhifAiPayload({
   studyUid,
-  studyAnalysisCombinedResultsState,
-  studyAnalysisCombinedResultsData,
+  panechoEchoprimeCombinedResultsState,
+  panechoEchoprimeCombinedResultsData,
+  llmReportResultsState,
+  llmReportResultsData,
+  llmReportResultsDetail,
+  panechoEchoprimeEditorViewModel,
 }) {
   const studyAnalysisCombinedResultsDisplay =
     studyAnalysisCombinedResultsData?.display ?? {
@@ -10,14 +14,41 @@ export function buildStudyResultsOhifAiPayload({
       totalMeasurements: null,
     };
 
+  const llmEchoReport = {
+    mainTitle: llmReportResultsData?.mainTitle ?? null,
+    sections: llmReportResultsData?.sections ?? [],
+    reportGeneratedAt: llmReportResultsData?.reportGeneratedAt ?? null,
+  };
+
   return {
     sentAt: new Date().toISOString(),
     studyUid,
-    studyAnalysisCombinedResultsState,
-    studyAnalysisMeasurements: {
-      totalMeasurements: studyAnalysisCombinedResultsDisplay.totalMeasurements,
-      mainMeasurements: studyAnalysisCombinedResultsDisplay.mainMeasurements,
-      measurementSections: studyAnalysisCombinedResultsDisplay.measurementSections,
+
+    panechoEchoprimeCombinedResultsState,
+    panechoEchoprimeAiMeasurements: {
+      totalMeasurements: panechoEchoprimeCombinedResultsDisplay.totalMeasurements,
+      mainMeasurements: panechoEchoprimeCombinedResultsDisplay.mainMeasurements,
+      measurementSections: panechoEchoprimeCombinedResultsDisplay.measurementSections,
     },
+
+    panechoEchoprimeEditorState: {
+      hasOverrides:
+        panechoEchoprimeEditorViewModel?.hasPanechoEchoprimeOverrides ?? false,
+      overridesUpdatedAt:
+        panechoEchoprimeEditorViewModel?.panechoEchoprimeOverridesUpdatedAt ??
+        null,
+      isReportStale:
+        panechoEchoprimeEditorViewModel?.isAiReportStale ?? false,
+      canRegenerateAiReport:
+        panechoEchoprimeEditorViewModel?.canRegenerateAiReport ?? false,
+      isRegeneratingAiReport:
+        panechoEchoprimeEditorViewModel?.isRegeneratingAiReport ?? false,
+      regenerateAiReportErrorMessage:
+        panechoEchoprimeEditorViewModel?.regenerateAiReportErrorMessage ?? null,
+    },
+
+    llmReportResultsState,
+    llmReportResultsDetail,
+    llmEchoReport,
   };
 }

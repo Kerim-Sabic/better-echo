@@ -84,7 +84,7 @@ You must construct `diagnoses_json` as a JSON array of objects. Each object has:
 - "label": A concise diagnostic term in natural language (e.g. "Heart failure with reduced ejection fraction", "Moderate mitral regurgitation", "Pericardial effusion").
   - Do NOT include ICD-10 codes, only the descriptive term.
   - Only include diagnoses that are reasonably supported by the data in `Structured_Results_JSON`.
-- "rationale": 1–3 sentences explaining how the data supports this label. Reference key findings (e.g. reduced EF, chamber dilation, significant valve lesion) using plain language, not raw JSON field names.
+- "rationale": 1-3 sentences explaining how the data supports this label. Reference key findings (e.g. reduced EF, chamber dilation, significant valve lesion) using plain language, not raw JSON field names.
 - "confidence": A number between 0.0 and 1.0 indicating how confident you are in this diagnosis based on the available data.
 
 Additional rules:
@@ -100,51 +100,65 @@ You must produce ONE clinical report in markdown surrounded by `<report>...</rep
 
 Inside `<report>`, use this structure:
 
-# Clinical Echo Report
+# Clinical Echocardiography Report
 
 ## Summary
-- 2–6 bullet points summarizing the key findings.
-- Mention overall left ventricular systolic function (e.g. normal / mildly / moderately / severely reduced) if EF is available.
-- Mention any significant valve disease (e.g. moderate or severe regurgitation/stenosis).
-- Mention any significant chamber enlargement, pulmonary hypertension indicators, or pericardial effusion.
-- Clearly indicate if the study is largely normal.
+Write one concise clinical paragraph of 3-5 sentences summarizing the key findings.
+Mention overall left ventricular systolic function if EF is available.
+Mention any significant valve disease, chamber enlargement, pulmonary hypertension indicators, or pericardial effusion.
+Clearly indicate if the study is largely normal.
+Do NOT use bullet points, numbered lists, or dash-prefixed lines.
 
 ## Left Ventricle
-- Comment on systolic function (based on ejection fraction and any classification labels).
-- Mention wall motion abnormalities if present in the JSON.
-- Include key measurements (e.g. EF %, LV volumes, LV dimensions) when available.
-- If data is missing or inconsistent, state that explicitly.
+Write 2-4 sentences of flowing clinical prose.
+Comment on systolic function based on ejection fraction and any classification labels.
+Mention wall motion abnormalities if present in the JSON.
+Include key measurements such as EF, LV volumes, and LV dimensions when available.
+If data is missing or inconsistent, state that explicitly.
+Do NOT use bullet points, numbered lists, or dash-prefixed lines.
 
 ## Right Ventricle and Pulmonary Pressures
-- Comment on RV size and systolic function (normal vs reduced, if available).
-- Mention pulmonary artery pressure / RVSP, and whether it suggests pulmonary hypertension if clearly abnormal.
-- Note any important uncertainty or discrepancies.
+Write 2-4 sentences of flowing clinical prose.
+Comment on RV size and systolic function.
+Mention pulmonary artery pressure / RVSP and whether it suggests pulmonary hypertension if clearly abnormal.
+Note any important uncertainty or discrepancies.
+Do NOT use bullet points, numbered lists, or dash-prefixed lines.
 
 ## Valves
-- For each valve (aortic, mitral, tricuspid, pulmonary) where data is available:
-  - Report regurgitation and/or stenosis severity based on `label`.
-  - Use language like "none/trace", "mild", "moderate", "severe".
-  - Highlight moderate or severe lesions in particular.
-- If a valve has no data, say it is "not well characterized in this dataset."
+Write 2-4 sentences of flowing clinical prose.
+For each valve where data is available, report regurgitation and/or stenosis severity based on `label`.
+Use language like "none/trace", "mild", "moderate", or "severe", and highlight moderate or severe lesions in particular.
+If a valve has no data, say it is not well characterized in this dataset.
+Do NOT use bullet points, numbered lists, or dash-prefixed lines.
 
 ## Chambers and Great Vessels
-- Mention left and right atrial size if available (normal, mildly, moderately, or severely enlarged).
-- Mention aortic root / ascending aorta measurements or classification if present.
-- Mention IVC size and collapsibility if available, especially if it suggests elevated right atrial pressure.
+Write 2-4 sentences of flowing clinical prose.
+Mention left and right atrial size if available.
+Mention aortic root / ascending aorta measurements or classification if present.
+Mention IVC size and collapsibility if available, especially if it suggests elevated right atrial pressure.
+Do NOT use bullet points, numbered lists, or dash-prefixed lines.
 
 ## Pericardium and Devices
-- Comment on presence or absence of pericardial effusion.
-- Mention devices if present (e.g. pacemaker, ICD, LVAD, TAVR, Impella) based on classification labels.
-- If the presence of a device is uncertain, state that and recommend clinician confirmation.
+Write 2-4 sentences of flowing clinical prose.
+Comment on presence or absence of pericardial effusion.
+Mention devices if present (e.g. pacemaker, ICD, LVAD, TAVR, Impella) based on classification labels.
+If the presence of a device is uncertain, state that and recommend clinician confirmation.
+Do NOT use bullet points, numbered lists, or dash-prefixed lines.
 
 ## Diagnoses (Impression)
-- Provide a brief narrative impression summarizing the likely diagnoses or key clinical impressions derived from the echo findings.
-- This should align with, but not mechanically repeat, the content of `diagnoses_json`.
+Provide a concise narrative impression summarizing the likely diagnoses or key clinical impressions derived from the echo findings.
+This should align with, but not mechanically repeat, the content of `diagnoses_json`.
+Do NOT use bullet points, numbered lists, or dash-prefixed lines.
 
 ## Uncertainty and Recommendations
-- Explicitly mention any areas with high uncertainty or `discrepancy: true` in the JSON.
-- Suggest manual review or correlation with clinical context where appropriate.
-- If the study appears normal or near-normal, clearly say so.
+Write one short paragraph in restrained clinical language.
+Explicitly mention any areas with high uncertainty or `discrepancy: true` in the JSON.
+Suggest manual review or correlation with clinical context where appropriate.
+If the study appears normal or near-normal, clearly say so.
+Never make definitive or prescriptive statements such as "does not require further investigation."
+Prefer hedged language such as "No findings suggesting need for additional investigation were identified."
+Always end the section with "Clinical correlation is recommended." or "Correlation with clinical presentation is advised."
+Do NOT use bullet points, numbered lists, or dash-prefixed lines.
 
 These headings should always be present, even if some sections only state that data is not available.
 
@@ -152,6 +166,9 @@ These headings should always be present, even if some sections only state that d
 
 - Use clear, concise clinical language appropriate for cardiologists and echocardiography practitioners.
 - Avoid excessive verbosity, but ensure all important abnormalities are clearly described.
+- Write in flowing clinical narrative prose, as in a standard hospital echocardiography report.
+- Always use mL (milliliters) for cardiac chamber volumes, never cm³, cm^3, or cm3.
+- Do NOT use bullet points, numbered lists, or dash-prefixed lines anywhere in the report body.
 - Do NOT mention that this is an AI-generated report.
 - Do NOT mention any internal engine names, model names, or training data.
 
