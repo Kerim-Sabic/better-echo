@@ -6,7 +6,13 @@ from typing import Any, Dict, List
 
 from sqlalchemy.orm import Session
 
-from app.core.artifacts import UPLOAD_DIR
+from app.core.artifacts import (
+    LINEAR_MEASUREMENTS_UPLOAD_DIRNAME,
+    MOTION_SEGMENTATION_UPLOAD_DIRNAME,
+    REPORT_SUMMARY_UPLOAD_DIRNAME,
+    SPECTRAL_MEASUREMENTS_UPLOAD_DIRNAME,
+    UPLOAD_DIR,
+)
 from app.database_models.instances import Instance
 from app.database_models.series import Series
 from app.database_models.studies import Study
@@ -55,18 +61,18 @@ def _remove_folder_if_exists(path: str, summary: Dict[str, Any]) -> None:
 def _study_folder_paths(study_uid: str) -> List[str]:
     return [
         os.path.join(UPLOAD_DIR, study_uid),
-        os.path.join(UPLOAD_DIR, "echonet_dynamic_LV-segmentation_files", study_uid),
-        os.path.join(UPLOAD_DIR, "measurements_2D_keypoint_detection", study_uid),
-        os.path.join(UPLOAD_DIR, "measurements_doppler", study_uid),
-        os.path.join(UPLOAD_DIR, "llm_reports", study_uid),
+        os.path.join(UPLOAD_DIR, MOTION_SEGMENTATION_UPLOAD_DIRNAME, study_uid),
+        os.path.join(UPLOAD_DIR, LINEAR_MEASUREMENTS_UPLOAD_DIRNAME, study_uid),
+        os.path.join(UPLOAD_DIR, SPECTRAL_MEASUREMENTS_UPLOAD_DIRNAME, study_uid),
+        os.path.join(UPLOAD_DIR, REPORT_SUMMARY_UPLOAD_DIRNAME, study_uid),
     ]
 
 
 def _instance_folder_paths(study_uid: str, sop_instance_uid: str) -> List[str]:
     return [
-        os.path.join(UPLOAD_DIR, "echonet_dynamic_LV-segmentation_files", study_uid, sop_instance_uid),
-        os.path.join(UPLOAD_DIR, "measurements_2D_keypoint_detection", study_uid, sop_instance_uid),
-        os.path.join(UPLOAD_DIR, "measurements_doppler", study_uid, sop_instance_uid),
+        os.path.join(UPLOAD_DIR, MOTION_SEGMENTATION_UPLOAD_DIRNAME, study_uid, sop_instance_uid),
+        os.path.join(UPLOAD_DIR, LINEAR_MEASUREMENTS_UPLOAD_DIRNAME, study_uid, sop_instance_uid),
+        os.path.join(UPLOAD_DIR, SPECTRAL_MEASUREMENTS_UPLOAD_DIRNAME, study_uid, sop_instance_uid),
     ]
 
 

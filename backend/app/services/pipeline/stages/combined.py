@@ -5,18 +5,22 @@ from typing import Any, Dict, Optional
 
 from sqlalchemy.orm import Session
 
-from app.api.inference.infer_echoprime_api import infer_echoprime
-from app.api.inference.infer_panecho_api import infer_panecho
+from app.api.inference.infer_primary_analysis_api import infer_primary_analysis
+from app.api.inference.infer_secondary_analysis_api import infer_secondary_analysis
 from app.core.config import settings
-from app.core.artifacts import PANECHO_ECHOPRIME_COMBINED_TYPE
+from app.core.artifacts import (
+    COMBINED_ANALYSIS_MODEL_NAME,
+    COMBINED_ANALYSIS_TYPE,
+    COMBINED_ANALYSIS_TYPES,
+)
 from app.database_models.derived_results import DerivedResult, ResultStatus
 from app.database_models.pipeline_artifact_sets import PipelineArtifactSet, PipelineArtifactSetState
 from app.database_models.pipeline_jobs import PipelineJob
-from app.helpers.ensemble.combine_panecho_echoprime_predictions import combine_results
-from app.helpers.inference_runtime.inference_functions import unload_panecho_model
-from app.schemas.inference.infer_echoprime_schemas import InferEchoPrimeRequest
-from app.schemas.inference.infer_panecho_schemas import InferPanEchoRequest
-from app.services.inference.echoprime_service import unload_ep
+from app.helpers.ensemble.combine_study_analysis_predictions import combine_results
+from app.helpers.inference_runtime.inference_functions import unload_primary_analysis_model
+from app.schemas.inference.infer_primary_analysis_schemas import InferPrimaryAnalysisRequest
+from app.schemas.inference.infer_secondary_analysis_schemas import InferSecondaryAnalysisRequest
+from app.services.inference.secondary_analysis_service import unload_secondary_analysis_model
 from app.services.pipeline.stages.prefilter import _prefilter_instances, _study_uid_for_job
 
 logger = logging.getLogger(__name__)
@@ -39,7 +43,7 @@ def _active_combined_overrides(db: Session, *, study_id: int) -> tuple[Dict[str,
             db.query(DerivedResult)
             .filter(
                 DerivedResult.study_id == study_id,
-                DerivedResult.type == PANECHO_ECHOPRIME_COMBINED_TYPE,
+                DerivedResult.type.in_(COMBINED_ANALYSIS_TYPES),
                 DerivedResult.status == ResultStatus.complete,
                 DerivedResult.artifact_set_id == active_set.id,
             )
@@ -53,7 +57,7 @@ def _active_combined_overrides(db: Session, *, study_id: int) -> tuple[Dict[str,
             db.query(DerivedResult)
             .filter(
                 DerivedResult.study_id == study_id,
-                DerivedResult.type == PANECHO_ECHOPRIME_COMBINED_TYPE,
+                DerivedResult.type.in_(COMBINED_ANALYSIS_TYPES),
                 DerivedResult.status == ResultStatus.complete,
                 DerivedResult.artifact_set_id.is_(None),
             )
@@ -115,7 +119,7 @@ def run_combined_stage(
                 db.query(DerivedResult)
                 .filter(
                     DerivedResult.study_id == job.study_id,
-                    DerivedResult.type == PANECHO_ECHOPRIME_COMBINED_TYPE,
+                    DerivedResult.type == COMBINED_ANALYSIS_TYPE,
                     DerivedResult.artifact_set_id == draft_artifact_set.id,
                 )
                 .first()
@@ -127,10 +131,10 @@ def run_combined_stage(
                 db.add(
                     DerivedResult(
                         study_id=job.study_id,
-                        type=PANECHO_ECHOPRIME_COMBINED_TYPE,
+                        type=COMBINED_ANALYSIS_TYPE,
                         status=ResultStatus.complete,
                         value_json=combined_payload,
-                        model_name="PanEcho_EchoPrime_Combined",
+                        model_name=COMBINED_ANALYSIS_MODEL_NAME,
                         model_version="v1",
                         artifact_set_id=draft_artifact_set.id,
                     )
@@ -143,9 +147,9 @@ def run_combined_stage(
                 "integrated_tasks_count": 0,
             }
 
-        logger.info("[PIPELINE_COMBINED] Running EchoPrime metrics | job_id=%s", job.id)
-        ep_output = infer_echoprime(
-            payload=InferEchoPrimeRequest(
+        logger.info("[PIPELINE_COMBINED] Running secondary analysis metrics | job_id=%s", job.id)
+        ep_output = infer_secondary_analysis(
+            payload=InferSecondaryAnalysisRequest(
                 study_uid=study_uid,
                 include_instance_orthanc_ids=eligible_orthanc_ids,
                 artifact_set_id=draft_artifact_set.id,
@@ -153,17 +157,17 @@ def run_combined_stage(
             db=db,
         )
         logger.info(
-            "[PIPELINE_COMBINED] EchoPrime metrics completed | job_id=%s num_instances=%s",
+            "[PIPELINE_COMBINED] Secondary analysis metrics completed | job_id=%s num_instances=%s",
             job.id,
             ep_output.get("num_instances"),
         )
-        # Part 2.2 Release EchoPrime residency immediately in staged unload mode.
+        # Part 2.2 Release secondary analysis residency immediately in staged unload mode.
         if unload_after_stage:
-            unload_ep()
-            logger.info("[PIPELINE_COMBINED] EchoPrime unloaded after stage boundary | job_id=%s", job.id)
-        logger.info("[PIPELINE_COMBINED] Running PanEcho metrics | job_id=%s", job.id)
-        panecho_output = infer_panecho(
-            payload=InferPanEchoRequest(
+            unload_secondary_analysis_model()
+            logger.info("[PIPELINE_COMBINED] Secondary analysis unloaded after stage boundary | job_id=%s", job.id)
+        logger.info("[PIPELINE_COMBINED] Running primary analysis metrics | job_id=%s", job.id)
+        primary_analysis_output = infer_primary_analysis(
+            payload=InferPrimaryAnalysisRequest(
                 study_uid=study_uid,
                 include_instance_orthanc_ids=eligible_orthanc_ids,
                 artifact_set_id=draft_artifact_set.id,
@@ -171,18 +175,18 @@ def run_combined_stage(
             db=db,
         )
         logger.info(
-            "[PIPELINE_COMBINED] PanEcho metrics completed | job_id=%s num_instances=%s",
+            "[PIPELINE_COMBINED] Primary analysis metrics completed | job_id=%s num_instances=%s",
             job.id,
-            panecho_output.get("num_instances"),
+            primary_analysis_output.get("num_instances"),
         )
-        # Part 2.3 Release PanEcho residency immediately in staged unload mode.
+        # Part 2.3 Release primary analysis residency immediately in staged unload mode.
         if unload_after_stage:
-            unload_panecho_model()
-            logger.info("[PIPELINE_COMBINED] PanEcho unloaded after stage boundary | job_id=%s", job.id)
+            unload_primary_analysis_model()
+            logger.info("[PIPELINE_COMBINED] Primary analysis unloaded after stage boundary | job_id=%s", job.id)
 
         combined = combine_results(
             study_uid,
-            panecho_output.get("predictions") or {},
+            primary_analysis_output.get("predictions") or {},
             ep_output.get("predictions") or {},
         )
         logger.info(
@@ -200,7 +204,7 @@ def run_combined_stage(
             db.query(DerivedResult)
             .filter(
                 DerivedResult.study_id == job.study_id,
-                DerivedResult.type == PANECHO_ECHOPRIME_COMBINED_TYPE,
+                DerivedResult.type == COMBINED_ANALYSIS_TYPE,
                 DerivedResult.artifact_set_id == draft_artifact_set.id,
             )
             .first()
@@ -211,10 +215,10 @@ def run_combined_stage(
         else:
             combined_row = DerivedResult(
                 study_id=job.study_id,
-                type=PANECHO_ECHOPRIME_COMBINED_TYPE,
+                type=COMBINED_ANALYSIS_TYPE,
                 status=ResultStatus.complete,
                 value_json=combined_payload,
-                model_name="PanEcho_EchoPrime_Combined",
+                model_name=COMBINED_ANALYSIS_MODEL_NAME,
                 model_version="v1",
                 artifact_set_id=draft_artifact_set.id,
             )
@@ -224,15 +228,15 @@ def run_combined_stage(
 
         return {
             "combined_input_instances": len(eligible_orthanc_ids),
-            "panecho_num_instances": panecho_output.get("num_instances"),
-            "echoprime_num_instances": ep_output.get("num_instances"),
+            "primary_num_instances": primary_analysis_output.get("num_instances"),
+            "secondary_num_instances": ep_output.get("num_instances"),
             "integrated_tasks_count": len(combined_payload["integrated_tasks"]),
         }
     finally:
         # Part 2.4 Safety cleanup for partial failures before explicit unload points.
         if unload_after_stage:
-            unload_ep()
-            unload_panecho_model()
+            unload_secondary_analysis_model()
+            unload_primary_analysis_model()
 
 
 __all__ = [

@@ -7,7 +7,7 @@ from app.database.db import get_db
 from app.database_models.studies import Study
 from app.schemas.studies.studies_schemas import StudyListResponse
 from app.helpers.auth.authentication_functions import get_current_user_id
-from app.core.artifacts import LLM_REPORT_TYPE
+from app.core.artifacts import REPORT_SUMMARY_TYPE
 from app.database_models.derived_results import ResultStatus
 from app.helpers.pipeline.study_status import (
     compute_study_status,
@@ -54,7 +54,7 @@ def list_studies(
         diagnoses_list = []
         llm_result = next(
             (dr for dr in study.derived_results
-             if dr.type == LLM_REPORT_TYPE
+             if dr.type == REPORT_SUMMARY_TYPE
              and dr.status == ResultStatus.complete
              and dr.value_json),
             None

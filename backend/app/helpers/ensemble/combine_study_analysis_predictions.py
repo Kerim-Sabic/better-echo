@@ -1,13 +1,13 @@
-from typing import Any, Dict, List, Optional
+﻿from typing import Any, Dict, List, Optional
 import json
-import pathlib
 import logging
+
+from app.core.runtime_paths import config_path
 
 logger = logging.getLogger(__name__)
 
 # Load configuration file once.
-# File location is backend/app/helpers/ensemble/, so parents[2] resolves to backend/app/.
-CONFIG_FILE = pathlib.Path(__file__).resolve().parents[2] / "configs" / "thresholds.config.json"
+CONFIG_FILE = config_path("thresholds.config.json")
 try:
     with open(CONFIG_FILE) as f:
         TASK_CONFIG = json.load(f)
@@ -26,9 +26,9 @@ def _build_regression_task_set(config: Dict[str, Any], name_key: str) -> set:
             names.add(name)
     return names
 
-# Part 1. PanEcho task metadata (class orders, positive labels, units)
-# These control how we interpret raw PanEcho outputs
-PANECHO_MULTICLASS_LABELS = {
+# Part 1. Primary analysis task metadata (class orders, positive labels, units)
+# These control how we interpret raw primary analysis outputs.
+PRIMARY_ANALYSIS_MULTICLASS_LABELS = {
     "LVSize": ["Mildly Increased", "Moderately or Severely Increased", "Normal"],
     "LVSystolicFunction": ["Mildly Decreased", "Moderately or Severely Decreased", "Normal or Hyperdynamic"],
     "LVDiastolicFunction": ["Mild or Indeterminate", "Moderate or Severe", "Normal"],
@@ -39,11 +39,11 @@ PANECHO_MULTICLASS_LABELS = {
     "MVRegurgitation": ["Mild", "Moderate or Severe", "None or Trace"],
     "TVRegurgitation": ["Mild", "Moderate or Severe", "None or Trace"],
 }
-PANECHO_BINARY_POSITIVE_LABEL = {
+PRIMARY_ANALYSIS_BINARY_POSITIVE_LABEL = {
     "pericardial-effusion": "Present",
     "LVWallThickness-increased-any": "Increased",
     "LVWallThickness-increased-modsev": "Moderately or Severely Increased",
-    "LVWallMotionAbnormalities": "Present",   # PanEcho may emit scalar p(Present)
+    "LVWallMotionAbnormalities": "Present",   # primary analysis may emit scalar p(Present)
     "RVSystolicFunction": "Decreased",        # scalar p(Decreased)
     "RASize": "Dilated",                      # scalar p(Dilated)
     "AVStructure": "Bicuspid",
@@ -51,23 +51,23 @@ PANECHO_BINARY_POSITIVE_LABEL = {
     "MVStenosis": "Mild or Moderate or Severe",
     "RAP-8-or-higher": "Present",
 }
-PANECHO_REGRESSION_UNITS = {
+PRIMARY_ANALYSIS_REGRESSION_UNITS = {
     "EF": "%", "GLS": "%", "LVEDV": "cm^3", "LVESV": "cm^3", "LVSV": "cm^3",
     "IVSd": "cm", "LVPWd": "cm", "LVIDs": "cm", "LVIDd": "cm", "LVOTDiam": "cm",
     "E|EAvg": "E/E' ratio", "RVSP": "mmHg", "RVIDd": "cm", "TAPSE": "cm", "RVSVel": "cm/s",
     "LAIDs2D": "cm", "LAVol": "cm^3", "RADimensionM-L(cm)": "cm", "AVPkVel(m|s)": "m/s",
     "TVPkGrad": "mmHg", "AORoot": "cm",
 }
-PANECHO_REGRESSION_TASKS = _build_regression_task_set(TASK_CONFIG, "panecho_name")
-ECHOPRIME_REGRESSION_TASKS = _build_regression_task_set(TASK_CONFIG, "echoprime_name")
-PANECHO_POSITIVE_CLASSES = {
+PRIMARY_ANALYSIS_REGRESSION_TASKS = _build_regression_task_set(TASK_CONFIG, "primary_source_name")
+SECONDARY_ANALYSIS_REGRESSION_TASKS = _build_regression_task_set(TASK_CONFIG, "secondary_source_name")
+PRIMARY_ANALYSIS_POSITIVE_CLASSES = {
     "MVRegurgitation": ["Moderate or Severe"],
     "TVRegurgitation": ["Moderate or Severe"],
     "AVRegurg": ["Moderate or Severe"],
     "AVStenosis": ["Severe"],
 }
 
-PANECHO_BINARY_NEGATIVE_LABEL = {
+PRIMARY_ANALYSIS_BINARY_NEGATIVE_LABEL = {
     "pericardial-effusion": "Absent",
     "LVWallThickness-increased-any": "Not Increased",
     "LVWallThickness-increased-modsev": "Not Moderately or Severely Increased",
@@ -81,24 +81,24 @@ PANECHO_BINARY_NEGATIVE_LABEL = {
 }
 
 
-def _panecho_negative_label(task_name: str) -> str:
-    pos = PANECHO_BINARY_POSITIVE_LABEL.get(task_name)
+def _primary_analysis_negative_label(task_name: str) -> str:
+    pos = PRIMARY_ANALYSIS_BINARY_POSITIVE_LABEL.get(task_name)
     if pos == "Present":
         return "Absent"
-    return PANECHO_BINARY_NEGATIVE_LABEL.get(task_name, f"Not {pos or 'Present'}")
+    return PRIMARY_ANALYSIS_BINARY_NEGATIVE_LABEL.get(task_name, f"Not {pos or 'Present'}")
 
 
-def _panecho_positive_probability(
+def _primary_analysis_positive_probability(
     task_name: str,
-    panecho_normalized: Dict[str, Any],
+    primary_analysis_normalized: Dict[str, Any],
 ) -> Optional[float]:
     """
-    Returns the probability of a 'clinically significant' finding from PanEcho:
+    Returns the probability of a clinically significant finding from the primary analysis engine:
     - For binary tasks: just use the probability_present
-    - For multiclass tasks: sum probabilities of 'positive' classes defined in PANECHO_POSITIVE_CLASSES
+    - For multiclass tasks: sum probabilities of 'positive' classes defined in PRIMARY_ANALYSIS_POSITIVE_CLASSES
     If no positive classes are defined, fall back to the existing 'abnormal' probability (1 - p(normal))
     """
-    node = panecho_normalized.get(task_name)
+    node = primary_analysis_normalized.get(task_name)
     if not node:
         return None
 
@@ -108,7 +108,7 @@ def _panecho_positive_probability(
 
     if kind == "multiclass":
         class_probs = node.get("probs") or {}
-        positive_labels = PANECHO_POSITIVE_CLASSES.get(task_name)
+        positive_labels = PRIMARY_ANALYSIS_POSITIVE_CLASSES.get(task_name)
         if positive_labels:
             # Sum up the probabilities for the positive labels
             return float(sum(class_probs.get(label, 0.0) for label in positive_labels))
@@ -147,12 +147,12 @@ def _to_float_or_none(value: Any) -> Optional[float]:
         return None
 
 
-def _normalize_panecho_multiclass(task_name: str, raw_value: Any) -> Dict[str, Any]:
+def _normalize_primary_analysis_multiclass(task_name: str, raw_value: Any) -> Dict[str, Any]:
     """
-    Convert raw PanEcho multiclass outputs (list[float] or dict) into
+    Convert raw primary analysis multiclass outputs (list[float] or dict) into
     a dict with class probabilities and top-label confidence.
     """
-    labels = PANECHO_MULTICLASS_LABELS.get(task_name)
+    labels = PRIMARY_ANALYSIS_MULTICLASS_LABELS.get(task_name)
     if not labels:
         return {"raw": raw_value, "kind": "unknown"}
 
@@ -188,21 +188,21 @@ def _normalize_panecho_multiclass(task_name: str, raw_value: Any) -> Dict[str, A
     }
 
 
-def normalize_panecho_predictions(panecho_raw: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+def normalize_primary_analysis_predictions(primary_analysis_raw: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
     """
-    Normalize PanEcho outputs into a shared schema:
+    Normalize primary analysis outputs into a shared schema:
     - binary/binary_like: {"probability_present": float, "kind": "binary"}
-    - multiclass: via _normalize_panecho_multiclass
+    - multiclass: via _normalize_primary_analysis_multiclass
     - regression/regression_like: {"value": float, "kind": "regression_like"}
     """
     normalized: Dict[str, Dict[str, Any]] = {}
 
-    for task_name, raw_val in panecho_raw.items():
-        if task_name in PANECHO_MULTICLASS_LABELS:
-            normalized[task_name] = _normalize_panecho_multiclass(task_name, raw_val)
+    for task_name, raw_val in primary_analysis_raw.items():
+        if task_name in PRIMARY_ANALYSIS_MULTICLASS_LABELS:
+            normalized[task_name] = _normalize_primary_analysis_multiclass(task_name, raw_val)
             continue
 
-        if task_name in PANECHO_REGRESSION_TASKS:
+        if task_name in PRIMARY_ANALYSIS_REGRESSION_TASKS:
             val = _to_float_or_none(raw_val)
             if val is None:
                 normalized[task_name] = {"raw": raw_val, "kind": "unknown"}
@@ -225,16 +225,16 @@ def normalize_panecho_predictions(panecho_raw: Dict[str, Any]) -> Dict[str, Dict
     return normalized
 
 
-def normalize_echoprime_predictions(echoprime_raw: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+def normalize_secondary_analysis_predictions(secondary_analysis_raw: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
     """
-    Normalize EchoPrime outputs into a shared schema. Heuristic rules:
+    Normalize secondary analysis outputs into a shared schema. Heuristic rules:
     - 0 <= value <= 1: treat as probability_present (binary_like)
     - otherwise: treat as regression_like numeric value
     """
     normalized: Dict[str, Dict[str, Any]] = {}
 
-    for task_name, raw_value in echoprime_raw.items():
-        if task_name in ECHOPRIME_REGRESSION_TASKS:
+    for task_name, raw_value in secondary_analysis_raw.items():
+        if task_name in SECONDARY_ANALYSIS_REGRESSION_TASKS:
             numeric_value = _to_float_or_none(raw_value)
             if numeric_value is None:
                 normalized[task_name] = {
@@ -268,14 +268,14 @@ def normalize_echoprime_predictions(echoprime_raw: Dict[str, Any]) -> Dict[str, 
     return normalized
 
 
-# Part 4. Agreement helpers (convert PanEcho to abnormal probability; gap flags)
-def _panecho_abnormal_probability(task_name: str, panecho_normalized: Dict[str, Any]) -> Optional[float]:
+# Part 4. Agreement helpers (convert primary analysis to abnormal probability; gap flags)
+def _primary_analysis_abnormal_probability(task_name: str, primary_analysis_normalized: Dict[str, Any]) -> Optional[float]:
     """
-    4.1 For PanEcho:
+    4.1 For the primary analysis engine:
         - Multiclass: abnormal probability = 1 - p(normal_class)
         - Binary: abnormal probability = p_present
     """
-    node = panecho_normalized.get(task_name)
+    node = primary_analysis_normalized.get(task_name)
     if not node:
         return None
     if node.get("kind") == "binary":
@@ -312,62 +312,62 @@ def _has_large_gap(value_a: Optional[float], value_b: Optional[float], threshold
 # Part 5. Main combiner - orchestrates normalization, comparison, and packaging
 def combine_results(
     study_uid: str,
-    panecho_predictions: Dict[str, Any],
-    echoprime_predictions: Dict[str, Any],
+    primary_analysis_predictions: Dict[str, Any],
+    secondary_analysis_predictions: Dict[str, Any],
 ) -> Dict[str, Any]:
     """
-    Combine PanEcho and EchoPrime outputs into a single integrated_tasks mapping.
+    Combine primary and secondary analysis outputs into a single integrated_tasks mapping.
 
     Returns:
         {"integrated_tasks": {task_key: {...}}}
     where each task entry includes per-model values/probabilities, integrated label/value,
     units (from TASK_CONFIG), sources, and a discrepancy flag.
     """
-    # 5.1 Normalize both models into a shared schema
-    panecho_normalized = normalize_panecho_predictions(panecho_predictions)
-    echoprime_normalized = normalize_echoprime_predictions(echoprime_predictions)
+    # 5.1 Normalize both analysis engines into a shared schema
+    primary_analysis_normalized = normalize_primary_analysis_predictions(primary_analysis_predictions)
+    secondary_analysis_normalized = normalize_secondary_analysis_predictions(secondary_analysis_predictions)
 
     integrated_tasks: Dict[str, Dict[str, Any]] = {}
 
     for task_key, cfg in TASK_CONFIG.items():
-        panecho_name = cfg.get("panecho_name")
-        echoprime_name = cfg.get("echoprime_name")
+        primary_source_name = cfg.get("primary_source_name")
+        secondary_source_name = cfg.get("secondary_source_name")
 
-        # Fetch PanEcho probability or value
-        pan_prob = None
-        pan_val = None
-        panecho_node = None
-        if panecho_name:
-            panecho_node = panecho_normalized.get(panecho_name)
-            if panecho_node:
-                if panecho_node["kind"] in ("binary", "binary_like"):
-                    pan_prob = _panecho_positive_probability(panecho_name, panecho_normalized)
-                elif panecho_node["kind"] == "multiclass":
-                    pan_prob = _panecho_positive_probability(panecho_name, panecho_normalized)
-                elif panecho_node["kind"] in ("regression", "regression_like"):
-                    pan_val = panecho_node.get("value")
+        # Fetch primary analysis probability or value
+        primary_prob = None
+        primary_value = None
+        primary_source_node = None
+        if primary_source_name:
+            primary_source_node = primary_analysis_normalized.get(primary_source_name)
+            if primary_source_node:
+                if primary_source_node["kind"] in ("binary", "binary_like"):
+                    primary_prob = _primary_analysis_positive_probability(primary_source_name, primary_analysis_normalized)
+                elif primary_source_node["kind"] == "multiclass":
+                    primary_prob = _primary_analysis_positive_probability(primary_source_name, primary_analysis_normalized)
+                elif primary_source_node["kind"] in ("regression", "regression_like"):
+                    primary_value = primary_source_node.get("value")
 
-        # Fetch EchoPrime probability or value
-        echo_prob = None
-        echo_val = None
-        if echoprime_name:
-            node = echoprime_normalized.get(echoprime_name)
+        # Fetch secondary analysis probability or value
+        secondary_prob = None
+        secondary_value = None
+        if secondary_source_name:
+            node = secondary_analysis_normalized.get(secondary_source_name)
             if node:
                 if node["kind"] in ("binary", "binary_like"):
-                    echo_prob = node.get("probability_present")
+                    secondary_prob = node.get("probability_present")
                 elif node["kind"] in ("regression", "regression_like"):
-                    echo_val = node.get("value")
+                    secondary_value = node.get("value")
 
         # Apply thresholds
-        panecho_pass = (
-            pan_prob is not None
-            and cfg.get("panecho_threshold") is not None
-            and pan_prob >= cfg["panecho_threshold"]
+        primary_source_pass = (
+            primary_prob is not None
+            and cfg.get("primary_threshold") is not None
+            and primary_prob >= cfg.get("primary_threshold")
         )
-        echoprime_pass = (
-            echo_prob is not None
-            and cfg.get("echoprime_threshold") is not None
-            and echo_prob >= cfg["echoprime_threshold"]
+        secondary_source_pass = (
+            secondary_prob is not None
+            and cfg.get("secondary_threshold") is not None
+            and secondary_prob >= cfg.get("secondary_threshold")
         )
 
         # Decide integrated value / label based on combine_rule
@@ -378,162 +378,161 @@ def combine_results(
         discrepancy: Optional[bool] = None
         preferred_model = (
             rule.split(":", 1)[1].strip()
-            if isinstance(rule, str) and rule.startswith("prefer_model")
+            if isinstance(rule, str) and (rule.startswith("prefer_source") or rule.startswith("prefer_model"))
             else None
         )
 
         if rule == "average_value":
             # For continuous metrics like EF and PAP
-            if pan_val is not None and echo_val is not None:
-                integrated_value = (pan_val + echo_val) / 2.0
-                sources = ["PanEcho", "EchoPrime"]
+            if primary_value is not None and secondary_value is not None:
+                integrated_value = (primary_value + secondary_value) / 2.0
+                sources = ["primary_analysis", "secondary_analysis"]
                 thr = cfg.get("discrepancy_threshold")
                 if thr is not None:
                     try:
-                        discrepancy = abs(float(pan_val) - float(echo_val)) > float(thr)
+                        discrepancy = abs(float(primary_value) - float(secondary_value)) > float(thr)
                     except Exception:
                         discrepancy = False
-            elif pan_val is not None:
-                integrated_value = pan_val
-                sources = ["PanEcho"]
-            elif echo_val is not None:
-                integrated_value = echo_val
-                sources = ["EchoPrime"]
-            # Optionally: check discrepancy threshold here
-        elif isinstance(rule, str) and rule.startswith("prefer_model"):
-            # Example: "prefer_model:PanEcho" or "prefer_model:EchoPrime"
+            elif primary_value is not None:
+                integrated_value = primary_value
+                sources = ["primary_analysis"]
+            elif secondary_value is not None:
+                integrated_value = secondary_value
+                sources = ["secondary_analysis"]
+        elif isinstance(rule, str) and (rule.startswith("prefer_source") or rule.startswith("prefer_model")):
+            # Example: "prefer_source:primary" or "prefer_source:secondary"
             preferred_model = rule.split(":", 1)[1].strip()
 
             # Numeric (regression) path if any numeric value present
-            is_numeric = (pan_val is not None) or (echo_val is not None)
+            is_numeric = (primary_value is not None) or (secondary_value is not None)
             if is_numeric:
                 # Choose preferred model's numeric value if present, else fallback
-                if preferred_model == "PanEcho" and (pan_val is not None):
-                    integrated_value = pan_val
-                    sources = ["PanEcho"]
-                elif preferred_model == "EchoPrime" and (echo_val is not None):
-                    integrated_value = echo_val
-                    sources = ["EchoPrime"]
+                if preferred_model in {"primary"} and (primary_value is not None):
+                    integrated_value = primary_value
+                    sources = ["primary_analysis"]
+                elif preferred_model in {"secondary"} and (secondary_value is not None):
+                    integrated_value = secondary_value
+                    sources = ["secondary_analysis"]
                 else:
                     # Fallback to whichever numeric value exists
-                    if pan_val is not None:
-                        integrated_value = pan_val
-                        sources = ["PanEcho"]
-                    elif echo_val is not None:
-                        integrated_value = echo_val
-                        sources = ["EchoPrime"]
+                    if primary_value is not None:
+                        integrated_value = primary_value
+                        sources = ["primary_analysis"]
+                    elif secondary_value is not None:
+                        integrated_value = secondary_value
+                        sources = ["secondary_analysis"]
 
                 # Optional: numeric discrepancy if both present and threshold in config
                 thr = cfg.get("discrepancy_threshold")
-                if (thr is not None) and (pan_val is not None) and (echo_val is not None):
+                if (thr is not None) and (primary_value is not None) and (secondary_value is not None):
                     try:
-                        discrepancy = abs(float(pan_val) - float(echo_val)) > float(thr)
+                        discrepancy = abs(float(primary_value) - float(secondary_value)) > float(thr)
                     except Exception:
                         discrepancy = False
 
                 # No integrated_label for numeric tasks
             else:
                 # Classification (prob/prob-like): prefer chosen model only
-                if preferred_model == "PanEcho":
-                    pos = PANECHO_BINARY_POSITIVE_LABEL.get(panecho_name, "Present")
-                    neg = _panecho_negative_label(panecho_name) if panecho_name else "Absent"
-                    is_pos = bool(panecho_pass)
-                    integrated_label, integrated_value = _binary_label_and_conf(pan_prob, pos, neg, is_pos)
-                    sources = ["PanEcho"] if integrated_label else []
+                if preferred_model in {"primary"}:
+                    pos = PRIMARY_ANALYSIS_BINARY_POSITIVE_LABEL.get(primary_source_name, "Present")
+                    neg = _primary_analysis_negative_label(primary_source_name) if primary_source_name else "Absent"
+                    is_pos = bool(primary_source_pass)
+                    integrated_label, integrated_value = _binary_label_and_conf(primary_prob, pos, neg, is_pos)
+                    sources = ["primary_analysis"] if integrated_label else []
                 else:
                     pos, neg = _ep_labels()
-                    is_pos = bool(echoprime_pass)
-                    integrated_label, integrated_value = _binary_label_and_conf(echo_prob, pos, neg, is_pos)
-                    sources = ["EchoPrime"] if integrated_label else []
+                    is_pos = bool(secondary_source_pass)
+                    integrated_label, integrated_value = _binary_label_and_conf(secondary_prob, pos, neg, is_pos)
+                    sources = ["secondary_analysis"] if integrated_label else []
         elif rule == "positive_if_either_positive":
-            if panecho_pass or echoprime_pass:
+            if primary_source_pass or secondary_source_pass:
                 # Choose the passing model with higher p_present
-                pan_p = pan_prob if panecho_pass else None
-                ep_p = echo_prob if echoprime_pass else None
-                use_pan = (pan_p is not None) and (ep_p is None or pan_p >= ep_p)
+                primary_pass_prob = primary_prob if primary_source_pass else None
+                secondary_pass_prob = secondary_prob if secondary_source_pass else None
+                use_pan = (primary_pass_prob is not None) and (secondary_pass_prob is None or primary_pass_prob >= secondary_pass_prob)
                 if use_pan:
-                    pos = PANECHO_BINARY_POSITIVE_LABEL.get(panecho_name, "Present")
-                    neg = _panecho_negative_label(panecho_name) if panecho_name else "Absent"
-                    integrated_label, integrated_value = _binary_label_and_conf(pan_prob, pos, neg, True)
-                    sources = ["PanEcho"]
+                    pos = PRIMARY_ANALYSIS_BINARY_POSITIVE_LABEL.get(primary_source_name, "Present")
+                    neg = _primary_analysis_negative_label(primary_source_name) if primary_source_name else "Absent"
+                    integrated_label, integrated_value = _binary_label_and_conf(primary_prob, pos, neg, True)
+                    sources = ["primary_analysis"]
                 else:
                     pos, neg = _ep_labels()
-                    integrated_label, integrated_value = _binary_label_and_conf(echo_prob, pos, neg, True)
-                    sources = ["EchoPrime"]
+                    integrated_label, integrated_value = _binary_label_and_conf(secondary_prob, pos, neg, True)
+                    sources = ["secondary_analysis"]
             else:
                 # Neither passes -> negative with highest negative confidence
-                pos_pan = PANECHO_BINARY_POSITIVE_LABEL.get(panecho_name, "Present")
-                neg_pan = _panecho_negative_label(panecho_name) if panecho_name else "Absent"
+                primary_positive_label = PRIMARY_ANALYSIS_BINARY_POSITIVE_LABEL.get(primary_source_name, "Present")
+                primary_negative_label = _primary_analysis_negative_label(primary_source_name) if primary_source_name else "Absent"
                 pos_ep, neg_ep = _ep_labels()
                 # Use the model with larger (1 - p_present) to name negative label
-                pan_neg_conf = (1.0 - pan_prob) if pan_prob is not None else None
-                ep_neg_conf = (1.0 - echo_prob) if echo_prob is not None else None
+                pan_neg_conf = (1.0 - primary_prob) if primary_prob is not None else None
+                ep_neg_conf = (1.0 - secondary_prob) if secondary_prob is not None else None
                 use_pan = (pan_neg_conf is not None) and (ep_neg_conf is None or pan_neg_conf >= ep_neg_conf)
                 if use_pan:
-                    integrated_label, integrated_value = _binary_label_and_conf(pan_prob, pos_pan, neg_pan, False)
-                    sources = ["PanEcho"]
+                    integrated_label, integrated_value = _binary_label_and_conf(primary_prob, primary_positive_label, primary_negative_label, False)
+                    sources = ["primary_analysis"]
                 else:
-                    integrated_label, integrated_value = _binary_label_and_conf(echo_prob, pos_ep, neg_ep, False)
-                    sources = ["EchoPrime"]
+                    integrated_label, integrated_value = _binary_label_and_conf(secondary_prob, pos_ep, neg_ep, False)
+                    sources = ["secondary_analysis"]
         elif rule == "agree_if_both_positive":
-            if panecho_pass and echoprime_pass:
+            if primary_source_pass and secondary_source_pass:
                 # Positive only if both; confidence = min()
-                pos = PANECHO_BINARY_POSITIVE_LABEL.get(panecho_name, "Present")
-                integrated_label = pos  # prefer PanEcho wording when available
-                integrated_value = float(min(pan_prob, echo_prob))
-                sources = ["PanEcho", "EchoPrime"]
+                pos = PRIMARY_ANALYSIS_BINARY_POSITIVE_LABEL.get(primary_source_name, "Present")
+                integrated_label = pos  # prefer primary analysis wording when available
+                integrated_value = float(min(primary_prob, secondary_prob))
+                sources = ["primary_analysis", "secondary_analysis"]
             else:
                 # Negative; confidence = 1 - max()
-                neg = _panecho_negative_label(panecho_name) if panecho_name else "Absent"
-                worst = max([p for p in [pan_prob, echo_prob] if p is not None], default=None)
+                neg = _primary_analysis_negative_label(primary_source_name) if primary_source_name else "Absent"
+                worst = max([p for p in [primary_prob, secondary_prob] if p is not None], default=None)
                 integrated_label = neg
                 integrated_value = (1.0 - worst) if worst is not None else None
                 sources = []
-        elif rule == "prefer_panecho_if_echoprime_zero":
-            if echoprime_pass:
+        elif rule == "prefer_primary_if_secondary_zero":
+            if secondary_source_pass:
                 pos, neg = _ep_labels()
-                integrated_label, integrated_value = _binary_label_and_conf(echo_prob, pos, neg, True)
-                sources = ["EchoPrime"]
-            elif panecho_pass:
-                pos = PANECHO_BINARY_POSITIVE_LABEL.get(panecho_name, "Present")
-                neg = _panecho_negative_label(panecho_name) if panecho_name else "Absent"
-                integrated_label, integrated_value = _binary_label_and_conf(pan_prob, pos, neg, True)
-                sources = ["PanEcho"]
+                integrated_label, integrated_value = _binary_label_and_conf(secondary_prob, pos, neg, True)
+                sources = ["secondary_analysis"]
+            elif primary_source_pass:
+                pos = PRIMARY_ANALYSIS_BINARY_POSITIVE_LABEL.get(primary_source_name, "Present")
+                neg = _primary_analysis_negative_label(primary_source_name) if primary_source_name else "Absent"
+                integrated_label, integrated_value = _binary_label_and_conf(primary_prob, pos, neg, True)
+                sources = ["primary_analysis"]
             else:
                 # Neither passes -> negative; pick the model with higher negative confidence for labeling
-                pos_pan = PANECHO_BINARY_POSITIVE_LABEL.get(panecho_name, "Present")
-                neg_pan = _panecho_negative_label(panecho_name) if panecho_name else "Absent"
+                primary_positive_label = PRIMARY_ANALYSIS_BINARY_POSITIVE_LABEL.get(primary_source_name, "Present")
+                primary_negative_label = _primary_analysis_negative_label(primary_source_name) if primary_source_name else "Absent"
                 pos_ep, neg_ep = _ep_labels()
-                pan_neg_conf = (1.0 - pan_prob) if pan_prob is not None else None
-                ep_neg_conf = (1.0 - echo_prob) if echo_prob is not None else None
+                pan_neg_conf = (1.0 - primary_prob) if primary_prob is not None else None
+                ep_neg_conf = (1.0 - secondary_prob) if secondary_prob is not None else None
                 use_pan = (pan_neg_conf is not None) and (ep_neg_conf is None or pan_neg_conf >= ep_neg_conf)
                 if use_pan:
-                    integrated_label, integrated_value = _binary_label_and_conf(pan_prob, pos_pan, neg_pan, False)
-                    sources = ["PanEcho"]
+                    integrated_label, integrated_value = _binary_label_and_conf(primary_prob, primary_positive_label, primary_negative_label, False)
+                    sources = ["primary_analysis"]
                 else:
-                    integrated_label, integrated_value = _binary_label_and_conf(echo_prob, pos_ep, neg_ep, False)
-                    sources = ["EchoPrime"]
+                    integrated_label, integrated_value = _binary_label_and_conf(secondary_prob, pos_ep, neg_ep, False)
+                    sources = ["secondary_analysis"]
 
         prefer_pan_multiclass = (
-            preferred_model == "PanEcho"
-            and panecho_node is not None
-            and panecho_node.get("kind") == "multiclass"
+            preferred_model in {"primary"}
+            and primary_source_node is not None
+            and primary_source_node.get("kind") == "multiclass"
         )
         if prefer_pan_multiclass:
-            probs = panecho_node.get("probs") or {}
-            integrated_label = panecho_node.get("label")
-            integrated_value = panecho_node.get("confidence")
-            sources = ["PanEcho"]
+            probs = primary_source_node.get("probs") or {}
+            integrated_label = primary_source_node.get("label")
+            integrated_value = primary_source_node.get("confidence")
+            sources = ["primary_analysis"]
         else:
             probs = None
 
-        panecho_payload = (
-            probs if prefer_pan_multiclass else (pan_val if pan_val is not None else pan_prob)
+        primary_payload = (
+            probs if prefer_pan_multiclass else (primary_value if primary_value is not None else primary_prob)
         )
 
         integrated_tasks[task_key] = {
-            "panecho_value_or_prob": panecho_payload,
-            "echoprime_value_or_prob": echo_val if echo_val is not None else echo_prob,
+            "primary_value_or_prob": primary_payload,
+            "secondary_value_or_prob": secondary_value if secondary_value is not None else secondary_prob,
             "integrated_value": integrated_value,
             "integrated_label": integrated_label,
             "units": cfg.get("units"),
@@ -542,8 +541,8 @@ def combine_results(
                 discrepancy
                 if discrepancy is not None
                 else (
-                    (panecho_pass != echoprime_pass)
-                    if (pan_prob is not None and echo_prob is not None)
+                    (primary_source_pass != secondary_source_pass)
+                    if (primary_prob is not None and secondary_prob is not None)
                     else None
                 )
             ),
@@ -573,7 +572,9 @@ def _binary_label_and_conf(
 
 def _ep_labels() -> (str, str):
     """
-    Default positive/negative labels for EchoPrime binary tasks.
+    Default positive/negative labels for secondary analysis binary tasks.
     """
     return "Present", "Absent"
+
+
 

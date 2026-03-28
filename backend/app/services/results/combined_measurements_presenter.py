@@ -211,8 +211,8 @@ def _build_numeric_display_value(
         return _format_number(effective_value), effective_value
 
     range_values = [
-        _to_float_or_none(task.get("panecho_value_or_prob")),
-        _to_float_or_none(task.get("echoprime_value_or_prob")),
+        _to_float_or_none(task.get("primary_value_or_prob")),
+        _to_float_or_none(task.get("secondary_value_or_prob")),
     ]
     range_values = [value for value in range_values if value is not None]
 
@@ -249,7 +249,7 @@ def _build_display_item(
 
     if kind == "categorical":
         display_value = _effective_label_value(task_key, integrated_tasks, overrides)
-        probabilities = task.get("panecho_value_or_prob")
+        probabilities = task.get("primary_value_or_prob")
         if not isinstance(probabilities, dict):
             probabilities = None
         if display_value is None and probabilities is None:

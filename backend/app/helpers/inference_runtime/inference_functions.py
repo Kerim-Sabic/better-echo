@@ -13,6 +13,7 @@ import pydicom
 from pathlib import Path
 
 from app.core.config import settings
+from app.core.runtime_paths import cache_dir, model_assets_dir
 from app.helpers.inference_runtime.device_selector import get_device_for_model
 
 logger = logging.getLogger(__name__)
@@ -101,7 +102,7 @@ def fetch_orthanc_instance_ids_from_study(study_uid: str) -> List[str]:
     return ids
 
 
-# Part 1. Normalize a DICOM frame into uint8 for PanEcho frame sampling.
+# Part 1. Normalize a DICOM frame into uint8 for primary-analysis frame sampling.
 def _normalize_frame_to_uint8(frame: np.ndarray) -> np.ndarray:
     if frame.ndim == 3:
         frame = frame[..., 0]
@@ -115,7 +116,7 @@ def _normalize_frame_to_uint8(frame: np.ndarray) -> np.ndarray:
     return data.astype(np.uint8)
 
 
-# Part 2. Fast local DICOM frame sampler for PanEcho.
+# Part 2. Fast local DICOM frame sampler for primary analysis.
 def pick_frames_from_local_dicom(dicom_path: str, num_frames: int = 16) -> List[Image.Image]:
     if num_frames <= 0:
         raise ValueError("num_frames must be >= 1")
@@ -201,27 +202,27 @@ _device = None
 
 def get_model_and_device() -> Tuple[torch.nn.Module, torch.device]:
     """
-    Lazily load the local PanEcho model (CPU or GPU) once and reuse it
+    Lazily load the local primary analysis model (CPU or GPU) once and reuse it
     across calls.
     """
     global _model, _device
     if _model is None:
         # pick device explicitly
-        _device = get_device_for_model("panecho")
+        _device = get_device_for_model("primary_analysis")
         start = time.time()
-        logger.info(f"[INFERENCE_FUNCTIONS] Loading PanEcho model on device: {_device}")
+        logger.info(f"[INFERENCE_FUNCTIONS] Loading primary analysis model on device: {_device}")
         
-        # Local PanEcho repo path (vendored)
-        local_repo_dir = (Path(__file__).resolve().parents[2] / "AI_models" / "PanEcho").resolve()
+        # Local bundled runtime repo path (vendored)
+        local_repo_dir = model_assets_dir("primary_analysis").resolve()
         hubconf_path = local_repo_dir / "hubconf.py"
         if not hubconf_path.exists():
             raise RuntimeError(
-                f"PanEcho local repo is missing at {local_repo_dir}."
+                f"Primary analysis runtime assets are missing at {local_repo_dir}."
                 f"Expected hubconf.py at {hubconf_path}. Please vendor the repo and assets."
             )
         
-        # Ensure a local torch hub cache (keeps artifacts in-repo; no network)
-        torch_cache_dir = (local_repo_dir / "pytorch_hub_cache").resolve()
+        # Ensure a local torch hub cache under a writable runtime directory.
+        torch_cache_dir = cache_dir("primary_analysis_torch_hub").resolve()
         os.environ.setdefault("TORCH_HOME", str(torch_cache_dir))
         try:
             torch_cache_dir.mkdir(parents=True, exist_ok=True)
@@ -231,19 +232,19 @@ def get_model_and_device() -> Tuple[torch.nn.Module, torch.device]:
         # Strictly load from local repo (offline)
         _model = torch.hub.load(
             str(local_repo_dir),
-            'PanEcho',
+            'load_primary_analysis_model',
             source='local',
             force_reload=False
         )
         _model.to(_device).eval()
-        logger.info("[INFERENCE_FUNCTIONS] PanEcho (local) loaded successfully in %.1fs", time.time() - start)
+        logger.info("[INFERENCE_FUNCTIONS] Primary analysis model loaded successfully in %.1fs", time.time() - start)
 
     return _model, _device
 
 
-def unload_panecho_model() -> None:
+def unload_primary_analysis_model() -> None:
     """
-    Unload cached PanEcho model and clear accelerator memory.
+    Unload cached primary analysis model and clear accelerator memory.
     """
     global _model, _device
     if _model is not None:

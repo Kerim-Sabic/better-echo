@@ -24,7 +24,7 @@ class LLMClient:
     ) -> None:
         self.base_url = (base_url or settings.LLM_BASE_URL).rstrip("/")
         self.api_key = api_key or settings.LLM_API_KEY
-        self.model = model or settings.LLM_MODEL
+        self.model = model or settings.REPORTING_MODEL_ID
         self.timeout_seconds = timeout_seconds
         self._health_endpoint = f"{self.base_url}/models"
 

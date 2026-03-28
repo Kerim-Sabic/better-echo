@@ -4,9 +4,9 @@ from typing import Any, Dict, List, Optional
 
 
 _TASK_LABEL_FALLBACKS = {
-    "echonet_dynamic_lv_segmentation": "Left Ventricle (LV) segmentation",
-    "measurements_2d": "2D Measurements",
-    "measurements_doppler": "Doppler Measurements",
+    "motion_segmentation_lv": "Motion Segmentation",
+    "measurement_linear": "Linear Measurements",
+    "measurement_spectral": "Spectral Measurements",
 }
 
 _VIDEO_SUFFIXES = (".mp4", ".webm", ".mov", ".avi")
@@ -138,9 +138,9 @@ def _normalize_meta(meta: Any) -> Optional[Dict[str, int]]:
 
     normalized: Dict[str, int] = {}
     for key in (
-        "dynamic_runs",
-        "measurements_2d_runs",
-        "measurements_doppler_runs",
+        "motion_runs",
+        "linear_runs",
+        "spectral_runs",
         "skipped_instances",
         "error_count",
     ):

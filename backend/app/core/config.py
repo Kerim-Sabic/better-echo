@@ -2,7 +2,7 @@ import json
 from functools import lru_cache
 from typing import Annotated, Optional
 
-from pydantic import field_validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, NoDecode
 
 
@@ -30,19 +30,19 @@ class Settings(BaseSettings):
     WEBAUTHN_REQUIRE_SINGLE_PROCESS: bool = True
 
     # Model preload toggles (default on; disable per machine if needed)
-    PANECHO_PRELOAD: bool = True
-    PANECHO_WARMUP: bool = False
-    ECHOPRIME_PRELOAD: bool = True
-    ECHOPRIME_WARMUP: bool = False
-    ECHONET_PRELOAD: bool = True
-    ECHONET_WARMUP: bool = False
-    MEASUREMENTS_PRELOAD: bool = True
-    MEASUREMENTS_WARMUP: bool = False
+    PRIMARY_ANALYSIS_PRELOAD: bool = True
+    PRIMARY_ANALYSIS_WARMUP: bool = False
+    SECONDARY_ANALYSIS_PRELOAD: bool = True
+    SECONDARY_ANALYSIS_WARMUP: bool = False
+    MOTION_SEGMENTATION_PRELOAD: bool = True
+    MOTION_SEGMENTATION_WARMUP: bool = False
+    STUDY_MEASUREMENTS_PRELOAD: bool = True
+    STUDY_MEASUREMENTS_WARMUP: bool = False
 
     # Batch sizes (conservative defaults; adjust per hardware)
-    PANECHO_BATCH: int = 8
-    ECHONET_BATCH: int = 16
-    MEASUREMENTS_BATCH: int = 16
+    PRIMARY_ANALYSIS_BATCH: int = 8
+    MOTION_SEGMENTATION_BATCH: int = 16
+    STUDY_MEASUREMENTS_BATCH: int = 16
     MEASUREMENTS_OUTPUT_FPS: int = 30
 
     # Inference runtime profile and queue controls
@@ -53,16 +53,16 @@ class Settings(BaseSettings):
     PIPELINE_VIEW_CONFIDENCE_MIN: float = 0.75
 
     # Preferred devices (auto | cpu | cuda:<index>)
-    PANECHO_DEVICE: str = "auto"
-    ECHO_PRIME_DEVICE: str = "auto"
-    ECHONET_DEVICE: str = "auto"
-    MEASUREMENTS_DEVICE: str = "auto"
-    RESERVED_LLM_DEVICE: Optional[str] = None
+    PRIMARY_ANALYSIS_DEVICE: str = "auto"
+    SECONDARY_ANALYSIS_DEVICE: str = "auto"
+    MOTION_SEGMENTATION_DEVICE: str = "auto"
+    STUDY_MEASUREMENTS_DEVICE: str = "auto"
+    REPORTING_RESERVED_DEVICE: Optional[str] = None
 
     ENABLE_LLM: bool = True
     LLM_BASE_URL: str = "http://localhost:8012/v1"
     LLM_API_KEY: str = "local-echo-key"
-    LLM_MODEL: str = "Qwen/Qwen2.5-14B-Instruct-AWQ"
+    REPORTING_MODEL_ID: str = "local-reporting-model"
     LLM_WSL_DISTRO: str = "Ubuntu"
     LLM_VENV_PATH: str = "~/vllm"
     LLM_GPU_INDEX: int = 1

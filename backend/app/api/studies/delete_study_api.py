@@ -12,7 +12,13 @@ from app.database_models.studies import Study
 from app.helpers.auth.authentication_functions import get_current_user_id
 from app.services.integrations.orthanc_client import delete_study_from_orthanc
 from app.schemas.studies.studies_schemas import StudyDeleteResponse
-from app.core.artifacts import UPLOAD_DIR
+from app.core.artifacts import (
+    LINEAR_MEASUREMENTS_UPLOAD_DIRNAME,
+    MOTION_SEGMENTATION_UPLOAD_DIRNAME,
+    REPORT_SUMMARY_UPLOAD_DIRNAME,
+    SPECTRAL_MEASUREMENTS_UPLOAD_DIRNAME,
+    UPLOAD_DIR,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -67,33 +73,13 @@ def delete_study(
     study_folder = os.path.join(UPLOAD_DIR, study.study_uid)
     _delete_folder_if_exists(study_folder, "study folder")
 
-    lv_segmentation_folder = os.path.join(
-        UPLOAD_DIR,
-        "echonet_dynamic_LV-segmentation_files",
-        study.study_uid,
-    )
-    _delete_folder_if_exists(lv_segmentation_folder, "LV segmentation results folder")
-
-    uploads_measurements_study = os.path.join(
-        UPLOAD_DIR,
-        "measurements_2D_keypoint_detection",
-        study.study_uid,
-    )
-    _delete_folder_if_exists(uploads_measurements_study, "uploads measurements folder")
-
-    uploads_doppler_study = os.path.join(
-        UPLOAD_DIR,
-        "measurements_doppler",
-        study.study_uid,
-    )
-    _delete_folder_if_exists(uploads_doppler_study, "uploads doppler folder")
-
-    llm_reports_study = os.path.join(
-        UPLOAD_DIR,
-        "llm_reports",
-        study.study_uid,
-    )
-    _delete_folder_if_exists(llm_reports_study, "llm reports folder")
+    for folder_name, label in (
+        (MOTION_SEGMENTATION_UPLOAD_DIRNAME, "motion segmentation results folder"),
+        (LINEAR_MEASUREMENTS_UPLOAD_DIRNAME, "linear measurements folder"),
+        (SPECTRAL_MEASUREMENTS_UPLOAD_DIRNAME, "spectral measurements folder"),
+        (REPORT_SUMMARY_UPLOAD_DIRNAME, "study reports folder"),
+    ):
+        _delete_folder_if_exists(os.path.join(UPLOAD_DIR, folder_name, study.study_uid), label)
 
     # --- Step 4: Delete study (and maybe patient) from database ---
     try:

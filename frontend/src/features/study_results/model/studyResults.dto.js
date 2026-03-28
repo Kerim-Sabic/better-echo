@@ -148,14 +148,14 @@ export function formatPanechoEchoprimeCombinedResultsDto(rawApiResponse) {
     typeof rawData.status === "string" ? rawData.status : null;
   const state = deriveCombinedState(responseStatus, backendStatus);
 
-  const panechoEchoprimeResults =
+  const studyAnalysisResults =
     state === "ready"
-      ? formatPanechoEchoprimeResultsDto(rawData.panecho_echoprime_results)
+      ? formatStudyAnalysisResultsDto(rawData.analysis_results)
       : null;
 
   return {
     state,
-    panechoEchoprimeResults,
+    studyAnalysisResults,
   };
 }
 

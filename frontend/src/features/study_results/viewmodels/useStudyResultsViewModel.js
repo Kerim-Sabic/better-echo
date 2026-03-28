@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { usePanechoEchoprimeCombinedResultsQuery } from "@/features/study_results/tanstack/queries/usePanechoEchoprimeCombinedResultsQuery";
+import { useStudyAnalysisCombinedResultsQuery } from "@/features/study_results/tanstack/queries/useStudyAnalysisCombinedResultsQuery";
 import { useDynamicMeasurementsCombinedResultsQuery } from "@/features/study_results/tanstack/queries/useDynamicMeasurementsCombinedResultsQuery";
 import { useLlmReportResultsQuery } from "@/features/study_results/tanstack/queries/useLlmReportResultsQuery";
 import { useStudyDetailsQuery } from "@/features/study_results/tanstack/queries/useStudyDetailsQuery";
@@ -47,12 +47,12 @@ export function useStudyResultsViewModel(studyUid) {
 
   // --- Part 1. Query and normalize all study-results server state. ---
   const {
-    data: panechoEchoprimeQueryData = null,
-    isLoading: isPanechoEchoprimeLoading,
-    isFetching: isPanechoEchoprimeFetching,
-    error: panechoEchoprimeError,
-    refetch: refetchPanechoEchoprime,
-  } = usePanechoEchoprimeCombinedResultsQuery(studyUid, {
+    data: studyAnalysisQueryData = null,
+    isLoading: isStudyAnalysisLoading,
+    isFetching: isStudyAnalysisFetching,
+    error: studyAnalysisError,
+    refetch: refetchStudyAnalysis,
+  } = useStudyAnalysisCombinedResultsQuery(studyUid, {
     enabled: Boolean(studyUid),
   });
 
@@ -109,7 +109,7 @@ export function useStudyResultsViewModel(studyUid) {
 
   // --- Part 3. Derive page-level UI state and build the OHIF bridge payload. ---
   const studyResultsState = resolveOverallState([
-    panechoEchoprimeCombinedResultsState,
+    studyAnalysisCombinedResultsState,
     dynamicMeasurementsCombinedResultsState,
     llmReportResultsState,
   ]);
@@ -228,7 +228,7 @@ export function useStudyResultsViewModel(studyUid) {
   }, [navigate]);
 
   const refetchStudyResults = useCallback(() => {
-    refetchPanechoEchoprime();
+    refetchStudyAnalysis();
     refetchDynamicMeasurements();
     refetchLlmReport();
   }, [refetchPanechoEchoprime, refetchDynamicMeasurements, refetchLlmReport]);
@@ -237,8 +237,8 @@ export function useStudyResultsViewModel(studyUid) {
     studyUid,
     studyResultsState,
 
-    panechoEchoprimeCombinedResultsState,
-    panechoEchoprimeCombinedResultsData,
+    studyAnalysisCombinedResultsState,
+    studyAnalysisCombinedResultsData,
 
     dynamicMeasurementsCombinedResultsState,
 

@@ -3,9 +3,9 @@ from typing import Dict
 from app.core.config import settings
 
 _DEFAULTS: Dict[str, int] = {
-    "panecho": settings.PANECHO_BATCH,
-    "echonet": settings.ECHONET_BATCH,
-    "measurements": settings.MEASUREMENTS_BATCH,
+    "primary_analysis": settings.PRIMARY_ANALYSIS_BATCH,
+    "motion_segmentation": settings.MOTION_SEGMENTATION_BATCH,
+    "study_measurements": settings.STUDY_MEASUREMENTS_BATCH,
 }
 
 

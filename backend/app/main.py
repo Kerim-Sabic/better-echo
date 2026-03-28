@@ -10,7 +10,10 @@ import uvicorn
 
 from app.api.health.health_api import router as health_router
 from app.api.admin import router as admin_router
-from app.services.inference.echoprime_service import start_echoprime_preload_background, unload_ep
+from app.services.inference.secondary_analysis_service import (
+    start_secondary_analysis_preload_background,
+    unload_secondary_analysis_model,
+)
 from app.api.upload_dicom import router as upload_dicom_router
 from app.api.studies import router as studies_router
 from app.api.patients import router as patients_router
@@ -23,17 +26,20 @@ from app.api.results import router as results_router
 from app.database.setup_db import init_db
 from app.helpers.media.ffmpeg_mp4_writer import kill_tracked_ffmpeg_processes
 from app.helpers.inference_runtime.device_selector import get_device_for_model
-from app.helpers.inference_runtime.inference_functions import unload_panecho_model
+from app.helpers.inference_runtime.inference_functions import unload_primary_analysis_model
 from app.helpers.inference_runtime.preload_utils import safe_preload, has_min_vram
 from app.services.licensing.middleware import enforce_license_middleware
 from app.services.licensing.service import log_current_license_status
+from app.services.release import run_release_identifier_migration
 from app.services.auth.webauthn.state import assert_webauthn_state_runtime_safe
 from app.services.pipeline.scheduler import start_pipeline_scheduler, stop_pipeline_scheduler
 
 from app.core.config import settings
 from app.core.artifacts import UPLOAD_DIR
+from app.core.runtime_paths import logs_dir
 
-os.makedirs("app/logs", exist_ok=True)
+LOGS_DIR = logs_dir()
+LOG_FILE = LOGS_DIR / "horalix.log"
 
 # Suppress noisy bcrypt version probe from passlib (harmless)
 warnings.filterwarnings(
@@ -47,7 +53,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
     handlers=[
-        logging.FileHandler("app/logs/horalix.log"),
+        logging.FileHandler(LOG_FILE),
         logging.StreamHandler()
     ]
 )
@@ -84,7 +90,13 @@ if _detected_lan_ip:
     if _lan_frontend_origin not in _cors_origins:
         _cors_origins.append(_lan_frontend_origin)
 
-app = FastAPI()
+release_mode = os.environ.get("HORALIX_RELEASE_MODE") == "1"
+
+app = FastAPI(
+    docs_url=None if release_mode else "/docs",
+    redoc_url=None if release_mode else "/redoc",
+    openapi_url=None if release_mode else "/openapi.json",
+)
 app.middleware("http")(enforce_license_middleware)
 
 app.add_middleware(
@@ -119,6 +131,14 @@ def startup_preload_models():
     # Part 0. Ensure schema exists before the scheduler touches queue tables.
     init_db()
 
+    # Part 0.05. Normalize legacy persisted identifiers once for packaged release builds.
+    if release_mode:
+        try:
+            run_release_identifier_migration()
+        except Exception as exc:
+            logger.exception("Release identifier migration failed; aborting packaged startup.")
+            raise RuntimeError("Release identifier migration failed") from exc
+
     # Part 0.1 Load and log license status once at startup so runtime gating stays lightweight.
     log_current_license_status()
 
@@ -137,45 +157,45 @@ def startup_preload_models():
         logger.info("LAN backend URL hint:  http://%s:8000", _detected_lan_ip)
     logger.info("CORS allow origins: %s", _cors_origins)
 
-    def _preload_panecho():
+    def _preload_primary_analysis():
         from app.helpers.inference_runtime.inference_functions import get_model_and_device
         get_model_and_device()
 
-    def _preload_echonet():
-        from app.api.inference.infer_echonet_dynamic_api import load_model
-        load_model()
+    def _preload_motion_segmentation():
+        from app.api.inference.infer_motion_segmentation_api import load_motion_segmentation_model
+        load_motion_segmentation_model()
 
     def _preload_measurements():
         from app.AI_models.measurements.runner_2d import _load_model, VALID_2D_WEIGHTS
         for w in VALID_2D_WEIGHTS:
             _load_model(w)
 
-    # PanEcho
-    if settings.PANECHO_PRELOAD:
-        device = get_device_for_model("panecho", log_device=False)
-        safe_preload("PanEcho", device, required_gb=2.0, loader=_preload_panecho)
+    # Primary analysis
+    if settings.PRIMARY_ANALYSIS_PRELOAD:
+        device = get_device_for_model("primary_analysis", log_device=False)
+        safe_preload("PrimaryAnalysis", device, required_gb=2.0, loader=_preload_primary_analysis)
 
-    # EchoPrime
-    if settings.ECHOPRIME_PRELOAD:
-        device = get_device_for_model("echoprime", log_device=False)
+    # Secondary analysis
+    if settings.SECONDARY_ANALYSIS_PRELOAD:
+        device = get_device_for_model("secondary_analysis", log_device=False)
         if has_min_vram(device, required_gb=6.0):
             try:
-                start_echoprime_preload_background(settings.ECHOPRIME_WARMUP)
-                logger.info("Startup preload: EchoPrime loading in background (warmup=%s)", settings.ECHOPRIME_WARMUP)
+                start_secondary_analysis_preload_background(settings.SECONDARY_ANALYSIS_WARMUP)
+                logger.info("Startup preload: secondary analysis loading in background (warmup=%s)", settings.SECONDARY_ANALYSIS_WARMUP)
             except Exception as exc:
-                logger.warning("Startup preload: EchoPrime preload thread failed to start; will lazy-load on demand: %s", exc)
+                logger.warning("Startup preload: secondary analysis preload thread failed to start; will lazy-load on demand: %s", exc)
         else:
-            logger.warning("Startup preload: Skipping EchoPrime preload due to low VRAM on %s", device)
+            logger.warning("Startup preload: skipping secondary analysis preload due to low VRAM on %s", device)
 
-    # EchoNet-Dynamic
-    if settings.ECHONET_PRELOAD:
-        device = get_device_for_model("echonet", log_device=False)
-        safe_preload("EchoNet-Dynamic", device, required_gb=2.0, loader=_preload_echonet)
+    # Motion segmentation
+    if settings.MOTION_SEGMENTATION_PRELOAD:
+        device = get_device_for_model("motion_segmentation", log_device=False)
+        safe_preload("MotionSegmentation", device, required_gb=2.0, loader=_preload_motion_segmentation)
 
-    # Measurements 2D
-    if settings.MEASUREMENTS_PRELOAD:
-        device = get_device_for_model("measurements", log_device=False)
-        safe_preload("Measurements2D", device, required_gb=2.0, loader=_preload_measurements)
+    # Study measurements
+    if settings.STUDY_MEASUREMENTS_PRELOAD:
+        device = get_device_for_model("study_measurements", log_device=False)
+        safe_preload("StudyMeasurements", device, required_gb=2.0, loader=_preload_measurements)
 
 @app.on_event("shutdown")
 def shutdown_cleanup():
@@ -193,15 +213,15 @@ def shutdown_cleanup():
     except Exception as exc:
         logger.warning("Shutdown cleanup: failed to kill tracked ffmpeg processes: %s", exc)
     try:
-        unload_ep()
-        logger.info("Shutdown cleanup: unloaded EchoPrime.")
+        unload_secondary_analysis_model()
+        logger.info("Shutdown cleanup: unloaded secondary analysis.")
     except Exception as exc:
-        logger.warning("Shutdown cleanup: failed to unload EchoPrime: %s", exc)
+        logger.warning("Shutdown cleanup: failed to unload secondary analysis: %s", exc)
     try:
-        unload_panecho_model()
-        logger.info("Shutdown cleanup: unloaded PanEcho.")
+        unload_primary_analysis_model()
+        logger.info("Shutdown cleanup: unloaded primary analysis.")
     except Exception as exc:
-        logger.warning("Shutdown cleanup: failed to unload PanEcho: %s", exc)
+        logger.warning("Shutdown cleanup: failed to unload primary analysis: %s", exc)
     try:
         from app.AI_models.measurements.runner_2d import unload_2d_models
         from app.AI_models.measurements.runner_doppler import unload_doppler_models

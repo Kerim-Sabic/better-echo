@@ -20,6 +20,7 @@ import transformers
 
 
 # Local module imports
+from app.core.runtime_paths import model_assets_dir
 from ..utils import utils
 
 def _load_torch(path, map_location, label):
@@ -41,10 +42,10 @@ class EchoPrime:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         
         # Base path for all relative files
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        base_dir = str(model_assets_dir("secondary_analysis"))
 
         # Load echo encoder
-        checkpoint_path = os.path.join(base_dir, "model_data", "weights", "echo_prime_encoder.pt")
+        checkpoint_path = os.path.join(base_dir, "model_data", "weights", "analysis_encoder.pt")
         checkpoint = _load_torch(checkpoint_path, device, "echo encoder")
         echo_encoder = torchvision.models.video.mvit_v2_s()
         echo_encoder.head[-1] = torch.nn.Linear(echo_encoder.head[-1].in_features, 512)

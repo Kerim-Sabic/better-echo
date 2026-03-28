@@ -11,7 +11,7 @@ export function useDeleteStudyMutation() {
 
       if (variables?.studyUid) {
         queryClient.removeQueries({
-          queryKey: ["panechoEchoprimeCombinedResults", variables.studyUid],
+          queryKey: ["studyAnalysisCombinedResults", variables.studyUid],
           exact: true,
         });
       }

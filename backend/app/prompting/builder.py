@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional
 from jinja2 import Template
 
 from app.core.config import settings
+from app.core.runtime_paths import prompt_template_path
 from app.prompting.params import LLMParams, safe_max_tokens
 
 
@@ -16,15 +17,19 @@ logger = logging.getLogger(__name__)
 def _load_template(template_path: str) -> Template:
     p = Path(template_path)
     if not p.exists():
-        # Fallback: look for the template next to this file by filename
-        alt = Path(__file__).resolve().parent / p.name
-        if alt.exists():
-            p = alt
+        runtime_default = prompt_template_path(p.name)
+        if runtime_default.exists():
+            p = runtime_default
         else:
-            # Last resort: try two-level parent / prompting / filename
-            alt2 = Path(__file__).resolve().parents[1] / "prompting" / p.name
-            if alt2.exists():
-                p = alt2
+            # Fallback: look for the template next to this file by filename
+            alt = Path(__file__).resolve().parent / p.name
+            if alt.exists():
+                p = alt
+            else:
+                # Last resort: try two-level parent / prompting / filename
+                alt2 = Path(__file__).resolve().parents[1] / "prompting" / p.name
+                if alt2.exists():
+                    p = alt2
     text = p.read_text(encoding="utf-8")
     return Template(text)
 

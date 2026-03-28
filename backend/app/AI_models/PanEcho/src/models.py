@@ -81,7 +81,7 @@ class ImageEncoder(torch.nn.Module):
         return self.model(x)
 
 class FrameTransformer(torch.nn.Module):
-    """2+1D architecture with 2D image encoder and 1D temporal Transformer for echocardiogrpahy video modeling."""
+    """2+1D architecture with a 2D image encoder and 1D temporal transformer for video modeling."""
     def __init__(self, arch, n_heads, n_layers, transformer_dropout, pooling, clip_len=16):
         super(FrameTransformer, self).__init__()
         self.pooling = pooling
@@ -153,7 +153,7 @@ class MultiTaskModel(torch.nn.Module):
 
             if self.activations:
                 if task.task_type == 'binary_classification':
-                    # Ensure that output corresponds to "positive" class for all binary classification tasks
+                    # Ensure the output corresponds to the positive class for all binary classification tasks.
                     if task.task_name in ['MVStenosis', 'AVStructure', 'RASize', 'RVSystolicFunction', 'LVWallThickness-increased-modsev', 'LVWallThickness-increased-any', 'pericardial-effusion']:
                         out_dict[task.task_name] = 1-torch.sigmoid(out)
                     else:

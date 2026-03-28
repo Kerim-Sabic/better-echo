@@ -11,16 +11,20 @@ from sqlalchemy.orm.attributes import flag_modified
 from app.database.db import get_db
 from app.database_models.users import User
 from app.database_models.derived_results import ResultStatus
-from app.core.artifacts import PANECHO_ECHOPRIME_COMBINED_TYPE
+from app.core.artifacts import (
+    ANALYSIS_OVERRIDES_ROUTE_SEGMENT,
+    ANALYSIS_RESULTS_ROUTE_SEGMENT,
+    COMBINED_ANALYSIS_TYPES,
+)
 from app.helpers.row_to_dict.combined_results_row_to_dict import build_combined_sections_from_row
 from app.helpers.auth.authentication_functions import get_current_user_id
-from app.schemas.results.combined_panecho_echoprime_schemas import (
+from app.schemas.results.combined_study_analysis_schemas import (
     CombinedResultsResponse,
     CompleteResponse,
     PendingResponse,
     FailedResponse,
 )
-from app.schemas.results.panecho_echoprime_overrides_schemas import OverridesUpdateRequest
+from app.schemas.results.study_analysis_overrides_schemas import OverridesUpdateRequest
 from app.services.results import build_combined_display_payload
 from app.services.pipeline.read import (
     get_active_or_legacy_result_row,
@@ -41,7 +45,7 @@ def _build_complete_payload(combined_results_row) -> dict:
 
 
 @router.get(
-    "/studies/{study_uid}/PanEcho-EchoPrime-combined-results",
+    f"/studies/{{study_uid}}/{ANALYSIS_RESULTS_ROUTE_SEGMENT}",
     response_model=CombinedResultsResponse,
 )
 def get_combined_results(
@@ -51,7 +55,7 @@ def get_combined_results(
     current_user_id: int = Depends(get_current_user_id),
 ):
     """
-    Observer-only combined PanEcho + EchoPrime results endpoint.
+    Observer-only study analysis results endpoint.
 
     Steps:
     1. Resolve study and read preview/active (or legacy fallback) combined row.
@@ -64,21 +68,21 @@ def get_combined_results(
     combined_results_row = get_result_row_for_read_mode(
         db=db,
         study_id=study.id,
-        result_type=PANECHO_ECHOPRIME_COMBINED_TYPE,
+        result_type=COMBINED_ANALYSIS_TYPES,
         preview=preview,
     )
 
     # Part 2. Complete response for ready active artifact.
     if combined_results_row and combined_results_row.status == ResultStatus.complete:
         payload = _build_complete_payload(combined_results_row)
-        return CompleteResponse(status="complete", panecho_echoprime_results=payload)
+        return CompleteResponse(status="complete", analysis_results=payload)
 
     # Part 3. Failed response for explicit failed row or failed queue stage.
     if combined_results_row and combined_results_row.status == ResultStatus.failed:
         detail = None
         if isinstance(combined_results_row.value_json, dict):
             detail = combined_results_row.value_json.get("error")
-        failed = FailedResponse(status="failed", detail=detail or "PanEcho+EchoPrime orchestration failed")
+        failed = FailedResponse(status="failed", detail=detail or "Study analysis orchestration failed")
         return JSONResponse(status_code=200, content=failed.model_dump())
 
     queue_failed_detail = get_latest_stage_failure_detail(
@@ -100,7 +104,7 @@ def get_combined_results(
 
 
 @router.patch(
-    "/studies/{study_uid}/PanEcho-EchoPrime-overrides",
+    f"/studies/{{study_uid}}/{ANALYSIS_OVERRIDES_ROUTE_SEGMENT}",
     response_model=CombinedResultsResponse,
 )
 def update_combined_overrides(
@@ -110,7 +114,7 @@ def update_combined_overrides(
     current_user_id: int = Depends(get_current_user_id),
 ):
     """
-    Persist doctor overrides for active PanEcho+EchoPrime combined results.
+    Persist doctor overrides for active study analysis results.
 
     Steps:
     1. Resolve study and active combined row.
@@ -124,7 +128,7 @@ def update_combined_overrides(
     combined_row = get_active_or_legacy_result_row(
         db=db,
         study_id=study.id,
-        result_type=PANECHO_ECHOPRIME_COMBINED_TYPE,
+        result_type=COMBINED_ANALYSIS_TYPES,
     )
     if not combined_row or combined_row.status != ResultStatus.complete:
         raise HTTPException(status_code=409, detail="Combined results are not ready")
@@ -194,5 +198,5 @@ def update_combined_overrides(
     db.commit()
 
     result_payload = _build_complete_payload(combined_row)
-    return CompleteResponse(status="complete", panecho_echoprime_results=result_payload)
+    return CompleteResponse(status="complete", analysis_results=result_payload)
 

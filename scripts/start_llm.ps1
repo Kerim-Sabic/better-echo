@@ -32,7 +32,7 @@ function Convert-ToBashPathExpression {
 $wslDistro = Get-EnvOrDefault -Name "LLM_WSL_DISTRO" -Default "Ubuntu"
 $venvPath = Get-EnvOrDefault -Name "LLM_VENV_PATH" -Default "~/vllm"
 $gpuIndex = Get-EnvOrDefault -Name "LLM_GPU_INDEX" -Default "1"
-$llmModel = Get-EnvOrDefault -Name "LLM_MODEL" -Default "Qwen/Qwen2.5-14B-Instruct-AWQ"
+$llmModel = Get-EnvOrDefault -Name "REPORTING_MODEL_ID" -Default "local-reporting-model"
 $llmBaseUrl = Get-EnvOrDefault -Name "LLM_BASE_URL" -Default "http://localhost:8012/v1"
 $maxModelLen = Get-EnvOrDefault -Name "LLM_SERVER_MAX_LEN" -Default "16384"
 $hfHome = [Environment]::GetEnvironmentVariable("HF_HOME")

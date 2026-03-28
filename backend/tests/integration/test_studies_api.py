@@ -3,8 +3,8 @@ from pydicom.dataset import Dataset, FileDataset
 from pydicom.uid import ExplicitVRLittleEndian, generate_uid
 
 from app.core.artifacts import (
-    DYNAMIC_MEASUREMENTS_COMBINED_TYPE,
-    PANECHO_ECHOPRIME_COMBINED_TYPE,
+    MEASUREMENT_WORKFLOW_TYPE,
+    COMBINED_ANALYSIS_TYPE,
 )
 from app.database_models.derived_results import DerivedResult, ResultStatus
 from app.database_models.instances import Instance
@@ -18,17 +18,17 @@ def _seed_completed_required_results(*, db, study_id: int) -> None:
     db.add(
         DerivedResult(
             study_id=study_id,
-            type=PANECHO_ECHOPRIME_COMBINED_TYPE,
+            type=COMBINED_ANALYSIS_TYPE,
             status=ResultStatus.complete,
             value_json={"integrated_tasks": {}},
-            model_name="PanEcho_EchoPrime_Combined",
+            model_name="StudyAnalysisCombined",
             model_version="v1",
         )
     )
     db.add(
         DerivedResult(
             study_id=study_id,
-            type=DYNAMIC_MEASUREMENTS_COMBINED_TYPE,
+            type=MEASUREMENT_WORKFLOW_TYPE,
             status=ResultStatus.complete,
             value_json={"instances": []},
             model_name="Dynamic_Measurements_Combined",
@@ -246,3 +246,4 @@ def test_study_mutation_routes_return_404_for_non_owner(app, db_session_factory,
         assert study is not None
     finally:
         db.close()
+

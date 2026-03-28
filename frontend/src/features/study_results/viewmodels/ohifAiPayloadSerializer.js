@@ -7,8 +7,8 @@ export function buildStudyResultsOhifAiPayload({
   llmReportResultsDetail,
   panechoEchoprimeEditorViewModel,
 }) {
-  const panechoEchoprimeCombinedResultsDisplay =
-    panechoEchoprimeCombinedResultsData?.display ?? {
+  const studyAnalysisCombinedResultsDisplay =
+    studyAnalysisCombinedResultsData?.display ?? {
       mainMeasurements: [],
       measurementSections: [],
       totalMeasurements: null,

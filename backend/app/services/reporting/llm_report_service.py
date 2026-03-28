@@ -7,7 +7,12 @@ from typing import Optional, Dict, Any
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.core.artifacts import PANECHO_ECHOPRIME_COMBINED_TYPE, LLM_REPORT_TYPE
+from app.core.artifacts import (
+    COMBINED_ANALYSIS_TYPES,
+    REPORT_SUMMARY_MODEL_NAME,
+    REPORT_SUMMARY_TYPE,
+    REPORT_SUMMARY_TYPES,
+)
 from app.database_models.studies import Study
 from app.database_models.derived_results import DerivedResult, ResultStatus
 from app.helpers.row_to_dict.combined_results_row_to_dict import build_combined_sections_for_llm
@@ -22,9 +27,9 @@ logger = logging.getLogger(__name__)
 def generate_for_study(study_uid: str, db: Session) -> Dict[str, Any]:
     """
     Generates an LLM report for a study using the combined sections as context.
-    Persists a DerivedResult (LLM_Echo_Report) with report_md and diagnoses_json.
+    Persists a report DerivedResult with report_md and diagnoses_json.
     Returns the response payload {study_uid, model, report, diagnoses_json}.
-    Writes artifacts to uploads/llm_reports/{study_uid} and persists to DB.
+    Persists artifacts to the study reports store and to the database.
     """
     # --- Step 1: Resolve study and combined row ---
     study: Optional[Study] = db.query(Study).filter(Study.study_uid == study_uid).first()
@@ -33,7 +38,7 @@ def generate_for_study(study_uid: str, db: Session) -> Dict[str, Any]:
 
     combined_row: Optional[DerivedResult] = (
         db.query(DerivedResult)
-        .filter(DerivedResult.study_id == study.id, DerivedResult.type == PANECHO_ECHOPRIME_COMBINED_TYPE)
+        .filter(DerivedResult.study_id == study.id, DerivedResult.type.in_(COMBINED_ANALYSIS_TYPES))
         .first()
     )
     if not combined_row or combined_row.status != ResultStatus.complete:
@@ -72,7 +77,7 @@ def generate_for_study(study_uid: str, db: Session) -> Dict[str, Any]:
         "report_md": report_md,
         "diagnoses_json": diagnoses_json,
         "raw_text": blocks.get("raw_text") or report_text,
-        "model": settings.LLM_MODEL,
+        "model": REPORT_SUMMARY_MODEL_NAME,
         "prompt_version": params.prompt_version,
         "report_generated_at": datetime.utcnow().replace(microsecond=0).isoformat() + "Z",
     }
@@ -80,7 +85,7 @@ def generate_for_study(study_uid: str, db: Session) -> Dict[str, Any]:
     try:
         existing = (
             db.query(DerivedResult)
-            .filter(DerivedResult.study_id == study.id, DerivedResult.type == LLM_REPORT_TYPE)
+            .filter(DerivedResult.study_id == study.id, DerivedResult.type.in_(REPORT_SUMMARY_TYPES))
             .first()
         )
         if existing:
@@ -89,20 +94,20 @@ def generate_for_study(study_uid: str, db: Session) -> Dict[str, Any]:
         else:
             dr = DerivedResult(
                 study_id=study.id,
-                type=LLM_REPORT_TYPE,
+                type=REPORT_SUMMARY_TYPE,
                 value_json=payload,
-                model_name="LLM_Report_Generator",
+                model_name=REPORT_SUMMARY_MODEL_NAME,
                 model_version="v1",
                 status=ResultStatus.complete,
             )
             db.add(dr)
         db.commit()
     except Exception as e:
-        logger.warning(f"[LLM] Persisting LLM report failed: {e}")
+        logger.warning("[LLM] Persisting report failed: %s", e)
 
     return {
         "study_uid": study_uid,
-        "model": settings.LLM_MODEL,
+        "model": REPORT_SUMMARY_MODEL_NAME,
         "report": report_md,
         "diagnoses_json": diagnoses_json,
         "report_generated_at": payload.get("report_generated_at"),

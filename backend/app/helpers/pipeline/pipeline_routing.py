@@ -12,7 +12,7 @@ from app.database_models.instances import Instance
 from app.database_models.series import Series
 from app.database_models.studies import Study
 from app.helpers.doppler.doppler_tags import inspect_doppler_tags
-from app.services.inference.echoprime_service import classify_views_for_study
+from app.services.inference.secondary_analysis_service import classify_views_for_study
 
 logger = logging.getLogger(__name__)
 

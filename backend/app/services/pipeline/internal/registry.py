@@ -29,15 +29,19 @@ def get_stage_handler(stage_name: str):
     return None
 
 
+STAGE_HANDLER_MAP = {
+    stage_name: get_stage_handler(stage_name)
+    for stage_name in STAGE_NAMES
+}
+
+
 def get_stage_handler_map():
-    return {
-        stage_name: get_stage_handler(stage_name)
-        for stage_name in STAGE_NAMES
-    }
+    return STAGE_HANDLER_MAP
 
 
 __all__ = [
     "get_stage_handler",
     "get_stage_handler_map",
+    "STAGE_HANDLER_MAP",
     "STAGE_NAMES",
 ]

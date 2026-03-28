@@ -11,7 +11,7 @@ from collections import OrderedDict
 import time
 
 from app.database.db import get_db
-from app.schemas.inference.infer_echonet_dynamic_schemas import LVSegmentationResponse
+from app.schemas.inference.infer_motion_segmentation_schemas import MotionSegmentationResponse
 from app.database_models.instances import Instance
 from app.database_models.derived_results import DerivedResult
 from app.helpers.inference_runtime.inference_functions import check_instance_exists_in_orthanc
@@ -19,7 +19,13 @@ from app.helpers.media.dicom_frame_reader import read_dicom_frames
 from app.helpers.media.ffmpeg_mp4_writer import ffmpeg_write_mp4_from_frames
 from app.helpers.inference_runtime.device_selector import get_device_for_model
 from app.helpers.inference_runtime.batch_config import get_batch_size
-from app.core.artifacts import BASE_DIR, UPLOAD_DIR
+from app.core.artifacts import (
+    MOTION_SEGMENTATION_MODEL_NAME,
+    MOTION_SEGMENTATION_TYPE,
+    MOTION_SEGMENTATION_UPLOAD_DIRNAME,
+    UPLOAD_DIR,
+)
+from app.core.runtime_paths import model_assets_dir
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -28,15 +34,16 @@ model = None
 device: torch.device | None = None
 
 CHECKPOINT_PATH = os.path.normpath(os.path.join(
-    BASE_DIR,
-    "..", "AI_models", "EchonetDynamic", "output", "segmentation",
-    "deeplabv3_resnet50_random", "best.pt"
+    str(model_assets_dir("motion_segmentation")),
+    "best.pt",
 ))
-ECHONET_DYNAMIC_UPLOAD_DIR = os.path.normpath(os.path.join(UPLOAD_DIR, "echonet_dynamic_LV-segmentation_files"))
-os.makedirs(ECHONET_DYNAMIC_UPLOAD_DIR, exist_ok=True)
+MOTION_SEGMENTATION_UPLOAD_DIR = os.path.normpath(
+    os.path.join(UPLOAD_DIR, MOTION_SEGMENTATION_UPLOAD_DIRNAME)
+)
+os.makedirs(MOTION_SEGMENTATION_UPLOAD_DIR, exist_ok=True)
 
 
-def load_model():
+def load_motion_segmentation_model():
     """
     Lazy load model when first inference request arrives.
     """
@@ -45,7 +52,7 @@ def load_model():
         import torchvision
 
         if device is None:
-            device = get_device_for_model("echonet")
+            device = get_device_for_model("motion_segmentation")
 
         start = time.time()
         model = torchvision.models.segmentation.deeplabv3_resnet50(weights=None)
@@ -73,11 +80,11 @@ def load_model():
         model.load_state_dict(new_state_dict, strict=False)
         model.to(device)
         model.eval()
-        logger.info("[Echonet-dynamic] Model loaded on %s in %.1fs", device, time.time() - start)
+        logger.info("[MotionSegmentation] Model loaded on %s in %.1fs", device, time.time() - start)
     return model
 
 
-def unload_model():
+def unload_motion_segmentation_model():
     """
     Unload model to free GPU/CPU memory.
     """
@@ -88,8 +95,8 @@ def unload_model():
         torch.cuda.empty_cache()
 
 
-@router.post("/infer/echonet-dynamic/LV-segmentation", response_model=LVSegmentationResponse)
-def infer_lv_segmentation(
+@router.post("/infer/motion-segmentation/lv", response_model=MotionSegmentationResponse)
+def infer_motion_segmentation(
     sop_instance_uid: str = Query(..., description="The DICOM SOPInstanceUID to run segmentation on"),
     artifact_set_id: int | None = Query(default=None, include_in_schema=False),
     skip_orthanc_check: bool = Query(default=False, include_in_schema=False),
@@ -98,7 +105,7 @@ def infer_lv_segmentation(
 ):
     global device
     """
-    Perform LV (Left Ventricle) segmentation using EchoNet-Dynamic and return an annotated MP4 for the frontend.
+    Perform LV (Left Ventricle) segmentation and return an annotated MP4 for the frontend.
 
     Steps:
     1. Validate that the instance exists in Orthanc and in the local database.
@@ -140,7 +147,7 @@ def infer_lv_segmentation(
     frame_size = None
 
     if suffix == ".dcm":
-        logger.info("[Echonet-dynamic] Reading frames directly from DICOM")
+        logger.info("[MotionSegmentation] Reading frames directly from DICOM")
         try:
             # Keep original DICOM geometry so overlays are rendered at diagnostic resolution.
             frames, fps = read_dicom_frames(
@@ -149,7 +156,7 @@ def infer_lv_segmentation(
                 preserve_geometry=True,
             )
         except Exception as exc:
-            logger.exception("[Echonet-dynamic] Failed to read DICOM frames")
+            logger.exception("[MotionSegmentation] Failed to read DICOM frames")
             raise HTTPException(status_code=400, detail=f"Failed to read frames from DICOM: {exc}")
         if not frames:
             raise HTTPException(status_code=400, detail="No frames found in DICOM")
@@ -179,14 +186,14 @@ def infer_lv_segmentation(
     if encode_size[0] <= 0 or encode_size[1] <= 0:
         raise HTTPException(status_code=400, detail="Invalid frame dimensions for encoding.")
     if encode_size != frame_size:
-        logger.info("[Echonet-dynamic] Adjusted frame size to even dimensions for H.264: %s -> %s", frame_size, encode_size)
+        logger.info("[MotionSegmentation] Adjusted frame size to even dimensions for H.264: %s -> %s", frame_size, encode_size)
         frame_size = encode_size
 
     if device is None:
-        device = get_device_for_model("echonet")
+        device = get_device_for_model("motion_segmentation")
 
     logger.info(
-        "[Echonet-dynamic] Starting LV segmentation encode | frames=%d size=%s fps=%.2f device=%s",
+        "[MotionSegmentation] Starting LV segmentation encode | frames=%d size=%s fps=%.2f device=%s",
         len(frames),
         frame_size,
         float(fps),
@@ -195,7 +202,7 @@ def infer_lv_segmentation(
 
     # --- Step 4: Encode overlay video via ffmpeg (fallback to OpenCV if needed) ---
     study_uid = instance.series.study.study_uid
-    study_upload_dir = os.path.join(ECHONET_DYNAMIC_UPLOAD_DIR, study_uid)
+    study_upload_dir = os.path.join(MOTION_SEGMENTATION_UPLOAD_DIR, study_uid)
     os.makedirs(study_upload_dir, exist_ok=True)
     base_name = f"segmented_{Path(dicom_file_path).stem}"
     output_path_mp4 = os.path.join(study_upload_dir, base_name + ".mp4")
@@ -205,12 +212,12 @@ def infer_lv_segmentation(
         from torchvision.transforms import functional as F
 
         if device != target_device:
-            unload_model()
+            unload_motion_segmentation_model()
             device = target_device
 
-        model_instance = load_model()
-        logger.info("[Echonet-dynamic] Using batched inference | batch_size=%d device=%s", get_batch_size("echonet"), device)
-        batch_size = get_batch_size("echonet")
+        model_instance = load_motion_segmentation_model()
+        logger.info("[MotionSegmentation] Using batched inference | batch_size=%d device=%s", get_batch_size("motion_segmentation"), device)
+        batch_size = get_batch_size("motion_segmentation")
 
         def _overlay_frames():
             start_time = time.time()
@@ -255,7 +262,7 @@ def infer_lv_segmentation(
                     global_idx = batch_start + local_idx + 1
                     if global_idx <= 5 or global_idx % max(10, batch_size) == 0 or global_idx == total:
                         elapsed = time.time() - start_time
-                        logger.info("[Echonet-dynamic] Processed %d/%d frames (%.1fs elapsed, device=%s)", global_idx, total, elapsed, device.type)
+                        logger.info("[MotionSegmentation] Processed %d/%d frames (%.1fs elapsed, device=%s)", global_idx, total, elapsed, device.type)
                     yield overlay
 
         try:
@@ -263,7 +270,7 @@ def infer_lv_segmentation(
             if allow_ffmpeg:
                 encode_start = time.time()
                 logger.info(
-                    "[Echonet-dynamic] Encoding overlay via ffmpeg | frames=%d size=%s fps=%.2f preset=%s device=%s",
+                    "[MotionSegmentation] Encoding overlay via ffmpeg | frames=%d size=%s fps=%.2f preset=%s device=%s",
                     len(frames),
                     frame_size,
                     float(fps),
@@ -283,7 +290,7 @@ def infer_lv_segmentation(
                 )
                 encode_duration = time.time() - encode_start
                 logger.info(
-                    "[Echonet-dynamic] ffmpeg encode completed in %.1fs | device=%s size=%s",
+                    "[MotionSegmentation] ffmpeg encode completed in %.1fs | device=%s size=%s",
                     encode_duration,
                     device.type,
                     frame_size,
@@ -292,7 +299,7 @@ def infer_lv_segmentation(
 
             encode_start = time.time()
             logger.info(
-                "[Echonet-dynamic] Using OpenCV writer (no ffmpeg) | frames=%d size=%s fps=%.2f device=%s",
+                "[MotionSegmentation] Using OpenCV writer (no ffmpeg) | frames=%d size=%s fps=%.2f device=%s",
                 len(frames),
                 frame_size,
                 float(fps),
@@ -308,11 +315,11 @@ def infer_lv_segmentation(
                     vw.write(frame)
                     written = idx
                     if idx % 10 == 0:
-                        logger.info("[Echonet-dynamic] OpenCV progress: wrote %d/%d frames (device=%s)", idx, len(frames), device.type)
+                        logger.info("[MotionSegmentation] OpenCV progress: wrote %d/%d frames (device=%s)", idx, len(frames), device.type)
             finally:
                 encode_duration = time.time() - encode_start
                 logger.info(
-                    "[Echonet-dynamic] OpenCV encode completed with %d frames in %.1fs | device=%s size=%s",
+                    "[MotionSegmentation] OpenCV encode completed with %d frames in %.1fs | device=%s size=%s",
                     written,
                     encode_duration,
                     device.type,
@@ -322,19 +329,19 @@ def infer_lv_segmentation(
             return output_path_mp4
         finally:
             if not defer_model_unload:
-                unload_model()
+                unload_motion_segmentation_model()
 
     result_path = None
     overall_start = time.time()
     try:
-        preferred_device = get_device_for_model("echonet")
-        logger.info("[Echonet-dynamic] Attempting encode on preferred device: %s", preferred_device)
+        preferred_device = get_device_for_model("motion_segmentation")
+        logger.info("[MotionSegmentation] Attempting encode on preferred device: %s", preferred_device)
         result_path = encode_on_device(preferred_device, allow_ffmpeg=preferred_device.type == "cuda")
         overall_duration = time.time() - overall_start
-        logger.info("[Echonet-dynamic] Preferred device path succeeded in %.1fs", overall_duration)
+        logger.info("[MotionSegmentation] Preferred device path succeeded in %.1fs", overall_duration)
     except Exception as err_primary:
         logger.warning(
-            "[Echonet-dynamic] Preferred path failed after %.1fs: %s | Falling back to CPU",
+            "[MotionSegmentation] Preferred path failed after %.1fs: %s | Falling back to CPU",
             time.time() - overall_start,
             err_primary,
         )
@@ -342,9 +349,9 @@ def infer_lv_segmentation(
             fallback_start = time.time()
             result_path = encode_on_device(torch.device("cpu"), allow_ffmpeg=False)
             fallback_duration = time.time() - fallback_start
-            logger.info("[Echonet-dynamic] CPU fallback succeeded in %.1fs", fallback_duration)
+            logger.info("[MotionSegmentation] CPU fallback succeeded in %.1fs", fallback_duration)
         except Exception as err_cpu:
-            logger.exception("[Echonet-dynamic] CPU fallback also failed")
+            logger.exception("[MotionSegmentation] CPU fallback also failed")
             if cap is not None:
                 cap.release()
             raise HTTPException(status_code=500, detail=f"LV segmentation failed on both preferred device and CPU: {err_cpu}")
@@ -352,13 +359,13 @@ def infer_lv_segmentation(
     if cap is not None:
         cap.release()
     if not defer_model_unload:
-        logger.info("[Echonet-dynamic] LV-segmentation model unloaded")
+        logger.info("[MotionSegmentation] LV-segmentation model unloaded")
 
     if not result_path:
         raise HTTPException(status_code=500, detail="LV segmentation failed: no output path produced.")
 
-    relative_output_path = os.path.relpath(result_path, start=ECHONET_DYNAMIC_UPLOAD_DIR).replace("\\", "/")
-    relative_output_path = f"echonet_dynamic_LV-segmentation_files/{relative_output_path}"
+    relative_output_path = os.path.relpath(result_path, start=MOTION_SEGMENTATION_UPLOAD_DIR).replace("\\", "/")
+    relative_output_path = f"{MOTION_SEGMENTATION_UPLOAD_DIRNAME}/{relative_output_path}"
 
     # --- Step 5: Save DerivedResult in database ---
     if instance:
@@ -367,7 +374,7 @@ def infer_lv_segmentation(
                 db.query(DerivedResult)
                 .filter(
                     DerivedResult.instance_id == instance.id,
-                    DerivedResult.type == "EchonetDynamic_LV_Segmentation",
+                    DerivedResult.type == MOTION_SEGMENTATION_TYPE,
                     DerivedResult.artifact_set_id == artifact_set_id,
                 )
                 .first()
@@ -376,37 +383,37 @@ def infer_lv_segmentation(
                 dr = DerivedResult(
                     study_id=instance.series.study.id,
                     instance_id=instance.id,
-                    type="EchonetDynamic_LV_Segmentation",
-                    model_name="EchonetDynamic",
+                    type=MOTION_SEGMENTATION_TYPE,
+                    model_name=MOTION_SEGMENTATION_MODEL_NAME,
                     model_version="v1",
                     artifact_set_id=artifact_set_id,
                 )
                 db.add(dr)
             dr.value_json = {"outputfile": relative_output_path}
             db.commit()
-            logger.info(f"[Echonet-dynamic] Saved draft DerivedResult in DB for study_uid={study_uid}")
+            logger.info(f"[MotionSegmentation] Saved draft DerivedResult in DB for study_uid={study_uid}")
         else:
             dr = DerivedResult(
                 study_id=instance.series.study.id,
                 instance_id=instance.id,
-                type="EchonetDynamic_LV_Segmentation",
+                type=MOTION_SEGMENTATION_TYPE,
                 value_json={"outputfile": relative_output_path},
-                model_name="EchonetDynamic",
+                model_name=MOTION_SEGMENTATION_MODEL_NAME,
                 model_version="v1",
             )
             # Check if the result already exists in the DB
             existing = db.query(DerivedResult).filter(
                 DerivedResult.instance_id == instance.id,
-                DerivedResult.type == "EchonetDynamic_LV_Segmentation",
+                DerivedResult.type == MOTION_SEGMENTATION_TYPE,
             ).first()
 
             if not existing:
                 db.add(dr)
                 db.commit()
-                logger.info(f"[Echonet-dynamic] Saved DerivedResult in DB for study_uid={study_uid}")
+                logger.info(f"[MotionSegmentation] Saved DerivedResult in DB for study_uid={study_uid}")
 
     # --- Step 6: Return success response ---
-    logger.info("[Echonet-dynamic] LV-segmentation model inference completed")
+    logger.info("[MotionSegmentation] LV-segmentation model inference completed")
     return {
         "success": True,
         "message": "LV segmentation completed successfully",

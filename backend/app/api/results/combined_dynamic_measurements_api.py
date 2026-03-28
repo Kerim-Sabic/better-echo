@@ -7,7 +7,10 @@ from sqlalchemy.orm import Session
 
 from app.database.db import get_db
 from app.database_models.derived_results import ResultStatus
-from app.core.artifacts import DYNAMIC_MEASUREMENTS_COMBINED_TYPE
+from app.core.artifacts import (
+    MEASUREMENT_RESULTS_ROUTE_SEGMENT,
+    MEASUREMENT_WORKFLOW_TYPES,
+)
 from app.helpers.auth.authentication_functions import get_current_user_id
 from app.helpers.row_to_dict.dynamic_measurements_combined_results_row_to_dict import combined_results_row_to_dict
 from app.schemas.results.combined_dynamic_measurements_schemas import (
@@ -28,7 +31,7 @@ router = APIRouter()
 
 
 @router.get(
-    "/studies/{study_uid}/Dynamic-Measurements-combined-results",
+    f"/studies/{{study_uid}}/{MEASUREMENT_RESULTS_ROUTE_SEGMENT}",
     response_model=CombinedResultsResponse,
 )
 def get_dynamic_measurements_combined_results(
@@ -51,21 +54,21 @@ def get_dynamic_measurements_combined_results(
     dynamic_row = get_result_row_for_read_mode(
         db=db,
         study_id=study.id,
-        result_type=DYNAMIC_MEASUREMENTS_COMBINED_TYPE,
+        result_type=MEASUREMENT_WORKFLOW_TYPES,
         preview=preview,
     )
 
     # Part 2. Complete response for ready active artifact.
     if dynamic_row and dynamic_row.status == ResultStatus.complete:
         payload = combined_results_row_to_dict(dynamic_row)
-        return CompleteResponse(status="complete", dynamic_measurements_results=payload)
+        return CompleteResponse(status="complete", measurement_results=payload)
 
     # Part 3. Failed response for explicit failed row or failed prerequisite stage.
     if dynamic_row and dynamic_row.status == ResultStatus.failed:
         detail = None
         if isinstance(dynamic_row.value_json, dict):
             detail = dynamic_row.value_json.get("error")
-        failed = FailedResponse(status="failed", detail=detail or "Dynamic measurements orchestration failed")
+        failed = FailedResponse(status="failed", detail=detail or "Study measurements orchestration failed")
         return JSONResponse(status_code=200, content=failed.model_dump())
 
     queue_failed_detail = get_latest_stage_failure_detail(
@@ -86,7 +89,7 @@ def get_dynamic_measurements_combined_results(
     pending = PendingResponse(
         status="pending",
         retry_after=3,
-        dynamic_measurements_results=pending_results,
+        measurement_results=pending_results,
     )
     return JSONResponse(
         status_code=202,

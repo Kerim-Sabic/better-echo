@@ -1,4 +1,4 @@
-from pathlib import Path
+﻿from pathlib import Path
 from typing import Generator
 from uuid import uuid4
 
@@ -8,8 +8,8 @@ from pydicom.dataset import Dataset, FileDataset, FileMetaDataset
 from pydicom.sequence import Sequence
 from pydicom.uid import ExplicitVRLittleEndian, generate_uid
 
-from app.api.inference import infer_doppler_api as doppler_api
-from app.api.inference.infer_doppler_api import router as doppler_router
+from app.api.inference import infer_spectral_measurements_api as doppler_api
+from app.api.inference.infer_spectral_measurements_api import router as doppler_router
 from app.database.db import get_db
 from app.database_models.derived_results import DerivedResult
 from app.database_models.instances import Instance
@@ -189,7 +189,7 @@ def test_doppler_tag_audit_counts_candidates(db_session_factory, seeded_study, t
 
 def test_doppler_inference_endpoint_runs_and_persists(db_session_factory, seeded_study, tmp_path, monkeypatch):
     upload_root = tmp_path / "uploads"
-    doppler_root = upload_root / "measurements_doppler"
+    doppler_root = upload_root / "measurement_spectral"
     upload_root.mkdir(parents=True, exist_ok=True)
     doppler_root.mkdir(parents=True, exist_ok=True)
     monkeypatch.setattr(doppler_api, "UPLOADS_ROOT", str(upload_root))
@@ -204,7 +204,7 @@ def test_doppler_inference_endpoint_runs_and_persists(db_session_factory, seeded
         instance_number="1",
     )
 
-    output_image_abs = upload_root / "measurements_doppler" / "artifact.jpg"
+    output_image_abs = upload_root / "measurement_spectral" / "artifact.jpg"
     output_image_abs.parent.mkdir(parents=True, exist_ok=True)
     output_image_abs.write_bytes(b"test-image")
 
@@ -229,7 +229,7 @@ def test_doppler_inference_endpoint_runs_and_persists(db_session_factory, seeded
     assert body["success"] is True
     assert body["metric_name"] == "lvotvmax"
     assert body["metric_value"] == 321.12
-    assert body["output_file_image"] == "measurements_doppler/artifact.jpg"
+    assert body["output_file_image"] == "measurement_spectral/artifact.jpg"
     assert body["low_confidence"] is False
 
     db = db_session_factory()
@@ -306,7 +306,7 @@ def test_doppler_inference_endpoint_rejects_subtype_weight_mismatch(db_session_f
 
 def test_doppler_inference_endpoint_sets_low_confidence_flag(db_session_factory, seeded_study, tmp_path, monkeypatch):
     upload_root = tmp_path / "uploads"
-    doppler_root = upload_root / "measurements_doppler"
+    doppler_root = upload_root / "measurement_spectral"
     upload_root.mkdir(parents=True, exist_ok=True)
     doppler_root.mkdir(parents=True, exist_ok=True)
     monkeypatch.setattr(doppler_api, "UPLOADS_ROOT", str(upload_root))
@@ -321,7 +321,7 @@ def test_doppler_inference_endpoint_sets_low_confidence_flag(db_session_factory,
         instance_number="1",
     )
 
-    output_image_abs = upload_root / "measurements_doppler" / "artifact_low.jpg"
+    output_image_abs = upload_root / "measurement_spectral" / "artifact_low.jpg"
     output_image_abs.parent.mkdir(parents=True, exist_ok=True)
     output_image_abs.write_bytes(b"test-image")
 
@@ -346,3 +346,4 @@ def test_doppler_inference_endpoint_sets_low_confidence_flag(db_session_factory,
     assert body["success"] is True
     assert body["low_confidence"] is True
     assert body["message"] == "Inference completed with low confidence"
+

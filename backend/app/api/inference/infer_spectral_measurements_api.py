@@ -7,26 +7,31 @@ import logging
 
 from app.AI_models.measurements.constants import VALID_DOPPLER_WEIGHTS
 from app.core.config import settings
-from app.core.artifacts import BASE_DIR
+from app.core.artifacts import (
+    SPECTRAL_MEASUREMENTS_MODEL_NAME,
+    SPECTRAL_MEASUREMENTS_UPLOAD_DIRNAME,
+    UPLOAD_DIR,
+    spectral_measurements_result_type,
+)
 from app.database.db import get_db
 from app.database_models.derived_results import DerivedResult
 from app.database_models.instances import Instance
 from app.database_models.series import Series
 from app.database_models.studies import Study
 from app.helpers.doppler.doppler_tags import inspect_doppler_tags
-from app.schemas.inference.infer_doppler_schemas import (
-    DopplerInferenceResponse,
-    DopplerTagAuditItem,
-    DopplerTagAuditResponse,
-    DopplerTagCheckResponse,
+from app.schemas.inference.infer_spectral_measurements_schemas import (
+    SpectralMeasurementsResponse,
+    SpectralTagAuditItem,
+    SpectralTagAuditResponse,
+    SpectralTagCheckResponse,
 )
 
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-UPLOADS_ROOT = os.path.normpath(os.path.join(BASE_DIR, "..", "uploads"))
-DOPPLER_UPLOAD_ROOT = os.path.join(UPLOADS_ROOT, "measurements_doppler")
+UPLOADS_ROOT = UPLOAD_DIR
+DOPPLER_UPLOAD_ROOT = os.path.join(UPLOADS_ROOT, SPECTRAL_MEASUREMENTS_UPLOAD_DIRNAME)
 os.makedirs(DOPPLER_UPLOAD_ROOT, exist_ok=True)
 
 PW_COMPATIBLE_WEIGHTS = {"lvotvmax", "latevel", "medevel", "mvpeak_2c", "tapse_2c"}
@@ -81,7 +86,7 @@ def _validate_weight_subtype_compatibility(model_weights: str, spectral_subtype:
         )
 
 
-@router.get("/infer/measurements/doppler/tag-check", response_model=DopplerTagCheckResponse)
+@router.get("/infer/measurements/doppler/tag-check", response_model=SpectralTagCheckResponse)
 def check_doppler_tags(
     sop_instance_uid: str = Query(..., description="DICOM SOPInstanceUID to inspect Doppler tags for"),
     db: Session = Depends(get_db),
@@ -96,7 +101,7 @@ def check_doppler_tags(
     """
     instance = _resolve_instance(db, sop_instance_uid)
     report = inspect_doppler_tags(instance.file_path)
-    return DopplerTagCheckResponse(
+    return SpectralTagCheckResponse(
         success=bool(report.get("ok")),
         sop_instance_uid=sop_instance_uid,
         is_doppler_candidate=bool(report.get("is_doppler_candidate")),
@@ -105,7 +110,7 @@ def check_doppler_tags(
     )
 
 
-@router.get("/infer/measurements/doppler/tag-audit/{study_uid}", response_model=DopplerTagAuditResponse)
+@router.get("/infer/measurements/doppler/tag-audit/{study_uid}", response_model=SpectralTagAuditResponse)
 def audit_doppler_tags_for_study(
     study_uid: str,
     db: Session = Depends(get_db),
@@ -130,7 +135,7 @@ def audit_doppler_tags_for_study(
         .all()
     )
 
-    items: List[DopplerTagAuditItem] = []
+    items: List[SpectralTagAuditItem] = []
     candidate_count = 0
     for instance in instances:
         if not instance.file_path or not os.path.exists(instance.file_path):
@@ -146,7 +151,7 @@ def audit_doppler_tags_for_study(
         is_candidate = bool(report.get("is_doppler_candidate"))
         candidate_count += int(is_candidate)
         items.append(
-            DopplerTagAuditItem(
+            SpectralTagAuditItem(
                 sop_instance_uid=instance.sop_instance_uid,
                 instance_number=instance.instance_number,
                 is_doppler_candidate=is_candidate,
@@ -155,7 +160,7 @@ def audit_doppler_tags_for_study(
             )
         )
 
-    return DopplerTagAuditResponse(
+    return SpectralTagAuditResponse(
         success=True,
         study_uid=study_uid,
         total_instances=len(items),
@@ -164,8 +169,8 @@ def audit_doppler_tags_for_study(
     )
 
 
-@router.post("/infer/measurements/doppler", response_model=DopplerInferenceResponse)
-def infer_measurements_doppler(
+@router.post("/infer/measurements/doppler", response_model=SpectralMeasurementsResponse)
+def infer_spectral_measurements(
     sop_instance_uid: str = Query(..., description="DICOM SOPInstanceUID to run Doppler inference on"),
     model_weights: str = Query(..., description=f"One of: {', '.join(sorted(list(VALID_DOPPLER_WEIGHTS)))}"),
     force: bool = Query(False, description="Force re-run even if a cached result exists"),
@@ -214,7 +219,7 @@ def infer_measurements_doppler(
     out_dir = os.path.join(DOPPLER_UPLOAD_ROOT, study_uid, sop_instance_uid)
     os.makedirs(out_dir, exist_ok=True)
 
-    dr_type = f"EchoNetMeasurementsDoppler_{model_weights}"
+    dr_type = spectral_measurements_result_type(model_weights)
     existing = (
         db.query(DerivedResult)
         .filter(DerivedResult.instance_id == instance.id, DerivedResult.type == dr_type)
@@ -227,7 +232,7 @@ def infer_measurements_doppler(
         out_image_rel = payload.get("outputfile")
         abs_image = os.path.join(UPLOADS_ROOT, out_image_rel) if out_image_rel else None
         if abs_image and os.path.exists(abs_image):
-            return DopplerInferenceResponse(
+            return SpectralMeasurementsResponse(
                 success=True,
                 message="Cached result returned",
                 sop_instance_uid=sop_instance_uid,
@@ -244,7 +249,7 @@ def infer_measurements_doppler(
     lock_path = os.path.join(out_dir, f"{model_weights}.lock")
     try:
         if os.path.exists(lock_path):
-            return DopplerInferenceResponse(
+            return SpectralMeasurementsResponse(
                 success=True,
                 message="Inference in progress",
                 sop_instance_uid=sop_instance_uid,
@@ -301,7 +306,7 @@ def infer_measurements_doppler(
                     study_id=instance.series.study.id,
                     instance_id=instance.id,
                     type=dr_type,
-                    model_name="EchoNetMeasurementsDoppler",
+                    model_name=SPECTRAL_MEASUREMENTS_MODEL_NAME,
                     model_version="v1",
                     artifact_set_id=artifact_set_id,
                 )
@@ -313,7 +318,7 @@ def infer_measurements_doppler(
                 instance_id=instance.id,
                 type=dr_type,
                 value_json=payload,
-                model_name="EchoNetMeasurementsDoppler",
+                model_name=SPECTRAL_MEASUREMENTS_MODEL_NAME,
                 model_version="v1",
             )
             db.add(dr)
@@ -327,7 +332,7 @@ def infer_measurements_doppler(
     except Exception:
         pass
 
-    return DopplerInferenceResponse(
+    return SpectralMeasurementsResponse(
         success=True,
         message=(
             "Inference completed with low confidence"

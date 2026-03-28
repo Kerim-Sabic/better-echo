@@ -11,6 +11,7 @@ import torch
 from torchvision.models.segmentation import deeplabv3_resnet50
 
 from app.AI_models.measurements.constants import VALID_2D_WEIGHTS
+from app.core.runtime_paths import model_assets_dir
 from app.helpers.media.ffmpeg_mp4_writer import ffmpeg_write_mp4_from_frames
 from app.helpers.inference_runtime.batch_config import get_batch_size
 from app.core.config import settings
@@ -202,8 +203,8 @@ def _load_model(model_key: str) -> torch.nn.Module:
     if model_key in _loaded_models:
         return _loaded_models[model_key]
 
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    weights_path = os.path.join(base_dir, "weights", "2D_models", f"{model_key}_weights.ckpt")
+    base_dir = os.path.join(str(model_assets_dir("study_measurements")), "weights")
+    weights_path = os.path.join(base_dir, "2D_models", f"{model_key}_weights.ckpt")
     if not os.path.exists(weights_path):
         raise FileNotFoundError(f"Weights not found: {weights_path}")
 
@@ -277,7 +278,7 @@ def run_2d_inference(model_weights: str, input_path: str, output_dir: str) -> Tu
 
     model = _load_model(model_weights)
     device = get_device()
-    batch_size = get_batch_size("measurements")
+    batch_size = get_batch_size("study_measurements")
 
     preds: List[np.ndarray] = []
     logger.info(

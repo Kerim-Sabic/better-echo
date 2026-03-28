@@ -5,7 +5,7 @@ from typing import Any, Dict
 
 from sqlalchemy.orm import Session
 
-from app.core.artifacts import LLM_REPORT_TYPE, PANECHO_ECHOPRIME_COMBINED_TYPE
+from app.core.artifacts import REPORT_SUMMARY_TYPE, COMBINED_ANALYSIS_TYPE
 from app.database_models.derived_results import DerivedResult, ResultStatus
 from app.database_models.pipeline_artifact_sets import PipelineArtifactSet
 from app.database_models.pipeline_jobs import PipelineJob
@@ -31,7 +31,7 @@ def run_llm_stage(
         db.query(DerivedResult)
         .filter(
             DerivedResult.study_id == job.study_id,
-            DerivedResult.type == PANECHO_ECHOPRIME_COMBINED_TYPE,
+            DerivedResult.type == COMBINED_ANALYSIS_TYPE,
             DerivedResult.artifact_set_id == draft_artifact_set.id,
             DerivedResult.status == ResultStatus.complete,
         )
@@ -75,7 +75,7 @@ def run_llm_stage(
         db.query(DerivedResult)
         .filter(
             DerivedResult.study_id == job.study_id,
-            DerivedResult.type == LLM_REPORT_TYPE,
+            DerivedResult.type == REPORT_SUMMARY_TYPE,
             DerivedResult.artifact_set_id == draft_artifact_set.id,
         )
         .first()
@@ -87,7 +87,7 @@ def run_llm_stage(
         db.add(
             DerivedResult(
                 study_id=job.study_id,
-                type=LLM_REPORT_TYPE,
+                type=REPORT_SUMMARY_TYPE,
                 value_json=payload,
                 model_name="LLM_Report_Generator",
                 model_version="v1",

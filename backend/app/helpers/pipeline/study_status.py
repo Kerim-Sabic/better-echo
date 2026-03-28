@@ -2,9 +2,9 @@ import os
 from typing import Iterable, Dict, Optional
 
 from app.core.artifacts import (
-    PANECHO_ECHOPRIME_COMBINED_TYPE,
-    DYNAMIC_MEASUREMENTS_COMBINED_TYPE,
-    LLM_REPORT_TYPE,
+    COMBINED_ANALYSIS_TYPE,
+    MEASUREMENT_WORKFLOW_TYPE,
+    REPORT_SUMMARY_TYPE,
 )
 from app.database_models.derived_results import DerivedResult, ResultStatus
 from app.database_models.studies import Study
@@ -16,11 +16,11 @@ def is_llm_enabled() -> bool:
 
 def required_artifact_types(enable_llm: bool) -> list[str]:
     required = [
-        PANECHO_ECHOPRIME_COMBINED_TYPE,
-        DYNAMIC_MEASUREMENTS_COMBINED_TYPE,
+        COMBINED_ANALYSIS_TYPE,
+        MEASUREMENT_WORKFLOW_TYPE,
     ]
     if enable_llm:
-        required.append(LLM_REPORT_TYPE)
+        required.append(REPORT_SUMMARY_TYPE)
     return required
 
 
