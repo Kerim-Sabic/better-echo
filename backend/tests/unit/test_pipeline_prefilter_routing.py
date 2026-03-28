@@ -83,7 +83,7 @@ def test_prefilter_routes_spectral_before_classifier_and_sets_deterministic_view
             confidence_min=0.75,
         )
 
-        # Part 3. EchoPrime classifier should receive only non-spectral file paths.
+        # Part 3. Secondary-analysis classifier should receive only non-spectral file paths.
         assert classifier_calls["paths"] == [non_spectral.file_path]
 
         # Part 4. Spectral instance should be deterministic and confidence=1.0.

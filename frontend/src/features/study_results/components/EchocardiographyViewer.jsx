@@ -6,8 +6,10 @@ const MESSAGE_CHANNEL = "horalix-ai";
 const MESSAGE_VERSION = 1;
 const PANEL_READY_TYPE = "horalix:panel-ready";
 const AI_RESULTS_TYPE = "horalix:ai-results";
-const PANECHO_OVERRIDE_SAVE_TYPE = "horalix:panecho-override-save";
-const PANECHO_OVERRIDE_CLEAR_TYPE = "horalix:panecho-override-clear";
+const STUDY_ANALYSIS_OVERRIDE_SAVE_TYPE =
+  "horalix:study-analysis-override-save";
+const STUDY_ANALYSIS_OVERRIDE_CLEAR_TYPE =
+  "horalix:study-analysis-override-clear";
 const LLM_REPORT_REGENERATE_TYPE = "horalix:llm-report-regenerate";
 
 function stripViewerRoute(value) {
@@ -55,15 +57,14 @@ export default function EchocardiographyViewer({ studyResultsPageViewModel }) {
     studyUid,
     ohifAiPayload,
     viewerRefreshToken,
-    panechoEchoprimeEditorViewModel,
+    studyAnalysisEditorViewModel,
   } = studyResultsPageViewModel;
 
-  const savePanechoEchoprimeOverride =
-    panechoEchoprimeEditorViewModel?.savePanechoEchoprimeOverride;
-  const clearPanechoEchoprimeOverride =
-    panechoEchoprimeEditorViewModel?.clearPanechoEchoprimeOverride;
-  const regenerateAiReport =
-    panechoEchoprimeEditorViewModel?.regenerateAiReport;
+  const saveStudyAnalysisOverride =
+    studyAnalysisEditorViewModel?.saveStudyAnalysisOverride;
+  const clearStudyAnalysisOverride =
+    studyAnalysisEditorViewModel?.clearStudyAnalysisOverride;
+  const regenerateAiReport = studyAnalysisEditorViewModel?.regenerateAiReport;
 
   const location = useLocation();
   const iframeRef = useRef(null);
@@ -81,13 +82,16 @@ export default function EchocardiographyViewer({ studyResultsPageViewModel }) {
   const targetOrigin = resolvePostMessageOrigin(base);
 
   const configUrlRaw = String(
-    process.env.REACT_APP_OHIF_CONFIG_URL || `${viewerRoot}/orthanc-standalone.json`
+    process.env.REACT_APP_OHIF_CONFIG_URL ||
+      `${viewerRoot}/orthanc-standalone.json`
   );
 
   const viewerDataVersion = String(
     viewerRefreshToken || "dynamic-measurements-not-ready"
   );
-  const cacheBuster = `${studyUid || "study"}-${location.key || "location"}-${viewerDataVersion}`;
+  const cacheBuster = `${
+    studyUid || "study"
+  }-${location.key || "location"}-${viewerDataVersion}`;
 
   const configUrl = configUrlRaw.includes("?")
     ? `${configUrlRaw}&_cb=${cacheBuster}`
@@ -146,9 +150,9 @@ export default function EchocardiographyViewer({ studyResultsPageViewModel }) {
     }
   }, [ohifAiPayload, hasBase, hasStudyUid, targetOrigin, viewerOrigin]);
 
-  const handlePanechoOverrideSaveIntent = useCallback(
+  const handleStudyAnalysisOverrideSaveIntent = useCallback(
     async payload => {
-      if (typeof savePanechoEchoprimeOverride !== "function" || !studyUid) {
+      if (typeof saveStudyAnalysisOverride !== "function" || !studyUid) {
         return;
       }
 
@@ -165,20 +169,20 @@ export default function EchocardiographyViewer({ studyResultsPageViewModel }) {
       }
 
       try {
-        await savePanechoEchoprimeOverride(measurementKey, override);
+        await saveStudyAnalysisOverride(measurementKey, override);
       } catch (error) {
         console.error(
-          "[EchocardiographyViewer] Failed to save PanEcho/EchoPrime override",
+          "[EchocardiographyViewer] Failed to save study-analysis override",
           error
         );
       }
     },
-    [savePanechoEchoprimeOverride, studyUid]
+    [saveStudyAnalysisOverride, studyUid]
   );
 
-  const handlePanechoOverrideClearIntent = useCallback(
+  const handleStudyAnalysisOverrideClearIntent = useCallback(
     async payload => {
-      if (typeof clearPanechoEchoprimeOverride !== "function" || !studyUid) {
+      if (typeof clearStudyAnalysisOverride !== "function" || !studyUid) {
         return;
       }
 
@@ -194,15 +198,15 @@ export default function EchocardiographyViewer({ studyResultsPageViewModel }) {
       }
 
       try {
-        await clearPanechoEchoprimeOverride(measurementKey);
+        await clearStudyAnalysisOverride(measurementKey);
       } catch (error) {
         console.error(
-          "[EchocardiographyViewer] Failed to clear PanEcho/EchoPrime override",
+          "[EchocardiographyViewer] Failed to clear study-analysis override",
           error
         );
       }
     },
-    [clearPanechoEchoprimeOverride, studyUid]
+    [clearStudyAnalysisOverride, studyUid]
   );
 
   const handleRegenerateLlmReportIntent = useCallback(
@@ -294,13 +298,13 @@ export default function EchocardiographyViewer({ studyResultsPageViewModel }) {
         return;
       }
 
-      if (data.type === PANECHO_OVERRIDE_SAVE_TYPE) {
-        void handlePanechoOverrideSaveIntent(data.payload);
+      if (data.type === STUDY_ANALYSIS_OVERRIDE_SAVE_TYPE) {
+        void handleStudyAnalysisOverrideSaveIntent(data.payload);
         return;
       }
 
-      if (data.type === PANECHO_OVERRIDE_CLEAR_TYPE) {
-        void handlePanechoOverrideClearIntent(data.payload);
+      if (data.type === STUDY_ANALYSIS_OVERRIDE_CLEAR_TYPE) {
+        void handleStudyAnalysisOverrideClearIntent(data.payload);
         return;
       }
 
@@ -315,8 +319,8 @@ export default function EchocardiographyViewer({ studyResultsPageViewModel }) {
       window.removeEventListener("message", onMessage);
     };
   }, [
-    handlePanechoOverrideClearIntent,
-    handlePanechoOverrideSaveIntent,
+    handleStudyAnalysisOverrideClearIntent,
+    handleStudyAnalysisOverrideSaveIntent,
     handleRegenerateLlmReportIntent,
     hasBase,
     hasStudyUid,

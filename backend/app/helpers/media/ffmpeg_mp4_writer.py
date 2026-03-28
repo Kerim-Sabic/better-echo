@@ -14,6 +14,18 @@ _ffmpeg_pids = set()
 _pid_lock = threading.Lock()
 
 
+def _windows_hidden_process_kwargs() -> dict:
+    if os.name != "nt":
+        return {}
+
+    startupinfo = subprocess.STARTUPINFO()
+    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+    return {
+        "creationflags": subprocess.CREATE_NO_WINDOW,
+        "startupinfo": startupinfo,
+    }
+
+
 def _register_ffmpeg_pid(pid: int) -> None:
     with _pid_lock:
         _ffmpeg_pids.add(pid)
@@ -36,7 +48,11 @@ def kill_tracked_ffmpeg_processes() -> None:
     for pid in pids:
         try:
             if os.name == "nt":
-                subprocess.run(["taskkill", "/PID", str(pid), "/T", "/F"], capture_output=True)
+                subprocess.run(
+                    ["taskkill", "/PID", str(pid), "/T", "/F"],
+                    capture_output=True,
+                    **_windows_hidden_process_kwargs(),
+                )
             else:
                 os.kill(pid, signal.SIGTERM)
         except Exception:
@@ -124,7 +140,12 @@ def ffmpeg_write_mp4_from_frames(
 
     try:
         # Step 1: Start ffmpeg process
-        proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
+        proc = subprocess.Popen(
+            cmd,
+            stdin=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            **_windows_hidden_process_kwargs(),
+        )
         proc_stdin = proc.stdin  # type: ignore[assignment]
         if proc and proc.pid:
             _register_ffmpeg_pid(proc.pid)

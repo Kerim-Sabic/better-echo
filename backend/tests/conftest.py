@@ -12,7 +12,7 @@ from app.api.pipeline.pipeline_regenerate_api import router as pipeline_regenera
 from app.api.pipeline.pipeline_start_api import router as pipeline_start_router
 from app.api.pipeline.pipeline_status_api import router as pipeline_status_router
 from app.api.results.combined_dynamic_measurements_api import router as dynamic_router
-from app.api.results.combined_study_analysis_api import router as panecho_router
+from app.api.results.combined_study_analysis_api import router as study_analysis_router
 from app.api.results.llm_report_get_api import router as llm_results_router
 from app.api.patients import router as patients_router
 from app.api.studies import router as studies_router
@@ -108,7 +108,7 @@ def seeded_study(db_session_factory):
 @pytest.fixture()
 def app(db_session_factory, seeded_study):
     app = FastAPI()
-    app.include_router(panecho_router, prefix="/api")
+    app.include_router(study_analysis_router, prefix="/api")
     app.include_router(dynamic_router, prefix="/api")
     app.include_router(llm_results_router, prefix="/api")
     app.include_router(pipeline_start_router, prefix="/api")

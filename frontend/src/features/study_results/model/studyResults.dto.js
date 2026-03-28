@@ -27,8 +27,8 @@ function deriveCombinedState(responseStatus, backendStatus) {
   return "error";
 }
 
-// Formats the render-ready PanEcho/EchoPrime display payload used in the OHIF AI measurements tab.
-function formatPanechoEchoprimeDisplayDto(rawDisplay) {
+// Formats the render-ready study-analysis display payload used in the OHIF AI measurements tab.
+function formatStudyAnalysisDisplayDto(rawDisplay) {
   const display = toObject(rawDisplay);
   const measurementSections = toArray(display.Measurements).filter(
     section => toArray(section?.items).length > 0
@@ -46,8 +46,8 @@ function formatPanechoEchoprimeDisplayDto(rawDisplay) {
   };
 }
 
-// Formats the complete PanEcho/EchoPrime results payload, including edit metadata for overrides.
-function formatPanechoEchoprimeResultsDto(rawResults) {
+// Formats the complete study-analysis results payload, including edit metadata for overrides.
+function formatStudyAnalysisResultsDto(rawResults) {
   const results = toObject(rawResults);
   const overridesUpdatedAtRaw = toNullableString(results.overrides_updated_at);
 
@@ -56,7 +56,7 @@ function formatPanechoEchoprimeResultsDto(rawResults) {
     overrides: toObject(results.overrides),
     overridesUpdatedAtRaw,
     overridesUpdatedAt: formatDateTime(overridesUpdatedAtRaw),
-    display: formatPanechoEchoprimeDisplayDto(results.display),
+    display: formatStudyAnalysisDisplayDto(results.display),
   };
 }
 
@@ -137,10 +137,10 @@ function buildDynamicMeasurementsViewerRefreshToken(
 }
 
 // Used by:
-// - studyResultsRepository.getPanechoEchoprimeCombinedResults(...)
-// - studyResultsRepository.patchPanechoEchoprimeOverrides(...)
-// Both APIs return the same PanEcho/EchoPrime combined-results response shape.
-export function formatPanechoEchoprimeCombinedResultsDto(rawApiResponse) {
+// - studyResultsRepository.getStudyAnalysisCombinedResults(...)
+// - studyResultsRepository.patchStudyAnalysisOverrides(...)
+// Both APIs return the same study-analysis combined-results response shape.
+export function formatStudyAnalysisCombinedResultsDto(rawApiResponse) {
   const response = toObject(rawApiResponse);
   const responseStatus = response.status ?? null;
   const rawData = toObject(response.data);
@@ -155,7 +155,7 @@ export function formatPanechoEchoprimeCombinedResultsDto(rawApiResponse) {
 
   return {
     state,
-    studyAnalysisResults,
+    studyAnalysisCombinedResults: studyAnalysisResults,
   };
 }
 

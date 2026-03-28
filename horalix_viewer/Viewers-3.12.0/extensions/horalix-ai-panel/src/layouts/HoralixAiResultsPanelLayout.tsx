@@ -9,11 +9,11 @@ import AiReportLoadingState from '../components/ai_report/AiReportLoadingState';
 
 type Props = {
   payload: HoralixAiResultsPayload | null;
-  onRequestSavePanechoOverride?: (
+  onRequestSaveStudyAnalysisOverride?: (
     key: string,
     override: { value?: number; label?: string }
   ) => void;
-  onRequestClearPanechoOverride?: (key: string) => void;
+  onRequestClearStudyAnalysisOverride?: (key: string) => void;
   onRequestRegenerateLlmReport?: () => void;
 };
 
@@ -21,8 +21,8 @@ type PanelTab = 'measurements' | 'report';
 
 export default function HoralixAiResultsPanelLayout({
   payload,
-  onRequestSavePanechoOverride,
-  onRequestClearPanechoOverride,
+  onRequestSaveStudyAnalysisOverride,
+  onRequestClearStudyAnalysisOverride,
   onRequestRegenerateLlmReport,
 }: Props) {
   const [activeTab, setActiveTab] = useState<PanelTab>('measurements');
@@ -33,7 +33,7 @@ export default function HoralixAiResultsPanelLayout({
     );
   }
 
-  const editorState = payload.panechoEchoprimeEditorState ?? null;
+  const editorState = payload.studyAnalysisEditorState ?? null;
 
   return (
     <div className="h-full overflow-y-auto bg-[#090D14] p-2 text-white">
@@ -46,7 +46,7 @@ export default function HoralixAiResultsPanelLayout({
               {
                 value: 'measurements',
                 label: 'AI Measurements',
-                state: payload.panechoEchoprimeCombinedResultsState,
+                state: payload.studyAnalysisCombinedResultsState,
               },
               {
                 value: 'report',
@@ -58,24 +58,28 @@ export default function HoralixAiResultsPanelLayout({
         </div>
 
         {activeTab === 'measurements' ? (
-          payload.panechoEchoprimeCombinedResultsState === 'ready' ? (
+          payload.studyAnalysisCombinedResultsState === 'ready' ? (
             <AiMeasurementsPanel
-              state={payload.panechoEchoprimeCombinedResultsState}
+              state={payload.studyAnalysisCombinedResultsState}
               totalMeasurements={
-                payload.panechoEchoprimeAiMeasurements?.totalMeasurements
+                payload.studyAnalysisMeasurements?.totalMeasurements
               }
               mainMeasurements={
-                payload.panechoEchoprimeAiMeasurements?.mainMeasurements ?? []
+                payload.studyAnalysisMeasurements?.mainMeasurements ?? []
               }
               measurementSections={
-                payload.panechoEchoprimeAiMeasurements?.measurementSections ?? []
+                payload.studyAnalysisMeasurements?.measurementSections ?? []
               }
-              onRequestSavePanechoOverride={onRequestSavePanechoOverride}
-              onRequestClearPanechoOverride={onRequestClearPanechoOverride}
+              onRequestSaveStudyAnalysisOverride={
+                onRequestSaveStudyAnalysisOverride
+              }
+              onRequestClearStudyAnalysisOverride={
+                onRequestClearStudyAnalysisOverride
+              }
             />
           ) : (
             <AiMeasurementsLoadingState
-              state={payload.panechoEchoprimeCombinedResultsState}
+              state={payload.studyAnalysisCombinedResultsState}
             />
           )
         ) : payload.llmReportResultsState === 'ready' ? (

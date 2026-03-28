@@ -5,7 +5,7 @@ from app.api.inference import router as inference_router
 from app.database.db import get_db
 
 
-def test_echoprime_views_route_is_exposed_in_openapi():
+def test_secondary_analysis_views_route_is_exposed_in_openapi():
     # Part 1. Build minimal app with inference routes.
     app = FastAPI()
     app.include_router(inference_router, prefix="/api")
@@ -13,10 +13,10 @@ def test_echoprime_views_route_is_exposed_in_openapi():
 
     # Part 2. Confirm the dedicated view-classification route exists.
     openapi = client.get("/openapi.json").json()
-    assert "/api/infer/echoprime/views" in openapi["paths"]
+    assert "/api/infer/secondary-analysis/views" in openapi["paths"]
 
 
-def test_echoprime_views_route_returns_service_payload(monkeypatch):
+def test_secondary_analysis_views_route_returns_service_payload(monkeypatch):
     # Part 1. Build app and inject no-op DB dependency.
     app = FastAPI()
     app.include_router(inference_router, prefix="/api")
@@ -44,7 +44,7 @@ def test_echoprime_views_route_returns_service_payload(monkeypatch):
     # Part 3. Call endpoint and verify wrapper response shape.
     client = TestClient(app)
     response = client.post(
-        "/api/infer/echoprime/views",
+        "/api/infer/secondary-analysis/views",
         json={"study_uid": "study-123"},
     )
     assert response.status_code == 200

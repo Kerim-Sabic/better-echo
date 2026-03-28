@@ -101,7 +101,7 @@ def _display_items_by_key(display_payload):
     return items
 
 
-def test_panecho_echoprime_first_call_returns_pending_and_retry_after_no_side_effect(app, db_session_factory, seeded_study):
+def test_study_analysis_first_call_returns_pending_and_retry_after_no_side_effect(app, db_session_factory, seeded_study):
     client = TestClient(app)
     response = client.get(f"/api/studies/{seeded_study['study_uid']}/study-analysis-results")
 
@@ -196,7 +196,7 @@ def test_results_routes_return_404_for_non_owner(app, seeded_study):
     assert override_response.status_code == 404
 
 
-def test_panecho_echoprime_failed_row_returns_failed_status(app, db_session_factory, seeded_study):
+def test_study_analysis_failed_row_returns_failed_status(app, db_session_factory, seeded_study):
     db = db_session_factory()
     try:
         failed_row = DerivedResult(

@@ -27,6 +27,10 @@ for dependency_name, dependency_req in dependencies.items():
     except Exception:
         pass
 
-# Keep transformers modules in the PYZ archive only so vendor source files do
-# not ship alongside the packaged server.
-module_collection_mode = "pyz"
+# Keep the package on disk as source in frozen builds because transformers
+# scans its own Python files at runtime to build the lazy import structure.
+# PYC-only collection breaks that scan and causes packaged view-classifier
+# imports to fail before any study analysis can run.
+module_collection_mode = {
+    "transformers": "py",
+}

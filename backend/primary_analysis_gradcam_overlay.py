@@ -77,7 +77,7 @@ def _stack_to_tensor(frames) -> torch.Tensor:
 
 def _target_convnext_feature_layer(model: torch.nn.Module) -> torch.nn.Module:
     """
-    PanEcho model structure:
+    Primary-analysis model structure:
       MultiTaskModel.encoder -> FrameTransformer
       FrameTransformer.encoder -> ImageEncoder
       ImageEncoder.model -> torchvision ConvNeXt
@@ -162,7 +162,7 @@ def main() -> int:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
     parser = argparse.ArgumentParser(
-        description="Generate a Grad-CAM-style heatmap overlay for PanEcho regression tasks (e.g., IVSd, LVPWd).",
+        description="Generate a Grad-CAM-style heatmap overlay for primary-analysis regression tasks (e.g., IVSd, LVPWd).",
     )
     parser.add_argument("--study-uid", default=None, help="DICOM StudyInstanceUID (will resolve Orthanc instances)")
     parser.add_argument("--orthanc-instance-id", default=None, help="Orthanc instance ID (bypasses study lookup)")
@@ -187,11 +187,11 @@ def main() -> int:
         default=4,
         help="Grid columns when --layout=grid (default: 4).",
     )
-    parser.add_argument("--output", default=None, help="Output .mp4 path (default: out/panecho_gradcam_*.mp4)")
+    parser.add_argument("--output", default=None, help="Output .mp4 path (default: out/primary_analysis_gradcam_*.mp4)")
     args = parser.parse_args()
 
     if args.num_frames <= 0 or args.num_frames > 16:
-        raise ValueError("--num-frames must be between 1 and 16 (PanEcho loaded with clip_len=16)")
+        raise ValueError("--num-frames must be between 1 and 16 (primary-analysis runtime loaded with clip_len=16)")
 
     backend_dir = _ensure_backend_cwd()
     repo_root = backend_dir.parent
@@ -260,14 +260,14 @@ def main() -> int:
         if not out_base.is_absolute():
             out_base = (repo_root / out_base).resolve()
         out_base.mkdir(parents=True, exist_ok=True)
-        out_paths = {task_name: (out_base / f"panecho_gradcam_{task_name}_{instance_id}.mp4").resolve() for task_name in tasks}
+        out_paths = {task_name: (out_base / f"primary_analysis_gradcam_{task_name}_{instance_id}.mp4").resolve() for task_name in tasks}
     else:
         if args.output:
             out_path = Path(args.output)
             if not out_path.is_absolute():
                 out_path = (repo_root / out_path).resolve()
         else:
-            out_path = (out_dir / f"panecho_gradcam_{_task_slug()}_{instance_id}.mp4").resolve()
+            out_path = (out_dir / f"primary_analysis_gradcam_{_task_slug()}_{instance_id}.mp4").resolve()
 
     try:
         if layout == "separate":

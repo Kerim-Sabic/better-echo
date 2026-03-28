@@ -1,18 +1,17 @@
 export function buildStudyResultsOhifAiPayload({
   studyUid,
-  panechoEchoprimeCombinedResultsState,
-  panechoEchoprimeCombinedResultsData,
+  studyAnalysisCombinedResultsState,
+  studyAnalysisCombinedResultsData,
   llmReportResultsState,
   llmReportResultsData,
   llmReportResultsDetail,
-  panechoEchoprimeEditorViewModel,
+  studyAnalysisEditorViewModel,
 }) {
-  const studyAnalysisCombinedResultsDisplay =
-    studyAnalysisCombinedResultsData?.display ?? {
-      mainMeasurements: [],
-      measurementSections: [],
-      totalMeasurements: null,
-    };
+  const studyAnalysisDisplay = studyAnalysisCombinedResultsData?.display ?? {
+    mainMeasurements: [],
+    measurementSections: [],
+    totalMeasurements: null,
+  };
 
   const llmEchoReport = {
     mainTitle: llmReportResultsData?.mainTitle ?? null,
@@ -24,27 +23,25 @@ export function buildStudyResultsOhifAiPayload({
     sentAt: new Date().toISOString(),
     studyUid,
 
-    panechoEchoprimeCombinedResultsState,
-    panechoEchoprimeAiMeasurements: {
-      totalMeasurements: panechoEchoprimeCombinedResultsDisplay.totalMeasurements,
-      mainMeasurements: panechoEchoprimeCombinedResultsDisplay.mainMeasurements,
-      measurementSections: panechoEchoprimeCombinedResultsDisplay.measurementSections,
+    studyAnalysisCombinedResultsState,
+    studyAnalysisMeasurements: {
+      totalMeasurements: studyAnalysisDisplay.totalMeasurements,
+      mainMeasurements: studyAnalysisDisplay.mainMeasurements,
+      measurementSections: studyAnalysisDisplay.measurementSections,
     },
 
-    panechoEchoprimeEditorState: {
+    studyAnalysisEditorState: {
       hasOverrides:
-        panechoEchoprimeEditorViewModel?.hasPanechoEchoprimeOverrides ?? false,
+        studyAnalysisEditorViewModel?.hasStudyAnalysisOverrides ?? false,
       overridesUpdatedAt:
-        panechoEchoprimeEditorViewModel?.panechoEchoprimeOverridesUpdatedAt ??
-        null,
-      isReportStale:
-        panechoEchoprimeEditorViewModel?.isAiReportStale ?? false,
+        studyAnalysisEditorViewModel?.studyAnalysisOverridesUpdatedAt ?? null,
+      isReportStale: studyAnalysisEditorViewModel?.isAiReportStale ?? false,
       canRegenerateAiReport:
-        panechoEchoprimeEditorViewModel?.canRegenerateAiReport ?? false,
+        studyAnalysisEditorViewModel?.canRegenerateAiReport ?? false,
       isRegeneratingAiReport:
-        panechoEchoprimeEditorViewModel?.isRegeneratingAiReport ?? false,
+        studyAnalysisEditorViewModel?.isRegeneratingAiReport ?? false,
       regenerateAiReportErrorMessage:
-        panechoEchoprimeEditorViewModel?.regenerateAiReportErrorMessage ?? null,
+        studyAnalysisEditorViewModel?.regenerateAiReportErrorMessage ?? null,
     },
 
     llmReportResultsState,

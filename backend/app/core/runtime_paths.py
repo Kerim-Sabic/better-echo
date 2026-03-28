@@ -15,12 +15,45 @@ _FROZEN_MODEL_DIRS = {
     "study_measurements": "study_measurements",
 }
 
-_SOURCE_MODEL_DIRS = {
-    "primary_analysis": "PanEcho",
-    "secondary_analysis": "EchoPrime",
-    "motion_segmentation": "EchonetDynamic",
-    "study_measurements": "measurements",
+_SOURCE_MODEL_PROBES = {
+    "primary_analysis": (
+        ("hubconf.py",),
+        ("content", "tasks.pkl"),
+        ("src", "models.py"),
+    ),
+    "secondary_analysis": (
+        ("model_data", "weights", "analysis_encoder.pt"),
+        ("model_data", "weights", "view_classifier.pt"),
+        ("assets", "MIL_weights.csv"),
+    ),
+    "motion_segmentation": (
+        ("output", "segmentation", "deeplabv3_resnet50_random", "best.pt"),
+    ),
+    "study_measurements": (
+        ("runner_2d.py",),
+        ("runner_doppler.py",),
+        ("weights",),
+    ),
 }
+
+
+def _source_model_assets_root() -> Path:
+    return _SOURCE_APP_DIR / "AI_models"
+
+
+def _source_model_dir(model_key: str) -> Path:
+    root = _source_model_assets_root()
+    probes = _SOURCE_MODEL_PROBES.get(model_key)
+    if not probes:
+        return root / model_key
+
+    for candidate_dir in sorted(path for path in root.iterdir() if path.is_dir()):
+        if all((candidate_dir / Path(*probe)).exists() for probe in probes):
+            return candidate_dir
+
+    raise FileNotFoundError(
+        f"Could not resolve source runtime assets for model key '{model_key}' under {root}."
+    )
 
 
 def is_frozen_runtime() -> bool:
@@ -105,12 +138,11 @@ def prompt_template_path(filename: str) -> Path:
 def model_assets_root() -> Path:
     if is_frozen_runtime():
         return backend_root() / "runtime_assets" / "models"
-    return _SOURCE_APP_DIR / "AI_models"
+    return _source_model_assets_root()
 
 
 def model_assets_dir(model_key: str) -> Path:
     if is_frozen_runtime():
         name = _FROZEN_MODEL_DIRS.get(model_key, model_key)
         return model_assets_root() / name
-    name = _SOURCE_MODEL_DIRS.get(model_key, model_key)
-    return model_assets_root() / name
+    return _source_model_dir(model_key)

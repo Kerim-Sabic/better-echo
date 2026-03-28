@@ -12,11 +12,11 @@ type Props = {
   totalMeasurements?: number | null;
   mainMeasurements?: MeasurementItem[];
   measurementSections?: MeasurementSection[];
-  onRequestSavePanechoOverride?: (
+  onRequestSaveStudyAnalysisOverride?: (
     key: string,
     override: { value?: number; label?: string }
   ) => void;
-  onRequestClearPanechoOverride?: (key: string) => void;
+  onRequestClearStudyAnalysisOverride?: (key: string) => void;
 };
 
 export default function AiMeasurementsPanel({
@@ -24,8 +24,8 @@ export default function AiMeasurementsPanel({
   totalMeasurements,
   mainMeasurements = [],
   measurementSections = [],
-  onRequestSavePanechoOverride,
-  onRequestClearPanechoOverride,
+  onRequestSaveStudyAnalysisOverride,
+  onRequestClearStudyAnalysisOverride,
 }: Props) {
   return (
     <div className="space-y-2">
@@ -41,13 +41,17 @@ export default function AiMeasurementsPanel({
 
       <MainMeasurements
         items={mainMeasurements}
-        onRequestSavePanechoOverride={onRequestSavePanechoOverride}
-        onRequestClearPanechoOverride={onRequestClearPanechoOverride}
+        onRequestSaveStudyAnalysisOverride={onRequestSaveStudyAnalysisOverride}
+        onRequestClearStudyAnalysisOverride={
+          onRequestClearStudyAnalysisOverride
+        }
       />
       <SectionsList
         sections={measurementSections}
-        onRequestSavePanechoOverride={onRequestSavePanechoOverride}
-        onRequestClearPanechoOverride={onRequestClearPanechoOverride}
+        onRequestSaveStudyAnalysisOverride={onRequestSaveStudyAnalysisOverride}
+        onRequestClearStudyAnalysisOverride={
+          onRequestClearStudyAnalysisOverride
+        }
       />
     </div>
   );

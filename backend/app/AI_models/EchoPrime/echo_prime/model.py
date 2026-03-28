@@ -16,7 +16,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import cv2
 import pydicom
-import transformers
 
 
 # Local module imports
@@ -29,6 +28,12 @@ def _load_torch(path, map_location, label):
     except TypeError:
         warnings.warn(f"torch.load weights_only not supported for {label}; loading with weights_only=False", RuntimeWarning)
         return torch.load(path, map_location=map_location)
+
+
+def _import_transformers():
+    import transformers
+
+    return transformers
 
 
 class EchoPrime:
@@ -355,6 +360,7 @@ class EchoPrimeTextEncoder(torch.nn.Module):
     def __init__(self,device="cuda"):
         super().__init__()
         self.device=device
+        transformers = _import_transformers()
         config = transformers.AutoConfig.from_pretrained("microsoft/BiomedNLP-BiomedBERT-base-uncased-abstract")
         self.backbone = transformers.AutoModelForMaskedLM.from_config(config)
         self.text_projection = torch.nn.Linear(768, 512)
@@ -392,6 +398,7 @@ class EchoPrimeTextEncoder(torch.nn.Module):
                     end = p
                     break
             # finally cut the tokens
+            transformers = _import_transformers()
             text = transformers.BatchEncoding(
                 data={k: v[:, start:end] for (k, v) in text.items()}
             )

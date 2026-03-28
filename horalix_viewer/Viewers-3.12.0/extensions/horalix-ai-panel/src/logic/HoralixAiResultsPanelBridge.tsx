@@ -6,11 +6,13 @@ const CHANNEL_DEFAULT = 'horalix-ai';
 const MESSAGE_VERSION = 1;
 const PANEL_READY_TYPE = 'horalix:panel-ready';
 const AI_RESULTS_TYPE = 'horalix:ai-results';
-const PANECHO_OVERRIDE_SAVE_TYPE = 'horalix:panecho-override-save';
-const PANECHO_OVERRIDE_CLEAR_TYPE = 'horalix:panecho-override-clear';
+const STUDY_ANALYSIS_OVERRIDE_SAVE_TYPE =
+  'horalix:study-analysis-override-save';
+const STUDY_ANALYSIS_OVERRIDE_CLEAR_TYPE =
+  'horalix:study-analysis-override-clear';
 const LLM_REPORT_REGENERATE_TYPE = 'horalix:llm-report-regenerate';
 
-type PanechoOverridePayload = {
+type StudyAnalysisOverridePayload = {
   value?: number;
   label?: string;
 };
@@ -127,8 +129,8 @@ export default function HoralixAiResultsPanelBridge({ appConfig }: Props) {
     };
   }, [bridgeConfig]);
 
-  const onRequestSavePanechoOverride = useCallback(
-    (key: string, override: PanechoOverridePayload) => {
+  const onRequestSaveStudyAnalysisOverride = useCallback(
+    (key: string, override: StudyAnalysisOverridePayload) => {
       const studyUid =
         typeof payload?.studyUid === 'string' ? payload.studyUid.trim() : '';
       const measurementKey = typeof key === 'string' ? key.trim() : '';
@@ -140,7 +142,7 @@ export default function HoralixAiResultsPanelBridge({ appConfig }: Props) {
       sendParentMessage(
         bridgeConfig.channel,
         bridgeConfig.allowedParentOrigins,
-        PANECHO_OVERRIDE_SAVE_TYPE,
+        STUDY_ANALYSIS_OVERRIDE_SAVE_TYPE,
         {
           studyUid,
           key: measurementKey,
@@ -151,7 +153,7 @@ export default function HoralixAiResultsPanelBridge({ appConfig }: Props) {
     [bridgeConfig, payload?.studyUid]
   );
 
-  const onRequestClearPanechoOverride = useCallback(
+  const onRequestClearStudyAnalysisOverride = useCallback(
     (key: string) => {
       const studyUid =
         typeof payload?.studyUid === 'string' ? payload.studyUid.trim() : '';
@@ -164,7 +166,7 @@ export default function HoralixAiResultsPanelBridge({ appConfig }: Props) {
       sendParentMessage(
         bridgeConfig.channel,
         bridgeConfig.allowedParentOrigins,
-        PANECHO_OVERRIDE_CLEAR_TYPE,
+        STUDY_ANALYSIS_OVERRIDE_CLEAR_TYPE,
         {
           studyUid,
           key: measurementKey,
@@ -195,8 +197,8 @@ export default function HoralixAiResultsPanelBridge({ appConfig }: Props) {
   return (
     <HoralixAiResultsPanelLayout
       payload={payload}
-      onRequestSavePanechoOverride={onRequestSavePanechoOverride}
-      onRequestClearPanechoOverride={onRequestClearPanechoOverride}
+      onRequestSaveStudyAnalysisOverride={onRequestSaveStudyAnalysisOverride}
+      onRequestClearStudyAnalysisOverride={onRequestClearStudyAnalysisOverride}
       onRequestRegenerateLlmReport={onRequestRegenerateLlmReport}
     />
   );

@@ -4,17 +4,17 @@ import SectionBox from './SectionBox';
 
 type Props = {
   items: MeasurementItem[];
-  onRequestSavePanechoOverride?: (
+  onRequestSaveStudyAnalysisOverride?: (
     key: string,
     override: { value?: number; label?: string }
   ) => void;
-  onRequestClearPanechoOverride?: (key: string) => void;
+  onRequestClearStudyAnalysisOverride?: (key: string) => void;
 };
 
 export default function MainMeasurements({
   items,
-  onRequestSavePanechoOverride,
-  onRequestClearPanechoOverride,
+  onRequestSaveStudyAnalysisOverride,
+  onRequestClearStudyAnalysisOverride,
 }: Props) {
   if (!items.length) {
     return null;
@@ -24,8 +24,10 @@ export default function MainMeasurements({
     <SectionBox
       title="KEYPOINT MEASUREMENTS"
       items={items}
-      onRequestSavePanechoOverride={onRequestSavePanechoOverride}
-      onRequestClearPanechoOverride={onRequestClearPanechoOverride}
+      onRequestSaveStudyAnalysisOverride={onRequestSaveStudyAnalysisOverride}
+      onRequestClearStudyAnalysisOverride={
+        onRequestClearStudyAnalysisOverride
+      }
     />
   );
 }

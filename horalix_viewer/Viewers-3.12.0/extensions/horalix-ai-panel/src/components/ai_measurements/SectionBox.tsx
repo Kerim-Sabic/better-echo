@@ -57,11 +57,11 @@ function ResetIcon({ size = 10 }: { size?: number }) {
 type Props = {
   title: string;
   items: MeasurementItem[];
-  onRequestSavePanechoOverride?: (
+  onRequestSaveStudyAnalysisOverride?: (
     key: string,
     override: { value?: number; label?: string }
   ) => void;
-  onRequestClearPanechoOverride?: (key: string) => void;
+  onRequestClearStudyAnalysisOverride?: (key: string) => void;
 };
 
 function getDotColor(color?: string | null) {
@@ -122,15 +122,15 @@ function getInitialDraftLabel(item: MeasurementItem) {
 
 function MeasurementRow({
   item,
-  onRequestSavePanechoOverride,
-  onRequestClearPanechoOverride,
+  onRequestSaveStudyAnalysisOverride,
+  onRequestClearStudyAnalysisOverride,
 }: {
   item: MeasurementItem;
-  onRequestSavePanechoOverride?: (
+  onRequestSaveStudyAnalysisOverride?: (
     key: string,
     override: { value?: number; label?: string }
   ) => void;
-  onRequestClearPanechoOverride?: (key: string) => void;
+  onRequestClearStudyAnalysisOverride?: (key: string) => void;
 }) {
   const value = formatDisplayValue(item);
   const alreadyContainsUnits =
@@ -142,12 +142,12 @@ function MeasurementRow({
   const canEdit =
     Boolean(measurementKey) &&
     Boolean(item.editable) &&
-    typeof onRequestSavePanechoOverride === 'function';
+    typeof onRequestSaveStudyAnalysisOverride === 'function';
 
   const canReset =
     Boolean(measurementKey) &&
     Boolean(item.isOverridden) &&
-    typeof onRequestClearPanechoOverride === 'function';
+    typeof onRequestClearStudyAnalysisOverride === 'function';
 
   const [isEditing, setIsEditing] = useState(false);
   const [draftValue, setDraftValue] = useState(getInitialDraftValue(item));
@@ -222,7 +222,7 @@ function MeasurementRow({
         return;
       }
 
-      onRequestSavePanechoOverride?.(measurementKey, {
+      onRequestSaveStudyAnalysisOverride?.(measurementKey, {
         label: normalizedLabel,
       });
       setValidationError(null);
@@ -236,7 +236,7 @@ function MeasurementRow({
       return;
     }
 
-    onRequestSavePanechoOverride?.(measurementKey, {
+    onRequestSaveStudyAnalysisOverride?.(measurementKey, {
       value: normalizedNumericValue,
     });
     setValidationError(null);
@@ -248,7 +248,7 @@ function MeasurementRow({
       return;
     }
 
-    onRequestClearPanechoOverride?.(measurementKey);
+    onRequestClearStudyAnalysisOverride?.(measurementKey);
     setValidationError(null);
     setIsEditing(false);
   };
@@ -387,8 +387,8 @@ function MeasurementRow({
 export default function SectionBox({
   title,
   items,
-  onRequestSavePanechoOverride,
-  onRequestClearPanechoOverride,
+  onRequestSaveStudyAnalysisOverride,
+  onRequestClearStudyAnalysisOverride,
 }: Props) {
   if (!items.length) {
     return null;
@@ -405,8 +405,12 @@ export default function SectionBox({
           <MeasurementRow
             key={item.key || item.label}
             item={item}
-            onRequestSavePanechoOverride={onRequestSavePanechoOverride}
-            onRequestClearPanechoOverride={onRequestClearPanechoOverride}
+            onRequestSaveStudyAnalysisOverride={
+              onRequestSaveStudyAnalysisOverride
+            }
+            onRequestClearStudyAnalysisOverride={
+              onRequestClearStudyAnalysisOverride
+            }
           />
         ))}
       </div>

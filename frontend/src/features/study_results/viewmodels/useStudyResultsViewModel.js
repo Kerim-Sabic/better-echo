@@ -10,7 +10,7 @@ import {
   openAiMeasurementsPrintPreview,
   openAiReportPrintPreview,
 } from "@/features/study_results/viewmodels/pdf_printing/studyResultsPdfGenerator";
-import { usePanechoEchoprimeEditorViewModel } from "@/features/study_results/viewmodels/usePanechoEchoprimeEditorViewModel";
+import { useStudyAnalysisEditorViewModel } from "@/features/study_results/viewmodels/useStudyAnalysisEditorViewModel";
 
 // Resolves a single page-level state from the three study results query states.
 function resolveOverallState(states) {
@@ -76,9 +76,9 @@ export function useStudyResultsViewModel(studyUid) {
     enabled: Boolean(studyUid),
   });
 
-  const panechoEchoprimeCombinedResultsState =
-    panechoEchoprimeQueryData?.state ??
-    (isPanechoEchoprimeLoading ? "loading" : panechoEchoprimeError ? "error" : "idle");
+  const studyAnalysisCombinedResultsState =
+    studyAnalysisQueryData?.state ??
+    (isStudyAnalysisLoading ? "loading" : studyAnalysisError ? "error" : "idle");
 
   const dynamicMeasurementsCombinedResultsState =
     dynamicMeasurementsQueryData?.state ??
@@ -88,8 +88,8 @@ export function useStudyResultsViewModel(studyUid) {
     llmReportQueryData?.state ??
     (isLlmReportLoading ? "loading" : llmReportError ? "error" : "idle");
 
-  const panechoEchoprimeCombinedResultsData =
-    panechoEchoprimeQueryData?.panechoEchoprimeResults ?? null;
+  const studyAnalysisCombinedResultsData =
+    studyAnalysisQueryData?.studyAnalysisCombinedResults ?? null;
 
   const llmReportResultsData = llmReportQueryData?.llmReport ?? null;
   const llmReportResultsDetail = llmReportQueryData?.detail ?? null;
@@ -98,11 +98,11 @@ export function useStudyResultsViewModel(studyUid) {
     dynamicMeasurementsQueryData?.viewerRefreshToken ??
     "dynamic-measurements-not-ready";
 
-  // --- Part 2. Compose the PanEcho/EchoPrime editing workflow ViewModel. ---
-  const panechoEchoprimeEditorViewModel = usePanechoEchoprimeEditorViewModel({
+  // --- Part 2. Compose the study-analysis editing workflow ViewModel. ---
+  const studyAnalysisEditorViewModel = useStudyAnalysisEditorViewModel({
     studyUid,
-    panechoEchoprimeCombinedResultsState,
-    panechoEchoprimeCombinedResultsData,
+    studyAnalysisCombinedResultsState,
+    studyAnalysisCombinedResultsData,
     llmReportResultsState,
     llmReportResultsData,
   });
@@ -115,15 +115,15 @@ export function useStudyResultsViewModel(studyUid) {
   ]);
 
   const anyLoading =
-    isPanechoEchoprimeLoading ||
-    isPanechoEchoprimeFetching ||
+    isStudyAnalysisLoading ||
+    isStudyAnalysisFetching ||
     isDynamicMeasurementsLoading ||
     isDynamicMeasurementsFetching ||
     isLlmReportLoading ||
     isLlmReportFetching;
 
   const isPolling =
-    panechoEchoprimeCombinedResultsState === "pending" ||
+    studyAnalysisCombinedResultsState === "pending" ||
     dynamicMeasurementsCombinedResultsState === "pending" ||
     llmReportResultsState === "pending";
 
@@ -131,21 +131,21 @@ export function useStudyResultsViewModel(studyUid) {
     () =>
       buildStudyResultsOhifAiPayload({
         studyUid,
-        panechoEchoprimeCombinedResultsState,
-        panechoEchoprimeCombinedResultsData,
+        studyAnalysisCombinedResultsState,
+        studyAnalysisCombinedResultsData,
         llmReportResultsState,
         llmReportResultsData,
         llmReportResultsDetail,
-        panechoEchoprimeEditorViewModel,
+        studyAnalysisEditorViewModel,
       }),
     [
       studyUid,
-      panechoEchoprimeCombinedResultsState,
-      panechoEchoprimeCombinedResultsData,
+      studyAnalysisCombinedResultsState,
+      studyAnalysisCombinedResultsData,
       llmReportResultsState,
       llmReportResultsData,
       llmReportResultsDetail,
-      panechoEchoprimeEditorViewModel,
+      studyAnalysisEditorViewModel,
     ]
   );
 
@@ -181,23 +181,23 @@ export function useStudyResultsViewModel(studyUid) {
       patientContext,
       downloadRequestedAt: new Date(),
       studyResultsState,
-      panechoEchoprimeCombinedResultsState,
-      panechoEchoprimeCombinedResultsData,
+      studyAnalysisCombinedResultsState,
+      studyAnalysisCombinedResultsData,
       llmReportResultsState,
       llmReportResultsData,
       llmReportResultsDetail,
-      panechoEchoprimeEditorViewModel,
+      studyAnalysisEditorViewModel,
     });
   }, [
     studyUid,
     patientContext,
     studyResultsState,
-    panechoEchoprimeCombinedResultsState,
-    panechoEchoprimeCombinedResultsData,
+    studyAnalysisCombinedResultsState,
+    studyAnalysisCombinedResultsData,
     llmReportResultsState,
     llmReportResultsData,
     llmReportResultsDetail,
-    panechoEchoprimeEditorViewModel,
+    studyAnalysisEditorViewModel,
   ]);
 
   // Opens the measurements-specific print preview from the shared PDF data snapshot.
@@ -222,7 +222,7 @@ export function useStudyResultsViewModel(studyUid) {
     await openAiReportPrintPreview(studyResultsPdfData);
   }, [buildCurrentStudyResultsPdfData]);
 
-// --- Part 5. onBack and refetchStudyResults handlers ---
+  // --- Part 4. Expose back-navigation and refetch handlers. ---
   const onBack = useCallback(() => {
     navigate("/dashboard");
   }, [navigate]);
@@ -231,7 +231,7 @@ export function useStudyResultsViewModel(studyUid) {
     refetchStudyAnalysis();
     refetchDynamicMeasurements();
     refetchLlmReport();
-  }, [refetchPanechoEchoprime, refetchDynamicMeasurements, refetchLlmReport]);
+  }, [refetchStudyAnalysis, refetchDynamicMeasurements, refetchLlmReport]);
 
   return {
     studyUid,
@@ -252,7 +252,7 @@ export function useStudyResultsViewModel(studyUid) {
     ohifAiPayload,
     viewerRefreshToken,
 
-    panechoEchoprimeEditorViewModel,
+    studyAnalysisEditorViewModel,
 
     canPrintAiMeasurementsDocument: Boolean(studyUid),
     canPrintAiReportDocument: Boolean(studyUid),

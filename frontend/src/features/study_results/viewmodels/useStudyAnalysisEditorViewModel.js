@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { toObject } from "@/general_components/utility/dataShapeUtils";
-import { usePatchPanechoEchoprimeOverridesMutation } from "@/features/study_results/tanstack/mutations/usePatchPanechoEchoprimeOverridesMutation";
+import { usePatchStudyAnalysisOverridesMutation } from "@/features/study_results/tanstack/mutations/usePatchStudyAnalysisOverridesMutation";
 import { useGenerateLlmReportMutation } from "@/features/study_results/tanstack/mutations/useGenerateLlmReportMutation";
 
 function normalizeMeasurementKey(key) {
@@ -74,46 +74,46 @@ function toTimestamp(value) {
   return Number.isFinite(timestamp) ? timestamp : null;
 }
 
-export function usePanechoEchoprimeEditorViewModel({
+export function useStudyAnalysisEditorViewModel({
   studyUid,
-  panechoEchoprimeCombinedResultsState,
-  panechoEchoprimeCombinedResultsData,
+  studyAnalysisCombinedResultsState,
+  studyAnalysisCombinedResultsData,
   llmReportResultsState,
   llmReportResultsData,
 }) {
   // --- Part 1. Initialize mutation hooks and derive edit-related source data. ---
-  const patchPanechoEchoprimeOverridesMutation =
-    usePatchPanechoEchoprimeOverridesMutation();
+  const patchStudyAnalysisOverridesMutation =
+    usePatchStudyAnalysisOverridesMutation();
   const generateLlmReportMutation = useGenerateLlmReportMutation();
 
-  const [savingPanechoEchoprimeOverrideKey, setSavingPanechoEchoprimeOverrideKey] =
+  const [savingStudyAnalysisOverrideKey, setSavingStudyAnalysisOverrideKey] =
     useState(null);
 
   const editBaselines = useMemo(
-    () => toObject(panechoEchoprimeCombinedResultsData?.editBaselines),
-    [panechoEchoprimeCombinedResultsData]
+    () => toObject(studyAnalysisCombinedResultsData?.editBaselines),
+    [studyAnalysisCombinedResultsData]
   );
 
-  const panechoEchoprimeOverrides = useMemo(
-    () => toObject(panechoEchoprimeCombinedResultsData?.overrides),
-    [panechoEchoprimeCombinedResultsData]
+  const studyAnalysisOverrides = useMemo(
+    () => toObject(studyAnalysisCombinedResultsData?.overrides),
+    [studyAnalysisCombinedResultsData]
   );
 
-  const panechoEchoprimeOverridesUpdatedAt =
-    panechoEchoprimeCombinedResultsData?.overridesUpdatedAt ?? null;
+  const studyAnalysisOverridesUpdatedAt =
+    studyAnalysisCombinedResultsData?.overridesUpdatedAt ?? null;
 
-  const panechoEchoprimeOverridesUpdatedAtRaw =
-    panechoEchoprimeCombinedResultsData?.overridesUpdatedAtRaw ?? null;
+  const studyAnalysisOverridesUpdatedAtRaw =
+    studyAnalysisCombinedResultsData?.overridesUpdatedAtRaw ?? null;
 
-  const hasPanechoEchoprimeOverrides =
-    Object.keys(panechoEchoprimeOverrides).length > 0;
+  const hasStudyAnalysisOverrides =
+    Object.keys(studyAnalysisOverrides).length > 0;
 
-  const canEditPanechoEchoprimeMeasurements = Boolean(
-    studyUid && panechoEchoprimeCombinedResultsState === "ready"
+  const canEditStudyAnalysisMeasurements = Boolean(
+    studyUid && studyAnalysisCombinedResultsState === "ready"
   );
 
   // --- Part 2. Expose override lookup helpers and override save/reset actions. ---
-  const getPanechoEchoprimeBaselineForKey = useCallback(
+  const getStudyAnalysisBaselineForKey = useCallback(
     key => {
       const measurementKey = normalizeMeasurementKey(key);
       if (!measurementKey) {
@@ -125,22 +125,22 @@ export function usePanechoEchoprimeEditorViewModel({
     [editBaselines]
   );
 
-  const getPanechoEchoprimeOverrideForKey = useCallback(
+  const getStudyAnalysisOverrideForKey = useCallback(
     key => {
       const measurementKey = normalizeMeasurementKey(key);
       if (!measurementKey) {
         return null;
       }
 
-      return panechoEchoprimeOverrides[measurementKey] ?? null;
+      return studyAnalysisOverrides[measurementKey] ?? null;
     },
-    [panechoEchoprimeOverrides]
+    [studyAnalysisOverrides]
   );
 
-  const savePanechoEchoprimeOverride = useCallback(
+  const saveStudyAnalysisOverride = useCallback(
     async (key, overridePayload) => {
-      if (!canEditPanechoEchoprimeMeasurements) {
-        throw new Error("PanEcho/EchoPrime combined results are not ready.");
+      if (!canEditStudyAnalysisMeasurements) {
+        throw new Error("Study analysis results are not ready.");
       }
 
       const measurementKey = normalizeMeasurementKey(key);
@@ -151,46 +151,46 @@ export function usePanechoEchoprimeEditorViewModel({
       const normalizedOverridePayload =
         normalizeOverridePayload(overridePayload);
 
-      setSavingPanechoEchoprimeOverrideKey(measurementKey);
+      setSavingStudyAnalysisOverrideKey(measurementKey);
 
       try {
-        return await patchPanechoEchoprimeOverridesMutation.mutateAsync({
+        return await patchStudyAnalysisOverridesMutation.mutateAsync({
           studyUid,
           overrides: {
             [measurementKey]: normalizedOverridePayload,
           },
         });
       } finally {
-        setSavingPanechoEchoprimeOverrideKey(currentKey =>
+        setSavingStudyAnalysisOverrideKey(currentKey =>
           currentKey === measurementKey ? null : currentKey
         );
       }
     },
     [
-      canEditPanechoEchoprimeMeasurements,
-      patchPanechoEchoprimeOverridesMutation,
+      canEditStudyAnalysisMeasurements,
+      patchStudyAnalysisOverridesMutation,
       studyUid,
     ]
   );
 
-  const savePanechoEchoprimeValueOverride = useCallback(
+  const saveStudyAnalysisValueOverride = useCallback(
     async (key, value) => {
-      return savePanechoEchoprimeOverride(key, { value });
+      return saveStudyAnalysisOverride(key, { value });
     },
-    [savePanechoEchoprimeOverride]
+    [saveStudyAnalysisOverride]
   );
 
-  const savePanechoEchoprimeLabelOverride = useCallback(
+  const saveStudyAnalysisLabelOverride = useCallback(
     async (key, label) => {
-      return savePanechoEchoprimeOverride(key, { label });
+      return saveStudyAnalysisOverride(key, { label });
     },
-    [savePanechoEchoprimeOverride]
+    [saveStudyAnalysisOverride]
   );
 
-  const clearPanechoEchoprimeOverride = useCallback(
+  const clearStudyAnalysisOverride = useCallback(
     async key => {
-      if (!canEditPanechoEchoprimeMeasurements) {
-        throw new Error("PanEcho/EchoPrime combined results are not ready.");
+      if (!canEditStudyAnalysisMeasurements) {
+        throw new Error("Study analysis results are not ready.");
       }
 
       const measurementKey = normalizeMeasurementKey(key);
@@ -198,24 +198,24 @@ export function usePanechoEchoprimeEditorViewModel({
         throw new Error("A valid measurement key is required.");
       }
 
-      setSavingPanechoEchoprimeOverrideKey(measurementKey);
+      setSavingStudyAnalysisOverrideKey(measurementKey);
 
       try {
-        return await patchPanechoEchoprimeOverridesMutation.mutateAsync({
+        return await patchStudyAnalysisOverridesMutation.mutateAsync({
           studyUid,
           overrides: {
             [measurementKey]: null,
           },
         });
       } finally {
-        setSavingPanechoEchoprimeOverrideKey(currentKey =>
+        setSavingStudyAnalysisOverrideKey(currentKey =>
           currentKey === measurementKey ? null : currentKey
         );
       }
     },
     [
-      canEditPanechoEchoprimeMeasurements,
-      patchPanechoEchoprimeOverridesMutation,
+      canEditStudyAnalysisMeasurements,
+      patchStudyAnalysisOverridesMutation,
       studyUid,
     ]
   );
@@ -224,11 +224,11 @@ export function usePanechoEchoprimeEditorViewModel({
   const llmReportGeneratedAtRaw = llmReportResultsData?.reportGeneratedAtRaw ?? null;
 
   const isAiReportStale = useMemo(() => {
-    if (!hasPanechoEchoprimeOverrides) {
+    if (!hasStudyAnalysisOverrides) {
       return false;
     }
 
-    const overridesTimestamp = toTimestamp(panechoEchoprimeOverridesUpdatedAtRaw);
+    const overridesTimestamp = toTimestamp(studyAnalysisOverridesUpdatedAtRaw);
     if (overridesTimestamp === null) {
       return false;
     }
@@ -240,15 +240,15 @@ export function usePanechoEchoprimeEditorViewModel({
 
     return overridesTimestamp > reportTimestamp;
   }, [
-    hasPanechoEchoprimeOverrides,
+    hasStudyAnalysisOverrides,
     llmReportGeneratedAtRaw,
-    panechoEchoprimeOverridesUpdatedAtRaw,
+    studyAnalysisOverridesUpdatedAtRaw,
   ]);
 
   const canRegenerateAiReport = Boolean(
     studyUid &&
-      hasPanechoEchoprimeOverrides &&
-      panechoEchoprimeCombinedResultsState === "ready" &&
+      hasStudyAnalysisOverrides &&
+      studyAnalysisCombinedResultsState === "ready" &&
       llmReportResultsState !== "pending" &&
       !generateLlmReportMutation.isPending
   );
@@ -258,7 +258,7 @@ export function usePanechoEchoprimeEditorViewModel({
       throw new Error("A study UID is required.");
     }
 
-    if (!hasPanechoEchoprimeOverrides) {
+    if (!hasStudyAnalysisOverrides) {
       throw new Error(
         "At least one override is required before regenerating the AI Report."
       );
@@ -267,39 +267,39 @@ export function usePanechoEchoprimeEditorViewModel({
     return generateLlmReportMutation.mutateAsync({ studyUid });
   }, [
     generateLlmReportMutation,
-    hasPanechoEchoprimeOverrides,
+    hasStudyAnalysisOverrides,
     studyUid,
   ]);
 
   return {
-    canEditPanechoEchoprimeMeasurements,
+    canEditStudyAnalysisMeasurements,
 
     editBaselines,
-    panechoEchoprimeOverrides,
-    panechoEchoprimeOverridesUpdatedAt,
-    panechoEchoprimeOverridesUpdatedAtRaw,
-    hasPanechoEchoprimeOverrides,
+    studyAnalysisOverrides,
+    studyAnalysisOverridesUpdatedAt,
+    studyAnalysisOverridesUpdatedAtRaw,
+    hasStudyAnalysisOverrides,
 
-    isSavingPanechoEchoprimeOverride:
-      patchPanechoEchoprimeOverridesMutation.isPending,
-    savingPanechoEchoprimeOverrideKey,
-    panechoEchoprimeOverrideSaveError:
-      patchPanechoEchoprimeOverridesMutation.error ?? null,
-    panechoEchoprimeOverrideSaveErrorMessage:
+    isSavingStudyAnalysisOverride:
+      patchStudyAnalysisOverridesMutation.isPending,
+    savingStudyAnalysisOverrideKey,
+    studyAnalysisOverrideSaveError:
+      patchStudyAnalysisOverridesMutation.error ?? null,
+    studyAnalysisOverrideSaveErrorMessage:
       extractMutationErrorMessage(
-        patchPanechoEchoprimeOverridesMutation.error
+        patchStudyAnalysisOverridesMutation.error
       ),
 
-    getPanechoEchoprimeBaselineForKey,
-    getPanechoEchoprimeOverrideForKey,
+    getStudyAnalysisBaselineForKey,
+    getStudyAnalysisOverrideForKey,
 
-    savePanechoEchoprimeOverride,
-    savePanechoEchoprimeValueOverride,
-    savePanechoEchoprimeLabelOverride,
-    clearPanechoEchoprimeOverride,
+    saveStudyAnalysisOverride,
+    saveStudyAnalysisValueOverride,
+    saveStudyAnalysisLabelOverride,
+    clearStudyAnalysisOverride,
 
-    resetPanechoEchoprimeOverrideSaveState:
-      patchPanechoEchoprimeOverridesMutation.reset,
+    resetStudyAnalysisOverrideSaveState:
+      patchStudyAnalysisOverridesMutation.reset,
 
     canRegenerateAiReport,
     isAiReportStale,

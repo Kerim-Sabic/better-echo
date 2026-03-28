@@ -31,7 +31,7 @@ def _seed_completed_required_results(*, db, study_id: int) -> None:
             type=MEASUREMENT_WORKFLOW_TYPE,
             status=ResultStatus.complete,
             value_json={"instances": []},
-            model_name="Dynamic_Measurements_Combined",
+            model_name="StudyMeasurementsWorkflow",
             model_version="v1",
         )
     )

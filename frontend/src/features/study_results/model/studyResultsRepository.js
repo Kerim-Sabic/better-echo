@@ -1,15 +1,15 @@
 import {
-  getPanechoEchoprimeCombinedResultsApi,
+  getStudyAnalysisCombinedResultsApi,
   getDynamicMeasurementsCombinedResultsApi,
   getLlmReportApi,
 } from "@/api/get_study_results_apis";
 import { getStudyByUidApi } from "@/api/studies";
-import { patchPanechoEchoprimeOverridesApi } from "@/api/panecho_echoprime_overrides/patchPanechoEchoprimeOverridesApi";
+import { patchStudyAnalysisOverridesApi } from "@/api/study_analysis_overrides/patchStudyAnalysisOverridesApi";
 import { postGenerateLlmReportApi } from "@/api/llm_report_generate/postGenerateLlmReportApi";
 import {
   formatDynamicMeasurementsCombinedResultsDto,
-  formatPanechoEchoprimeCombinedResultsDto,
   formatLlmReportResultsDto,
+  formatStudyAnalysisCombinedResultsDto,
   formatStudyDetailsDto,
 } from "./studyResults.dto";
 
@@ -21,38 +21,24 @@ export const studyResultsRepository = {
     return formattedStudyDetails;
   },
 
-  // Fetches and formats the combined PanEcho/EchoPrime results for the study results page.
-  async getPanechoEchoprimeCombinedResults(studyUid) {
-    const rawPanechoEchoprimeCombinedResults =
-      await getPanechoEchoprimeCombinedResultsApi(studyUid);
+  // Fetches and formats the combined study-analysis results for the Study Results page.
+  async getStudyAnalysisCombinedResults(studyUid) {
+    const rawStudyAnalysisCombinedResults =
+      await getStudyAnalysisCombinedResultsApi(studyUid);
 
-    const formattedPanechoEchoprimeCombinedResults =
-      formatPanechoEchoprimeCombinedResultsDto(
-        rawPanechoEchoprimeCombinedResults
-      );
-
-    return formattedPanechoEchoprimeCombinedResults;
+    return formatStudyAnalysisCombinedResultsDto(
+      rawStudyAnalysisCombinedResults
+    );
   },
 
-  // Persists PanEcho/EchoPrime overrides and formats the updated combined results payload.
-  async patchPanechoEchoprimeOverrides(studyUid, overrides) {
-    const rawPatchedPanechoEchoprimeOverrides =
-      await patchPanechoEchoprimeOverridesApi(studyUid, overrides);
-    console.log(
-      "RAW PATCHED PANECHO ECHOPRIME OVERRIDES: ",
-      rawPatchedPanechoEchoprimeOverrides
-    );
+  // Persists study-analysis overrides and formats the updated combined results payload.
+  async patchStudyAnalysisOverrides(studyUid, overrides) {
+    const rawPatchedStudyAnalysisOverrides =
+      await patchStudyAnalysisOverridesApi(studyUid, overrides);
 
-    const formattedPatchedPanechoEchoprimeOverrides =
-      formatPanechoEchoprimeCombinedResultsDto(
-        rawPatchedPanechoEchoprimeOverrides
-      );
-    console.log(
-      "FORMATTED PATCHED PANECHO ECHOPRIME OVERRIDES: ",
-      formattedPatchedPanechoEchoprimeOverrides
+    return formatStudyAnalysisCombinedResultsDto(
+      rawPatchedStudyAnalysisOverrides
     );
-
-    return formattedPatchedPanechoEchoprimeOverrides;
   },
 
   // Fetches and formats the dynamic measurements combined observer payload.
@@ -81,8 +67,6 @@ export const studyResultsRepository = {
   // Triggers regeneration of the LLM report based on the latest persisted combined results.
   async generateLlmReport(studyUid) {
     const rawGeneratedLlmReport = await postGenerateLlmReportApi(studyUid);
-    console.log("RAW GENERATED LLM REPORT: ", rawGeneratedLlmReport);
-
     return rawGeneratedLlmReport;
   },
 };

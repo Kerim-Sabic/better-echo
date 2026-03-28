@@ -47,14 +47,14 @@ def test_infer_primary_analysis_falls_back_to_orthanc_when_local_read_fails(
             lambda _frames: torch.zeros((1, 3, 16, 224, 224), dtype=torch.float32),
         )
 
-        class _DummyPanEchoModel:
+        class _DummyPrimaryAnalysisModel:
             def __call__(self, batch_tensor):
                 batch_size = int(batch_tensor.shape[0])
                 return {"metric": torch.ones((batch_size,), dtype=torch.float32)}
 
         monkeypatch.setattr(
             "app.api.inference.infer_primary_analysis_api.get_model_and_device",
-            lambda: (_DummyPanEchoModel(), torch.device("cpu")),
+            lambda: (_DummyPrimaryAnalysisModel(), torch.device("cpu")),
         )
 
         response = infer_primary_analysis(

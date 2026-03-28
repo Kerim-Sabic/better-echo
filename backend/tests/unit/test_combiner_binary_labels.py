@@ -12,7 +12,7 @@ def _assert_task(case_name, output, task_key, expected_label, expected_value, ex
 
 
 @pytest.mark.parametrize(
-    "case_name,panecho_raw,echoprime_raw,task_key,expected_label,expected_value,expected_sources",
+    "case_name,primary_analysis_raw,secondary_analysis_raw,task_key,expected_label,expected_value,expected_sources",
     [
         (
             "RA dilation primary analysis preferred positive",
@@ -81,14 +81,14 @@ def _assert_task(case_name, output, task_key, expected_label, expected_value, ex
 )
 def test_binary_integrated_label_confidence(
     case_name,
-    panecho_raw,
-    echoprime_raw,
+    primary_analysis_raw,
+    secondary_analysis_raw,
     task_key,
     expected_label,
     expected_value,
     expected_sources,
 ):
-    out = combine_results("demo", panecho_raw, echoprime_raw)
+    out = combine_results("demo", primary_analysis_raw, secondary_analysis_raw)
     _assert_task(case_name, out, task_key, expected_label, expected_value, expected_sources)
 
 

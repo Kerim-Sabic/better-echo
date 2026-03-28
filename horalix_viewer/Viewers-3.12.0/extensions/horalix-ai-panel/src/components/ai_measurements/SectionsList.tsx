@@ -4,11 +4,11 @@ import SectionBox from './SectionBox';
 
 type Props = {
   sections: MeasurementSection[];
-  onRequestSavePanechoOverride?: (
+  onRequestSaveStudyAnalysisOverride?: (
     key: string,
     override: { value?: number; label?: string }
   ) => void;
-  onRequestClearPanechoOverride?: (key: string) => void;
+  onRequestClearStudyAnalysisOverride?: (key: string) => void;
 };
 
 const SECTION_TITLES: Record<string, string> = {
@@ -30,8 +30,8 @@ function formatSectionTitle(section?: string) {
 
 export default function SectionsList({
   sections,
-  onRequestSavePanechoOverride,
-  onRequestClearPanechoOverride,
+  onRequestSaveStudyAnalysisOverride,
+  onRequestClearStudyAnalysisOverride,
 }: Props) {
   if (!sections.length) {
     return null;
@@ -44,8 +44,12 @@ export default function SectionsList({
           key={`${section.section || 'section'}-${index}`}
           title={formatSectionTitle(section.section)}
           items={section.items ?? []}
-          onRequestSavePanechoOverride={onRequestSavePanechoOverride}
-          onRequestClearPanechoOverride={onRequestClearPanechoOverride}
+          onRequestSaveStudyAnalysisOverride={
+            onRequestSaveStudyAnalysisOverride
+          }
+          onRequestClearStudyAnalysisOverride={
+            onRequestClearStudyAnalysisOverride
+          }
         />
       ))}
     </>

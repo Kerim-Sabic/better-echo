@@ -23,7 +23,7 @@ def _assert_multiclass_task(case_name, out, task_key, expected_label, expected_p
 
 
 @pytest.mark.parametrize(
-    "case_name,panecho_raw,echoprime_raw,task_key,expected_label,expected_prob,expected_classes",
+    "case_name,primary_analysis_raw,secondary_analysis_raw,task_key,expected_label,expected_prob,expected_classes",
     [
         (
             "MR normalized distribution",
@@ -54,16 +54,16 @@ def _assert_multiclass_task(case_name, out, task_key, expected_label, expected_p
         ),
     ],
 )
-def test_multiclass_prefer_panecho(
+def test_multiclass_prefers_primary_analysis(
     case_name,
-    panecho_raw,
-    echoprime_raw,
+    primary_analysis_raw,
+    secondary_analysis_raw,
     task_key,
     expected_label,
     expected_prob,
     expected_classes,
 ):
-    out = combine_results("demo", panecho_raw, echoprime_raw)
+    out = combine_results("demo", primary_analysis_raw, secondary_analysis_raw)
     _assert_multiclass_task(
         case_name,
         out,

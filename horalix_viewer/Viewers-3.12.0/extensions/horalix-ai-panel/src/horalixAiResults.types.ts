@@ -1,4 +1,4 @@
-// PANECHO ECHOPRIME MEASUREMENTS
+// STUDY ANALYSIS MEASUREMENTS
 export type MeasurementItem = {
   key?: string;
   label?: string;
@@ -29,7 +29,7 @@ export type HoralixAiMeasurements = {
   totalMeasurements?: number | null;
 };
 
-export type HoralixPanechoEchoprimeEditorState = {
+export type HoralixStudyAnalysisEditorState = {
   hasOverrides?: boolean;
   overridesUpdatedAt?: string | null;
   isReportStale?: boolean;
@@ -54,9 +54,9 @@ export type HoralixLlmEchoReport = {
 export type HoralixAiResultsPayload = {
   sentAt?: string | null;
   studyUid?: string | null;
-  panechoEchoprimeCombinedResultsState?: string | null;
-  panechoEchoprimeAiMeasurements?: HoralixAiMeasurements | null;
-  panechoEchoprimeEditorState?: HoralixPanechoEchoprimeEditorState | null;
+  studyAnalysisCombinedResultsState?: string | null;
+  studyAnalysisMeasurements?: HoralixAiMeasurements | null;
+  studyAnalysisEditorState?: HoralixStudyAnalysisEditorState | null;
   llmReportResultsState?: string | null;
   llmReportResultsDetail?: string | null;
   llmEchoReport?: HoralixLlmEchoReport | null;

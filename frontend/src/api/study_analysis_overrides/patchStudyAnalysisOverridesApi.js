@@ -1,11 +1,11 @@
 import { apiClient } from "../client";
 
-export const patchPanechoEchoprimeOverridesApi = async (
+export const patchStudyAnalysisOverridesApi = async (
   studyUid,
   overrides
 ) => {
   const response = await apiClient.patch(
-    `/studies/${encodeURIComponent(studyUid)}/PanEcho-EchoPrime-overrides`,
+    `/studies/${encodeURIComponent(studyUid)}/study-analysis-overrides`,
     { overrides }
   );
 

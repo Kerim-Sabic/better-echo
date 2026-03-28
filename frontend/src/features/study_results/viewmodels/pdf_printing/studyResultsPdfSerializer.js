@@ -870,19 +870,19 @@ export function buildStudyResultsPdfData({
   patientContext,
   downloadRequestedAt,
   studyResultsState,
-  panechoEchoprimeCombinedResultsState,
-  panechoEchoprimeCombinedResultsData,
+  studyAnalysisCombinedResultsState,
+  studyAnalysisCombinedResultsData,
   llmReportResultsState,
   llmReportResultsData,
   llmReportResultsDetail,
-  panechoEchoprimeEditorViewModel,
+  studyAnalysisEditorViewModel,
 }) {
-  const panechoDisplay = panechoEchoprimeCombinedResultsData?.display ?? {};
+  const studyAnalysisDisplay = studyAnalysisCombinedResultsData?.display ?? {};
   const patient = buildPatientDetails(patientContext, downloadRequestedAt);
 
   const mainMeasurements = filterUniqueMeasurements(
     normalizeMeasurementItems(
-      panechoDisplay.mainMeasurements,
+      studyAnalysisDisplay.mainMeasurements,
       "Main Measurements",
       patient.sex
     )
@@ -891,7 +891,7 @@ export function buildStudyResultsPdfData({
     mainMeasurements.map(item => getMeasurementDeduplicationKey(item))
   );
   const measurementSections = normalizeMeasurementSections(
-    panechoDisplay.measurementSections,
+    studyAnalysisDisplay.measurementSections,
     patient.sex
   )
     .map(section => ({
@@ -918,7 +918,7 @@ export function buildStudyResultsPdfData({
     studyResultsState: studyResultsState ?? "idle",
 
     aiMeasurements: {
-      state: panechoEchoprimeCombinedResultsState ?? "idle",
+      state: studyAnalysisCombinedResultsState ?? "idle",
       totalMeasurements: measurementSummary.total,
       mainMeasurements,
       measurementSections,
@@ -940,12 +940,12 @@ export function buildStudyResultsPdfData({
 
     editState: {
       hasOverrides: Boolean(
-        panechoEchoprimeEditorViewModel?.hasPanechoEchoprimeOverrides
+        studyAnalysisEditorViewModel?.hasStudyAnalysisOverrides
       ),
       overridesUpdatedAt: normalizeFormattedDate(
-        panechoEchoprimeEditorViewModel?.panechoEchoprimeOverridesUpdatedAt
+        studyAnalysisEditorViewModel?.studyAnalysisOverridesUpdatedAt
       ),
-      isReportStale: Boolean(panechoEchoprimeEditorViewModel?.isAiReportStale),
+      isReportStale: Boolean(studyAnalysisEditorViewModel?.isAiReportStale),
     },
   };
 }
