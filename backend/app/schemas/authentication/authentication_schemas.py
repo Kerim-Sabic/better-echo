@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from typing import Optional
 
 class LoginRequest(BaseModel):
     username: str
@@ -14,6 +15,7 @@ class UserInfo(BaseModel):
 class AuthResponse(BaseModel): # Used for both login and check-auth routes
     message: str
     user: UserInfo
+    auth_token: Optional[str] = None
 # ------------------------------------------
 
 class LogoutResponse(BaseModel):

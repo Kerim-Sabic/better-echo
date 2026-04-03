@@ -1,33 +1,33 @@
 # Documentation Index
 
-Canonical engineering documentation lives under `docs/`.
+Canonical repository documentation lives under `docs/`.
 
 ## Start Here
 
 1. [Handbook](./HANDBOOK.md)
 
-## Core References
+## Setup and Operations
 
 1. [First Run Setup](./ops/SETUP_FIRST_RUN.md)
 2. [Runbook](./RUNBOOK.md)
-3. [API Schema Notes](./API_SCHEMA_NOTES.md)
-4. [Current Tasks](./CURRENT_TASKS.md)
-5. [Style Guide](./STYLE_GUIDE.md)
-6. [Doc Quality Checklist](./ops/DOC_QUALITY_CHECKLIST.md)
 
-## Architecture References
+## Architecture and Contracts
 
-1. [Backend Architecture](./backend/ARCHITECTURE.md)
-2. [Frontend Architecture](./frontend/ARCHITECTURE.md)
-3. [Electron Architecture](./electron/ARCHITECTURE.md)
-4. [AI Orchestration](./ai-pipelines/ORCHESTRATION.md)
-5. [Testing Strategy](./testing/TESTING_STRATEGY.md)
+1. [API Schema Notes](./API_SCHEMA_NOTES.md)
+2. [Backend Architecture](./backend/ARCHITECTURE.md)
+3. [Frontend Architecture](./frontend/ARCHITECTURE.md)
+4. [Electron Architecture](./electron/ARCHITECTURE.md)
+5. [AI Orchestration](./ai-pipelines/ORCHESTRATION.md)
+6. [Testing Strategy](./testing/TESTING_STRATEGY.md)
 
-## Decision Records
+## Standards
 
-1. [ADR Index](./adr/README.md)
+1. [Style Guide](./STYLE_GUIDE.md)
+2. [Doc Quality Checklist](./ops/DOC_QUALITY_CHECKLIST.md)
+3. [ADR Index](./adr/README.md)
 
 ## Doc Rules
 
-1. Keep docs engineering-focused and implementation-oriented.
-2. If runtime behavior/contracts/setup change, update docs in the same PR.
+1. Keep `docs/` factual and current-state only.
+2. Keep setup, runtime, contract, and architecture changes in sync with the code.
+3. Keep unfinished plans, branch notes, and personal task boards out of `docs/`.

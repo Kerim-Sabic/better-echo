@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 from app.database.db import engine, SessionLocal
 from app.database_models import *
 
-from app.helpers.authentication_functions import hash_password
+from app.helpers.auth.authentication_functions import hash_password
 
 """
 Function to manually add a user in the database

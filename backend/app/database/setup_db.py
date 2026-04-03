@@ -1,34 +1,30 @@
-"""
-Initialize (or reset) the database schema.
+"""Initialize the configured database schema."""
 
-- Uses the shared Base from app/database/db.py
-- Imports models so their tables are registered with Base.metadata
-- Drops all tables (⚠️ destructive!)
-- Recreates tables on the configured engine
-"""
+import argparse
 
-from app.database.db import engine, Base
+from app.database.db import Base, engine
 
 # IMPORTANT: DO NOT REMOVE!! import models so they register with Base.metadata
-from app.database_models import *
+from app.database_models import *  # noqa: F401,F403
 
 
-def init_db(drop: bool = True):
-    """
-    Initialize the database schema.
-
-    Args:
-        drop (bool): If true, drops all existing tables before recreating.
-    """
+def init_db(drop: bool = False):
+    """Create tables on the configured engine, optionally after a full drop."""
     if drop:
-        print("⚠️ Dropping all existing tables...")
+        print("Dropping all existing tables...")
         Base.metadata.drop_all(bind=engine)
-    
-    print("🛠️ Creating tables...")
+
+    print("Creating tables...")
     Base.metadata.create_all(bind=engine)
-    print("✅ Database initialized: tables created/verified.")
+    print("Database initialized: tables created/verified.")
 
 
 if __name__ == "__main__":
-    # Run as a script -> drops and recreates schema
-    init_db(drop=True)
+    parser = argparse.ArgumentParser(description="Initialize the configured database schema.")
+    parser.add_argument(
+        "--drop",
+        action="store_true",
+        help="Drop all existing tables before recreating them.",
+    )
+    args = parser.parse_args()
+    init_db(drop=args.drop)

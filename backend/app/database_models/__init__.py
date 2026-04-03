@@ -4,4 +4,7 @@ from .studies import Study
 from .series import Series
 from .instances import Instance
 from .derived_results import DerivedResult
+from .pipeline_jobs import PipelineJob
+from .pipeline_artifact_sets import PipelineArtifactSet
+from .pipeline_stage_runs import PipelineStageRun
 from .webauthn_credentials import WebAuthnCredential

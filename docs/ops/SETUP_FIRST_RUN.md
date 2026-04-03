@@ -1,6 +1,6 @@
 # Setup First Run
 
-Last Updated: 2026-02-16  
+Last Updated: 2026-03-18  
 Owner: Engineering
 
 ## Goal
@@ -66,6 +66,8 @@ CORS_ORIGIN=["http://localhost:3000"]
 ORTHANC_URL="http://localhost:8042"
 ORTHANC_USER="orthanc"
 ORTHANC_PASS="orthanc"
+DATABASE_URL="postgresql+psycopg://horalix:horalix_dev@localhost:5433/horalix"
+TEST_DATABASE_URL="postgresql+psycopg://horalix:horalix_dev@localhost:5433/horalix_test"
 SECRET_KEY=replace-me
 TOKEN_EXPIRE_HOURS=4
 PANECHO_PRELOAD=true
@@ -112,10 +114,12 @@ Script references:
 
 What starts:
 
-1. Orthanc (Docker, best effort).
-2. FastAPI backend (`127.0.0.1:8000`).
-3. React frontend (`localhost:3000`).
-4. Electron desktop window.
+1. PostgreSQL (Docker).
+2. Orthanc (Docker).
+3. OHIF viewer (Docker).
+4. FastAPI backend (`127.0.0.1:8000`).
+5. React frontend (`localhost:3000`).
+6. Electron desktop window.
 
 ### 6) Manual Fallback Commands
 
@@ -162,8 +166,10 @@ npm start
 1. Start Docker Desktop and rerun startup script.
 2. Missing Python packages:
 1. Re-activate venv and rerun `pip install -r requirements.txt`.
-3. Stale SQLite schema:
-1. From `backend/`: `python -m app.database.setup_db` (destructive local reset).
-4. LLM process stale:
+3. Missing PostgreSQL schema:
+1. From `backend/`: `python -m app.database.setup_db`.
+4. Missing Postgres test DB:
+1. Run `docker exec horalix_postgres psql -U horalix -d postgres -c "CREATE DATABASE horalix_test;"`.
+5. LLM process stale:
 1. Run `scripts\stop_llm.ps1` then restart with LLM script.
 2. Script reference: [`stop_llm.ps1`](../../scripts/stop_llm.ps1)

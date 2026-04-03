@@ -1,0 +1,37 @@
+{
+  "Name": "Orthanc inside Docker",
+  "StorageDirectory": "/var/lib/orthanc/db",
+  "IndexDirectory": "/var/lib/orthanc/db",
+
+  "RemoteAccessAllowed": true,
+  "AuthenticationEnabled": false,
+
+  "HttpServerEnabled": true,
+  "HttpPort": 8042,
+
+  "DicomServerEnabled": true,
+  "DicomPort": 4242,
+
+  "Plugins": [
+    "/usr/share/orthanc/plugins",
+    "/usr/local/share/orthanc/plugins"
+  ],
+
+  "DicomWeb": {
+    "Enable": true,
+    "Root": "/dicom-web/"
+  },
+
+  "WebViewer": {
+    "Enable": false
+  },
+  "StoneWebViewer": {
+    "Enable": false
+  },
+
+  "HttpHeaders": {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+    "Access-Control-Allow-Headers": "Authorization, Content-Type, Accept, Origin, X-Requested-With"
+  }
+}

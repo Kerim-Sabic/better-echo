@@ -3,7 +3,7 @@ from fastapi import APIRouter, Response
 from app.schemas.authentication.authentication_schemas import LogoutResponse
 from app.core.artifacts import AUTH_COOKIE_NAME
 
-router = APIRouter()
+router = APIRouter(tags=["Authentication"])
 
 
 @router.post("/logout", response_model=LogoutResponse)

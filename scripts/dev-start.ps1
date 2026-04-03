@@ -8,6 +8,23 @@ Write-Host "  - Start Orthanc/backend/frontend/Electron dev stack"
 Write-Host "  - LLM features will be disabled"
 Write-Host ""
 
+# Part 0. Fail fast when dev ports are already in use.
+function Test-PortAvailable([int]$Port, [string]$Name) {
+    $listener = Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue | Select-Object -First 1
+    if (-not $listener) {
+        return
+    }
+    $owningProcessId = $listener.OwningProcess
+    $procName = "unknown"
+    try {
+        $proc = Get-Process -Id $owningProcessId -ErrorAction Stop
+        $procName = $proc.ProcessName
+    } catch {
+        $procName = "pid-$owningProcessId"
+    }
+    throw "$Name port $Port is already in use by $procName (PID $owningProcessId). Stop it first, then rerun this script."
+}
+
 # Change to project root
 Set-Location "$PSScriptRoot\.."
 
@@ -15,6 +32,9 @@ Set-Location "$PSScriptRoot\.."
 $env:ENABLE_LLM = "false"
 
 try {
+    Test-PortAvailable -Port 3000 -Name "Frontend"
+    Test-PortAvailable -Port 8000 -Name "Backend"
+
     # Build Electron
     Write-Host "Building Electron..." -ForegroundColor Yellow
     npm run build:electron

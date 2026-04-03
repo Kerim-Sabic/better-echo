@@ -1,0 +1,23 @@
+services:
+  horalix-viewer:
+    image: horalix-viewer:local
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_CONFIG: config/default.js
+        PUBLIC_URL: /
+        PORT: 80
+    ports:
+      - "3001:80"
+    restart: unless-stopped
+    entrypoint: /start-ohif.sh
+    volumes:
+      - ../runtime_config/start-ohif.sh:/start-ohif.sh
+      - ../runtime_config/app-config.js:/usr/share/nginx/html/app-config.js
+      - ../runtime_config/orthanc-standalone.json:/usr/share/nginx/html/orthanc-standalone.json
+
+networks:
+  default:
+    name: echocardiology_app_default
+    external: true

@@ -1,5 +1,6 @@
 import { createContext, useState, useEffect, useCallback } from "react";
-import { checkAuthApi, loginApi, logoutApi } from "../api/AuthenticationApi";
+import { checkAuthApi, loginApi, logoutApi } from "@/api/authentication";
+import { clearDesktopAuthToken } from "@/api/desktopAuth";
 import { getBackendUrl } from "../config/api";
 
 export const AuthContext = createContext();
@@ -36,16 +37,11 @@ export const AuthProvider = ({ children }) => {
         return localStorage.getItem(SESSION_HINT_KEY) === "1";
     }, []);
 
-    const hasAuthCookie = useCallback(() => {
-        if (typeof document === "undefined") return false;
-        return document.cookie.includes("auth_token=");
-    }, []);
-
     // Fetch current user from /check-auth (initial auth check)
     const fetchUser = useCallback(async () => {
         try {
             const healthy = await waitForHealth();
-            if (healthy && hasSessionHint() && hasAuthCookie()) {
+            if (healthy && hasSessionHint()) {
                 const response = await checkAuthApi();
                 setUser(response.user);
             } else {
@@ -54,12 +50,13 @@ export const AuthProvider = ({ children }) => {
         } catch (error) {
             if (error?.response?.status === 401) {
                 try { localStorage.removeItem(SESSION_HINT_KEY); } catch {}
+                clearDesktopAuthToken();
             }
             setUser(null);
         } finally {
             setLoading(false);
         }
-    }, [hasAuthCookie, hasSessionHint, waitForHealth]);
+    }, [hasSessionHint, waitForHealth]);
 
     useEffect(() => {
         fetchUser();

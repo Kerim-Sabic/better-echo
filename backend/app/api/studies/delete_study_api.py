@@ -7,10 +7,18 @@ from sqlalchemy.exc import SQLAlchemyError
 import logging
 
 from app.database.db import get_db
+from app.database_models.patients import Patient
 from app.database_models.studies import Study
-from app.services.orthanc_client import delete_study_from_orthanc
+from app.helpers.auth.authentication_functions import get_current_user_id
+from app.services.integrations.orthanc_client import delete_study_from_orthanc
 from app.schemas.studies.studies_schemas import StudyDeleteResponse
-from app.core.artifacts import UPLOAD_DIR
+from app.core.artifacts import (
+    LINEAR_MEASUREMENTS_UPLOAD_DIRNAME,
+    MOTION_SEGMENTATION_UPLOAD_DIRNAME,
+    REPORT_SUMMARY_UPLOAD_DIRNAME,
+    SPECTRAL_MEASUREMENTS_UPLOAD_DIRNAME,
+    UPLOAD_DIR,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -27,7 +35,11 @@ def _delete_folder_if_exists(path: str, label: str) -> None:
         logger.warning(f"{label} {path} not found")
 
 @router.delete("/studies/{study_id}", response_model=StudyDeleteResponse)
-def delete_study(study_id: int, db: Session = Depends(get_db)):
+def delete_study(
+    study_id: int,
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user_id),
+):
     """
     Delete a study from Orthanc, local uploads, and the database; delete the patient if they have no remaining studies.
 
@@ -39,12 +51,15 @@ def delete_study(study_id: int, db: Session = Depends(get_db)):
     5. Commit changes and return a confirmation payload.
     """
     # --- Step 1: Resolve study and related patient ---
-    study = db.query(Study).get(study_id)
+    study = (
+        db.query(Study)
+        .filter(Study.id == study_id, Study.user_id == current_user_id)
+        .first()
+    )
     if not study:
         raise HTTPException(status_code=404, detail="Study not found")
-    
-    patient = study.patient # get related patient
-    
+    patient_id = study.patient_id
+
     # --- Step 2: Delete from Orthanc first using study_orthanc_id ---
     if study.study_orthanc_id:
         deleted = delete_study_from_orthanc(study.study_orthanc_id)
@@ -58,32 +73,28 @@ def delete_study(study_id: int, db: Session = Depends(get_db)):
     study_folder = os.path.join(UPLOAD_DIR, study.study_uid)
     _delete_folder_if_exists(study_folder, "study folder")
 
-    lv_segmentation_folder = os.path.join(
-        UPLOAD_DIR,
-        "echonet_dynamic_LV-segmentation_files",
-        study.study_uid,
-    )
-    _delete_folder_if_exists(lv_segmentation_folder, "LV segmentation results folder")
-
-    uploads_measurements_study = os.path.join(
-        UPLOAD_DIR,
-        "measurements_2D_keypoint_detection",
-        study.study_uid,
-    )
-    _delete_folder_if_exists(uploads_measurements_study, "uploads measurements folder")
+    for folder_name, label in (
+        (MOTION_SEGMENTATION_UPLOAD_DIRNAME, "motion segmentation results folder"),
+        (LINEAR_MEASUREMENTS_UPLOAD_DIRNAME, "linear measurements folder"),
+        (SPECTRAL_MEASUREMENTS_UPLOAD_DIRNAME, "spectral measurements folder"),
+        (REPORT_SUMMARY_UPLOAD_DIRNAME, "study reports folder"),
+    ):
+        _delete_folder_if_exists(os.path.join(UPLOAD_DIR, folder_name, study.study_uid), label)
 
     # --- Step 4: Delete study (and maybe patient) from database ---
     try:
         db.delete(study)
-        db.commit()
+        db.flush()
 
         # Now check if patient has other studies
-        remaining_studies = db.query(Study).filter(Study.patient_id == patient.id).count()
+        remaining_studies = db.query(Study).filter(Study.patient_id == patient_id).count()
         if remaining_studies == 0:
-            db.delete(patient)
-            db.commit()
-            logger.info(f"Patient {patient.id} deleted because they had no more studies")
+            patient = db.query(Patient).filter(Patient.id == patient_id).first()
+            if patient:
+                db.delete(patient)
+                logger.info(f"Patient {patient_id} deleted because they had no more studies")
 
+        db.commit()
         logger.info(f"Study {study_id} deleted from database and Orthanc")
     except SQLAlchemyError as err:
         db.rollback()

@@ -1,17 +1,54 @@
-version: "3.8"
-
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: horalix_postgres
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    environment:
+      POSTGRES_DB: "${POSTGRES_DB:-horalix}"
+      POSTGRES_USER: "${POSTGRES_USER:-horalix}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-horalix_dev}"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-horalix} -d ${POSTGRES_DB:-horalix}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
   orthanc:
     image: jodogne/orthanc-plugins
     container_name: orthanc
     ports:
-      - "8042:8042"     # HTTP (Explorer + viewers)
-      - "4242:4242"     # DICOM C-STORE etc.
-    environment:
-      - ORTHANC__REGISTERED_USERS=orthanc:orthanc
-      - ORTHANC__HTTP_SERVER__ENABLE_CORS=true
-      - ORTHANC__DICOMWEB__ENABLE=true
-      - ORTHANC__WEB_VIEWER__Enable=true
-      - ORTHANC__STONE_WEB_VIEWER__Enable=true
+      - "8042:8042"
+      - "4242:4242"
+    volumes:
+      - ./orthanc/orthanc.json:/etc/orthanc/orthanc.json:ro
+      - orthanc_data:/var/lib/orthanc/db
     restart: unless-stopped
 
+  horalix-viewer:
+    container_name: horalix-viewer
+    image: horalix-viewer:local-dev
+    build:
+      context: ./horalix_viewer/Viewers-3.12.0
+      dockerfile: Dockerfile
+      args:
+        APP_CONFIG: config/default.js
+        PUBLIC_URL: /
+        PORT: 80
+    ports:
+      - "3001:80"
+    volumes:
+      - ./horalix_viewer/runtime_config/app-config.js:/usr/share/nginx/html/app-config.js:ro
+      - ./horalix_viewer/runtime_config/orthanc-standalone.json:/usr/share/nginx/html/orthanc-standalone.json:ro
+      - ./horalix_viewer/runtime_config/start-ohif.sh:/start-ohif.sh:ro
+    command: ["/bin/sh", "/start-ohif.sh"]
+    depends_on:
+      - orthanc
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  orthanc_data:

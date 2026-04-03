@@ -1,6 +1,5 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, func, Enum
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, func, Enum, JSON
 from sqlalchemy.orm import relationship
-from sqlalchemy.dialects.sqlite import JSON
 from enum import Enum as PyEnum
 from app.database.db import Base
 
@@ -22,7 +21,9 @@ class DerivedResult(Base):
 
     study_id = Column(Integer, ForeignKey("studies.id", ondelete="CASCADE"), nullable=False)
     instance_id = Column(Integer, ForeignKey("instances.id", ondelete="CASCADE"), nullable=True)
+    artifact_set_id = Column(Integer, ForeignKey("pipeline_artifact_sets.id", ondelete="SET NULL"), nullable=True, index=True)
 
 
     study = relationship("Study", back_populates="derived_results")
     instance = relationship("Instance", back_populates="derived_results")
+    artifact_set = relationship("PipelineArtifactSet", back_populates="derived_results")

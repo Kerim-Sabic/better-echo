@@ -9,8 +9,9 @@ import cv2
 import pydicom as dicom
 import torch
 
-# Base path of THIS file (utils.py)
-BASE_DIR = Path(__file__).resolve().parent.parent  # EchoPrime/
+from app.core.runtime_paths import cache_dir, model_assets_dir
+
+BASE_DIR = model_assets_dir("secondary_analysis")
 
 with open(BASE_DIR / "assets" / "per_section.json") as f:
     json_data = json.load(f)
@@ -422,7 +423,7 @@ def get_ybr_to_rgb_lut(save_lut=True):
         return _ybr_to_rgb_lut
     
     # try loading from file
-    lut_path = Path(__file__).parent / 'ybr_to_rgb_lut.npy'
+    lut_path = cache_dir("secondary_analysis") / 'ybr_to_rgb_lut.npy'
     if lut_path.is_file():
         _ybr_to_rgb_lut = np.load(lut_path)
         return _ybr_to_rgb_lut
@@ -432,6 +433,7 @@ def get_ybr_to_rgb_lut(save_lut=True):
     ybr = np.concatenate(np.broadcast_arrays(a[:, None, None, None], a[None, :, None, None], a[None, None, :, None]), axis=-1)
     _ybr_to_rgb_lut = dicom.pixel_data_handlers.util.convert_color_space(ybr, 'YBR_FULL', 'RGB')
     if save_lut:
+        lut_path.parent.mkdir(parents=True, exist_ok=True)
         np.save(lut_path, _ybr_to_rgb_lut)
     return _ybr_to_rgb_lut
 

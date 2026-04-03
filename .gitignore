@@ -28,12 +28,15 @@ backend/dist/
 backend/desktop/build/
 backend/desktop/*.exe
 backend/desktop/*.app
+backend/desktop/generated_release_config.py
+backend/desktop/generated_runtime.env
 dist/electron/
 backend/dist/api/
 backend/panecho_gradcam_overlay.py
 
 # Personal docs
 noomys-docs/
+affan-docs/
 
 # PyInstaller
 *.spec.orig
@@ -47,3 +50,6 @@ electron/build-resources/icon.*
 .env
 .idea/
 *.iml
+
+# Codex instructions
+/AGENTS.md

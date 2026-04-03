@@ -1,6 +1,7 @@
 import logging
 import os
 import time
+import gc
 from datetime import datetime
 from typing import Tuple, List, Dict, Optional
 
@@ -9,8 +10,10 @@ import numpy as np
 import torch
 from torchvision.models.segmentation import deeplabv3_resnet50
 
-from app.helpers.AVI_to_MP4_converter import ffmpeg_write_mp4_from_frames
-from app.helpers.batch_config import get_batch_size
+from app.AI_models.measurements.constants import VALID_2D_WEIGHTS
+from app.core.runtime_paths import model_assets_dir
+from app.helpers.media.ffmpeg_mp4_writer import ffmpeg_write_mp4_from_frames
+from app.helpers.inference_runtime.batch_config import get_batch_size
 from app.core.config import settings
 
 try:
@@ -26,19 +29,6 @@ _loaded_models: Dict[str, torch.nn.Module] = {}
 _device: Optional[torch.device] = None
 
 logger = logging.getLogger(__name__)
-
-
-VALID_2D_WEIGHTS = {
-    "ivs",
-    "lvid",
-    "lvpw",
-    "aorta",
-    "aortic_root",
-    "la",
-    "rv_base",
-    "pa",
-    "ivc",
-}
 
 
 def get_device() -> torch.device:
@@ -213,8 +203,8 @@ def _load_model(model_key: str) -> torch.nn.Module:
     if model_key in _loaded_models:
         return _loaded_models[model_key]
 
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    weights_path = os.path.join(base_dir, "weights", "2D_models", f"{model_key}_weights.ckpt")
+    base_dir = os.path.join(str(model_assets_dir("study_measurements")), "weights")
+    weights_path = os.path.join(base_dir, "2D_models", f"{model_key}_weights.ckpt")
     if not os.path.exists(weights_path):
         raise FileNotFoundError(f"Weights not found: {weights_path}")
 
@@ -234,6 +224,29 @@ def _load_model(model_key: str) -> torch.nn.Module:
     _loaded_models[model_key] = model
     logger.info("[Measurements2D] Loaded model '%s' on %s in %.1fs", model_key, device, time.time() - start)
     return model
+
+
+def unload_2d_models(*, keep_weight: Optional[str] = None) -> None:
+    """
+    Unload cached 2D measurement models.
+
+    When keep_weight is provided, all other cached models are removed.
+    """
+    global _loaded_models
+    if not _loaded_models:
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        return
+
+    keep = keep_weight.strip().lower() if isinstance(keep_weight, str) else None
+    keys = list(_loaded_models.keys())
+    for key in keys:
+        if keep and key == keep:
+            continue
+        _loaded_models.pop(key, None)
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
 
 
 def run_2d_inference(model_weights: str, input_path: str, output_dir: str) -> Tuple[str, str]:
@@ -265,7 +278,7 @@ def run_2d_inference(model_weights: str, input_path: str, output_dir: str) -> Tu
 
     model = _load_model(model_weights)
     device = get_device()
-    batch_size = get_batch_size("measurements")
+    batch_size = get_batch_size("study_measurements")
 
     preds: List[np.ndarray] = []
     logger.info(
@@ -456,3 +469,4 @@ def run_2d_inference(model_weights: str, input_path: str, output_dir: str) -> Tu
         )
 
     return out_video, out_csv
+

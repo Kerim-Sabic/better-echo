@@ -6,10 +6,14 @@ import logging
 from app.database.db import get_db
 from app.database_models.studies import Study
 from app.schemas.studies.studies_schemas import StudyListResponse
-from app.helpers.authentication_functions import get_current_user_id
-from app.core.artifacts import LLM_REPORT_TYPE
+from app.helpers.auth.authentication_functions import get_current_user_id
+from app.core.artifacts import REPORT_SUMMARY_TYPE
 from app.database_models.derived_results import ResultStatus
-from app.helpers.study_status import sync_study_status
+from app.helpers.pipeline.study_status import (
+    compute_study_status,
+    is_llm_enabled,
+    status_by_type,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -41,16 +45,16 @@ def list_studies(
         .all()
     )
     data = []
-    changed_any = False
+    llm_enabled = is_llm_enabled()
 
     for study in rows:
-        _, changed = sync_study_status(study)
-        changed_any = changed_any or changed
+        derived_statuses = status_by_type(study.derived_results or [])
+        effective_status = compute_study_status(llm_enabled, derived_statuses)
 
         diagnoses_list = []
         llm_result = next(
             (dr for dr in study.derived_results
-             if dr.type == LLM_REPORT_TYPE
+             if dr.type == REPORT_SUMMARY_TYPE
              and dr.status == ResultStatus.complete
              and dr.value_json),
             None
@@ -75,7 +79,7 @@ def list_studies(
             "study_uid": study.study_uid,
             "study_date": study.study_date,
             "description": study.description,
-            "status": study.status,
+            "status": effective_status,
             "uploaded_at": study.uploaded_at,
             "patient": {
                 "id": study.patient.id,
@@ -88,7 +92,5 @@ def list_studies(
         }
         data.append(study_dict)
 
-    if changed_any:
-        db.commit()
-
     return data
+

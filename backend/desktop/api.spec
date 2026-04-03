@@ -1,8 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
 
-import sys
-import os
-from PyInstaller.utils.hooks import collect_data_files, collect_submodules
+from PyInstaller.utils.hooks import collect_data_files
 
 block_cipher = None
 
@@ -20,45 +18,56 @@ hiddenimports = [
     'uvicorn.lifespan.on',
     'sqlalchemy.sql.default_comparator',
     'passlib.handlers.bcrypt',
-    'app.api.upload',
-    'app.api.studies',
-    'app.api.infer_panecho',
-    'app.api.infer_echoprime',
-    'app.api.infer_echonet_dynamic',
-    'app.api.infer_measurements',
-    'app.api.authentication',
-    'app.api.llm',
-    'app.api.orchestration_apis.combined_panecho_echoprime',
-    'app.api.orchestration_apis.combined_dynamic_measurements',
-    'app.api.orchestration_apis.llm_report_get_api',
+    'app.main',
+    'matplotlib',
+    'matplotlib.pyplot',
+    'matplotlib.backends.backend_agg',
+    'app.api.inference.infer_primary_analysis_api',
+    'app.api.inference.infer_secondary_analysis_api',
+    'app.api.inference.infer_motion_segmentation_api',
+    'app.api.inference.infer_linear_measurements_api',
+    'app.api.inference.infer_spectral_measurements_api',
+    'app.services.inference.secondary_analysis_service',
+    'app.services.pipeline.stages.combined',
+    'app.services.pipeline.stages.dynamic_measurements',
+    'app.AI_models.measurements.runner_2d',
+    'app.AI_models.measurements.runner_doppler',
 ]
 
 # Data files
 datas = [
     ('../app/configs', 'app/configs'),
     ('../app/prompting', 'app/prompting'),
-    ('../.env', '.'),
 ]
+datas += collect_data_files('fido2')
+datas += collect_data_files('matplotlib')
 
 # Binaries - include torch and CUDA libraries if present
 binaries = []
 
 a = Analysis(
     ['launcher.py'],
-    pathex=[],
+    pathex=['..'],
     binaries=binaries,
     datas=datas,
     hiddenimports=hiddenimports,
-    hookspath=[],
+    hookspath=['hooks'],
     hooksconfig={},
     runtime_hooks=[],
     excludes=[
-        'matplotlib',
         'tkinter',
         'PyQt5',
         'PyQt6',
         'PySide2',
         'PySide6',
+        'transformers.models.qwen2',
+        'transformers.models.qwen2_5_omni',
+        'transformers.models.qwen2_5_vl',
+        'transformers.models.qwen2_audio',
+        'transformers.models.qwen2_moe',
+        'transformers.models.qwen2_vl',
+        'transformers.models.qwen3',
+        'transformers.models.qwen3_moe',
     ],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,

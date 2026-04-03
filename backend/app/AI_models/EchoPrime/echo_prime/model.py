@@ -14,15 +14,12 @@ import torch.nn.functional as F
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from tqdm import tqdm
 import cv2
 import pydicom
-import sklearn
-import sklearn.metrics
-import transformers
 
 
 # Local module imports
+from app.core.runtime_paths import model_assets_dir
 from ..utils import utils
 
 def _load_torch(path, map_location, label):
@@ -31,6 +28,12 @@ def _load_torch(path, map_location, label):
     except TypeError:
         warnings.warn(f"torch.load weights_only not supported for {label}; loading with weights_only=False", RuntimeWarning)
         return torch.load(path, map_location=map_location)
+
+
+def _import_transformers():
+    import transformers
+
+    return transformers
 
 
 class EchoPrime:
@@ -44,10 +47,10 @@ class EchoPrime:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         
         # Base path for all relative files
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        base_dir = str(model_assets_dir("secondary_analysis"))
 
         # Load echo encoder
-        checkpoint_path = os.path.join(base_dir, "model_data", "weights", "echo_prime_encoder.pt")
+        checkpoint_path = os.path.join(base_dir, "model_data", "weights", "analysis_encoder.pt")
         checkpoint = _load_torch(checkpoint_path, device, "echo encoder")
         echo_encoder = torchvision.models.video.mvit_v2_s()
         echo_encoder.head[-1] = torch.nn.Linear(echo_encoder.head[-1].in_features, 512)
@@ -104,7 +107,7 @@ class EchoPrime:
 
         dicom_paths = glob.glob(f'{INPUT}/**/*.dcm',recursive=True)
         stack_of_videos=[]
-        for idx, dicom_path in tqdm(enumerate(dicom_paths),total=len(dicom_paths)):
+        for idx, dicom_path in enumerate(dicom_paths):
             try:
                 # simple dicom_processing
                 dcm=pydicom.dcmread(dicom_path)
@@ -357,6 +360,7 @@ class EchoPrimeTextEncoder(torch.nn.Module):
     def __init__(self,device="cuda"):
         super().__init__()
         self.device=device
+        transformers = _import_transformers()
         config = transformers.AutoConfig.from_pretrained("microsoft/BiomedNLP-BiomedBERT-base-uncased-abstract")
         self.backbone = transformers.AutoModelForMaskedLM.from_config(config)
         self.text_projection = torch.nn.Linear(768, 512)
@@ -394,6 +398,7 @@ class EchoPrimeTextEncoder(torch.nn.Module):
                     end = p
                     break
             # finally cut the tokens
+            transformers = _import_transformers()
             text = transformers.BatchEncoding(
                 data={k: v[:, start:end] for (k, v) in text.items()}
             )

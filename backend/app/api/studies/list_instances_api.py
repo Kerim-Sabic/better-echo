@@ -7,6 +7,7 @@ import logging
 from app.database.db import get_db
 from app.database_models.studies import Study
 from app.database_models.instances import Instance
+from app.helpers.auth.authentication_functions import get_current_user_id
 from app.schemas.studies.studies_schemas import InstanceResponse
 
 
@@ -17,7 +18,8 @@ router = APIRouter()
 @router.get("/studies/{study_uid}/instances", response_model=List[InstanceResponse])
 def list_instances(
     study_uid: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user_id),
 ):
     """
     List all instances for a given Study UID.
@@ -28,7 +30,11 @@ def list_instances(
     3. Return the list of instances, which Pydantic maps into `InstanceResponse` objects.
     """
     # --- Step 1. Find the study ---
-    study = db.query(Study).filter(Study.study_uid == study_uid).first()
+    study = (
+        db.query(Study)
+        .filter(Study.study_uid == study_uid, Study.user_id == current_user_id)
+        .first()
+    )
     if not study:
         raise HTTPException(status_code=404, detail=f"Study with UID {study_uid} not found")
 

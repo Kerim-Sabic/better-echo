@@ -3,8 +3,14 @@ import axios from 'axios';
 import * as path from 'path';
 
 let llmProcess: ChildProcess | null = null;
-const LLM_PORT = 8012;
-const LLM_URL = `http://localhost:${LLM_PORT}`;
+
+function getLlmApiBaseUrl(): string {
+    return (process.env.LLM_BASE_URL || 'http://localhost:8012/v1').replace(/\/+$/, '');
+}
+
+function getLlmModelsUrl(): string {
+    return `${getLlmApiBaseUrl()}/models`;
+}
 
 /**
  * Check if LLM is already running by probing the health endpoint
@@ -12,7 +18,7 @@ const LLM_URL = `http://localhost:${LLM_PORT}`;
 export async function isLLMRunning(): Promise<boolean> {
     try {
         // vLLM doesn't have a /health endpoint by default, so we check the base URL or /v1/models
-        await axios.get(`${LLM_URL}/v1/models`, { timeout: 2000 });
+        await axios.get(getLlmModelsUrl(), { timeout: 2000 });
         console.log('LLM is already running');
         return true;
     } catch {
@@ -27,7 +33,7 @@ async function waitForLLMHealth(maxAttempts = 60): Promise<boolean> {
     console.log('Waiting for LLM to become ready...');
     for (let i = 0; i < maxAttempts; i++) {
         try {
-            await axios.get(`${LLM_URL}/v1/models`, { timeout: 2000 });
+            await axios.get(getLlmModelsUrl(), { timeout: 2000 });
             console.log(`LLM health check passed (attempt ${i + 1}/${maxAttempts})`);
             return true;
         } catch {
@@ -151,5 +157,5 @@ export function stopLLM(): void {
  * Get the LLM service URL
  */
 export function getLLMUrl(): string {
-    return LLM_URL;
+    return getLlmApiBaseUrl();
 }

@@ -1,6 +1,4 @@
-import os
-import tempfile
-from typing import Generator
+﻿from typing import Generator
 from uuid import uuid4
 
 import pytest
@@ -8,18 +6,25 @@ from fastapi import FastAPI
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from app.api.orchestration_apis.combined_dynamic_measurements_api import router as dynamic_router
-from app.api.orchestration_apis.combined_panecho_echoprime_api import router as panecho_router
-from app.api.orchestration_apis.llm_report_get_api import router as llm_results_router
+from app.api.pipeline.pipeline_cancel_api import router as pipeline_cancel_router
+from app.api.pipeline.pipeline_promote_api import router as pipeline_promote_router
+from app.api.pipeline.pipeline_regenerate_api import router as pipeline_regenerate_router
+from app.api.pipeline.pipeline_start_api import router as pipeline_start_router
+from app.api.pipeline.pipeline_status_api import router as pipeline_status_router
+from app.api.results.combined_dynamic_measurements_api import router as dynamic_router
+from app.api.results.combined_study_analysis_api import router as study_analysis_router
+from app.api.results.llm_report_get_api import router as llm_results_router
+from app.api.patients import router as patients_router
 from app.api.studies import router as studies_router
-from app.api.orchestration_apis import combined_dynamic_measurements_api as dynamic_api
-from app.api.orchestration_apis import combined_panecho_echoprime_api as panecho_api
-from app.api.orchestration_apis import llm_report_get_api as llm_api
+from app.core.config import settings
 from app.database.db import Base, get_db
 from app.database_models.patients import Patient
 from app.database_models.studies import Study
 from app.database_models.users import User
-from app.helpers.authentication_functions import get_current_user_id
+from app.helpers.auth.authentication_functions import get_current_user_id
+
+def _create_test_engine(database_url: str):
+    return create_engine(database_url, pool_pre_ping=True)
 
 
 @pytest.fixture(scope="session")
@@ -27,27 +32,36 @@ def db_engine():
     # Ensure model metadata is imported before create_all.
     import app.database_models  # noqa: F401
 
-    fd, db_path = tempfile.mkstemp(suffix="_test.db")
-    os.close(fd)
-    engine = create_engine(
-        f"sqlite:///{db_path}",
-        connect_args={"check_same_thread": False},
-    )
+    database_url = settings.TEST_DATABASE_URL
+    if not database_url:
+        raise RuntimeError(
+            "TEST_DATABASE_URL must be set for backend tests now that PostgreSQL is the active runtime path."
+        )
+
+    engine = _create_test_engine(database_url)
     Base.metadata.create_all(bind=engine)
 
     try:
         yield engine
     finally:
         engine.dispose()
-        try:
-            os.remove(db_path)
-        except OSError:
-            pass
 
 
 @pytest.fixture(scope="session")
 def db_session_factory(db_engine):
     return sessionmaker(autocommit=False, autoflush=False, bind=db_engine)
+
+
+@pytest.fixture(autouse=True)
+def reset_test_db(db_session_factory):
+    # Part 1. Isolate tests by removing prior rows to avoid shared-DB queue/state bleed.
+    db = db_session_factory()
+    try:
+        for table in reversed(Base.metadata.sorted_tables):
+            db.execute(table.delete())
+        db.commit()
+    finally:
+        db.close()
 
 
 @pytest.fixture()
@@ -92,12 +106,18 @@ def seeded_study(db_session_factory):
 
 
 @pytest.fixture()
-def app(db_session_factory, seeded_study, monkeypatch):
+def app(db_session_factory, seeded_study):
     app = FastAPI()
-    app.include_router(panecho_router, prefix="/api")
+    app.include_router(study_analysis_router, prefix="/api")
     app.include_router(dynamic_router, prefix="/api")
     app.include_router(llm_results_router, prefix="/api")
+    app.include_router(pipeline_start_router, prefix="/api")
+    app.include_router(pipeline_status_router, prefix="/api")
+    app.include_router(pipeline_promote_router, prefix="/api")
+    app.include_router(pipeline_cancel_router, prefix="/api")
+    app.include_router(pipeline_regenerate_router, prefix="/api")
     app.include_router(studies_router, prefix="/api")
+    app.include_router(patients_router, prefix="/api")
 
     def override_get_db() -> Generator:
         db = db_session_factory()
@@ -109,9 +129,6 @@ def app(db_session_factory, seeded_study, monkeypatch):
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_current_user_id] = lambda: seeded_study["user_id"]
 
-    # Prevent background task execution of heavy inference/LLM paths in integration tests.
-    monkeypatch.setattr(panecho_api, "combining_panecho_echoprime", lambda study_uid: None)
-    monkeypatch.setattr(dynamic_api, "combining_dynamic_measurements", lambda study_uid: None)
-    monkeypatch.setattr(llm_api, "generate_llm_report", lambda study_uid: None)
-
     return app
+
+

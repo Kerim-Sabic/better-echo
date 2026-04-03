@@ -1,22 +1,91 @@
-import { IpcMain, app, BrowserWindow, shell } from 'electron';
+import { IpcMain, app, BrowserWindow, dialog, shell } from 'electron';
 import axios from 'axios';
 import * as path from 'path';
 import * as fs from 'fs';
 import { pathToFileURL } from 'url';
+import {
+  normalizeBaseUrl,
+  PersistedClientRuntimeConfig,
+  resolveBackendHealthUrl,
+  resolveRuntimeConfig,
+} from './runtime';
+
+const RUNTIME_CONFIG_FILE = 'runtime-config.json';
+
+function getRuntimeConfigPath(): string {
+  return path.join(app.getPath('userData'), RUNTIME_CONFIG_FILE);
+}
+
+function readPersistedClientRuntimeConfig(): PersistedClientRuntimeConfig {
+  try {
+    const filePath = getRuntimeConfigPath();
+    if (!fs.existsSync(filePath)) {
+      return {};
+    }
+
+    const rawValue = fs.readFileSync(filePath, 'utf-8');
+    const parsed = JSON.parse(rawValue) as PersistedClientRuntimeConfig;
+
+    return {
+      serverBaseUrl: normalizeBaseUrl(parsed?.serverBaseUrl),
+      viewerBaseUrl: normalizeBaseUrl(parsed?.viewerBaseUrl),
+    };
+  } catch {
+    return {};
+  }
+}
+
+async function writePersistedClientRuntimeConfig(
+  payload: PersistedClientRuntimeConfig
+): Promise<PersistedClientRuntimeConfig> {
+  const nextConfig: PersistedClientRuntimeConfig = {
+    serverBaseUrl: normalizeBaseUrl(payload?.serverBaseUrl),
+    viewerBaseUrl: normalizeBaseUrl(payload?.viewerBaseUrl),
+  };
+
+  const filePath = getRuntimeConfigPath();
+  await fs.promises.writeFile(filePath, JSON.stringify(nextConfig, null, 2));
+  return nextConfig;
+}
 
 export function registerIpcHandlers(
   ipcMain: IpcMain,
-  getBackendPort: () => number
+  getBackendPort: () => number | null
 ): void {
+  ipcMain.handle('get-runtime-config', () => {
+    return resolveRuntimeConfig(getBackendPort(), process.env, readPersistedClientRuntimeConfig());
+  });
+
+  ipcMain.handle('save-runtime-config', async (_event, payload: PersistedClientRuntimeConfig) => {
+    const persistedConfig = await writePersistedClientRuntimeConfig(payload || {});
+    return resolveRuntimeConfig(getBackendPort(), process.env, persistedConfig);
+  });
+
   ipcMain.handle('get-backend-url', () => {
-    const port = getBackendPort();
-    return `http://127.0.0.1:${port}`;
+    const runtimeConfig = resolveRuntimeConfig(
+      getBackendPort(),
+      process.env,
+      readPersistedClientRuntimeConfig()
+    );
+    if (!runtimeConfig.backendBaseUrl) {
+      throw new Error(`Backend base URL is not configured for ${runtimeConfig.runtimeMode} mode`);
+    }
+
+    return runtimeConfig.backendBaseUrl;
   });
 
   ipcMain.handle('backend:isHealthy', async () => {
+    const healthUrl = resolveBackendHealthUrl(
+      getBackendPort(),
+      process.env,
+      readPersistedClientRuntimeConfig()
+    );
+    if (!healthUrl) {
+      return false;
+    }
+
     try {
-      const port = getBackendPort();
-      const response = await axios.get(`http://127.0.0.1:${port}/api/health`, { timeout: 1000 });
+      const response = await axios.get(healthUrl, { timeout: 1000 });
       return response.status === 200;
     } catch {
       return false;
@@ -34,6 +103,31 @@ export function registerIpcHandlers(
       temp: app.getPath('temp'),
     };
   });
+
+  ipcMain.handle(
+    'save-text-file',
+    async (
+      _event,
+      payload: { suggestedName?: string; contents: string; title?: string }
+    ) => {
+      const suggestedName = payload?.suggestedName || 'export.json';
+      const contents = String(payload?.contents || '');
+      const title = payload?.title || 'Save File';
+
+      const { canceled, filePath } = await dialog.showSaveDialog({
+        title,
+        defaultPath: path.join(app.getPath('documents'), suggestedName),
+        filters: [{ name: 'JSON Files', extensions: ['json'] }],
+      });
+
+      if (canceled || !filePath) {
+        return { canceled: true };
+      }
+
+      await fs.promises.writeFile(filePath, contents, 'utf-8');
+      return { canceled: false, filePath };
+    }
+  );
 
   // Generate PDF from provided HTML and open a preview window using Chromium PDF viewer
   ipcMain.handle('report:printToPdf', async (_event, payload: { html: string; options?: any; title?: string; openExternal?: boolean }) => {

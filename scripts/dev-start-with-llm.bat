@@ -2,19 +2,21 @@
 echo Starting Echocardiology Desktop App in DEV mode with LLM...
 echo.
 echo This will start:
-echo   1. Orthanc DICOM server (Docker)
-echo   2. FastAPI backend on http://127.0.0.1:8000
-echo   3. React frontend on http://localhost:3000
-echo   4. Electron app connecting to all services
-echo   5. LLM service (vLLM in WSL)
+echo   1. PostgreSQL (Docker)
+echo   2. Orthanc DICOM server (Docker)
+echo   3. OHIF viewer (Docker) on http://localhost:3001
+echo   4. FastAPI backend on http://127.0.0.1:8000
+echo   5. React frontend on http://localhost:3000
+echo   6. Electron app connecting to all services
+echo   7. LLM service (vLLM in WSL)
 echo.
 
 cd /d "%~dp0\.."
 
-echo Checking Docker and starting Orthanc (Docker Compose)...
+echo Checking Docker and starting local infrastructure (Docker Compose)...
 docker --version >NUL 2>&1
 if %errorlevel% neq 0 (
-    echo Docker is not available. Skipping Orthanc startup.
+    echo Docker is not available. Skipping PostgreSQL/Orthanc/OHIF startup.
 ) else (
     rem ---------------------------------------------------------------
     rem Optional: Auto-start Docker Desktop and wait for engine (DISABLED)
@@ -51,12 +53,12 @@ if %errorlevel% neq 0 (
     rem :__AFTER_DOCKER
 
     rem Try new 'docker compose' first
-    docker compose -f docker-compose.yml up -d orthanc >NUL 2>&1
+    docker compose -f docker-compose.yml up -d postgres orthanc horalix-viewer >NUL 2>&1
     if %errorlevel% neq 0 (
-        echo 'docker compose' failed, trying 'docker-compose'...
-        docker-compose -f docker-compose.yml up -d orthanc
+        echo 'docker compose' failed, trying 'docker-compose' for PostgreSQL/Orthanc/OHIF...
+        docker-compose -f docker-compose.yml up -d postgres orthanc horalix-viewer
     ) else (
-        echo Orthanc started via 'docker compose'.
+        echo PostgreSQL, Orthanc, and OHIF started via 'docker compose'.
     )
 )
 

@@ -1,0 +1,40 @@
+{
+  "extensions": [],
+  "modes": [],
+  "defaultDataSourceName": "orthanc",
+  "dataSources": [
+    {
+      "namespace": "@ohif/extension-default.dataSourcesModule.dicomweb",
+      "sourceName": "orthanc",
+      "configuration": {
+        "friendlyName": "Orthanc",
+        "name": "Orthanc",
+        "wadoUriRoot": "/dicom-web",
+        "qidoRoot": "/dicom-web",
+        "wadoRoot": "/dicom-web",
+        "qidoSupportsIncludeField": false,
+        "imageRendering": "wadors",
+        "thumbnailRendering": "wadors",
+        "enableStudyLazyLoad": true,
+        "supportsFuzzyMatching": false,
+        "supportsWildcard": true,
+        "omitQuotationForMultipartRequest": true
+      }
+    }
+  ],
+  "servers": {
+    "dicomWeb": [
+      {
+        "name": "Orthanc",
+        "wadoUriRoot": "/dicom-web",
+        "qidoRoot": "/dicom-web",
+        "wadoRoot": "/dicom-web",
+        "qidoSupportsIncludeField": false,
+        "imageRendering": "wadors",
+        "thumbnailRendering": "wadors",
+        "enableStudyLazyLoad": true,
+        "supportsFuzzyMatching": false
+      }
+    ]
+  }
+}

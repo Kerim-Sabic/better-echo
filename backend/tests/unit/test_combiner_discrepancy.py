@@ -1,15 +1,15 @@
-import pytest
+﻿import pytest
 
-import app.helpers.combine_panecho_echoprime_predictions as comb
+import app.helpers.ensemble.combine_study_analysis_predictions as comb
 
 
-def _get_discrepancy(panecho_raw, echoprime_raw, task_key):
-    out = comb.combine_results("demo", panecho_raw, echoprime_raw)
+def _get_discrepancy(primary_analysis_raw, secondary_analysis_raw, task_key):
+    out = comb.combine_results("demo", primary_analysis_raw, secondary_analysis_raw)
     return out["integrated_tasks"][task_key]["discrepancy"]
 
 
 @pytest.mark.parametrize(
-    "panecho_raw,echoprime_raw,task_key,expected",
+    "primary_analysis_raw,secondary_analysis_raw,task_key,expected",
     [
         ({"EF": 60.0}, {"ejection_fraction": 51.0}, "ejection_fraction", True),
         ({"EF": 60.0}, {"ejection_fraction": 52.0}, "ejection_fraction", False),
@@ -21,8 +21,8 @@ def _get_discrepancy(panecho_raw, echoprime_raw, task_key):
         ({"RVSP": 35.0}, {}, "pulmonary_artery_pressure", None),
     ],
 )
-def test_combiner_discrepancy_logic(panecho_raw, echoprime_raw, task_key, expected):
-    assert _get_discrepancy(panecho_raw, echoprime_raw, task_key) == expected
+def test_combiner_discrepancy_logic(primary_analysis_raw, secondary_analysis_raw, task_key, expected):
+    assert _get_discrepancy(primary_analysis_raw, secondary_analysis_raw, task_key) == expected
 
 
 def test_discrepancy_thresholds_are_loaded():
@@ -30,3 +30,5 @@ def test_discrepancy_thresholds_are_loaded():
     pap_thr = comb.TASK_CONFIG.get("pulmonary_artery_pressure", {}).get("discrepancy_threshold")
     assert ef_thr is not None
     assert pap_thr is not None
+
+
