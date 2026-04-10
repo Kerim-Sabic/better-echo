@@ -46,6 +46,14 @@ export function getPublicAssetUrl(assetPath) {
   const publicBase = getRuntimePublicBase();
 
   if (publicBase === ".") {
+    if (
+      typeof window !== "undefined" &&
+      window.location.protocol === "file:" &&
+      typeof window.location.href === "string"
+    ) {
+      return new URL(normalizedAssetPath, window.location.href).href;
+    }
+
     return `./${normalizedAssetPath}`;
   }
 
