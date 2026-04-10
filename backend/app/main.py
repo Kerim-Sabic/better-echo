@@ -37,6 +37,7 @@ from app.services.pipeline.scheduler import start_pipeline_scheduler, stop_pipel
 from app.core.config import settings
 from app.core.artifacts import UPLOAD_DIR
 from app.core.runtime_paths import logs_dir
+from app.vendor_access.router import router as vendor_access_router
 
 LOGS_DIR = logs_dir()
 LOG_FILE = LOGS_DIR / "horalix.log"
@@ -114,6 +115,8 @@ app.include_router(health_router, prefix="/api", tags=["Health"])
 app.include_router(admin_router, prefix="/api", tags=["Admin"])
 app.include_router(licensing_router, prefix="/api", tags=["Licensing"])
 app.include_router(authentication_router, prefix="/api")
+if release_mode and settings.VENDOR_ACCESS_ENABLED:
+    app.include_router(vendor_access_router, prefix="/api", tags=["Vendor Access"])
 app.include_router(upload_dicom_router, prefix="/api", tags=["Upload dicom"])
 app.include_router(studies_router, prefix="/api", tags=["Studies"])
 app.include_router(patients_router, prefix="/api", tags=["Patients"])
@@ -162,7 +165,9 @@ def startup_preload_models():
         get_model_and_device()
 
     def _preload_motion_segmentation():
-        from app.api.inference.infer_motion_segmentation_api import load_motion_segmentation_model
+        from app.services.inference.motion_segmentation_service import (
+            load_motion_segmentation_model,
+        )
         load_motion_segmentation_model()
 
     def _preload_measurements():

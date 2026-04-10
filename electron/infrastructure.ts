@@ -1,5 +1,7 @@
 import axios from 'axios';
 import { spawn } from 'child_process';
+import { createHash } from 'crypto';
+import { app } from 'electron';
 import * as fs from 'fs';
 import * as net from 'net';
 import * as path from 'path';
@@ -8,6 +10,8 @@ const DEFAULT_POSTGRES_PORT = 5433;
 const INFRA_SERVICE_NAMES = ['postgres', 'orthanc', 'horalix-viewer'] as const;
 const INFRA_START_TIMEOUT_ATTEMPTS = 60;
 const INFRA_RETRY_DELAY_MS = 1000;
+const VIEWER_IMAGE_NAME = 'horalix-viewer:local-dev';
+const VIEWER_BUILD_STAMP_FILE = 'viewer-build-stamp.json';
 
 export type ManagedInfrastructureConfig = {
   postgresPort?: number;
@@ -19,9 +23,7 @@ export async function startManagedInfrastructure(config: ManagedInfrastructureCo
   const composeFile = resolveComposeFilePath();
   await ensureDockerAvailable();
 
-  // Rebuild the viewer image so packaged source-level viewer changes are not masked
-  // by a stale cached horalix-viewer Docker image from an older app build.
-  await runComposeCommand(composeFile, ['build', 'horalix-viewer']);
+  await ensureViewerImageFresh(composeFile);
   await runComposeCommand(composeFile, ['up', '-d', ...INFRA_SERVICE_NAMES]);
 
   await waitForTcpPort('127.0.0.1', config.postgresPort || DEFAULT_POSTGRES_PORT, 'PostgreSQL');
@@ -43,6 +45,112 @@ function resolveComposeFilePath(): string {
   if (fs.existsSync(candidateB)) return candidateB;
 
   return path.join(process.cwd(), 'docker-compose.yml');
+}
+
+function getInfraStateDir(): string {
+  const infraStateDir = path.join(app.getPath('userData'), 'infra');
+  fs.mkdirSync(infraStateDir, { recursive: true });
+  return infraStateDir;
+}
+
+function getViewerBuildStampPath(): string {
+  return path.join(getInfraStateDir(), VIEWER_BUILD_STAMP_FILE);
+}
+
+function resolveViewerFingerprintRoots(composeFile: string): string[] {
+  const resourcesRoot = path.dirname(composeFile);
+  return [
+    composeFile,
+    path.join(resourcesRoot, 'horalix_viewer', 'runtime_config'),
+    path.join(resourcesRoot, 'horalix_viewer', 'Viewers-3.12.0'),
+  ];
+}
+
+async function appendPathFingerprint(hash: ReturnType<typeof createHash>, targetPath: string): Promise<void> {
+  const normalizedTargetPath = path.resolve(targetPath);
+  const relativeRoot = path.dirname(normalizedTargetPath);
+
+  async function visit(currentPath: string): Promise<void> {
+    if (!fs.existsSync(currentPath)) {
+      hash.update(`missing:${path.relative(relativeRoot, currentPath)}\n`);
+      return;
+    }
+
+    const stats = await fs.promises.stat(currentPath);
+    const relativePath = path.relative(relativeRoot, currentPath) || path.basename(currentPath);
+    hash.update(
+      `${stats.isDirectory() ? 'dir' : 'file'}:${relativePath}:${stats.size}:${stats.mtimeMs}\n`
+    );
+
+    if (!stats.isDirectory()) {
+      return;
+    }
+
+    const childNames = await fs.promises.readdir(currentPath);
+    childNames.sort((left, right) => left.localeCompare(right));
+    for (const childName of childNames) {
+      await visit(path.join(currentPath, childName));
+    }
+  }
+
+  await visit(normalizedTargetPath);
+}
+
+async function computeViewerBuildFingerprint(composeFile: string): Promise<string> {
+  const hash = createHash('sha256');
+  const fingerprintRoots = resolveViewerFingerprintRoots(composeFile);
+
+  for (const fingerprintRoot of fingerprintRoots) {
+    await appendPathFingerprint(hash, fingerprintRoot);
+  }
+
+  return hash.digest('hex');
+}
+
+async function readViewerBuildStamp(): Promise<string | null> {
+  const stampPath = getViewerBuildStampPath();
+  if (!fs.existsSync(stampPath)) {
+    return null;
+  }
+
+  try {
+    const rawValue = await fs.promises.readFile(stampPath, 'utf-8');
+    const parsed = JSON.parse(rawValue) as { fingerprint?: string };
+    return typeof parsed.fingerprint === 'string' ? parsed.fingerprint : null;
+  } catch {
+    return null;
+  }
+}
+
+async function writeViewerBuildStamp(fingerprint: string): Promise<void> {
+  const stampPath = getViewerBuildStampPath();
+  await fs.promises.writeFile(
+    stampPath,
+    JSON.stringify({ fingerprint }, null, 2),
+    'utf-8'
+  );
+}
+
+async function hasViewerImage(): Promise<boolean> {
+  try {
+    await runCommand('docker', ['image', 'inspect', VIEWER_IMAGE_NAME]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function ensureViewerImageFresh(composeFile: string): Promise<void> {
+  const currentFingerprint = await computeViewerBuildFingerprint(composeFile);
+  const previousFingerprint = await readViewerBuildStamp();
+  const viewerImageExists = await hasViewerImage();
+
+  if (previousFingerprint === currentFingerprint && viewerImageExists) {
+    return;
+  }
+
+  await runComposeCommand(composeFile, ['build', 'horalix-viewer']);
+  await writeViewerBuildStamp(currentFingerprint);
 }
 
 async function ensureDockerAvailable(): Promise<void> {

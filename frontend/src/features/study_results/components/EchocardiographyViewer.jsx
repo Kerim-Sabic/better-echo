@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { getViewerBaseUrl } from "../../../config/api";
+import {
+  buildViewerCacheBuster,
+  DYNAMIC_MEASUREMENTS_PENDING_VIEWER_TOKEN,
+} from "../model/studyResults.constants";
 
 const MESSAGE_CHANNEL = "horalix-ai";
 const MESSAGE_VERSION = 1;
@@ -52,12 +56,17 @@ function isLocalDev() {
   return process.env.NODE_ENV !== "production";
 }
 
+function buildViewerIframeKey({ studyUid, locationKey, cacheBuster }) {
+  return `${studyUid}-${locationKey}-${cacheBuster}-viewer-ai`;
+}
+
 export default function EchocardiographyViewer({ studyResultsPageViewModel }) {
   const {
     studyUid,
     ohifAiPayload,
     viewerRefreshToken,
     studyAnalysisEditorViewModel,
+    isVendorAccess,
   } = studyResultsPageViewModel;
 
   const saveStudyAnalysisOverride =
@@ -86,12 +95,15 @@ export default function EchocardiographyViewer({ studyResultsPageViewModel }) {
       `${viewerRoot}/orthanc-standalone.json`
   );
 
-  const viewerDataVersion = String(
-    viewerRefreshToken || "dynamic-measurements-not-ready"
-  );
-  const cacheBuster = `${
-    studyUid || "study"
-  }-${location.key || "location"}-${viewerDataVersion}`;
+  // Derived DICOM outputs are discovered by OHIF on a fresh iframe load, so
+  // the iframe key/cache-buster intentionally changes only when those outputs
+  // materially change.
+  const cacheBuster = buildViewerCacheBuster({
+    studyUid,
+    locationKey: location.key,
+    viewerRefreshToken:
+      viewerRefreshToken || DYNAMIC_MEASUREMENTS_PENDING_VIEWER_TOKEN,
+  });
 
   const configUrl = configUrlRaw.includes("?")
     ? `${configUrlRaw}&_cb=${cacheBuster}`
@@ -299,16 +311,25 @@ export default function EchocardiographyViewer({ studyResultsPageViewModel }) {
       }
 
       if (data.type === STUDY_ANALYSIS_OVERRIDE_SAVE_TYPE) {
+        if (isVendorAccess) {
+          return;
+        }
         void handleStudyAnalysisOverrideSaveIntent(data.payload);
         return;
       }
 
       if (data.type === STUDY_ANALYSIS_OVERRIDE_CLEAR_TYPE) {
+        if (isVendorAccess) {
+          return;
+        }
         void handleStudyAnalysisOverrideClearIntent(data.payload);
         return;
       }
 
       if (data.type === LLM_REPORT_REGENERATE_TYPE) {
+        if (isVendorAccess) {
+          return;
+        }
         void handleRegenerateLlmReportIntent(data.payload);
       }
     };
@@ -324,6 +345,7 @@ export default function EchocardiographyViewer({ studyResultsPageViewModel }) {
     handleRegenerateLlmReportIntent,
     hasBase,
     hasStudyUid,
+    isVendorAccess,
     postAiPayload,
     viewerOrigin,
   ]);
@@ -343,7 +365,11 @@ export default function EchocardiographyViewer({ studyResultsPageViewModel }) {
   return (
     <iframe
       ref={iframeRef}
-      key={`${studyUid}-${location.key}-${cacheBuster}-viewer-ai`}
+      key={buildViewerIframeKey({
+        studyUid,
+        locationKey: location.key,
+        cacheBuster,
+      })}
       title="OHIF Viewer"
       src={src}
       allow="cross-origin-isolated"

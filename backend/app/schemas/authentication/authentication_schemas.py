@@ -6,15 +6,16 @@ class LoginRequest(BaseModel):
     password: str
 
 # --- Together used for the AuthResponse ---
-class UserInfo(BaseModel):
-    id: int
+class AuthPrincipalInfo(BaseModel):
+    id: int | None = None
     username: str
     role: str
     full_name: str
+    principal_type: str
 
 class AuthResponse(BaseModel): # Used for both login and check-auth routes
     message: str
-    user: UserInfo
+    user: AuthPrincipalInfo
     auth_token: Optional[str] = None
 # ------------------------------------------
 

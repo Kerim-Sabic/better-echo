@@ -24,6 +24,8 @@ jest.mock("@/features/login/views/LoginPage", () => () => null);
 jest.mock("@/features/dashboard/views/DashboardPage", () => () => null);
 jest.mock("@/features/new_study/views/NewStudyPage", () => () => null);
 jest.mock("@/features/study_results/views/StudyResultsPage", () => () => null);
+jest.mock("@/features/vendor_access/views/VendorAdminPage", () => () => null);
+jest.mock("@/features/vendor_access/views/VendorStudyResultsPage", () => () => null);
 
 test("renders app shell", () => {
   render(<App />);

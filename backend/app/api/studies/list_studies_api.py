@@ -6,7 +6,7 @@ import logging
 from app.database.db import get_db
 from app.database_models.studies import Study
 from app.schemas.studies.studies_schemas import StudyListResponse
-from app.helpers.auth.authentication_functions import get_current_user_id
+from app.services.auth.principal_service import get_current_doctor_user_id
 from app.core.artifacts import REPORT_SUMMARY_TYPE
 from app.database_models.derived_results import ResultStatus
 from app.helpers.pipeline.study_status import (
@@ -26,7 +26,7 @@ def _parse_json(value: Any) -> Dict[str, Any]:
 @router.get("/studies", response_model=StudyListResponse)
 def list_studies(
     db: Session = Depends(get_db),
-    current_user_id: int = Depends(get_current_user_id)
+    current_user_id: int = Depends(get_current_doctor_user_id)
 ):
     """
     Retrieve all studies belonging to the authenticated user.

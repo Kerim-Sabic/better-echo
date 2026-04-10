@@ -17,7 +17,6 @@ from app.core.artifacts import (
     COMBINED_ANALYSIS_TYPES,
 )
 from app.helpers.row_to_dict.combined_results_row_to_dict import build_combined_sections_from_row
-from app.helpers.auth.authentication_functions import get_current_user_id
 from app.schemas.results.combined_study_analysis_schemas import (
     CombinedResultsResponse,
     CompleteResponse,
@@ -26,11 +25,16 @@ from app.schemas.results.combined_study_analysis_schemas import (
 )
 from app.schemas.results.study_analysis_overrides_schemas import OverridesUpdateRequest
 from app.services.results import build_combined_display_payload
+from app.services.auth.principal_service import (
+    get_current_doctor_user_id,
+    get_current_study_read_principal,
+)
 from app.services.pipeline.read import (
     get_active_or_legacy_result_row,
     get_result_row_for_read_mode,
     get_latest_stage_failure_detail,
     get_study_or_404,
+    get_study_or_404_for_principal,
 )
 
 logger = logging.getLogger(__name__)
@@ -52,7 +56,7 @@ def get_combined_results(
     study_uid: str,
     preview: bool = Query(False, description="Return latest draft artifacts when available"),
     db: Session = Depends(get_db),
-    current_user_id: int = Depends(get_current_user_id),
+    current_principal: dict[str, object] = Depends(get_current_study_read_principal),
 ):
     """
     Observer-only study analysis results endpoint.
@@ -64,7 +68,11 @@ def get_combined_results(
     4. Otherwise return pending without side effects.
     """
     # Part 1. Resolve study and preview-aware row.
-    study = get_study_or_404(db=db, study_uid=study_uid, user_id=current_user_id)
+    study = get_study_or_404_for_principal(
+        db=db,
+        study_uid=study_uid,
+        current_principal=current_principal,
+    )
     combined_results_row = get_result_row_for_read_mode(
         db=db,
         study_id=study.id,
@@ -111,7 +119,7 @@ def update_combined_overrides(
     study_uid: str,
     payload: OverridesUpdateRequest,
     db: Session = Depends(get_db),
-    current_user_id: int = Depends(get_current_user_id),
+    current_user_id: int = Depends(get_current_doctor_user_id),
 ):
     """
     Persist doctor overrides for active study analysis results.

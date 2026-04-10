@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.database.db import get_db
-from app.database_models.users import User
+from app.services.auth.principal_service import resolve_auth_principal_from_payload
 from app.helpers.auth.authentication_functions import get_current_auth_payload
 from app.schemas.authentication.authentication_schemas import AuthResponse
 
@@ -23,21 +23,14 @@ def check_auth(request: Request, db: Session = Depends(get_db)):
     payload = get_current_auth_payload(request)
     if "sub" not in payload:
         raise HTTPException(status_code=401, detail="Invalid token")
-    user_id = int(payload.get("sub"))
-
-    # --- Step 2: Fetch user from database ---
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
+    # --- Step 2: Resolve current principal from payload ---
+    principal = resolve_auth_principal_from_payload(db, payload)
+    if principal is None:
         raise HTTPException(status_code=401, detail="Invalid token or user not found")
 
     # --- Step 3: Return authenticated user ---
     return {
         "message": "Authentication successful",
-        "user": {
-            "id": user.id,
-            "username": user.username,
-            "role": user.role,
-            "full_name": user.full_name
-        }
+        "user": principal,
     }
 

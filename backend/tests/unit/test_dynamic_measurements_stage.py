@@ -67,15 +67,15 @@ def test_dynamic_stage_persists_instance_number_and_output_paths(
 
         # Part 2. Stub inference calls with deterministic media paths.
         monkeypatch.setattr(
-            "app.services.pipeline.stages.dynamic_measurements.infer_motion_segmentation",
+            "app.services.pipeline.stages.dynamic_measurements.run_motion_segmentation",
             lambda **_: {"output_file": "motion_segmentation_files/study/instance.mp4"},
         )
         monkeypatch.setattr(
-            "app.services.pipeline.stages.dynamic_measurements.infer_linear_measurements",
+            "app.services.pipeline.stages.dynamic_measurements.run_linear_measurements",
             lambda **_: {"output_file_mp4": "linear_measurements_files/study/instance/rv_base.mp4"},
         )
         monkeypatch.setattr(
-            "app.services.pipeline.stages.dynamic_measurements.infer_spectral_measurements",
+            "app.services.pipeline.stages.dynamic_measurements.run_spectral_measurements",
             lambda **_: {"output_file_image": "measurement_spectral/study/instance/lvotvmax.jpg"},
         )
 
@@ -144,15 +144,15 @@ def test_dynamic_stage_handles_pydantic_style_response_objects(
         instance, job, draft_set = _build_job_runtime_graph(db, seeded_study=seeded_study)
 
         monkeypatch.setattr(
-            "app.services.pipeline.stages.dynamic_measurements.infer_motion_segmentation",
+            "app.services.pipeline.stages.dynamic_measurements.run_motion_segmentation",
             lambda **_: {"output_file": "motion_segmentation_files/study/instance.mp4"},
         )
         monkeypatch.setattr(
-            "app.services.pipeline.stages.dynamic_measurements.infer_linear_measurements",
+            "app.services.pipeline.stages.dynamic_measurements.run_linear_measurements",
             lambda **_: {"output_file_mp4": "linear_measurements_files/study/instance/rv_base.mp4"},
         )
         monkeypatch.setattr(
-            "app.services.pipeline.stages.dynamic_measurements.infer_spectral_measurements",
+            "app.services.pipeline.stages.dynamic_measurements.run_spectral_measurements",
             lambda **_: _DopplerResponse(),
         )
 
@@ -208,7 +208,7 @@ def test_dynamic_stage_persists_pending_progress_between_tasks(
         progress_seen = {"value": False}
 
         monkeypatch.setattr(
-            "app.services.pipeline.stages.dynamic_measurements.infer_motion_segmentation",
+            "app.services.pipeline.stages.dynamic_measurements.run_motion_segmentation",
             lambda **_: {"output_file": "motion_segmentation_files/study/instance.mp4"},
         )
 
@@ -233,11 +233,11 @@ def test_dynamic_stage_persists_pending_progress_between_tasks(
             return {"output_file_mp4": "linear_measurements_files/study/instance/rv_base.mp4"}
 
         monkeypatch.setattr(
-            "app.services.pipeline.stages.dynamic_measurements.infer_linear_measurements",
+            "app.services.pipeline.stages.dynamic_measurements.run_linear_measurements",
             _measurements_side_effect,
         )
         monkeypatch.setattr(
-            "app.services.pipeline.stages.dynamic_measurements.infer_spectral_measurements",
+            "app.services.pipeline.stages.dynamic_measurements.run_spectral_measurements",
             lambda **_: {"output_file_image": "measurement_spectral/study/instance/lvotvmax.jpg"},
         )
 
@@ -289,15 +289,15 @@ def test_dynamic_stage_failure_keeps_previous_progress(
         instance, job, draft_set = _build_job_runtime_graph(db, seeded_study=seeded_study)
 
         monkeypatch.setattr(
-            "app.services.pipeline.stages.dynamic_measurements.infer_motion_segmentation",
+            "app.services.pipeline.stages.dynamic_measurements.run_motion_segmentation",
             lambda **_: {"output_file": "motion_segmentation_files/study/instance.mp4"},
         )
         monkeypatch.setattr(
-            "app.services.pipeline.stages.dynamic_measurements.infer_linear_measurements",
+            "app.services.pipeline.stages.dynamic_measurements.run_linear_measurements",
             lambda **_: (_ for _ in ()).throw(RuntimeError("forced_measurements_failure")),
         )
         monkeypatch.setattr(
-            "app.services.pipeline.stages.dynamic_measurements.infer_spectral_measurements",
+            "app.services.pipeline.stages.dynamic_measurements.run_spectral_measurements",
             lambda **_: {"output_file_image": "measurement_spectral/study/instance/lvotvmax.jpg"},
         )
 
@@ -368,15 +368,15 @@ def test_dynamic_stage_executes_lane_order_dynamic_then_weight_batches(
             return {"output_file_image": f"doppler/{kwargs.get('model_weights')}/{kwargs.get('sop_instance_uid')}.jpg"}
 
         monkeypatch.setattr(
-            "app.services.pipeline.stages.dynamic_measurements.infer_motion_segmentation",
+            "app.services.pipeline.stages.dynamic_measurements.run_motion_segmentation",
             _dynamic_side_effect,
         )
         monkeypatch.setattr(
-            "app.services.pipeline.stages.dynamic_measurements.infer_linear_measurements",
+            "app.services.pipeline.stages.dynamic_measurements.run_linear_measurements",
             _measurements_side_effect,
         )
         monkeypatch.setattr(
-            "app.services.pipeline.stages.dynamic_measurements.infer_spectral_measurements",
+            "app.services.pipeline.stages.dynamic_measurements.run_spectral_measurements",
             _doppler_side_effect,
         )
 
@@ -440,15 +440,15 @@ def test_dynamic_stage_unloads_measurement_caches_between_weights_in_stage_polic
 
         # Part 1. Stub inference and collect unload calls.
         monkeypatch.setattr(
-            "app.services.pipeline.stages.dynamic_measurements.infer_motion_segmentation",
+            "app.services.pipeline.stages.dynamic_measurements.run_motion_segmentation",
             lambda **_: {"output_file": "dynamic/out.mp4"},
         )
         monkeypatch.setattr(
-            "app.services.pipeline.stages.dynamic_measurements.infer_linear_measurements",
+            "app.services.pipeline.stages.dynamic_measurements.run_linear_measurements",
             lambda **kwargs: {"output_file_mp4": f"m2d/{kwargs.get('model_weights')}.mp4"},
         )
         monkeypatch.setattr(
-            "app.services.pipeline.stages.dynamic_measurements.infer_spectral_measurements",
+            "app.services.pipeline.stages.dynamic_measurements.run_spectral_measurements",
             lambda **kwargs: {"output_file_image": f"doppler/{kwargs.get('model_weights')}.jpg"},
         )
 

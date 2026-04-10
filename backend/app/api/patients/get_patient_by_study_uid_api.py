@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.database.db import get_db
 
 from app.database_models.studies import Study
-from app.helpers.auth.authentication_functions import get_current_user_id
+from app.services.auth.principal_service import get_current_doctor_user_id
 from app.schemas.patients.patients_schemas import PatientBase
 
 router = APIRouter()
@@ -12,7 +12,7 @@ router = APIRouter()
 def get_patient_by_study_uid(
     study_uid: str,
     db: Session = Depends(get_db),
-    current_user_id: int = Depends(get_current_user_id),
+    current_user_id: int = Depends(get_current_doctor_user_id),
 ):
     """
     Retrieve patient information associated with a specific study UID.

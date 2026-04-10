@@ -7,12 +7,6 @@ from sqlalchemy.orm import Session
 
 from app.AI_models.measurements.runner_2d import unload_2d_models
 from app.AI_models.measurements.runner_doppler import unload_doppler_models
-from app.api.inference.infer_linear_measurements_api import infer_linear_measurements
-from app.api.inference.infer_motion_segmentation_api import (
-    infer_motion_segmentation,
-    unload_motion_segmentation_model,
-)
-from app.api.inference.infer_spectral_measurements_api import infer_spectral_measurements
 from app.core.config import settings
 from app.core.artifacts import (
     LINEAR_MEASUREMENTS_TASK_KEY,
@@ -24,6 +18,14 @@ from app.database_models.derived_results import DerivedResult, ResultStatus
 from app.database_models.instances import Instance
 from app.database_models.pipeline_artifact_sets import PipelineArtifactSet
 from app.database_models.pipeline_jobs import PipelineJob
+from app.services.inference.linear_measurements_service import run_linear_measurements
+from app.services.inference.motion_segmentation_service import (
+    run_motion_segmentation,
+    unload_motion_segmentation_model,
+)
+from app.services.inference.spectral_measurements_service import (
+    run_spectral_measurements,
+)
 from app.services.upload_mp4_to_orthanc.upload_mp4_to_orthanc import publish_mp4_as_derived_dicom
 from app.services.pipeline.stages.prefilter import _prefilter_instances
 
@@ -265,7 +267,7 @@ def run_dynamic_measurements_stage(
             instance_row = record["instance"]
             instance_results = record["instance_results"]
             try:
-                dynamic_response = infer_motion_segmentation(
+                dynamic_response = run_motion_segmentation(
                     sop_instance_uid=sop_uid,
                     db=db,
                     artifact_set_id=draft_artifact_set.id,
@@ -335,7 +337,7 @@ def run_dynamic_measurements_stage(
                 instance_row = record["instance"]
                 instance_results = record["instance_results"]
                 try:
-                    measurements_response = infer_linear_measurements(
+                    measurements_response = run_linear_measurements(
                         sop_instance_uid=sop_uid,
                         model_weights=weight_name,
                         force=True,
@@ -407,7 +409,7 @@ def run_dynamic_measurements_stage(
                 sop_uid = record["sop_uid"]
                 instance_results = record["instance_results"]
                 try:
-                    doppler_response = infer_spectral_measurements(
+                    doppler_response = run_spectral_measurements(
                         sop_instance_uid=sop_uid,
                         model_weights=weight_name,
                         force=True,

@@ -1,11 +1,12 @@
-export function formatLoginUser(rawUser) {
+export function formatAuthResponse(rawUser) {
   return {
     message: rawUser.message,
     user: {
-      id: rawUser.user.id,
+      id: rawUser.user.id ?? null,
       username: rawUser.user.username,
       role: rawUser.user.role,
-      fullName: rawUser.user.full_name
+      fullName: rawUser.user.full_name,
+      principalType: rawUser.user.principal_type || "user",
     }
   };
 }

@@ -11,6 +11,7 @@ import {
   openAiReportPrintPreview,
 } from "@/features/study_results/viewmodels/pdf_printing/studyResultsPdfGenerator";
 import { useStudyAnalysisEditorViewModel } from "@/features/study_results/viewmodels/useStudyAnalysisEditorViewModel";
+import { DYNAMIC_MEASUREMENTS_PENDING_VIEWER_TOKEN } from "@/features/study_results/model/studyResults.constants";
 
 // Resolves a single page-level state from the three study results query states.
 function resolveOverallState(states) {
@@ -39,8 +40,12 @@ function resolveOverallState(states) {
   return "idle";
 }
 
-export function useStudyResultsViewModel(studyUid) {
+export function useStudyResultsViewModel(
+  studyUid,
+  { accessMode = "user" } = {}
+) {
   const navigate = useNavigate();
+  const isVendorAccess = accessMode === "vendor";
 
   // Fetches the study-level metadata used for the page header/PDF context.
   const { data: studyDetails = null } = useStudyDetailsQuery(studyUid);
@@ -96,7 +101,7 @@ export function useStudyResultsViewModel(studyUid) {
 
   const viewerRefreshToken =
     dynamicMeasurementsQueryData?.viewerRefreshToken ??
-    "dynamic-measurements-not-ready";
+    DYNAMIC_MEASUREMENTS_PENDING_VIEWER_TOKEN;
 
   // --- Part 2. Compose the study-analysis editing workflow ViewModel. ---
   const studyAnalysisEditorViewModel = useStudyAnalysisEditorViewModel({
@@ -105,6 +110,7 @@ export function useStudyResultsViewModel(studyUid) {
     studyAnalysisCombinedResultsData,
     llmReportResultsState,
     llmReportResultsData,
+    readOnlySupport: isVendorAccess,
   });
 
   // --- Part 3. Derive page-level UI state and build the OHIF bridge payload. ---
@@ -224,8 +230,8 @@ export function useStudyResultsViewModel(studyUid) {
 
   // --- Part 4. Expose back-navigation and refetch handlers. ---
   const onBack = useCallback(() => {
-    navigate("/dashboard");
-  }, [navigate]);
+    navigate(isVendorAccess ? "/vendor-admin" : "/dashboard");
+  }, [isVendorAccess, navigate]);
 
   const refetchStudyResults = useCallback(() => {
     refetchStudyAnalysis();
@@ -235,6 +241,7 @@ export function useStudyResultsViewModel(studyUid) {
 
   return {
     studyUid,
+    isVendorAccess,
     studyResultsState,
 
     studyAnalysisCombinedResultsState,

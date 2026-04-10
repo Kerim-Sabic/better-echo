@@ -100,6 +100,29 @@ def create_managed_user(
     3. Persist the new user with a hashed password.
     """
     _require_admin_actor(db, acting_user_id)
+    return create_managed_user_record(
+        db,
+        username=username,
+        password=password,
+        full_name=full_name,
+        role=role,
+    )
+
+
+def create_managed_user_record(
+    db: Session,
+    *,
+    username: str,
+    password: str,
+    full_name: str,
+    role: str,
+) -> User:
+    """
+    Create a new managed user without checking the acting principal.
+
+    This is used by the isolated vendor-access subsystem, which applies its own
+    authorization boundary before calling into the shared validation logic.
+    """
     normalized_username = _normalize_username(username)
     normalized_full_name = _normalize_full_name(full_name)
     normalized_role = _normalize_role(role)
@@ -144,6 +167,34 @@ def update_managed_user(
     3. Persist the updated username/full name/role and optional password reset.
     """
     _require_admin_actor(db, acting_user_id)
+    return update_managed_user_record(
+        db,
+        target_user_id=target_user_id,
+        username=username,
+        full_name=full_name,
+        role=role,
+        password=password,
+        protect_last_admin=True,
+    )
+
+
+def update_managed_user_record(
+    db: Session,
+    *,
+    target_user_id: int,
+    username: str,
+    full_name: str,
+    role: str,
+    password: str | None = None,
+    protect_last_admin: bool = True,
+) -> User:
+    """
+    Update a managed user without checking the acting principal.
+
+    `protect_last_admin=True` preserves the existing hospital-admin safety rule.
+    Vendor access can explicitly disable that rule when emergency account
+    recovery requires taking over the final admin seat.
+    """
     target_user = _get_user_or_raise(db, target_user_id)
     normalized_username = _normalize_username(username)
     normalized_full_name = _normalize_full_name(full_name)
@@ -152,7 +203,12 @@ def update_managed_user(
     if _username_exists(db, normalized_username, exclude_user_id=target_user.id):
         raise UserAdminConflictError("Username already exists.")
 
-    if target_user.role == "admin" and normalized_role != "admin" and count_admin_users(db) <= 1:
+    if (
+        protect_last_admin
+        and target_user.role == "admin"
+        and normalized_role != "admin"
+        and count_admin_users(db) <= 1
+    ):
         raise UserAdminConflictError("The last remaining admin cannot be demoted.")
 
     target_user.username = normalized_username
@@ -181,11 +237,30 @@ def delete_managed_user(
     3. Delete the target user and commit the change.
     """
     _require_admin_actor(db, acting_user_id)
+    if target_user_id == acting_user_id:
+        raise UserAdminConflictError("Admins cannot delete their own account.")
+    delete_managed_user_record(
+        db,
+        target_user_id=target_user_id,
+        protect_last_admin=True,
+    )
+
+
+def delete_managed_user_record(
+    db: Session,
+    *,
+    target_user_id: int,
+    protect_last_admin: bool = True,
+) -> None:
+    """
+    Delete a managed user without checking the acting principal.
+
+    `protect_last_admin=True` preserves the existing hospital-admin safety rule.
+    Vendor access can disable that rule explicitly.
+    """
     target_user = _get_user_or_raise(db, target_user_id)
 
-    if target_user.id == acting_user_id:
-        raise UserAdminConflictError("Admins cannot delete their own account.")
-    if target_user.role == "admin" and count_admin_users(db) <= 1:
+    if protect_last_admin and target_user.role == "admin" and count_admin_users(db) <= 1:
         raise UserAdminConflictError("The last remaining admin cannot be deleted.")
 
     db.delete(target_user)

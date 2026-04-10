@@ -5,8 +5,8 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.database.db import get_db
-from app.helpers.auth.authentication_functions import get_current_user_id
 from app.schemas.pipeline.pipeline_promote_schemas import PipelinePromoteResponse
+from app.services.auth.principal_service import get_current_doctor_user_id
 from app.services.pipeline.service import promote_latest_draft_artifact_set
 
 router = APIRouter()
@@ -19,7 +19,7 @@ router = APIRouter()
 def pipeline_promote(
     study_uid: str,
     db: Session = Depends(get_db),
-    current_user_id: int = Depends(get_current_user_id),
+    current_user_id: int = Depends(get_current_doctor_user_id),
 ):
     """
     Promote latest successful draft artifact set to active for owned study.

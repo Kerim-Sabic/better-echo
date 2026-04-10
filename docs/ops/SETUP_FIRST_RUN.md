@@ -1,22 +1,21 @@
 # Setup First Run
 
-Last Updated: 2026-03-18  
+Last Updated: 2026-04-04  
 Owner: Engineering
 
 ## Goal
 
-Get a clean machine from zero to a running local desktop app.
+Prepare a clean machine for local development and basic desktop verification.
 
-## Step-by-Step
-
-### 1) Prerequisites
+## 1. Prerequisites
 
 Install:
 
-1. Node.js 20+ and npm.
-2. Python 3.11+.
-3. Git.
-4. Docker Desktop.
+1. Node.js 20+
+2. npm
+3. Python 3.11+
+4. Git
+5. Docker Desktop
 
 Verify:
 
@@ -27,7 +26,7 @@ python --version
 docker --version
 ```
 
-### 2) Clone and Install Dependencies
+## 2. Clone and Install
 
 ```powershell
 git clone <repo-url>
@@ -37,10 +36,10 @@ npm install
 
 Notes:
 
-1. Root [`package.json`](../../package.json#L25) has a `postinstall` hook that installs frontend dependencies.
-2. Helper scripts also perform missing dependency checks.
+1. Root [`package.json`](../../package.json) installs frontend dependencies through `postinstall`.
+2. Development and packaging commands are defined in the same file.
 
-### 3) Python Virtual Environment
+## 3. Python Virtual Environment
 
 ```powershell
 cd backend
@@ -50,41 +49,44 @@ pip install -r requirements.txt
 cd ..
 ```
 
-### 4) Environment Files
+## 4. Environment Files
 
 Create:
 
 1. `backend/.env` from [`backend/.env.example`](../../backend/.env.example)
 2. `frontend/.env` from [`frontend/.env.example`](../../frontend/.env.example)
 
-Typical local defaults:
+Minimum backend values for local dev:
 
-### backend/.env
+1. `CORS_ORIGIN`
+2. `ORTHANC_URL`
+3. `ORTHANC_USER`
+4. `ORTHANC_PASS`
+5. `DATABASE_URL`
+6. `TEST_DATABASE_URL`
+7. `SECRET_KEY`
+8. `TOKEN_EXPIRE_HOURS`
 
-```env
-CORS_ORIGIN=["http://localhost:3000"]
-ORTHANC_URL="http://localhost:8042"
-ORTHANC_USER="orthanc"
-ORTHANC_PASS="orthanc"
-DATABASE_URL="postgresql+psycopg://horalix:horalix_dev@localhost:5433/horalix"
-TEST_DATABASE_URL="postgresql+psycopg://horalix:horalix_dev@localhost:5433/horalix_test"
-SECRET_KEY=replace-me
-TOKEN_EXPIRE_HOURS=4
-PANECHO_PRELOAD=true
-ECHOPRIME_PRELOAD=true
-ECHONET_PRELOAD=true
-MEASUREMENTS_PRELOAD=true
-```
+Common local runtime knobs:
 
-### frontend/.env
+1. `PRIMARY_ANALYSIS_PRELOAD`
+2. `SECONDARY_ANALYSIS_PRELOAD`
+3. `MOTION_SEGMENTATION_PRELOAD`
+4. `STUDY_MEASUREMENTS_PRELOAD`
+5. `ENABLE_LLM`
 
-```env
-REACT_APP_API_URL=http://localhost:8000/api
-REACT_APP_API_URL_UPLOADS=http://localhost:8000/uploads
-REACT_APP_VIEWER_URL=http://localhost:8042/stone-webviewer/index.html
-```
+Minimum frontend values:
 
-### 5) Start Development Stack
+1. `REACT_APP_API_URL`
+2. `REACT_APP_API_URL_UPLOADS`
+3. `REACT_APP_VIEWER_URL`
+
+The canonical runtime knobs live in:
+
+1. [`backend/.env.example`](../../backend/.env.example)
+2. [`config.py`](../../backend/app/core/config.py)
+
+## 5. Start the Development Stack
 
 Without LLM:
 
@@ -98,42 +100,46 @@ With LLM:
 scripts\dev-start-with-llm.bat
 ```
 
-PowerShell alternatives:
+LAN mode without LLM:
 
 ```powershell
-.\scripts\dev-start.ps1
-.\scripts\dev-start-with-llm.ps1
+scripts\dev-lan.bat
 ```
 
-Script references:
+LAN mode with LLM:
 
-1. [`dev-start.bat`](../../scripts/dev-start.bat)
-2. [`dev-start-with-llm.bat`](../../scripts/dev-start-with-llm.bat)
-3. [`dev-start.ps1`](../../scripts/dev-start.ps1)
-4. [`dev-start-with-llm.ps1`](../../scripts/dev-start-with-llm.ps1)
+```powershell
+scripts\dev-lan-with-llm.bat
+```
+
+PowerShell equivalents are available under [`scripts/`](../../scripts/).
 
 What starts:
 
-1. PostgreSQL (Docker).
-2. Orthanc (Docker).
-3. OHIF viewer (Docker).
-4. FastAPI backend (`127.0.0.1:8000`).
-5. React frontend (`localhost:3000`).
-6. Electron desktop window.
+1. PostgreSQL
+2. Orthanc
+3. OHIF viewer
+4. FastAPI backend
+5. React frontend
+6. Electron desktop window
 
-### 6) Manual Fallback Commands
+## 6. Manual Fallback Commands
 
-If helper scripts fail:
+Build Electron first:
 
 ```powershell
 npm run build:electron
+```
+
+Run the default dev stack:
+
+```powershell
 npm run dev
 ```
 
-Enable LLM path:
+Run the LLM dev stack:
 
 ```powershell
-npm run build:electron
 npm run dev:llm
 ```
 
@@ -152,24 +158,39 @@ cd frontend
 npm start
 ```
 
-### 7) First Validation Checklist
+## 7. First Validation Checklist
 
-1. App opens to splash, then login.
+1. Splash opens, then routes to login.
 2. Login works.
 3. Dashboard loads studies.
 4. New Study upload succeeds.
-5. StudyResults polling progresses and data appears.
+5. Study Results polls and updates.
 
-### 8) Common First-Run Issues
+## 8. Common First-Run Issues
 
-1. Docker not running:
-1. Start Docker Desktop and rerun startup script.
-2. Missing Python packages:
-1. Re-activate venv and rerun `pip install -r requirements.txt`.
-3. Missing PostgreSQL schema:
-1. From `backend/`: `python -m app.database.setup_db`.
-4. Missing Postgres test DB:
-1. Run `docker exec horalix_postgres psql -U horalix -d postgres -c "CREATE DATABASE horalix_test;"`.
-5. LLM process stale:
-1. Run `scripts\stop_llm.ps1` then restart with LLM script.
-2. Script reference: [`stop_llm.ps1`](../../scripts/stop_llm.ps1)
+1. Docker not running
+   - start Docker Desktop and rerun the dev script
+2. Missing Python packages
+   - reactivate `backend/venv` and rerun `pip install -r requirements.txt`
+3. Missing schema
+   - run `python -m app.database.setup_db` from `backend/`
+4. Missing test database
+   - create the configured `TEST_DATABASE_URL` database in Postgres
+5. Stale LLM process
+   - run [`stop_llm.ps1`](../../scripts/stop_llm.ps1) and restart with an LLM-enabled script
+
+## 9. Packaged Builds
+
+Server package:
+
+```powershell
+npm run pack:server
+```
+
+Client installer:
+
+```powershell
+npm run dist:client
+```
+
+Packaged server uses the generated runtime env from [`generate_release_config.py`](../../backend/desktop/generate_release_config.py) during backend packaging.

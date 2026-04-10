@@ -4,11 +4,11 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.database.db import get_db
-from app.helpers.auth.authentication_functions import get_current_user_id
 from app.schemas.pipeline.pipeline_start_schemas import (
     PipelineStartRequest,
     PipelineStartResponse,
 )
+from app.services.auth.principal_service import get_current_doctor_user_id
 from app.services.pipeline.service import start_pipeline_job
 
 router = APIRouter()
@@ -22,7 +22,7 @@ def pipeline_start(
     study_uid: str,
     payload: PipelineStartRequest,
     db: Session = Depends(get_db),
-    current_user_id: int = Depends(get_current_user_id),
+    current_user_id: int = Depends(get_current_doctor_user_id),
 ):
     """
     Start (or reuse) an idempotent pipeline job for a study.

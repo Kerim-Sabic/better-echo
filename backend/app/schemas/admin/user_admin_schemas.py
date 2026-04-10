@@ -1,6 +1,11 @@
 from pydantic import BaseModel, Field
 
-from app.schemas.authentication.authentication_schemas import UserInfo
+
+class ManagedUserInfo(BaseModel):
+    id: int
+    username: str
+    role: str
+    full_name: str
 
 
 class BootstrapAdminRequest(BaseModel):
@@ -11,7 +16,7 @@ class BootstrapAdminRequest(BaseModel):
 
 class BootstrapAdminResponse(BaseModel):
     message: str
-    user: UserInfo
+    user: ManagedUserInfo
 
 
 class ManagedUserRequest(BaseModel):
@@ -29,14 +34,14 @@ class ManagedUserUpdateRequest(BaseModel):
 
 
 class ManagedUsersListResponse(BaseModel):
-    users: list[UserInfo]
+    users: list[ManagedUserInfo]
     total_users: int
     max_users: int
 
 
 class ManagedUserMutationResponse(BaseModel):
     message: str
-    user: UserInfo
+    user: ManagedUserInfo
     total_users: int
     max_users: int
 

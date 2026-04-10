@@ -3,7 +3,10 @@ import { Button } from "@/general_components/ui/button";
 import { setApiClientBaseUrl } from "@/api/client";
 import { clearDesktopAuthToken } from "@/api/desktopAuth";
 import { resetResolvedApiUrls } from "@/config/api";
-import { ElectronRuntimeConfigProvider } from "@/hooks/useElectronRuntimeConfig";
+import {
+  ElectronRuntimeConfigProvider,
+  loadElectronRuntimeConfig,
+} from "@/hooks/useElectronRuntimeConfig";
 
 const BACKEND_PORT = "8000";
 const VIEWER_PORT = "3001";
@@ -118,7 +121,7 @@ export default function RuntimeConfigGate({ children }) {
       }
 
       try {
-        const nextRuntimeConfig = await window.electronAPI.getRuntimeConfig();
+        const nextRuntimeConfig = await loadElectronRuntimeConfig();
         if (!isActive) {
           return;
         }

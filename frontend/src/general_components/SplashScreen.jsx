@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { getBackendUrl } from "../config/api";
 
 const SPLASH_READY_EXIT_DELAY_MS = 800;
@@ -33,8 +33,7 @@ export default function SplashScreen({ onComplete }) {
     const [active, setActive] = useState("A"); // "A" | "B"
     const [audioAllowed, setAudioAllowed] = useState(false);
 
-  // Helper: check backend health
-    async function checkHealth() {
+  const checkHealth = useCallback(async () => {
         try {
             const ipcHealth = window?.electronAPI?.checkBackendHealth;
             if (ipcHealth) {
@@ -49,26 +48,26 @@ export default function SplashScreen({ onComplete }) {
         } catch {
             return false;
         }
-    }
+    }, []);
 
-    function completeSplash() {
+    const completeSplash = useCallback(() => {
         if (hasCompletedRef.current) return;
         hasCompletedRef.current = true;
         setIsZooming(true);
         setIsVisible(false);
         setTimeout(() => onComplete?.(), 50);
-    }
+    }, [onComplete]);
 
-    function playVideo(el, muted) {
+    const playVideo = useCallback((el, muted) => {
         if (!el) return;
         el.muted = !!muted;
         try {
             el.currentTime = 0;
         } catch {}
         el.play().catch(() => {});
-    }
+    }, []);
 
-    function scheduleSplashCompletion(delayMs = 50) {
+    const scheduleSplashCompletion = useCallback((delayMs = 50) => {
         if (hasCompletedRef.current || completeTimerRef.current) {
             return;
         }
@@ -77,7 +76,7 @@ export default function SplashScreen({ onComplete }) {
             completeTimerRef.current = null;
             completeSplash();
         }, delayMs);
-    }
+    }, [completeSplash]);
 
     // Background health checks (IPC) to allow exit while app is unfocused
     useEffect(() => {
@@ -101,7 +100,7 @@ export default function SplashScreen({ onComplete }) {
                 completeTimerRef.current = null;
             }
         };
-    }, []);
+    }, [checkHealth, scheduleSplashCompletion]);
 
     // Safety net: never allow the splash to block the app indefinitely.
     useEffect(() => {
@@ -110,7 +109,7 @@ export default function SplashScreen({ onComplete }) {
         }, SPLASH_MAX_WAIT_MS);
 
         return () => clearTimeout(timeoutId);
-    }, []);
+    }, [scheduleSplashCompletion]);
 
     // Initialize both videos and start forward pass
     useEffect(() => {
@@ -133,7 +132,7 @@ export default function SplashScreen({ onComplete }) {
         // Keep reverse (B) preloaded + muted
         b.muted = true;
         setActive("A");
-    }, []);
+    }, [audioAllowed, playVideo]);
 
   // Handle ends for both players -> crossfade, poll health, exit when ready
     useEffect(() => {
@@ -201,7 +200,7 @@ export default function SplashScreen({ onComplete }) {
             a.removeEventListener("error", onError);
             b.removeEventListener("error", onError);
         };
-    }, [audioAllowed, onComplete]);
+    }, [audioAllowed, checkHealth, playVideo, scheduleSplashCompletion]);
 
     return (
         <div

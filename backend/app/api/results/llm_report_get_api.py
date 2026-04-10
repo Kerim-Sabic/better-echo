@@ -9,7 +9,6 @@ from sqlalchemy.orm import Session
 from app.database.db import get_db
 from app.database_models.derived_results import ResultStatus
 from app.core.artifacts import REPORT_SUMMARY_TYPE
-from app.helpers.auth.authentication_functions import get_current_user_id
 from app.helpers.row_to_dict.llm_report_row_to_dict import build_llm_report_from_row
 from app.schemas.results.llm_report_get_api_schemas import (
     LLMReportResponse,
@@ -17,10 +16,11 @@ from app.schemas.results.llm_report_get_api_schemas import (
     LLMPendingResponse,
     LLMFailedResponse,
 )
+from app.services.auth.principal_service import get_current_study_read_principal
 from app.services.pipeline.read import (
     get_result_row_for_read_mode,
     get_latest_stage_failure_detail,
-    get_study_or_404,
+    get_study_or_404_for_principal,
 )
 
 logger = logging.getLogger(__name__)
@@ -36,7 +36,7 @@ def get_llm_report(
     study_uid: str,
     preview: bool = Query(False, description="Return latest draft artifacts when available"),
     db: Session = Depends(get_db),
-    current_user_id: int = Depends(get_current_user_id),
+    current_principal: dict[str, object] = Depends(get_current_study_read_principal),
 ):
     """
     Observer-only LLM report endpoint.
@@ -47,7 +47,11 @@ def get_llm_report(
     3. Return complete/failed/pending with no enqueue side effects.
     """
     # Part 1. Resolve study and LLM feature gate.
-    study = get_study_or_404(db=db, study_uid=study_uid, user_id=current_user_id)
+    study = get_study_or_404_for_principal(
+        db=db,
+        study_uid=study_uid,
+        current_principal=current_principal,
+    )
     enable_llm = os.getenv("ENABLE_LLM", "true").lower() == "true"
     if not enable_llm:
         raise HTTPException(status_code=404, detail="LLM report disabled")

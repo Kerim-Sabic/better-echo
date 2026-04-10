@@ -1,3 +1,5 @@
+import { getPublicAssetUrl } from "@/lib/branding";
+
 const PRINT_STYLES = `
   :root {
     color-scheme: light;
@@ -498,12 +500,6 @@ function normalizeTitleKey(value) {
     .trim()
     .toLowerCase()
     .replace(/\s+/g, " ");
-}
-
-function getPublicAssetUrl(relativePath) {
-  const basePath = process.env.PUBLIC_URL || "";
-  const normalizedPath = relativePath.startsWith("/") ? relativePath : `/${relativePath}`;
-  return `${window.location.origin}${basePath}${normalizedPath}`;
 }
 
 function renderValueOrBlank(value, minimumLength = 12) {

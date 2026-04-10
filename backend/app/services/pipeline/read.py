@@ -27,6 +27,26 @@ def get_study_or_404(*, db: Session, study_uid: str, user_id: int) -> Study:
     return study
 
 
+def get_study_or_404_for_principal(
+    *,
+    db: Session,
+    study_uid: str,
+    current_principal: dict[str, object],
+) -> Study:
+    # Part 1. Vendor access can inspect any study; hospital users stay owner-scoped.
+    if current_principal.get("principal_type") == "vendor":
+        study = db.query(Study).filter(Study.study_uid == study_uid).first()
+        if not study:
+            raise HTTPException(status_code=404, detail="Study not found")
+        return study
+
+    principal_id = current_principal.get("id")
+    if principal_id is None:
+        raise HTTPException(status_code=404, detail="Study not found")
+
+    return get_study_or_404(db=db, study_uid=study_uid, user_id=int(principal_id))
+
+
 def get_active_artifact_set(*, db: Session, study_id: int) -> Optional[PipelineArtifactSet]:
     # Part 2. Read latest active artifact set for study.
     return (
@@ -119,6 +139,7 @@ def get_result_row_for_read_mode(
             )
             if draft_row:
                 return draft_row
+            return None
 
     active_set = get_active_artifact_set(db=db, study_id=study_id)
     if active_set:
@@ -183,6 +204,7 @@ def get_latest_stage_failure_detail(
 
 __all__ = [
     "get_study_or_404",
+    "get_study_or_404_for_principal",
     "get_active_artifact_set",
     "get_latest_draft_artifact_set",
     "get_result_row_for_read_mode",

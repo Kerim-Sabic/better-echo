@@ -5,8 +5,6 @@ from typing import Any, Dict, Optional
 
 from sqlalchemy.orm import Session
 
-from app.api.inference.infer_primary_analysis_api import infer_primary_analysis
-from app.api.inference.infer_secondary_analysis_api import infer_secondary_analysis
 from app.core.config import settings
 from app.core.artifacts import (
     COMBINED_ANALYSIS_MODEL_NAME,
@@ -18,9 +16,11 @@ from app.database_models.pipeline_artifact_sets import PipelineArtifactSet, Pipe
 from app.database_models.pipeline_jobs import PipelineJob
 from app.helpers.ensemble.combine_study_analysis_predictions import combine_results
 from app.helpers.inference_runtime.inference_functions import unload_primary_analysis_model
-from app.schemas.inference.infer_primary_analysis_schemas import InferPrimaryAnalysisRequest
-from app.schemas.inference.infer_secondary_analysis_schemas import InferSecondaryAnalysisRequest
-from app.services.inference.secondary_analysis_service import unload_secondary_analysis_model
+from app.services.inference.primary_analysis_service import run_primary_analysis_metrics
+from app.services.inference.secondary_analysis_service import (
+    run_secondary_analysis_metrics,
+    unload_secondary_analysis_model,
+)
 from app.services.pipeline.stages.prefilter import _prefilter_instances, _study_uid_for_job
 
 logger = logging.getLogger(__name__)
@@ -148,13 +148,11 @@ def run_combined_stage(
             }
 
         logger.info("[PIPELINE_COMBINED] Running secondary analysis metrics | job_id=%s", job.id)
-        ep_output = infer_secondary_analysis(
-            payload=InferSecondaryAnalysisRequest(
-                study_uid=study_uid,
-                include_instance_orthanc_ids=eligible_orthanc_ids,
-                artifact_set_id=draft_artifact_set.id,
-            ),
+        ep_output = run_secondary_analysis_metrics(
+            study_uid=study_uid,
             db=db,
+            include_instance_orthanc_ids=eligible_orthanc_ids,
+            artifact_set_id=draft_artifact_set.id,
         )
         logger.info(
             "[PIPELINE_COMBINED] Secondary analysis metrics completed | job_id=%s num_instances=%s",
@@ -166,13 +164,11 @@ def run_combined_stage(
             unload_secondary_analysis_model()
             logger.info("[PIPELINE_COMBINED] Secondary analysis unloaded after stage boundary | job_id=%s", job.id)
         logger.info("[PIPELINE_COMBINED] Running primary analysis metrics | job_id=%s", job.id)
-        primary_analysis_output = infer_primary_analysis(
-            payload=InferPrimaryAnalysisRequest(
-                study_uid=study_uid,
-                include_instance_orthanc_ids=eligible_orthanc_ids,
-                artifact_set_id=draft_artifact_set.id,
-            ),
+        primary_analysis_output = run_primary_analysis_metrics(
+            study_uid=study_uid,
             db=db,
+            include_instance_orthanc_ids=eligible_orthanc_ids,
+            artifact_set_id=draft_artifact_set.id,
         )
         logger.info(
             "[PIPELINE_COMBINED] Primary analysis metrics completed | job_id=%s num_instances=%s",

@@ -23,6 +23,9 @@ module.exports = {
     createDesktopShortcut: true,
     createStartMenuShortcut: true,
     shortcutName: 'Echocardiology App',
+    installerHeader: 'electron/build-resources/installerHeader.bmp',
+    installerSidebar: 'electron/build-resources/installerSidebar.bmp',
+    uninstallerSidebar: 'electron/build-resources/uninstallerSidebar.bmp',
   },
   mac: {
     target: [

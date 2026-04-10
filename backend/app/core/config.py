@@ -72,6 +72,11 @@ class Settings(BaseSettings):
     LICENSE_STORAGE_DIR: Optional[str] = None
     LICENSE_PUBLIC_KEY_B64: Optional[str] = None
 
+    VENDOR_ACCESS_ENABLED: bool = False
+    VENDOR_ACCESS_USERNAME: Optional[str] = None
+    VENDOR_ACCESS_DISPLAY_NAME: Optional[str] = None
+    VENDOR_ACCESS_PASSWORD_HASH: Optional[str] = None
+
     LLM_PROMPT_TEMPLATE_PATH: str = "app/prompting/echo_report_prompt.md.j2"
     LLM_TEMPERATURE_REPORT: float = 0.0
     LLM_TOP_P_REPORT: float = 1.0

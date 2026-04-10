@@ -12,26 +12,12 @@ async function resolveElectronRuntimeConfig() {
         return runtimeConfigPromise;
     }
 
-    if (!window.electronAPI) {
+    if (!window.electronAPI?.getRuntimeConfig) {
         return null;
     }
 
-    if (window.electronAPI.getRuntimeConfig) {
-        runtimeConfigPromise = window.electronAPI.getRuntimeConfig();
-        return runtimeConfigPromise;
-    }
-
-    if (window.electronAPI.getBackendUrl) {
-        const backendBaseUrl = await window.electronAPI.getBackendUrl();
-        runtimeConfigPromise = Promise.resolve({
-            runtimeMode: "server",
-            backendBaseUrl,
-            viewerBaseUrl: null,
-        });
-        return runtimeConfigPromise;
-    }
-
-    return null;
+    runtimeConfigPromise = window.electronAPI.getRuntimeConfig();
+    return runtimeConfigPromise;
 }
 
 export function resetResolvedApiUrls() {
@@ -47,36 +33,19 @@ export const getBackendUrl = async () => {
     }
 
     if (window.electronAPI) {
-        try {
-            const runtimeConfig = await resolveElectronRuntimeConfig();
-            const baseUrl = normalizeBaseUrl(runtimeConfig?.backendBaseUrl);
+        const runtimeConfig = await resolveElectronRuntimeConfig();
+        const baseUrl = normalizeBaseUrl(runtimeConfig?.backendBaseUrl);
 
-            if (baseUrl) {
-                backendUrl = `${baseUrl}/api`;
-                uploadsUrl = `${baseUrl}/uploads`;
-                console.log('Using Electron backend URL:', backendUrl);
-                console.log('Using Electron uploads URL:', uploadsUrl);
-                return backendUrl;
-            }
+        if (baseUrl) {
+            backendUrl = `${baseUrl}/api`;
+            uploadsUrl = `${baseUrl}/uploads`;
+            console.log('Using Electron backend URL:', backendUrl);
+            console.log('Using Electron uploads URL:', uploadsUrl);
+            return backendUrl;
+        }
 
-            if (runtimeConfig?.runtimeMode === "client") {
-                throw new Error("Client runtime server base URL is not configured");
-            }
-
-            if (window.electronAPI.getBackendUrl) {
-                const legacyBaseUrl = normalizeBaseUrl(await window.electronAPI.getBackendUrl());
-                backendUrl = `${legacyBaseUrl}/api`;
-                uploadsUrl = `${legacyBaseUrl}/uploads`;
-                console.log('Using Electron backend URL:', backendUrl);
-                console.log('Using Electron uploads URL:', uploadsUrl);
-                return backendUrl;
-            }
-        } catch (error) {
-            if (window.electronAPI.getRuntimeConfig) {
-                throw error;
-            }
-
-            console.warn('Failed to get Electron backend URL, using environment variable:', error);
+        if (runtimeConfig?.runtimeMode === "client") {
+            throw new Error("Client runtime server base URL is not configured");
         }
     }
 

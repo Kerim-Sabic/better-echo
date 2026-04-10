@@ -3,7 +3,7 @@ from uuid import uuid4
 
 import pytest
 from fastapi import FastAPI
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import sessionmaker
 
 from app.api.pipeline.pipeline_cancel_api import router as pipeline_cancel_router
@@ -22,9 +22,32 @@ from app.database_models.patients import Patient
 from app.database_models.studies import Study
 from app.database_models.users import User
 from app.helpers.auth.authentication_functions import get_current_user_id
+from app.services.auth.principal_service import (
+    get_current_auth_principal,
+    get_current_doctor_user_id,
+    get_current_study_read_principal,
+)
 
 def _create_test_engine(database_url: str):
     return create_engine(database_url, pool_pre_ping=True)
+
+
+def _ensure_test_users_last_login_column(engine) -> None:
+    inspector = inspect(engine)
+    if "users" not in inspector.get_table_names():
+        return
+
+    existing_columns = {column["name"] for column in inspector.get_columns("users")}
+    if "last_login_at" in existing_columns:
+        return
+
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "ALTER TABLE users "
+                "ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMP WITH TIME ZONE NULL"
+            )
+        )
 
 
 @pytest.fixture(scope="session")
@@ -40,6 +63,7 @@ def db_engine():
 
     engine = _create_test_engine(database_url)
     Base.metadata.create_all(bind=engine)
+    _ensure_test_users_last_login_column(engine)
 
     try:
         yield engine
@@ -128,6 +152,21 @@ def app(db_session_factory, seeded_study):
 
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_current_user_id] = lambda: seeded_study["user_id"]
+    app.dependency_overrides[get_current_doctor_user_id] = lambda: seeded_study["user_id"]
+    app.dependency_overrides[get_current_auth_principal] = lambda: {
+        "id": seeded_study["user_id"],
+        "username": "test-doctor",
+        "role": "doctor",
+        "full_name": "Test Doctor",
+        "principal_type": "user",
+    }
+    app.dependency_overrides[get_current_study_read_principal] = lambda: {
+        "id": seeded_study["user_id"],
+        "username": "test-doctor",
+        "role": "doctor",
+        "full_name": "Test Doctor",
+        "principal_type": "user",
+    }
 
     return app
 

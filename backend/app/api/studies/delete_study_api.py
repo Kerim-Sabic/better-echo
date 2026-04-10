@@ -9,7 +9,7 @@ import logging
 from app.database.db import get_db
 from app.database_models.patients import Patient
 from app.database_models.studies import Study
-from app.helpers.auth.authentication_functions import get_current_user_id
+from app.services.auth.principal_service import get_current_doctor_user_id
 from app.services.integrations.orthanc_client import delete_study_from_orthanc
 from app.schemas.studies.studies_schemas import StudyDeleteResponse
 from app.core.artifacts import (
@@ -38,7 +38,7 @@ def _delete_folder_if_exists(path: str, label: str) -> None:
 def delete_study(
     study_id: int,
     db: Session = Depends(get_db),
-    current_user_id: int = Depends(get_current_user_id),
+    current_user_id: int = Depends(get_current_doctor_user_id),
 ):
     """
     Delete a study from Orthanc, local uploads, and the database; delete the patient if they have no remaining studies.

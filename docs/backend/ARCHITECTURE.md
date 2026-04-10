@@ -1,192 +1,199 @@
 # Backend Architecture
 
-Last Updated: 2026-03-10  
+Last Updated: 2026-04-06  
 Owner: Backend
 
 ## Scope
 
-FastAPI application architecture, router composition, persistence model, and AI results/pipeline responsibilities.
+FastAPI application structure, persistence model, orchestration ownership, and backend runtime responsibilities.
 
 ## Backend Tree
-
-Curated tree:
 
 ```text
 backend/app/
 |- main.py
 |- api/
+|  |- admin/
 |  |- authentication/
 |  |- health/
-|  |- upload_dicom/
-|  |- studies/
-|  |- patients/
 |  |- inference/
+|  |- licensing/
 |  |- llm/
+|  |- patients/
 |  |- pipeline/
-|  `- results/
+|  |- results/
+|  |- studies/
+|  `- upload_dicom/
+|- core/
+|- database/
 |- database_models/
-|- schemas/
-|- background_tasks/
-|- services/
 |- helpers/
-`- configs/
+|- schemas/
+|- vendor_access/
+`- services/
+   |- auth/
+   |- inference/
+   |- integrations/
+   |- licensing/
+   |- pipeline/
+   |- release/
+   |- reporting/
+   `- results/
 ```
 
 ## Entry Points
 
-1. App bootstrap: [`main.py`](../../backend/app/main.py#L49)
-2. Router group modules: [`api/`](../../backend/app/api/) (registered in [`main.py`](../../backend/app/main.py#L62))
-3. ORM models: [`database_models/`](../../backend/app/database_models/)
-4. Pydantic schemas: [`schemas/`](../../backend/app/schemas/)
+1. Application bootstrap and router registration: [`main.py`](../../backend/app/main.py)
+2. Runtime configuration: [`config.py`](../../backend/app/core/config.py)
+3. Runtime path resolution for source vs packaged mode: [`runtime_paths.py`](../../backend/app/core/runtime_paths.py)
+4. Canonical derived-result identifiers and public route segments: [`artifacts.py`](../../backend/app/core/artifacts.py)
 
 ## Router Groups
 
-Registered in [`main.py`](../../backend/app/main.py#L62):
+Registered from [`main.py`](../../backend/app/main.py):
 
-1. Health: [`health_api.py`](../../backend/app/api/health/health_api.py#L5)
-2. Authentication: [`login_api.py`](../../backend/app/api/authentication/login_api.py#L16) and [`webauthn/router.py`](../../backend/app/api/authentication/webauthn/router.py#L46)
-3. Upload DICOM: [`upload_dicom_api.py`](../../backend/app/api/upload_dicom/upload_dicom_api.py#L74)
-4. Studies: [`list_studies_api.py`](../../backend/app/api/studies/list_studies_api.py#L21) and [`retrieve_study_api.py`](../../backend/app/api/studies/retrieve_study_api.py#L18)
-5. Patients: [`get_patient_by_study_uid_api.py`](../../backend/app/api/patients/get_patient_by_study_uid_api.py#L10)
-6. Inference: [`infer_panecho_api.py`](../../backend/app/api/inference/infer_panecho_api.py#L24)
-7. LLM: [`llm_report_generate_api.py`](../../backend/app/api/llm/llm_report_generate_api.py#L21)
-8. AI Results: [`api/results/`](../../backend/app/api/results/)
-9. Pipeline: [`api/pipeline/`](../../backend/app/api/pipeline/)
+1. Health: [`health_api.py`](../../backend/app/api/health/health_api.py)
+2. Admin bootstrap and user management: [`backend/app/api/admin/`](../../backend/app/api/admin/)
+3. Licensing: [`licensing_api.py`](../../backend/app/api/licensing/licensing_api.py)
+4. Authentication and WebAuthn: [`backend/app/api/authentication/`](../../backend/app/api/authentication/)
+5. DICOM upload: [`upload_dicom_api.py`](../../backend/app/api/upload_dicom/upload_dicom_api.py)
+6. Studies and instances: [`backend/app/api/studies/`](../../backend/app/api/studies/)
+7. Patient-by-study lookup: [`get_patient_by_study_uid_api.py`](../../backend/app/api/patients/get_patient_by_study_uid_api.py)
+8. Direct inference routes: [`backend/app/api/inference/`](../../backend/app/api/inference/)
+9. LLM routes: [`backend/app/api/llm/`](../../backend/app/api/llm/)
+10. Observer result routes: [`backend/app/api/results/`](../../backend/app/api/results/)
+11. Pipeline mutation and status routes: [`backend/app/api/pipeline/`](../../backend/app/api/pipeline/)
+12. Packaged-server vendor access: [`backend/app/vendor_access/`](../../backend/app/vendor_access/)
 
-## Data Model Highlights
+## Data Model
 
-Core entity graph:
+Core clinical hierarchy:
 
 1. `Patient` -> many `Study`
 2. `Study` -> many `Series`
 3. `Series` -> many `Instance`
-4. `Study` -> many `DerivedResult`
+4. `Study` and `Instance` -> many `DerivedResult`
 
-Model definitions:
+Pipeline ownership:
 
-1. [`patients.py`](../../backend/app/database_models/patients.py#L5)
-2. [`studies.py`](../../backend/app/database_models/studies.py#L6)
-3. [`series.py`](../../backend/app/database_models/series.py#L5)
-4. [`instances.py`](../../backend/app/database_models/instances.py#L6)
-5. [`derived_results.py`](../../backend/app/database_models/derived_results.py#L12)
+1. `PipelineJob` stores queue-level state.
+2. `PipelineStageRun` stores per-stage status and payload snapshots.
+3. `PipelineArtifactSet` separates `draft`, `active`, and `discarded` result sets.
 
-`Study` fields used by frontend display and indexing:
+Primary models:
 
-1. `patient_height_cm` ([`studies.py`](../../backend/app/database_models/studies.py#L16))
-2. `patient_weight_kg` ([`studies.py`](../../backend/app/database_models/studies.py#L17))
-3. `heart_rate_bpm` ([`studies.py`](../../backend/app/database_models/studies.py#L18))
+1. [`patients.py`](../../backend/app/database_models/patients.py)
+2. [`studies.py`](../../backend/app/database_models/studies.py)
+3. [`series.py`](../../backend/app/database_models/series.py)
+4. [`instances.py`](../../backend/app/database_models/instances.py)
+5. [`derived_results.py`](../../backend/app/database_models/derived_results.py)
+6. [`pipeline_jobs.py`](../../backend/app/database_models/pipeline_jobs.py)
+7. [`pipeline_stage_runs.py`](../../backend/app/database_models/pipeline_stage_runs.py)
+8. [`pipeline_artifact_sets.py`](../../backend/app/database_models/pipeline_artifact_sets.py)
+
+User activity fields:
+
+1. `users.last_login_at` stores the latest successful hospital-user login timestamp.
+2. Vendor access does not create any database user or vendor-specific audit row.
 
 ## Startup and Shutdown Lifecycle
 
-Startup behaviors in [`main.py`](../../backend/app/main.py):
+Startup in [`main.py`](../../backend/app/main.py):
 
-1. Configure CORS with env allowlist plus detected LAN origin support for same-network dev.
-2. Suppress high-volume uvicorn access logs for poll-heavy endpoints in terminal output.
-3. Mount `/uploads` static path.
-4. Start backend-owned pipeline scheduler loop.
-5. Attempt model preloads with VRAM-aware guards.
+1. Initializes schema state with [`init_db`](../../backend/app/database/setup_db.py).
+2. Runs packaged release identifier migration in release mode through [`run_release_identifier_migration`](../../backend/app/services/release/identifier_migration.py).
+3. Logs current license status and applies licensing middleware.
+4. Validates WebAuthn runtime safety.
+5. Starts the in-process pipeline scheduler.
+6. Emits LAN hints and configures CORS.
+7. Preloads primary analysis, secondary analysis, motion segmentation, and study measurements according to env and VRAM guards.
 
-Shutdown behaviors in [`main.py`](../../backend/app/main.py):
+Shutdown in [`main.py`](../../backend/app/main.py):
 
-1. Stop pipeline scheduler.
-2. Kill tracked ffmpeg processes.
-3. Unload EchoPrime, PanEcho, and measurements models when possible.
+1. Stops the pipeline scheduler.
+2. Terminates tracked ffmpeg processes.
+3. Unloads secondary analysis, primary analysis, 2D measurements, and Doppler models.
 
-## Upload and Persistence Flow
+## Upload and Persistence
 
-Primary implementation:
+Primary flow lives in [`upload_dicom_api.py`](../../backend/app/api/upload_dicom/upload_dicom_api.py):
 
-1. [`upload_dicom_api.py`](../../backend/app/api/upload_dicom/upload_dicom_api.py#L74)
+1. Persist uploaded DICOM under the backend upload root.
+2. Forward the instance to Orthanc.
+3. Read DICOM tags required for patient/study/series/instance identity.
+4. Upsert relational records in PostgreSQL.
+5. Return a normalized upload response for the renderer.
 
-Flow:
+Study deletion lives in [`delete_study_api.py`](../../backend/app/api/studies/delete_study_api.py):
 
-1. Receive and store uploaded DICOM ([`upload_dicom_api.py`](../../backend/app/api/upload_dicom/upload_dicom_api.py#L108))
-2. Send DICOM to Orthanc ([`upload_dicom_api.py`](../../backend/app/api/upload_dicom/upload_dicom_api.py#L115))
-3. Parse required tags ([`upload_dicom_api.py`](../../backend/app/api/upload_dicom/upload_dicom_api.py#L138))
-4. Upsert patient/study/series/instance rows ([`upload_dicom_api.py`](../../backend/app/api/upload_dicom/upload_dicom_api.py#L168))
-5. Return normalized upload response ([`upload_dicom_api.py`](../../backend/app/api/upload_dicom/upload_dicom_api.py#L214))
+1. Ownership is enforced before deletion.
+2. Orthanc deletion is treated as idempotent when the remote study is already missing.
+3. Local upload and derived-artifact folders are removed according to the study cleanup rules.
 
-Delete semantics:
+## Inference and Services
 
-1. Study delete is ownership-scoped and transactional in [`delete_study_api.py`](../../backend/app/api/studies/delete_study_api.py#L29).
-2. Orthanc `404` during delete is treated as idempotent success (already deleted remotely).
-3. Local study cleanup includes uploads, LV segmentation, 2D measurements, Doppler outputs, and LLM reports under `app/uploads`.
+Route files stay thin and delegate execution into service modules:
 
-## Inference and Queue/Results Flow
+1. Primary analysis: [`infer_primary_analysis_api.py`](../../backend/app/api/inference/infer_primary_analysis_api.py) -> [`primary_analysis_service.py`](../../backend/app/services/inference/primary_analysis_service.py)
+2. Secondary analysis: [`infer_secondary_analysis_api.py`](../../backend/app/api/inference/infer_secondary_analysis_api.py) -> [`secondary_analysis_service.py`](../../backend/app/services/inference/secondary_analysis_service.py)
+3. Motion segmentation: [`infer_motion_segmentation_api.py`](../../backend/app/api/inference/infer_motion_segmentation_api.py) -> [`motion_segmentation_service.py`](../../backend/app/services/inference/motion_segmentation_service.py)
+4. Linear measurements: [`infer_linear_measurements_api.py`](../../backend/app/api/inference/infer_linear_measurements_api.py) -> [`linear_measurements_service.py`](../../backend/app/services/inference/linear_measurements_service.py)
+5. Spectral measurements: [`infer_spectral_measurements_api.py`](../../backend/app/api/inference/infer_spectral_measurements_api.py) -> [`spectral_measurements_service.py`](../../backend/app/services/inference/spectral_measurements_service.py)
 
-Direct inference routes:
+Derived result identifiers and public model names are centralized in [`artifacts.py`](../../backend/app/core/artifacts.py).
 
-1. PanEcho: [`infer_panecho_api.py`](../../backend/app/api/inference/infer_panecho_api.py#L24)
-2. EchoPrime: [`infer_echoprime_api.py`](../../backend/app/api/inference/infer_echoprime_api.py#L129)
-3. EchoNet Dynamic: [`infer_echonet_dynamic_api.py`](../../backend/app/api/inference/infer_echonet_dynamic_api.py#L91)
-4. Measurements 2D: [`infer_measurements_api.py`](../../backend/app/api/inference/infer_measurements_api.py#L35)
+## Results and Pipeline Ownership
 
-AI result routes:
+The backend owns orchestration end to end:
 
-1. PanEcho+EchoPrime combined + overrides: [`combined_panecho_echoprime_api.py`](../../backend/app/api/results/combined_panecho_echoprime_api.py)
-2. Dynamic+Measurements combined: [`combined_dynamic_measurements_api.py`](../../backend/app/api/results/combined_dynamic_measurements_api.py)
-3. LLM report results: [`llm_report_get_api.py`](../../backend/app/api/results/llm_report_get_api.py)
-4. Pipeline start/status/promote/cancel/regenerate routes under [`api/pipeline/`](../../backend/app/api/pipeline/)
+1. `pipeline/start` creates or reuses a study-owned queue job.
+2. The scheduler advances `prefilter`, `combined`, `dynamic_measurements`, and optional `llm`.
+3. Result GET routes are observer-only and never enqueue work.
+4. Promote, cancel, and regenerate routes mutate draft and active artifact sets explicitly.
 
-Persistence:
+Canonical pipeline modules:
 
-1. Artifacts are stored in `DerivedResult` ([`derived_results.py`](../../backend/app/database_models/derived_results.py#L12))
-2. Combined/result rows drive frontend polling via AI result APIs.
-3. Study-level dashboard status is derived from orchestration artifacts via [`study_status.py`](../../backend/app/helpers/pipeline/study_status.py#L1)
+1. Queue service: [`service.py`](../../backend/app/services/pipeline/service.py)
+2. Scheduler lifecycle: [`scheduler.py`](../../backend/app/services/pipeline/scheduler.py)
+3. Result readers: [`read.py`](../../backend/app/services/pipeline/read.py)
+4. Cleanup rules: [`cleanup.py`](../../backend/app/services/pipeline/cleanup.py)
+5. Stage registry: [`registry.py`](../../backend/app/services/pipeline/internal/registry.py)
+6. Stage handlers: [`backend/app/services/pipeline/stages/`](../../backend/app/services/pipeline/stages/)
 
-Study status policy:
+Observer result routes:
 
-1. If any required artifact is `failed`, study status is `failed`.
-2. Else if all required artifacts are `complete`, study status is `completed`.
-3. Else study status is `processing`.
-4. Required artifacts depend on backend `ENABLE_LLM`:
-    1. Disabled: PanEcho+EchoPrime combined + Dynamic+Measurements combined.
-    2. Enabled: PanEcho+EchoPrime combined + Dynamic+Measurements combined + LLM report.
-5. `GET /api/studies` and `GET /api/studies/{study_uid}` compute effective status on read and do not commit status mutations.
+1. Study analysis: [`combined_study_analysis_api.py`](../../backend/app/api/results/combined_study_analysis_api.py)
+2. Study measurements: [`combined_dynamic_measurements_api.py`](../../backend/app/api/results/combined_dynamic_measurements_api.py)
+3. LLM report: [`llm_report_get_api.py`](../../backend/app/api/results/llm_report_get_api.py)
 
-Ownership policy:
+## Licensing and Release Hardening
 
-1. Study routes, patient-by-study route, and orchestration observer routes are all user-scoped.
-2. Non-owned `study_uid` access returns `404` to avoid cross-user data exposure.
+Licensing behavior is implemented by:
 
-## Canonical Pipeline Services
+1. Middleware gate: [`middleware.py`](../../backend/app/services/licensing/middleware.py)
+2. License state and validation: [`service.py`](../../backend/app/services/licensing/service.py)
+3. Signing helpers: [`signing.py`](../../backend/app/services/licensing/signing.py)
+4. Activation/import routes: [`licensing_api.py`](../../backend/app/api/licensing/licensing_api.py)
 
-Canonical runtime service modules now live under `backend/app/services/pipeline/`:
+Packaged release startup also runs the identifier migration service in [`identifier_migration.py`](../../backend/app/services/release/identifier_migration.py) before the scheduler starts.
 
-1. Queue service: [`service.py`](../../backend/app/services/pipeline/service.py#L1)
-2. Scheduler lifecycle: [`scheduler.py`](../../backend/app/services/pipeline/scheduler.py#L1)
-3. Result readers: [`read.py`](../../backend/app/services/pipeline/read.py#L1)
-4. Cleanup semantics: [`cleanup.py`](../../backend/app/services/pipeline/cleanup.py#L1)
-5. Stage handlers: [`stages/`](../../backend/app/services/pipeline/stages/)
-6. Internal queue helpers: [`internal/`](../../backend/app/services/pipeline/internal/)
+## Hidden Vendor Access
 
-## Canonical Integration and Reporting Services
+Packaged server builds can expose a hidden vendor access lane:
 
-Canonical non-pipeline services now live in domain folders:
+1. credentials are embedded at build time by [`generate_release_config.py`](../../backend/desktop/generate_release_config.py)
+2. runtime injection is performed by [`launcher.py`](../../backend/desktop/launcher.py)
+3. backend behavior is isolated under [`backend/app/vendor_access/`](../../backend/app/vendor_access/)
+4. vendor access is read-only and does not persist a vendor account in PostgreSQL
 
-1. LLM client: [`integrations/llm_client.py`](../../backend/app/services/integrations/llm_client.py)
-2. Orthanc client: [`integrations/orthanc_client.py`](../../backend/app/services/integrations/orthanc_client.py)
-3. LLM report service: [`reporting/llm_report_service.py`](../../backend/app/services/reporting/llm_report_service.py)
-4. WebAuthn support modules: [`auth/webauthn/`](../../backend/app/services/auth/webauthn/)
+## Observability and Runtime Paths
 
-## Error Handling and Observability
+1. Backend logging is configured in [`main.py`](../../backend/app/main.py).
+2. Source-mode logs live under `backend/app/logs`.
+3. Packaged logs, cache, upload roots, config roots, prompt templates, and model asset roots are resolved through [`runtime_paths.py`](../../backend/app/core/runtime_paths.py).
 
-Current diagnostics:
+## Operational Boundaries
 
-1. Backend log setup: [`main.py`](../../backend/app/main.py#L36)
-2. Backend log file path: [`horalix.log`](../../backend/app/logs/horalix.log)
-3. Route-level HTTP statuses for pending/complete/error flows in orchestration handlers.
-4. Startup preload logs for device/memory-aware behavior in [`main.py`](../../backend/app/main.py#L71)
-
-PostgreSQL runtime profile:
-
-1. Runtime DB connection is driven by `DATABASE_URL` in [`config.py`](../../backend/app/core/config.py).
-2. Engine uses `pool_pre_ping=True` in [`db.py`](../../backend/app/database/db.py).
-3. Backend tests use a dedicated `TEST_DATABASE_URL` and clear that DB between tests.
-
-## Backend Caveats
-
-1. Local schema/bootstrap issues should follow the Postgres runbook flows in [`RUNBOOK.md`](../RUNBOOK.md#postgresql-schema-bootstrap-or-reset).
-2. Orthanc availability is an external dependency for upload/inference.
-3. Batch/preload settings should be tuned per machine hardware in [`config.py`](../../backend/app/core/config.py#L18).
-
+1. Authentication, ownership checks, and license enforcement execute before protected study mutation and observer routes.
+2. Orthanc, PostgreSQL, OHIF, and the optional LLM runtime are external dependencies from the FastAPI process perspective.
+3. Device, batching, preload, and queue-concurrency knobs are defined in [`config.py`](../../backend/app/core/config.py).

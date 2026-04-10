@@ -9,12 +9,20 @@ try:
         PACKAGED_LICENSE_ENFORCEMENT,
         PACKAGED_LICENSE_PUBLIC_KEY_B64,
         PACKAGED_REPORTING_MODEL_ID,
+        PACKAGED_VENDOR_ACCESS_DISPLAY_NAME,
+        PACKAGED_VENDOR_ACCESS_ENABLED,
+        PACKAGED_VENDOR_ACCESS_PASSWORD_HASH,
+        PACKAGED_VENDOR_ACCESS_USERNAME,
     )
     RELEASE_CONFIG_IMPORT_ERROR = None
 except ImportError as exc:
     PACKAGED_LICENSE_ENFORCEMENT = None
     PACKAGED_LICENSE_PUBLIC_KEY_B64 = ""
     PACKAGED_REPORTING_MODEL_ID = ""
+    PACKAGED_VENDOR_ACCESS_ENABLED = False
+    PACKAGED_VENDOR_ACCESS_USERNAME = ""
+    PACKAGED_VENDOR_ACCESS_DISPLAY_NAME = ""
+    PACKAGED_VENDOR_ACCESS_PASSWORD_HASH = ""
     RELEASE_CONFIG_IMPORT_ERROR = exc
 
 FROZEN_TORCH_DYNAMO_PACKAGE = "torch._dynamo"
@@ -133,6 +141,28 @@ def configure_packaged_reporting_model() -> None:
         os.environ["REPORTING_MODEL_ID"] = embedded_reporting_model_id
 
 
+def configure_packaged_vendor_access() -> None:
+    """Embed packaged-only vendor access credentials outside the shipped runtime env."""
+    if not is_frozen_runtime():
+        return
+
+    if not PACKAGED_VENDOR_ACCESS_ENABLED:
+        os.environ["VENDOR_ACCESS_ENABLED"] = "false"
+        return
+
+    username = str(PACKAGED_VENDOR_ACCESS_USERNAME or "").strip()
+    display_name = str(PACKAGED_VENDOR_ACCESS_DISPLAY_NAME or "").strip()
+    password_hash = str(PACKAGED_VENDOR_ACCESS_PASSWORD_HASH or "").strip()
+
+    if not username or not display_name or not password_hash:
+        raise RuntimeError("Packaged backend vendor access is enabled but embedded credentials are incomplete.")
+
+    os.environ["VENDOR_ACCESS_ENABLED"] = "true"
+    os.environ["VENDOR_ACCESS_USERNAME"] = username
+    os.environ["VENDOR_ACCESS_DISPLAY_NAME"] = display_name
+    os.environ["VENDOR_ACCESS_PASSWORD_HASH"] = password_hash
+
+
 def configure_backend_runtime() -> None:
     backend_root = resolve_backend_root()
     if (not is_frozen_runtime()) and (backend_root not in sys.path):
@@ -148,6 +178,7 @@ def configure_backend_runtime() -> None:
         os.chdir(backend_root)
         configure_packaged_license_policy()
         configure_packaged_reporting_model()
+        configure_packaged_vendor_access()
         configure_frozen_matplotlib_backend()
         install_frozen_torchvision_import_guard()
 

@@ -8,6 +8,11 @@ from app.core.artifacts import (
 from app.database_models.derived_results import DerivedResult, ResultStatus
 from app.database_models.pipeline_artifact_sets import PipelineArtifactSet, PipelineArtifactSetState
 from app.helpers.auth.authentication_functions import get_current_user_id
+from app.services.auth.principal_service import (
+    get_current_auth_principal,
+    get_current_doctor_user_id,
+    get_current_study_read_principal,
+)
 
 
 def _sample_combined_value_json(*, overrides=None):
@@ -174,6 +179,16 @@ def test_llm_results_returns_404_when_llm_disabled(app, seeded_study, monkeypatc
 
 def test_results_routes_return_404_for_non_owner(app, seeded_study):
     app.dependency_overrides[get_current_user_id] = lambda: seeded_study["user_id"] + 1000
+    app.dependency_overrides[get_current_doctor_user_id] = lambda: seeded_study["user_id"] + 1000
+    non_owner_principal = {
+        "id": seeded_study["user_id"] + 1000,
+        "username": "other-doctor",
+        "role": "doctor",
+        "full_name": "Other Doctor",
+        "principal_type": "user",
+    }
+    app.dependency_overrides[get_current_auth_principal] = lambda: non_owner_principal
+    app.dependency_overrides[get_current_study_read_principal] = lambda: non_owner_principal
     client = TestClient(app)
 
     combined_response = client.get(
@@ -420,6 +435,65 @@ def test_combined_results_preview_prefers_draft_artifact_over_active(app, db_ses
     assert "integrated_tasks" not in payload
 
 
+def test_combined_results_preview_does_not_fall_back_to_active_when_draft_set_exists(
+    app,
+    db_session_factory,
+    seeded_study,
+):
+    db = db_session_factory()
+    try:
+        active_set = PipelineArtifactSet(
+            study_id=seeded_study["study_id"],
+            pipeline_job_id=None,
+            state=PipelineArtifactSetState.active,
+            input_revision=1,
+        )
+        draft_set = PipelineArtifactSet(
+            study_id=seeded_study["study_id"],
+            pipeline_job_id=None,
+            state=PipelineArtifactSetState.draft,
+            input_revision=2,
+        )
+        db.add(active_set)
+        db.add(draft_set)
+        db.flush()
+
+        db.add(
+            DerivedResult(
+                study_id=seeded_study["study_id"],
+                type=COMBINED_ANALYSIS_TYPE,
+                status=ResultStatus.complete,
+                value_json={
+                    "integrated_tasks": {
+                        "ejection_fraction": {
+                            "integrated_value": 51.0,
+                            "integrated_label": None,
+                            "units": "%",
+                            "discrepancy": False,
+                        }
+                    }
+                },
+                model_name="StudyAnalysisCombined",
+                model_version="v1",
+                artifact_set_id=active_set.id,
+            )
+        )
+        db.commit()
+    finally:
+        db.close()
+
+    client = TestClient(app)
+    response = client.get(
+        f"/api/studies/{seeded_study['study_uid']}/study-analysis-results?preview=true"
+    )
+
+    assert response.status_code == 202
+    assert response.headers.get("retry-after") == "3"
+    body = response.json()
+    assert body.get("status") == "pending"
+    assert "analysis_results" not in body
+
+
 def test_combined_results_complete_includes_display_payload(app, db_session_factory, seeded_study):
     db = db_session_factory()
     try:
@@ -570,6 +644,56 @@ def test_dynamic_results_preview_prefers_draft_artifact_over_active(app, db_sess
     instances = body.get("measurement_results", {}).get("instances", [])
     assert len(instances) == 1
     assert instances[0].get("sop_instance_uid") == "draft"
+
+
+def test_dynamic_results_preview_does_not_fall_back_to_active_when_draft_set_exists(
+    app,
+    db_session_factory,
+    seeded_study,
+):
+    db = db_session_factory()
+    try:
+        active_set = PipelineArtifactSet(
+            study_id=seeded_study["study_id"],
+            pipeline_job_id=None,
+            state=PipelineArtifactSetState.active,
+            input_revision=1,
+        )
+        draft_set = PipelineArtifactSet(
+            study_id=seeded_study["study_id"],
+            pipeline_job_id=None,
+            state=PipelineArtifactSetState.draft,
+            input_revision=2,
+        )
+        db.add(active_set)
+        db.add(draft_set)
+        db.flush()
+
+        db.add(
+            DerivedResult(
+                study_id=seeded_study["study_id"],
+                type=MEASUREMENT_WORKFLOW_TYPE,
+                status=ResultStatus.complete,
+                value_json={"instances": [{"sop_instance_uid": "active"}]},
+                model_name="StudyMeasurementsWorkflow",
+                model_version="v1",
+                artifact_set_id=active_set.id,
+            )
+        )
+        db.commit()
+    finally:
+        db.close()
+
+    client = TestClient(app)
+    response = client.get(
+        f"/api/studies/{seeded_study['study_uid']}/study-measurements-results?preview=true"
+    )
+
+    assert response.status_code == 202
+    assert response.headers.get("retry-after") == "3"
+    body = response.json()
+    assert body.get("status") == "pending"
+    assert "measurement_results" not in body
 
 
 def test_dynamic_results_complete_exposes_instance_number_and_output_path(app, db_session_factory, seeded_study):

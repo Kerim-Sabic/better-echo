@@ -19,8 +19,8 @@ from app.database_models.studies import Study
 from app.database_models.series import Series
 from app.database_models.instances import Instance
 from app.schemas.upload_dicom.upload_dicom_schemas import UploadDicomResponseSchema
-from app.helpers.auth.authentication_functions import get_current_user_id
 from app.core.artifacts import UPLOAD_DIR
+from app.services.auth.principal_service import get_current_doctor_user_id
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -74,7 +74,7 @@ def _clean_for_ui(tags: dict) -> dict:
 @router.post("/upload-dicom", response_model=UploadDicomResponseSchema)
 async def upload_dicom(file: UploadFile = File(...),
                        db: Session = Depends(get_db),
-                       current_user_id: int = Depends(get_current_user_id)):
+                       current_user_id: int = Depends(get_current_doctor_user_id)):
     """
     Upload a DICOM file, send it to Orthanc, and persist Patient/Study/Series/Instance metadata.
 

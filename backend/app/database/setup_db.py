@@ -2,10 +2,31 @@
 
 import argparse
 
+from sqlalchemy import inspect, text
+
 from app.database.db import Base, engine
 
 # IMPORTANT: DO NOT REMOVE!! import models so they register with Base.metadata
 from app.database_models import *  # noqa: F401,F403
+
+
+def _ensure_users_last_login_column() -> None:
+    """Keep pre-production databases aligned with the current `users` schema."""
+    inspector = inspect(engine)
+    if "users" not in inspector.get_table_names():
+        return
+
+    existing_columns = {column["name"] for column in inspector.get_columns("users")}
+    if "last_login_at" in existing_columns:
+        return
+
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "ALTER TABLE users "
+                "ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMP WITH TIME ZONE NULL"
+            )
+        )
 
 
 def init_db(drop: bool = False):
@@ -16,6 +37,7 @@ def init_db(drop: bool = False):
 
     print("Creating tables...")
     Base.metadata.create_all(bind=engine)
+    _ensure_users_last_login_column()
     print("Database initialized: tables created/verified.")
 
 

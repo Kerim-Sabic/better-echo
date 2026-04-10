@@ -3,6 +3,7 @@ from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from app.database.db import Base
 
+
 class User(Base):
     __tablename__ = "users"
 
@@ -12,6 +13,7 @@ class User(Base):
     full_name = Column(String, nullable=True)
     role = Column(String, default="doctor")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    last_login_at = Column(DateTime(timezone=True), nullable=True)
 
     studies = relationship(
         "Study",
