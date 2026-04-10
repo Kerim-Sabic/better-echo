@@ -15,7 +15,7 @@ from app.core.artifacts import (
     MOTION_SEGMENTATION_UPLOAD_DIRNAME,
     UPLOAD_DIR,
 )
-from app.core.runtime_paths import model_assets_dir
+from app.core.runtime_paths import ensure_model_assets_available, model_asset_path
 from app.database_models.derived_results import DerivedResult
 from app.database_models.instances import Instance
 from app.helpers.inference_runtime.batch_config import get_batch_size
@@ -33,7 +33,7 @@ model = None
 device: torch.device | None = None
 
 CHECKPOINT_PATH = os.path.normpath(
-    os.path.join(str(model_assets_dir("motion_segmentation")), "best.pt")
+    str(model_asset_path("motion_segmentation", "checkpoint"))
 )
 MOTION_SEGMENTATION_UPLOAD_DIR = os.path.normpath(
     os.path.join(UPLOAD_DIR, MOTION_SEGMENTATION_UPLOAD_DIRNAME)
@@ -46,6 +46,8 @@ def load_motion_segmentation_model():
     global model, device
     if model is None:
         import torchvision
+
+        ensure_model_assets_available("motion_segmentation", ("checkpoint",))
 
         if device is None:
             device = get_device_for_model("motion_segmentation")

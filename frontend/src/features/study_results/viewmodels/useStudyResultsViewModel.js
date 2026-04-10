@@ -48,7 +48,12 @@ export function useStudyResultsViewModel(
   const isVendorAccess = accessMode === "vendor";
 
   // Fetches the study-level metadata used for the page header/PDF context.
-  const { data: studyDetails = null } = useStudyDetailsQuery(studyUid);
+  const {
+    data: studyDetails = null,
+    isLoading: isStudyDetailsLoading,
+    isFetching: isStudyDetailsFetching,
+  } = useStudyDetailsQuery(studyUid);
+  const llmEnabled = Boolean(studyDetails?.llmEnabled);
 
   // --- Part 1. Query and normalize all study-results server state. ---
   const {
@@ -78,7 +83,7 @@ export function useStudyResultsViewModel(
     error: llmReportError,
     refetch: refetchLlmReport,
   } = useLlmReportResultsQuery(studyUid, {
-    enabled: Boolean(studyUid),
+    enabled: Boolean(studyUid && llmEnabled),
   });
 
   const studyAnalysisCombinedResultsState =
@@ -89,9 +94,10 @@ export function useStudyResultsViewModel(
     dynamicMeasurementsQueryData?.state ??
     (isDynamicMeasurementsLoading ? "loading" : dynamicMeasurementsError ? "error" : "idle");
 
-  const llmReportResultsState =
-    llmReportQueryData?.state ??
-    (isLlmReportLoading ? "loading" : llmReportError ? "error" : "idle");
+  const llmReportResultsState = llmEnabled
+    ? llmReportQueryData?.state ??
+      (isLlmReportLoading ? "loading" : llmReportError ? "error" : "idle")
+    : "disabled";
 
   const studyAnalysisCombinedResultsData =
     studyAnalysisQueryData?.studyAnalysisCombinedResults ?? null;
@@ -108,30 +114,39 @@ export function useStudyResultsViewModel(
     studyUid,
     studyAnalysisCombinedResultsState,
     studyAnalysisCombinedResultsData,
+    llmEnabled,
     llmReportResultsState,
     llmReportResultsData,
     readOnlySupport: isVendorAccess,
   });
 
   // --- Part 3. Derive page-level UI state and build the OHIF bridge payload. ---
-  const studyResultsState = resolveOverallState([
-    studyAnalysisCombinedResultsState,
-    dynamicMeasurementsCombinedResultsState,
-    llmReportResultsState,
-  ]);
+  const studyResultsState = resolveOverallState(
+    llmEnabled
+      ? [
+          studyAnalysisCombinedResultsState,
+          dynamicMeasurementsCombinedResultsState,
+          llmReportResultsState,
+        ]
+      : [
+          studyAnalysisCombinedResultsState,
+          dynamicMeasurementsCombinedResultsState,
+        ]
+  );
 
   const anyLoading =
+    isStudyDetailsLoading ||
+    isStudyDetailsFetching ||
     isStudyAnalysisLoading ||
     isStudyAnalysisFetching ||
     isDynamicMeasurementsLoading ||
     isDynamicMeasurementsFetching ||
-    isLlmReportLoading ||
-    isLlmReportFetching;
+    (llmEnabled && (isLlmReportLoading || isLlmReportFetching));
 
   const isPolling =
     studyAnalysisCombinedResultsState === "pending" ||
     dynamicMeasurementsCombinedResultsState === "pending" ||
-    llmReportResultsState === "pending";
+    (llmEnabled && llmReportResultsState === "pending");
 
   const ohifAiPayload = useMemo(
     () =>
@@ -139,6 +154,7 @@ export function useStudyResultsViewModel(
         studyUid,
         studyAnalysisCombinedResultsState,
         studyAnalysisCombinedResultsData,
+        llmReportEnabled: llmEnabled,
         llmReportResultsState,
         llmReportResultsData,
         llmReportResultsDetail,
@@ -148,6 +164,7 @@ export function useStudyResultsViewModel(
       studyUid,
       studyAnalysisCombinedResultsState,
       studyAnalysisCombinedResultsData,
+      llmEnabled,
       llmReportResultsState,
       llmReportResultsData,
       llmReportResultsDetail,
@@ -189,9 +206,9 @@ export function useStudyResultsViewModel(
       studyResultsState,
       studyAnalysisCombinedResultsState,
       studyAnalysisCombinedResultsData,
-      llmReportResultsState,
-      llmReportResultsData,
-      llmReportResultsDetail,
+      llmReportResultsState: llmEnabled ? llmReportResultsState : "disabled",
+      llmReportResultsData: llmEnabled ? llmReportResultsData : null,
+      llmReportResultsDetail: llmEnabled ? llmReportResultsDetail : null,
       studyAnalysisEditorViewModel,
     });
   }, [
@@ -200,6 +217,7 @@ export function useStudyResultsViewModel(
     studyResultsState,
     studyAnalysisCombinedResultsState,
     studyAnalysisCombinedResultsData,
+    llmEnabled,
     llmReportResultsState,
     llmReportResultsData,
     llmReportResultsDetail,
@@ -236,8 +254,10 @@ export function useStudyResultsViewModel(
   const refetchStudyResults = useCallback(() => {
     refetchStudyAnalysis();
     refetchDynamicMeasurements();
-    refetchLlmReport();
-  }, [refetchStudyAnalysis, refetchDynamicMeasurements, refetchLlmReport]);
+    if (llmEnabled) {
+      refetchLlmReport();
+    }
+  }, [llmEnabled, refetchStudyAnalysis, refetchDynamicMeasurements, refetchLlmReport]);
 
   return {
     studyUid,
@@ -252,6 +272,7 @@ export function useStudyResultsViewModel(
     llmReportResultsState,
     llmReportResultsData,
     llmReportResultsDetail,
+    llmEnabled,
 
     anyLoading,
     isPolling,
@@ -262,7 +283,7 @@ export function useStudyResultsViewModel(
     studyAnalysisEditorViewModel,
 
     canPrintAiMeasurementsDocument: Boolean(studyUid),
-    canPrintAiReportDocument: Boolean(studyUid),
+    canPrintAiReportDocument: Boolean(studyUid && llmEnabled),
     printAiMeasurementsDocument,
     printAiReportDocument,
 

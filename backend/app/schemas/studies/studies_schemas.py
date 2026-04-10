@@ -31,6 +31,7 @@ class StudySchema(BaseModel):
 
 
 class StudyDetailsSchema(StudySchema):
+    llm_enabled: bool = False
     study_time: Optional[str] = None
     accession_number: Optional[str] = None
     referring_physician_name: Optional[str] = None

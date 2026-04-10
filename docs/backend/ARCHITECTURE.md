@@ -1,6 +1,6 @@
 # Backend Architecture
 
-Last Updated: 2026-04-06  
+Last Updated: 2026-04-10  
 Owner: Backend
 
 ## Scope
@@ -45,7 +45,7 @@ backend/app/
 
 1. Application bootstrap and router registration: [`main.py`](../../backend/app/main.py)
 2. Runtime configuration: [`config.py`](../../backend/app/core/config.py)
-3. Runtime path resolution for source vs packaged mode: [`runtime_paths.py`](../../backend/app/core/runtime_paths.py)
+3. Runtime path resolution and logical model asset mapping for source vs packaged mode: [`runtime_paths.py`](../../backend/app/core/runtime_paths.py)
 4. Canonical derived-result identifiers and public route segments: [`artifacts.py`](../../backend/app/core/artifacts.py)
 
 ## Router Groups
@@ -191,6 +191,7 @@ Packaged server builds can expose a hidden vendor access lane:
 1. Backend logging is configured in [`main.py`](../../backend/app/main.py).
 2. Source-mode logs live under `backend/app/logs`.
 3. Packaged logs, cache, upload roots, config roots, prompt templates, and model asset roots are resolved through [`runtime_paths.py`](../../backend/app/core/runtime_paths.py).
+4. Runtime inference code reads logical asset names from [`runtime_paths.py`](../../backend/app/core/runtime_paths.py) so source-mode filenames and packaged aliases stay decoupled.
 
 ## Operational Boundaries
 

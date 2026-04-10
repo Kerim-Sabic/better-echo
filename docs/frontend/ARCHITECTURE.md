@@ -1,6 +1,6 @@
 # Frontend Architecture
 
-Last Updated: 2026-04-04  
+Last Updated: 2026-04-10  
 Owner: Frontend
 
 ## Scope
@@ -110,6 +110,12 @@ Its dependencies are:
 
 `EchocardiographyViewer.jsx` hosts the OHIF iframe and remounts it when the derived-DICOM refresh token changes, which is how the renderer picks up new derived series after study measurements complete.
 
+Study Results feature availability is driven by study metadata:
+
+1. [`useStudyDetailsQuery.js`](../../frontend/src/features/study_results/tanstack/queries/useStudyDetailsQuery.js) reads `llm_enabled`
+2. [`useStudyResultsViewModel.js`](../../frontend/src/features/study_results/viewmodels/useStudyResultsViewModel.js) suppresses the AI Report lane when LLM is disabled
+3. [`ohifAiPayloadSerializer.js`](../../frontend/src/features/study_results/viewmodels/ohifAiPayloadSerializer.js) passes that capability into the embedded OHIF panel
+
 ## Dashboard, Login, and New Study
 
 Other page flows follow the same layering pattern:
@@ -132,6 +138,7 @@ Shared renderer pieces live outside feature folders:
 1. Global title bar, splash, runtime-config gate, and shared UI primitives under [`frontend/src/general_components/`](../../frontend/src/general_components/)
 2. Shared API client and endpoint wrappers under [`frontend/src/api/`](../../frontend/src/api/)
 3. Theme, branding, and WebAuthn helpers under [`frontend/src/lib/`](../../frontend/src/lib/)
+4. Public branding asset URLs are resolved through [`branding.js`](../../frontend/src/lib/branding.js) so nested browser routes, print previews, and packaged `file://` renderer paths use the same logic
 
 ## Testing Surface
 

@@ -78,6 +78,7 @@ export function useStudyAnalysisEditorViewModel({
   studyUid,
   studyAnalysisCombinedResultsState,
   studyAnalysisCombinedResultsData,
+  llmEnabled = false,
   llmReportResultsState,
   llmReportResultsData,
   readOnlySupport = false,
@@ -258,6 +259,7 @@ export function useStudyAnalysisEditorViewModel({
 
   const canRegenerateAiReport = Boolean(
     studyUid &&
+      llmEnabled &&
       hasStudyAnalysisOverrides &&
       studyAnalysisCombinedResultsState === "ready" &&
       llmReportResultsState !== "pending" &&
@@ -274,6 +276,10 @@ export function useStudyAnalysisEditorViewModel({
       throw new Error("A study UID is required.");
     }
 
+    if (!llmEnabled) {
+      throw new Error("AI Report generation is disabled.");
+    }
+
     if (!hasStudyAnalysisOverrides) {
       throw new Error(
         "At least one override is required before regenerating the AI Report."
@@ -284,6 +290,7 @@ export function useStudyAnalysisEditorViewModel({
   }, [
     generateLlmReportMutation,
     hasStudyAnalysisOverrides,
+    llmEnabled,
     readOnlySupport,
     studyUid,
   ]);

@@ -87,7 +87,12 @@ def _extract_study_details_metadata(study: Study) -> dict:
     return metadata
 
 
-def _study_to_dict(study: Study, *, status: str | None = None) -> StudyDetailsSchema:
+def _study_to_dict(
+    study: Study,
+    *,
+    status: str | None = None,
+    llm_enabled: bool = False,
+) -> StudyDetailsSchema:
     metadata = _extract_study_details_metadata(study)
 
     return StudyDetailsSchema.model_validate(
@@ -109,6 +114,7 @@ def _study_to_dict(study: Study, *, status: str | None = None) -> StudyDetailsSc
                 "patient_birth_date": study.patient.patient_birth_date,
             },
             "diagnoses": None,
+            "llm_enabled": llm_enabled,
             "study_time": metadata["study_time"],
             "accession_number": metadata["accession_number"],
             "referring_physician_name": metadata["referring_physician_name"],
@@ -144,5 +150,5 @@ def retrieve_study(
     derived_statuses = status_by_type(study.derived_results or [])
     effective_status = compute_study_status(llm_enabled, derived_statuses)
 
-    return _study_to_dict(study, status=effective_status)
+    return _study_to_dict(study, status=effective_status, llm_enabled=llm_enabled)
 
