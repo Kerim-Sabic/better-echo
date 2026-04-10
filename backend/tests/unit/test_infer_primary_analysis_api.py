@@ -16,11 +16,11 @@ def test_infer_primary_analysis_falls_back_to_orthanc_when_local_read_fails(
 
         # Part 1. Use a single deterministic instance id for this test.
         monkeypatch.setattr(
-            "app.api.inference.infer_primary_analysis_api.fetch_orthanc_instance_ids_from_study",
+            "app.services.inference.primary_analysis_service.fetch_orthanc_instance_ids_from_study",
             lambda _study_uid: ["orthanc-instance-1"],
         )
         monkeypatch.setattr(
-            "app.api.inference.infer_primary_analysis_api._local_file_path_map",
+            "app.services.inference.primary_analysis_service._local_file_path_map",
             lambda **_: {"orthanc-instance-1": "C:/nonexistent/local-instance.dcm"},
         )
 
@@ -34,16 +34,16 @@ def test_infer_primary_analysis_falls_back_to_orthanc_when_local_read_fails(
             return [Image.new("RGB", (224, 224), "black") for _ in range(16)]
 
         monkeypatch.setattr(
-            "app.api.inference.infer_primary_analysis_api.pick_frames_from_local_dicom",
+            "app.services.inference.primary_analysis_service.pick_frames_from_local_dicom",
             _fail_local_read,
         )
         monkeypatch.setattr(
-            "app.api.inference.infer_primary_analysis_api.pick_frames_from_instance",
+            "app.services.inference.primary_analysis_service.pick_frames_from_instance",
             _orthanc_read,
         )
 
         monkeypatch.setattr(
-            "app.api.inference.infer_primary_analysis_api.stack_to_tensor",
+            "app.services.inference.primary_analysis_service.stack_to_tensor",
             lambda _frames: torch.zeros((1, 3, 16, 224, 224), dtype=torch.float32),
         )
 
@@ -53,7 +53,7 @@ def test_infer_primary_analysis_falls_back_to_orthanc_when_local_read_fails(
                 return {"metric": torch.ones((batch_size,), dtype=torch.float32)}
 
         monkeypatch.setattr(
-            "app.api.inference.infer_primary_analysis_api.get_model_and_device",
+            "app.services.inference.primary_analysis_service.get_model_and_device",
             lambda: (_DummyPrimaryAnalysisModel(), torch.device("cpu")),
         )
 

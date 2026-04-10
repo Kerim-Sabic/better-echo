@@ -41,6 +41,10 @@ export default function ServerAdminPage() {
     return <Navigate to="/login" replace />;
   }
 
+  if (vm.principalType === "vendor") {
+    return <Navigate to="/vendor-admin" replace />;
+  }
+
   return (
     <div className="bg-background text-foreground" style={{ minHeight: `calc(100vh - ${TITLEBAR_HEIGHT}px)` }}>
       <main className="container mx-auto px-6 py-6">
@@ -52,7 +56,9 @@ export default function ServerAdminPage() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" onClick={vm.onReturnToDashboard}>Back to Dashboard</Button>
+            <Button variant="outline" onClick={vm.onRefreshPage} disabled={vm.isPageLoading}>
+              {vm.isPageLoading ? "Refreshing..." : "Refresh"}
+            </Button>
             {vm.user ? (
               <Button variant="ghost" onClick={vm.onLogout}>Logout</Button>
             ) : (

@@ -11,7 +11,6 @@ from app.core.artifacts import (
     MEASUREMENT_RESULTS_ROUTE_SEGMENT,
     MEASUREMENT_WORKFLOW_TYPES,
 )
-from app.helpers.auth.authentication_functions import get_current_user_id
 from app.helpers.row_to_dict.dynamic_measurements_combined_results_row_to_dict import combined_results_row_to_dict
 from app.schemas.results.combined_dynamic_measurements_schemas import (
     CombinedResultsResponse,
@@ -19,10 +18,11 @@ from app.schemas.results.combined_dynamic_measurements_schemas import (
     PendingResponse,
     FailedResponse,
 )
+from app.services.auth.principal_service import get_current_study_read_principal
 from app.services.pipeline.read import (
     get_result_row_for_read_mode,
     get_latest_stage_failure_detail,
-    get_study_or_404,
+    get_study_or_404_for_principal,
 )
 
 logger = logging.getLogger(__name__)
@@ -38,7 +38,7 @@ def get_dynamic_measurements_combined_results(
     study_uid: str,
     preview: bool = Query(False, description="Return latest draft artifacts when available"),
     db: Session = Depends(get_db),
-    current_user_id: int = Depends(get_current_user_id),
+    current_principal: dict[str, object] = Depends(get_current_study_read_principal),
 ):
     """
     Observer-only dynamic/measurements combined results endpoint.
@@ -50,7 +50,11 @@ def get_dynamic_measurements_combined_results(
     4. Otherwise return pending without side effects.
     """
     # Part 1. Resolve study and preview-aware row.
-    study = get_study_or_404(db=db, study_uid=study_uid, user_id=current_user_id)
+    study = get_study_or_404_for_principal(
+        db=db,
+        study_uid=study_uid,
+        current_principal=current_principal,
+    )
     dynamic_row = get_result_row_for_read_mode(
         db=db,
         study_id=study.id,

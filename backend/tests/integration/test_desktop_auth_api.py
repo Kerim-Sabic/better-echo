@@ -75,6 +75,14 @@ def test_desktop_login_returns_bearer_token_and_admin_routes_accept_it(db_sessio
     assert admin_users_response.status_code == 200
     assert admin_users_response.json()["total_users"] == 1
 
+    db = db_session_factory()
+    try:
+        user = db.query(User).filter(User.id == admin_id).first()
+        assert user is not None
+        assert user.last_login_at is not None
+    finally:
+        db.close()
+
 
 def test_browser_login_keeps_cookie_only_response_shape(db_session_factory):
     _seed_admin_user(db_session_factory)

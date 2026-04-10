@@ -171,3 +171,35 @@ def test_configure_packaged_license_policy_rejects_disabled_embedded_policy(monk
 
     with pytest.raises(RuntimeError, match="mandatory embedded license enforcement"):
         launcher.configure_packaged_license_policy()
+
+
+def test_configure_packaged_vendor_access_sets_embedded_values(monkeypatch):
+    launcher = _load_launcher_module()
+    monkeypatch.setattr(launcher, "is_frozen_runtime", lambda: True)
+    monkeypatch.setattr(launcher, "PACKAGED_VENDOR_ACCESS_ENABLED", True)
+    monkeypatch.setattr(launcher, "PACKAGED_VENDOR_ACCESS_USERNAME", "vendor_shadow")
+    monkeypatch.setattr(launcher, "PACKAGED_VENDOR_ACCESS_DISPLAY_NAME", "Vendor Shadow")
+    monkeypatch.setattr(launcher, "PACKAGED_VENDOR_ACCESS_PASSWORD_HASH", "hashed-secret")
+    monkeypatch.delenv("VENDOR_ACCESS_ENABLED", raising=False)
+    monkeypatch.delenv("VENDOR_ACCESS_USERNAME", raising=False)
+    monkeypatch.delenv("VENDOR_ACCESS_DISPLAY_NAME", raising=False)
+    monkeypatch.delenv("VENDOR_ACCESS_PASSWORD_HASH", raising=False)
+
+    launcher.configure_packaged_vendor_access()
+
+    assert launcher.os.environ["VENDOR_ACCESS_ENABLED"] == "true"
+    assert launcher.os.environ["VENDOR_ACCESS_USERNAME"] == "vendor_shadow"
+    assert launcher.os.environ["VENDOR_ACCESS_DISPLAY_NAME"] == "Vendor Shadow"
+    assert launcher.os.environ["VENDOR_ACCESS_PASSWORD_HASH"] == "hashed-secret"
+
+
+def test_configure_packaged_vendor_access_rejects_incomplete_embedded_values(monkeypatch):
+    launcher = _load_launcher_module()
+    monkeypatch.setattr(launcher, "is_frozen_runtime", lambda: True)
+    monkeypatch.setattr(launcher, "PACKAGED_VENDOR_ACCESS_ENABLED", True)
+    monkeypatch.setattr(launcher, "PACKAGED_VENDOR_ACCESS_USERNAME", "")
+    monkeypatch.setattr(launcher, "PACKAGED_VENDOR_ACCESS_DISPLAY_NAME", "Vendor Shadow")
+    monkeypatch.setattr(launcher, "PACKAGED_VENDOR_ACCESS_PASSWORD_HASH", "hashed-secret")
+
+    with pytest.raises(RuntimeError, match="vendor access is enabled but embedded credentials are incomplete"):
+        launcher.configure_packaged_vendor_access()

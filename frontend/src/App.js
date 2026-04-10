@@ -13,6 +13,8 @@ import LoginPage from "@/features/login/views/LoginPage";
 import DashboardPage from "@/features/dashboard/views/DashboardPage";
 import NewStudyPage from "@/features/new_study/views/NewStudyPage";
 import StudyResultsPage from "@/features/study_results/views/StudyResultsPage";
+import VendorStudyResultsPage from "@/features/vendor_access/views/VendorStudyResultsPage";
+import VendorAdminPage from "@/features/vendor_access/views/VendorAdminPage";
 import ServerAdminPage from "@/features/server_admin/views/ServerAdminPage";
 import { useElectronRuntimeConfig } from "@/hooks/useElectronRuntimeConfig";
 import { getRuntimeDisplayName } from "@/lib/branding";
@@ -47,7 +49,8 @@ function Shell() {
     const { runtimeConfig } = useElectronRuntimeConfig();
     const onSplash = location.pathname === "/";
     const onStudyResults =
-        /^\/studies\/[^/]+$/.test(location.pathname) && location.pathname !== "/studies/new";
+        (/^\/studies\/[^/]+$/.test(location.pathname) && location.pathname !== "/studies/new") ||
+        /^\/vendor-admin\/studies\/[^/]+$/.test(location.pathname);
     const contentStyle = {
         height: `calc(100vh - ${TITLEBAR_HEIGHT}px)`,
         marginTop: `${TITLEBAR_HEIGHT}px`,
@@ -73,10 +76,28 @@ function Shell() {
             <Route path="/server-admin" element={<ServerAdminPage />} />
 
             {/* App */}{/*Protected routes */}
-            <Route element={<ProtectedRoute />}>
+            <Route
+              element={
+                <ProtectedRoute
+                  allowedPrincipalTypes={["user"]}
+                  allowedUserRoles={["doctor"]}
+                />
+              }
+            >
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/studies/new" element={<NewStudyPage />} />
                 <Route path="/studies/:studyUid" element={<StudyResultsPage />} />
+            </Route>
+            <Route
+              element={
+                <ProtectedRoute
+                  allowedPrincipalTypes={["vendor"]}
+                  requireServerRuntime
+                />
+              }
+            >
+                <Route path="/vendor-admin" element={<VendorAdminPage />} />
+                <Route path="/vendor-admin/studies/:studyUid" element={<VendorStudyResultsPage />} />
             </Route>
 
             {/* Fallback */}

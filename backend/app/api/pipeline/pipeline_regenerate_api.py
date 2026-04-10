@@ -5,10 +5,10 @@ from sqlalchemy.orm import Session
 
 from app.database.db import get_db
 from app.database_models.pipeline_jobs import PipelineCleanupScope, PipelineRunMode
-from app.helpers.auth.authentication_functions import get_current_user_id
 from app.schemas.pipeline.pipeline_regenerate_schemas import (
     PipelineRegenerateResponse,
 )
+from app.services.auth.principal_service import get_current_doctor_user_id
 from app.services.pipeline.service import start_pipeline_job
 
 router = APIRouter()
@@ -21,7 +21,7 @@ router = APIRouter()
 def pipeline_regenerate_combined(
     study_uid: str,
     db: Session = Depends(get_db),
-    current_user_id: int = Depends(get_current_user_id),
+    current_user_id: int = Depends(get_current_doctor_user_id),
 ):
     """
     Enqueue regenerate-combined queue run for an owned study.

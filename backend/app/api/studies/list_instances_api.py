@@ -7,7 +7,7 @@ import logging
 from app.database.db import get_db
 from app.database_models.studies import Study
 from app.database_models.instances import Instance
-from app.helpers.auth.authentication_functions import get_current_user_id
+from app.services.auth.principal_service import get_current_doctor_user_id
 from app.schemas.studies.studies_schemas import InstanceResponse
 
 
@@ -19,7 +19,7 @@ router = APIRouter()
 def list_instances(
     study_uid: str,
     db: Session = Depends(get_db),
-    current_user_id: int = Depends(get_current_user_id),
+    current_user_id: int = Depends(get_current_doctor_user_id),
 ):
     """
     List all instances for a given Study UID.

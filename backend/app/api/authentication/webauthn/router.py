@@ -41,6 +41,12 @@ from app.services.auth.webauthn.credentials import (
 from app.services.auth.webauthn.encoding import b64url, b64url_to_bytes, serialize_options
 from app.services.auth.webauthn.fido import server_for_request
 from app.services.auth.webauthn.state import pending_auth, pending_register
+from app.services.auth.login_activity_service import mark_user_last_login
+from app.services.auth.principal_service import (
+    USER_PRINCIPAL_TYPE,
+    build_user_token_payload,
+    serialize_user_auth_principal,
+)
 
 
 router = APIRouter(tags=["WebAuthn"])
@@ -309,12 +315,7 @@ def complete_authenticate(
         pass
 
     # --- Step 5: Issue auth cookie and return user info ---
-    token_payload = {
-        "sub": str(user.id),
-        "username": user.username,
-        "role": user.role,
-        "full_name": user.full_name,
-    }
+    token_payload = build_user_token_payload(user)
     auth_token_expires = timedelta(hours=settings.TOKEN_EXPIRE_HOURS)
     auth_token = create_token(token_payload, auth_token_expires)
     response.set_cookie(
@@ -324,15 +325,11 @@ def complete_authenticate(
         samesite="lax",
         secure=False,
     )
+    mark_user_last_login(db, user)
 
     return {
         "message": "Authentication successful",
-        "user": {
-            "id": user.id,
-            "username": user.username,
-            "role": user.role,
-            "full_name": user.full_name,
-        },
+        "user": serialize_user_auth_principal(user),
         "auth_token": auth_token if is_desktop_client_request(request) else None,
     }
 

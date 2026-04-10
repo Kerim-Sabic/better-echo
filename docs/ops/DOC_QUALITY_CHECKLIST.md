@@ -37,7 +37,8 @@ Use this checklist before merging docs-heavy changes.
 
 1. Setup/run docs point to root README + `docs/ops/SETUP_FIRST_RUN.md`.
 2. API contract changes update `docs/API_SCHEMA_NOTES.md`.
-3. Canonical docs do not contain active task boards or unfinished plan docs.
+3. Canonical docs follow `docs/DOCS_MAINTENANCE.md`.
+4. Canonical docs do not contain active task boards or unfinished plan docs.
 
 ## Repository Scope Checks
 

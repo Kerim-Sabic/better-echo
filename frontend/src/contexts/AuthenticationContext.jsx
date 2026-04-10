@@ -1,6 +1,7 @@
 import { createContext, useState, useEffect, useCallback } from "react";
 import { checkAuthApi, loginApi, logoutApi } from "@/api/authentication";
 import { clearDesktopAuthToken } from "@/api/desktopAuth";
+import { formatAuthResponse } from "@/features/login/model/login.dto";
 import { getBackendUrl } from "../config/api";
 
 export const AuthContext = createContext();
@@ -43,7 +44,7 @@ export const AuthProvider = ({ children }) => {
             const healthy = await waitForHealth();
             if (healthy && hasSessionHint()) {
                 const response = await checkAuthApi();
-                setUser(response.user);
+                setUser(formatAuthResponse(response).user);
             } else {
                 setUser(null);
             }
@@ -65,7 +66,7 @@ export const AuthProvider = ({ children }) => {
     // LOGIN - instantly update context
     const login = async (username, password) => {
         const response = await loginApi(username, password);
-        setUser(response.user);
+        setUser(formatAuthResponse(response).user);
         try { localStorage.setItem(SESSION_HINT_KEY, "1"); } catch {}
         return response;
     };

@@ -80,6 +80,7 @@ export function useStudyAnalysisEditorViewModel({
   studyAnalysisCombinedResultsData,
   llmReportResultsState,
   llmReportResultsData,
+  readOnlySupport = false,
 }) {
   // --- Part 1. Initialize mutation hooks and derive edit-related source data. ---
   const patchStudyAnalysisOverridesMutation =
@@ -109,7 +110,7 @@ export function useStudyAnalysisEditorViewModel({
     Object.keys(studyAnalysisOverrides).length > 0;
 
   const canEditStudyAnalysisMeasurements = Boolean(
-    studyUid && studyAnalysisCombinedResultsState === "ready"
+    studyUid && studyAnalysisCombinedResultsState === "ready" && !readOnlySupport
   );
 
   // --- Part 2. Expose override lookup helpers and override save/reset actions. ---
@@ -139,6 +140,10 @@ export function useStudyAnalysisEditorViewModel({
 
   const saveStudyAnalysisOverride = useCallback(
     async (key, overridePayload) => {
+      if (readOnlySupport) {
+        throw new Error("Vendor access is read-only.");
+      }
+
       if (!canEditStudyAnalysisMeasurements) {
         throw new Error("Study analysis results are not ready.");
       }
@@ -169,6 +174,7 @@ export function useStudyAnalysisEditorViewModel({
     [
       canEditStudyAnalysisMeasurements,
       patchStudyAnalysisOverridesMutation,
+      readOnlySupport,
       studyUid,
     ]
   );
@@ -189,6 +195,10 @@ export function useStudyAnalysisEditorViewModel({
 
   const clearStudyAnalysisOverride = useCallback(
     async key => {
+      if (readOnlySupport) {
+        throw new Error("Vendor access is read-only.");
+      }
+
       if (!canEditStudyAnalysisMeasurements) {
         throw new Error("Study analysis results are not ready.");
       }
@@ -216,6 +226,7 @@ export function useStudyAnalysisEditorViewModel({
     [
       canEditStudyAnalysisMeasurements,
       patchStudyAnalysisOverridesMutation,
+      readOnlySupport,
       studyUid,
     ]
   );
@@ -250,10 +261,15 @@ export function useStudyAnalysisEditorViewModel({
       hasStudyAnalysisOverrides &&
       studyAnalysisCombinedResultsState === "ready" &&
       llmReportResultsState !== "pending" &&
+      !readOnlySupport &&
       !generateLlmReportMutation.isPending
   );
 
   const regenerateAiReport = useCallback(async () => {
+    if (readOnlySupport) {
+      throw new Error("Vendor access is read-only.");
+    }
+
     if (!studyUid) {
       throw new Error("A study UID is required.");
     }
@@ -268,6 +284,7 @@ export function useStudyAnalysisEditorViewModel({
   }, [
     generateLlmReportMutation,
     hasStudyAnalysisOverrides,
+    readOnlySupport,
     studyUid,
   ]);
 

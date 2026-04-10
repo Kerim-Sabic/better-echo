@@ -23,8 +23,9 @@ Canonical repository documentation lives under `docs/`.
 ## Standards
 
 1. [Style Guide](./STYLE_GUIDE.md)
-2. [Doc Quality Checklist](./ops/DOC_QUALITY_CHECKLIST.md)
-3. [ADR Index](./adr/README.md)
+2. [Docs Maintenance](./DOCS_MAINTENANCE.md)
+3. [Doc Quality Checklist](./ops/DOC_QUALITY_CHECKLIST.md)
+4. [ADR Index](./adr/README.md)
 
 ## Doc Rules
 

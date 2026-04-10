@@ -5,6 +5,7 @@ import {
 } from "@/general_components/utility/dataShapeUtils";
 import { formatDateTime } from "@/general_components/utility/dateUtils";
 import { formatDicomTagStudyDate } from "@/general_components/utility/dicomTagsUtils";
+import { DYNAMIC_MEASUREMENTS_PENDING_VIEWER_TOKEN } from "./studyResults.constants";
 
 // Maps backend/http status into the frontend page/query state used by the ViewModels.
 function deriveCombinedState(responseStatus, backendStatus) {
@@ -176,7 +177,7 @@ export function formatDynamicMeasurementsCombinedResultsDto(rawApiResponse) {
         ? buildDynamicMeasurementsViewerRefreshToken(
             rawData.dynamic_measurements_results
           )
-        : "dynamic-measurements-not-ready",
+        : DYNAMIC_MEASUREMENTS_PENDING_VIEWER_TOKEN,
   };
 }
 

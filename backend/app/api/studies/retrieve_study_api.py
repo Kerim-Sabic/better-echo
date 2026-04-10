@@ -7,12 +7,13 @@ import pydicom
 from app.database.db import get_db
 from app.database_models.studies import Study
 from app.schemas.studies.studies_schemas import StudyDetailsSchema
-from app.helpers.auth.authentication_functions import get_current_user_id
 from app.helpers.pipeline.study_status import (
     compute_study_status,
     is_llm_enabled,
     status_by_type,
 )
+from app.services.auth.principal_service import get_current_study_read_principal
+from app.services.pipeline.read import get_study_or_404_for_principal
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -123,7 +124,7 @@ def _study_to_dict(study: Study, *, status: str | None = None) -> StudyDetailsSc
 def retrieve_study(
     study_uid: str,
     db: Session = Depends(get_db),
-    current_user_id: int = Depends(get_current_user_id),
+    current_principal: dict[str, object] = Depends(get_current_study_read_principal),
 ):
     """
     Retrieve a single study by UID for the authenticated user.
@@ -133,13 +134,11 @@ def retrieve_study(
     2. Query the database for the Study row where `study_uid` and `user_id` match.
     3. Return the study serialized to the same shape as the list endpoint, or 404 if not found.
     """
-    study = (
-        db.query(Study)
-        .filter(Study.study_uid == study_uid, Study.user_id == current_user_id)
-        .first()
+    study = get_study_or_404_for_principal(
+        db=db,
+        study_uid=study_uid,
+        current_principal=current_principal,
     )
-    if not study:
-        raise HTTPException(status_code=404, detail="Study not found")
 
     llm_enabled = is_llm_enabled()
     derived_statuses = status_by_type(study.derived_results or [])

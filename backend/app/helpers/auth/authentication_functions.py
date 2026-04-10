@@ -11,6 +11,8 @@ from app.core.artifacts import AUTH_COOKIE_NAME
 
 
 logger = logging.getLogger(__name__)
+USER_PRINCIPAL_TYPE = "user"
+VENDOR_PRINCIPAL_TYPE = "vendor"
 
 # --- Password hashing context --------------------------------------
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -81,6 +83,13 @@ def get_current_auth_payload(request: Request) -> Dict[str, Any]:
 def get_current_user_id(request: Request) -> int:
     # Part 1. Resolve the auth payload from the incoming request.
     payload = get_current_auth_payload(request)
+    principal_type = payload.get("principal_type") or USER_PRINCIPAL_TYPE
+
+    if principal_type == VENDOR_PRINCIPAL_TYPE:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Not found",
+        )
 
     # Part 2. Take the user_id from the payload.
     user_id = payload.get("sub")

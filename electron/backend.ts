@@ -8,6 +8,7 @@ let backendPort: number | null = null;
 
 const DEFAULT_PACKAGED_BACKEND_HOST = '0.0.0.0';
 const DEFAULT_PACKAGED_BACKEND_PORT = 8000;
+const DEFAULT_BACKEND_HEALTH_HOST = '127.0.0.1';
 
 function resolvePackagedBackendHost(env: NodeJS.ProcessEnv): string {
     const configuredHost = String(env.BACKEND_HOST || '').trim();
@@ -52,12 +53,35 @@ function ensurePortAvailable(host: string, port: number): Promise<void> {
     });
 }
 
-async function waitForBackendHealth(port: number, maxAttempts = 30): Promise<boolean> {
+function resolveBackendHealthHost(host: string): string {
+    const normalizedHost = String(host || '').trim();
+    if (
+        !normalizedHost ||
+        normalizedHost === '0.0.0.0' ||
+        normalizedHost === '::' ||
+        normalizedHost === '[::]'
+    ) {
+        return DEFAULT_BACKEND_HEALTH_HOST;
+    }
+
+    return normalizedHost;
+}
+
+function formatHttpHost(host: string): string {
+    if (host.includes(':') && !host.startsWith('[')) {
+        return `[${host}]`;
+    }
+
+    return host;
+}
+
+async function waitForBackendHealth(host: string, port: number, maxAttempts = 30): Promise<boolean> {
+    const healthHost = formatHttpHost(resolveBackendHealthHost(host));
     for (let i = 0; i < maxAttempts; i++) {
         try {
-            const response = await axios.get(`http://127.0.0.1:${port}/api/health`, { timeout: 1000 });
+            const response = await axios.get(`http://${healthHost}:${port}/api/health`, { timeout: 1000 });
             if (response.status === 200) {
-                console.log(`Backend health check passed on port ${port}`);
+                console.log(`Backend health check passed on ${healthHost}:${port}`);
                 return true;
             }
         } catch {
@@ -118,7 +142,7 @@ export async function startBackend(options: { isDev: boolean; devPort: number; r
         backendProcess = null;
     });
 
-    const healthOk = await waitForBackendHealth(backendPort);
+    const healthOk = await waitForBackendHealth(backendHost, backendPort);
     if (!healthOk) {
         throw new Error('Backend failed to start - health check timeout');
     }

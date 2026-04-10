@@ -43,6 +43,17 @@ export function useLoginPageViewModel() {
     setUser(formattedLoginResponse.user);
     persistSessionHint();
     const returnPath = location.state?.from?.pathname;
+    if (formattedLoginResponse.user?.principalType === "vendor") {
+      navigate("/vendor-admin", { replace: true });
+      return;
+    }
+    if (
+      formattedLoginResponse.user?.role === "admin" &&
+      runtimeConfig?.runtimeMode === "server"
+    ) {
+      navigate("/server-admin", { replace: true });
+      return;
+    }
     navigate(returnPath || "/dashboard");
   };
 

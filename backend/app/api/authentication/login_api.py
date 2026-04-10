@@ -13,6 +13,18 @@ from app.helpers.auth.authentication_functions import (
 from app.core.config import settings
 from app.schemas.authentication.authentication_schemas import LoginRequest, AuthResponse
 from app.core.artifacts import AUTH_COOKIE_NAME
+from app.services.auth.login_activity_service import mark_user_last_login
+from app.services.auth.principal_service import (
+    USER_PRINCIPAL_TYPE,
+    build_user_token_payload,
+    build_vendor_token_payload,
+    serialize_user_auth_principal,
+)
+from app.vendor_access.service import (
+    VENDOR_ACCESS_PRINCIPAL_TYPE,
+    authenticate_vendor_access,
+    serialize_vendor_access_principal,
+)
 
 router = APIRouter(tags=["Authentication"])
 
@@ -36,11 +48,27 @@ def login(
     """
     # --- Step 1: Validate user credentials ---
     user = db.query(User).filter(User.username == data.username).first()
-    if not user or not verify_password(data.password, user.hashed_password):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    
-    # --- Step 2: Build token payload ---
-    token_payload = {"sub": str(user.id), "username": user.username, "role": user.role, "full_name": user.full_name}
+    principal_type = USER_PRINCIPAL_TYPE
+    auth_principal = None
+
+    if user:
+        if not verify_password(data.password, user.hashed_password):
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+
+        token_payload = build_user_token_payload(user)
+        auth_principal = serialize_user_auth_principal(user)
+        mark_user_last_login(db, user)
+    else:
+        vendor_profile = authenticate_vendor_access(
+            username=data.username,
+            password=data.password,
+        )
+        if vendor_profile is None:
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+
+        principal_type = VENDOR_ACCESS_PRINCIPAL_TYPE
+        token_payload = build_vendor_token_payload(vendor_profile)
+        auth_principal = serialize_vendor_access_principal(vendor_profile)
 
     # --- Step 3: Create JWT token ---
     auth_token_expires = timedelta(hours=settings.TOKEN_EXPIRE_HOURS)
@@ -57,12 +85,7 @@ def login(
 
     # --- Step 5: Return user info ---
     return {
-        "message": "Login successful",
-        "user": {
-            "id": user.id,
-            "username": user.username,
-            "role": user.role,
-            "full_name": user.full_name
-        },
+        "message": "Login successful" if principal_type == USER_PRINCIPAL_TYPE else "Vendor access login successful",
+        "user": auth_principal,
         "auth_token": auth_token if is_desktop_client_request(request) else None,
     }

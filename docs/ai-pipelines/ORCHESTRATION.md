@@ -1,206 +1,165 @@
 # AI Pipelines and Orchestration
 
-Last Updated: 2026-03-18  
+Last Updated: 2026-04-04  
 Owner: AI/Backend
 
 ## Scope
 
-How inference and orchestration stages are triggered, persisted, and exposed to StudyResults.
+How the backend pipeline is triggered, how stages persist artifacts, and how Study Results consumes those artifacts.
 
 ## Pipeline Stages
 
-1. Upload and index DICOM data.
-2. Queue prefilter and routing map (hard compatibility checks + confidence gate + Doppler short-circuit).
-3. EchoPrime view classification pass.
-4. EchoPrime metrics pass (gated set).
-5. PanEcho metrics pass (gated set).
-6. Build PanEcho+EchoPrime combined artifact.
-7. Build Dynamic+Measurements combined artifact (EchoNet + 2D + Doppler lanes).
-8. Generate LLM report artifact (optional by config).
+The queue stage order is defined in [`service.py`](../../backend/app/services/pipeline/service.py):
 
-## Trigger Model
-
-Backend queue owns orchestration progression:
-
-1. `POST /api/studies/{study_uid}/pipeline/start` enqueues/reuses a study-owned job.
-2. In-process scheduler advances queue stages server-side.
-3. `GET /api/studies/{study_uid}/pipeline/status` is observer-only status/telemetry.
-
-Legacy orchestration result endpoints remain for result retrieval, but are now observer-only:
-
-1. `/api/studies/{study_uid}/PanEcho-EchoPrime-combined-results`
-2. `/api/studies/{study_uid}/Dynamic-Measurements-combined-results`
-3. `/api/studies/{study_uid}/llm-report-results`
-
-They do not enqueue or progress pipeline stages.
-
-Queue foundation (implemented):
-
-1. `POST /api/studies/{study_uid}/pipeline/start` creates/reuses one study-owned queue job.
-2. `GET /api/studies/{study_uid}/pipeline/status` returns observer-only job + stage state.
-3. In-process scheduler loop progresses queue jobs server-side.
-4. Queue jobs write to draft artifact sets and expose stage payload snapshots for observers.
-5. Draft/active artifact boundary now exists:
-1. queue start creates `draft` artifact set for the job
-2. existing study-level artifacts are assigned to `active` set baseline
-3. status payload exposes both sets for observer reads
-
-Promote/cancel additions:
-
-1. `POST /api/studies/{study_uid}/pipeline/promote` promotes latest completed draft set to active atomically.
-2. `POST /api/studies/{study_uid}/pipeline/cancel` supports:
-1. immediate cancel for queued/completed preview jobs
-2. cooperative cancel request for running jobs (`cancel_requested_at` checkpoint)
-3. cleanup scopes (`none`, `append_delta`, `new_study`) applied by backend cleanup service.
-
-Stage/routing additions:
-
-1. Queue worker now executes real stage handlers:
 1. `prefilter`
 2. `combined`
 3. `dynamic_measurements`
 4. optional `llm`
-2. Prefilter routing now enforces:
-1. hard compatibility checks
-2. spectral Doppler short-circuit
-3. global confidence gate via `PIPELINE_VIEW_CONFIDENCE_MIN` (default `0.75`)
-3. Combined and dynamic stages now persist draft-scoped artifacts directly through queue execution.
 
-Regenerate additions:
+Stage handlers are resolved through [`registry.py`](../../backend/app/services/pipeline/internal/registry.py) and implemented under [`backend/app/services/pipeline/stages/`](../../backend/app/services/pipeline/stages/).
 
-1. `POST /api/studies/{study_uid}/pipeline/regenerate-combined` is implemented.
-2. Regenerate requires an active combined baseline (`409` when missing).
-3. Successful regenerate auto-promotes the job draft artifact set to active.
-4. Failed regenerate keeps previous active artifact set unchanged.
-5. Combined regenerate preserves clinician override map while refreshing AI raw values.
+## Stage Responsibilities
 
-Implementation references:
+### `prefilter`
 
-1. PanEcho+EchoPrime route: [`combined_panecho_echoprime_api.py`](../../backend/app/api/results/combined_panecho_echoprime_api.py)
-2. Dynamic+Measurements route: [`combined_dynamic_measurements_api.py`](../../backend/app/api/results/combined_dynamic_measurements_api.py)
-3. LLM report results route: [`llm_report_get_api.py`](../../backend/app/api/results/llm_report_get_api.py)
-4. Queue start route: [`pipeline_start_api.py`](../../backend/app/api/pipeline/pipeline_start_api.py)
-5. Queue status route: [`pipeline_status_api.py`](../../backend/app/api/pipeline/pipeline_status_api.py)
-6. Queue service (canonical): [`service.py`](../../backend/app/services/pipeline/service.py#L1)
-7. Queue scheduler (canonical): [`scheduler.py`](../../backend/app/services/pipeline/scheduler.py#L1)
-8. Queue promote route: [`pipeline_promote_api.py`](../../backend/app/api/pipeline/pipeline_promote_api.py)
-9. Queue cancel route: [`pipeline_cancel_api.py`](../../backend/app/api/pipeline/pipeline_cancel_api.py)
-10. Queue cleanup service (canonical): [`cleanup.py`](../../backend/app/services/pipeline/cleanup.py#L1)
-11. Queue stage registry/handlers (canonical): [`registry.py`](../../backend/app/services/pipeline/internal/registry.py#L1), [`stages/`](../../backend/app/services/pipeline/stages/)
-12. Prefilter routing helper: [`pipeline_routing.py`](../../backend/app/helpers/pipeline/pipeline_routing.py#L64)
-13. Queue regenerate route: [`pipeline_regenerate_api.py`](../../backend/app/api/pipeline/pipeline_regenerate_api.py)
+Responsibilities:
 
-Service path note:
+1. validate study ownership and prerequisite records
+2. run route and compatibility checks
+3. classify views for study-analysis and study-measurements routing
+4. short-circuit spectral Doppler candidates into the spectral lane
 
-1. Canonical runtime imports target modules under `backend/app/services/pipeline/`.
+Primary implementation:
 
-## Persistence Contract
+1. [`pipeline_routing.py`](../../backend/app/helpers/pipeline/pipeline_routing.py)
 
-All pipeline artifacts are persisted in `DerivedResult` rows with:
+### `combined`
 
-1. `type`
-2. `status`
-3. `value_json`
-4. `study_id`
-5. optional `instance_id`
+Responsibilities:
 
-Model reference:
+1. run primary and secondary analysis for eligible study instances
+2. aggregate predictions into one study-analysis payload
+3. persist the combined result row for the draft artifact set
 
-1. [`derived_results.py`](../../backend/app/database_models/derived_results.py#L12)
+Primary implementation:
 
-Frontend consumes normalized payloads from orchestration endpoints rather than reading raw DB structures.
+1. [`combined.py`](../../backend/app/services/pipeline/stages/combined.py)
 
-## Orchestration State Semantics
+### `dynamic_measurements`
 
-1. `pending`:
-1. HTTP `202` + retry semantics.
-2. `complete`:
-1. HTTP `200` + result payload.
-3. `failed`:
-1. HTTP `200` + failed payload with `detail` when failure is known.
+Responsibilities:
 
-## LLM Report Stage
+1. run motion segmentation where eligible
+2. run linear measurements where eligible
+3. run spectral measurements where eligible
+4. persist study-level measurement workflow status plus per-instance derived artifacts
 
-LLM generation prerequisites:
+Primary implementation:
 
-1. PanEcho+EchoPrime combined row must be complete.
-2. Dynamic+Measurements combined row must be complete.
+1. [`dynamic_measurements.py`](../../backend/app/services/pipeline/stages/dynamic_measurements.py)
 
-On completion:
+### `llm`
 
-1. LLM report row is written to `DerivedResult`.
-2. Study status may be finalized to `completed`.
+Responsibilities:
 
-Implementation references:
+1. build report context from completed study-analysis and study-measurements artifacts
+2. generate the report through the configured LLM client
+3. persist the report summary artifact
 
-1. LLM generation endpoint: [`llm_report_generate_api.py`](../../backend/app/api/llm/llm_report_generate_api.py#L22)
-2. Background job: [`generate_llm_report.py`](../../backend/app/background_tasks/generate_llm_report.py#L30)
+Primary implementation:
 
-## LLM Context Enrichment Contract
+1. [`llm.py`](../../backend/app/services/pipeline/stages/llm.py)
 
-Context payload for report generation is built from combined results and includes:
+## Trigger Model
 
-1. `patient.sex` (normalized from study patient metadata).
-2. Task-level `range_status` for measurement tasks (`normal`, `borderline`, `abnormal`, or null).
-3. Override-aware task values/labels and discrepancy metadata.
+Pipeline progression is backend-owned:
 
-Implementation references:
+1. `POST /api/studies/{study_uid}/pipeline/start` creates or reuses a queue job.
+2. `GET /api/studies/{study_uid}/pipeline/status` is observer-only.
+3. `POST /api/studies/{study_uid}/pipeline/promote` promotes a completed draft artifact set.
+4. `POST /api/studies/{study_uid}/pipeline/cancel` cancels or requests cancellation of the latest active job.
+5. `POST /api/studies/{study_uid}/pipeline/regenerate-combined` runs a combined-only refresh against the active baseline.
 
-1. Context builder: [`build_combined_sections_for_llm`](../../backend/app/helpers/row_to_dict/combined_results_row_to_dict.py#L67)
-2. Range-status derivation: [`measurement_ranges.py`](../../backend/app/helpers/clinical/measurement_ranges.py#L153)
+Result routes remain observer-only:
 
-## Deterministic LLM Report Controls
+1. `GET /api/studies/{study_uid}/study-analysis-results`
+2. `GET /api/studies/{study_uid}/study-measurements-results`
+3. `GET /api/studies/{study_uid}/llm-report-results`
 
-LLM report generation uses deterministic configuration knobs:
+## Persistence Model
 
-1. `LLM_TEMPERATURE_REPORT`
-2. `LLM_TOP_P_REPORT`
-3. `LLM_SEED_REPORT`
+Queue state:
 
-Configuration and usage references:
+1. `PipelineJob` stores one study-owned queue job.
+2. `PipelineStageRun` stores per-stage status, payload snapshot, and failure detail.
 
-1. Config defaults: [`config.py`](../../backend/app/core/config.py#L45)
-2. Runtime call wiring: [`llm_report_service.py`](../../backend/app/services/reporting/llm_report_service.py)
+Artifact state:
+
+1. `PipelineArtifactSet` stores `draft`, `active`, and `discarded` result sets.
+2. `DerivedResult` rows belong either to an artifact set or to rows without `artifact_set_id`.
+3. Result readers in [`read.py`](../../backend/app/services/pipeline/read.py) resolve preview vs active reads for observer routes.
+
+Public derived result identifiers are defined in [`artifacts.py`](../../backend/app/core/artifacts.py).
+
+## Run Modes and Cleanup
+
+Run modes:
+
+1. upload preview
+2. regenerate combined
+
+Cleanup scopes:
+
+1. `none`
+2. `append_delta`
+3. `new_study`
+
+The queue service applies cleanup semantics through [`cleanup.py`](../../backend/app/services/pipeline/cleanup.py).
+
+## Frontend Consumption
+
+Study Results uses:
+
+1. study-analysis observer query
+2. study-measurements observer query
+3. LLM report observer query
+4. pipeline status query
+
+Primary renderer files:
+
+1. [`useStudyResultsViewModel.js`](../../frontend/src/features/study_results/viewmodels/useStudyResultsViewModel.js)
+2. [`studyResultsRepository.js`](../../frontend/src/features/study_results/model/studyResultsRepository.js)
+3. [`studyResults.dto.js`](../../frontend/src/features/study_results/model/studyResults.dto.js)
+4. [`ohifAiPayloadSerializer.js`](../../frontend/src/features/study_results/viewmodels/ohifAiPayloadSerializer.js)
+5. [`EchocardiographyViewer.jsx`](../../frontend/src/features/study_results/components/EchocardiographyViewer.jsx)
+
+The renderer uses preview reads for live pipeline progress and remounts the viewer iframe when the derived-DICOM refresh token changes.
+
+## LLM Prerequisites
+
+The `llm` stage depends on:
+
+1. a complete study-analysis artifact
+2. a complete study-measurements artifact
+3. `ENABLE_LLM=true`
+
+Report generation is exposed both through pipeline completion and the explicit route in [`llm_report_generate_api.py`](../../backend/app/api/llm/llm_report_generate_api.py).
 
 ## Performance Controls
 
-Env-driven controls in backend config:
+Runtime knobs are configured in [`config.py`](../../backend/app/core/config.py):
 
-1. Per-model preload toggles.
-2. Warmup toggles.
-3. Batch sizes.
-4. Device selection (`auto`, `cpu`, `cuda:<index>`).
-5. Queue routing confidence gate (`PIPELINE_VIEW_CONFIDENCE_MIN`).
+1. preload toggles and warmup flags
+2. batch sizes
+3. device preferences
+4. queue poll interval
+5. queue max active studies
+6. view confidence threshold
 
-Operational note:
+The queue scheduler itself is started and stopped in [`main.py`](../../backend/app/main.py) through [`scheduler.py`](../../backend/app/services/pipeline/scheduler.py).
 
-1. Tune these values per hardware profile and VRAM limits.
-2. `PIPELINE_MAX_ACTIVE_STUDIES=1` remains the conservative default for low-VRAM systems.
+## Failure Semantics
 
-Config reference:
-
-1. [`config.py`](../../backend/app/core/config.py#L18)
-
-## Failure Modes
-
-1. Orthanc unavailable:
-1. upload/inference pipeline breaks.
-2. low VRAM:
-1. preloads skipped and latency increases.
-3. schema drift:
-1. orchestration endpoints may fail at query/serialization boundaries.
-4. LLM service unavailable:
-1. core measurements can still complete while LLM report remains pending/unavailable.
-
-## Frontend Integration Points
-
-StudyResults query hooks:
-
-1. [`usePanechoEchoprimeResultsQuery.js`](../../frontend/src/features/StudyResults/hooks/queries/usePanechoEchoprimeResultsQuery.js#L9)
-2. [`useDynamicMeasurementsResultsQuery.js`](../../frontend/src/features/StudyResults/hooks/queries/useDynamicMeasurementsResultsQuery.js#L9)
-3. [`useLlmReportResultsQuery.js`](../../frontend/src/features/StudyResults/hooks/queries/useLlmReportResultsQuery.js#L9)
-
-Aggregator hook:
-
-1. [`useStudyResultsData.js`](../../frontend/src/features/StudyResults/hooks/useStudyResultsData.js#L8)
-
+1. Failed stage rows surface through pipeline status.
+2. Observer result routes surface explicit failed rows or latest stage failure details.
+3. Promote and regenerate operations enforce draft/active baseline rules at the queue-service level.

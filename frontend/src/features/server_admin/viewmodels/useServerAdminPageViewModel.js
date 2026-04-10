@@ -87,6 +87,7 @@ export function useServerAdminPageViewModel() {
 
   const isServerRuntime = runtimeConfig?.runtimeMode === "server";
   const isAdmin = user?.role === "admin";
+  const principalType = user?.principalType || user?.principal_type || "user";
   const bootstrapRequired = Boolean(setupStatus?.bootstrap_required);
   const seatUsageLabel = setupStatus
     ? `${setupStatus.total_users} / ${setupStatus.max_users} users used`
@@ -343,9 +344,22 @@ export function useServerAdminPageViewModel() {
     navigate("/login", { state: { from: { pathname: "/server-admin" } } });
   }, [navigate]);
 
-  const onReturnToDashboard = useCallback(() => {
-    navigate("/dashboard");
-  }, [navigate]);
+  const onRefreshPage = useCallback(async () => {
+    clearNotice();
+    setLoadingState(current => ({ ...current, page: true }));
+    try {
+      const nextSetupStatus = await loadSetupState();
+      if (!nextSetupStatus.bootstrap_required && user?.role === "admin") {
+        await loadUsers();
+      } else {
+        setUsers([]);
+      }
+    } catch (error) {
+      setErrorMessage(readErrorMessage(error, "Failed to refresh server admin state."));
+    } finally {
+      setLoadingState(current => ({ ...current, page: false }));
+    }
+  }, [clearNotice, loadSetupState, loadUsers, user?.role]);
 
   const onLogout = useCallback(async () => {
     clearNotice();
@@ -363,6 +377,7 @@ export function useServerAdminPageViewModel() {
     isRuntimeLoading,
     isServerRuntime,
     isPageLoading: loadingState.page,
+    principalType,
     setupStatus,
     licenseStatus,
     users,
@@ -396,7 +411,7 @@ export function useServerAdminPageViewModel() {
     onUpdateUserSubmit,
     onDeleteUser,
     onGoToLogin,
-    onReturnToDashboard,
+    onRefreshPage,
     onLogout,
   };
 }

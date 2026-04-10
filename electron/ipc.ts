@@ -61,19 +61,6 @@ export function registerIpcHandlers(
     return resolveRuntimeConfig(getBackendPort(), process.env, persistedConfig);
   });
 
-  ipcMain.handle('get-backend-url', () => {
-    const runtimeConfig = resolveRuntimeConfig(
-      getBackendPort(),
-      process.env,
-      readPersistedClientRuntimeConfig()
-    );
-    if (!runtimeConfig.backendBaseUrl) {
-      throw new Error(`Backend base URL is not configured for ${runtimeConfig.runtimeMode} mode`);
-    }
-
-    return runtimeConfig.backendBaseUrl;
-  });
-
   ipcMain.handle('backend:isHealthy', async () => {
     const healthUrl = resolveBackendHealthUrl(
       getBackendPort(),
@@ -125,6 +112,39 @@ export function registerIpcHandlers(
       }
 
       await fs.promises.writeFile(filePath, contents, 'utf-8');
+      return { canceled: false, filePath };
+    }
+  );
+
+  ipcMain.handle(
+    'save-binary-file',
+    async (
+      _event,
+      payload: {
+        suggestedName?: string;
+        base64Contents: string;
+        title?: string;
+        filters?: Array<{ name: string; extensions: string[] }>;
+      }
+    ) => {
+      const suggestedName = payload?.suggestedName || 'download.bin';
+      const base64Contents = String(payload?.base64Contents || '');
+      const title = payload?.title || 'Save File';
+      const filters = Array.isArray(payload?.filters) && payload.filters.length
+        ? payload.filters
+        : [{ name: 'All Files', extensions: ['*'] }];
+
+      const { canceled, filePath } = await dialog.showSaveDialog({
+        title,
+        defaultPath: path.join(app.getPath('documents'), suggestedName),
+        filters,
+      });
+
+      if (canceled || !filePath) {
+        return { canceled: true };
+      }
+
+      await fs.promises.writeFile(filePath, Buffer.from(base64Contents, 'base64'));
       return { canceled: false, filePath };
     }
   );
