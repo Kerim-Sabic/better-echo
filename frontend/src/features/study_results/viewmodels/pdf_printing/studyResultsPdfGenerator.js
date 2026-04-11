@@ -1,5 +1,7 @@
 import { getPublicAssetUrl } from "@/lib/branding";
 
+const PDF_LOGO_ASSET_PATH = "/horalix-pdf-logo.png";
+
 const PRINT_STYLES = `
   :root {
     color-scheme: light;
@@ -796,7 +798,7 @@ function renderPatientFieldCell(label, value, options = {}) {
 }
 
 function renderPatientHeaderBlock(data, { reportTitle, reportSubtitle, includeFindingsSummary }) {
-  const logoUrl = getPublicAssetUrl("/horalix-pdf-logo.png");
+  const logoUrl = data.logoUrl || getPublicAssetUrl(PDF_LOGO_ASSET_PATH);
   const findingsSummaryText = includeFindingsSummary
     ? `${data.aiMeasurements.totalMeasurements} measurements · ${data.aiMeasurements.summary.borderlineCount} borderline · ${data.aiMeasurements.summary.criticalCount} critical`
     : null;
@@ -865,6 +867,33 @@ function renderPatientHeaderBlock(data, { reportTitle, reportSubtitle, includeFi
       }
     </section>
   `;
+}
+
+async function resolvePrintLogoUrl() {
+  const logoUrl = getPublicAssetUrl(PDF_LOGO_ASSET_PATH);
+
+  if (typeof window === "undefined" || typeof window.fetch !== "function") {
+    return logoUrl;
+  }
+
+  try {
+    const response = await window.fetch(logoUrl);
+    if (!response.ok) {
+      return logoUrl;
+    }
+
+    const blob = await response.blob();
+    const dataUrl = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(blob);
+    });
+
+    return typeof dataUrl === "string" ? dataUrl : logoUrl;
+  } catch {
+    return logoUrl;
+  }
 }
 
 function findMeasurementSection(data, sectionTitle) {
@@ -1195,9 +1224,15 @@ export async function openAiMeasurementsPrintPreview(studyResultsPdfData) {
     return;
   }
 
+  const logoUrl = await resolvePrintLogoUrl();
+  const printData = {
+    ...studyResultsPdfData,
+    logoUrl,
+  };
+
   const html = buildDocumentHtml(
-    renderMeasurementsDocumentPages(studyResultsPdfData),
-    studyResultsPdfData
+    renderMeasurementsDocumentPages(printData),
+    printData
   );
 
   await openPrintPreview({
@@ -1213,9 +1248,15 @@ export async function openAiReportPrintPreview(studyResultsPdfData) {
     return;
   }
 
+  const logoUrl = await resolvePrintLogoUrl();
+  const printData = {
+    ...studyResultsPdfData,
+    logoUrl,
+  };
+
   const html = buildDocumentHtml(
-    renderNarrativeDocumentPages(studyResultsPdfData),
-    studyResultsPdfData
+    renderNarrativeDocumentPages(printData),
+    printData
   );
 
   await openPrintPreview({
