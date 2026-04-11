@@ -16,6 +16,7 @@ from app.core.artifacts import (
     UPLOAD_DIR,
 )
 from app.core.config import settings
+from app.core.runtime_paths import ensure_model_assets_available
 from app.database_models.derived_results import DerivedResult
 from app.database_models.instances import Instance
 from app.database_models.series import Series
@@ -41,6 +42,10 @@ def get_secondary_analysis_model() -> Any:
         return _ep
     with _ep_lock:
         if _ep is None:
+            ensure_model_assets_available(
+                "secondary_analysis",
+                ("repo_root", "encoder_checkpoint", "view_classifier_checkpoint"),
+            )
             from app.AI_models.EchoPrime.echo_prime import EchoPrime
 
             start = time.time()

@@ -2,6 +2,7 @@ export function buildStudyResultsOhifAiPayload({
   studyUid,
   studyAnalysisCombinedResultsState,
   studyAnalysisCombinedResultsData,
+  llmReportEnabled,
   llmReportResultsState,
   llmReportResultsData,
   llmReportResultsDetail,
@@ -44,6 +45,7 @@ export function buildStudyResultsOhifAiPayload({
         studyAnalysisEditorViewModel?.regenerateAiReportErrorMessage ?? null,
     },
 
+    llmReportEnabled,
     llmReportResultsState,
     llmReportResultsDetail,
     llmEchoReport,

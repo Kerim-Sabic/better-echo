@@ -13,7 +13,11 @@ import pydicom
 from pathlib import Path
 
 from app.core.config import settings
-from app.core.runtime_paths import cache_dir, model_assets_dir
+from app.core.runtime_paths import (
+    cache_dir,
+    ensure_model_assets_available,
+    model_assets_dir,
+)
 from app.helpers.inference_runtime.device_selector import get_device_for_model
 
 logger = logging.getLogger(__name__)
@@ -211,6 +215,8 @@ def get_model_and_device() -> Tuple[torch.nn.Module, torch.device]:
         _device = get_device_for_model("primary_analysis")
         start = time.time()
         logger.info(f"[INFERENCE_FUNCTIONS] Loading primary analysis model on device: {_device}")
+
+        ensure_model_assets_available("primary_analysis", ("repo_root", "weights_checkpoint"))
         
         # Local bundled runtime repo path (vendored)
         local_repo_dir = model_assets_dir("primary_analysis").resolve()

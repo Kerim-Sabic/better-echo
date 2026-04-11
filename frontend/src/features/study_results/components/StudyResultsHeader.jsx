@@ -96,15 +96,16 @@ export default function StudyResultsHeader({ studyResultsPageViewModel }) {
           <span className="hidden sm:inline">Print AI Measurements</span>
         </Button>
 
-        <Button
-          variant="outline"
-          onClick={printAiReportDocument}
-          disabled={!canPrintAiReportDocument}
-          className="gap-2 border-white/20 bg-white/5 text-slate-100 hover:bg-white/10 hover:text-white"
-        >
-          <Printer className="w-4 h-4" />
-          <span className="hidden sm:inline">Print AI Report</span>
-        </Button>
+        {canPrintAiReportDocument ? (
+          <Button
+            variant="outline"
+            onClick={printAiReportDocument}
+            className="gap-2 border-white/20 bg-white/5 text-slate-100 hover:bg-white/10 hover:text-white"
+          >
+            <Printer className="w-4 h-4" />
+            <span className="hidden sm:inline">Print AI Report</span>
+          </Button>
+        ) : null}
 
         <Button
           variant="outline"

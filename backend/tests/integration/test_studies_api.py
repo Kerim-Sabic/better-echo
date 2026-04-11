@@ -83,6 +83,7 @@ def test_retrieve_study_computes_effective_status_without_persisting(app, db_ses
 
     assert response.status_code == 200
     assert response.json().get("status") == "completed"
+    assert response.json().get("llm_enabled") is False
 
     db = db_session_factory()
     try:
@@ -153,6 +154,20 @@ def test_retrieve_study_includes_pdf_metadata_from_source_dicom(
     assert body.get("indication") == "Dyspnea workup"
     assert body.get("machine_name") == "Vivid E95"
     assert body.get("modality") == "US"
+
+
+def test_retrieve_study_exposes_llm_enabled_when_available(
+    app,
+    seeded_study,
+    monkeypatch,
+):
+    monkeypatch.setenv("ENABLE_LLM", "true")
+
+    client = TestClient(app)
+    response = client.get(f"/api/studies/{seeded_study['study_uid']}")
+
+    assert response.status_code == 200
+    assert response.json().get("llm_enabled") is True
 
 
 def test_delete_study_deletes_study_and_patient_when_last_study(app, db_session_factory, seeded_study, monkeypatch):

@@ -1,6 +1,6 @@
 # API Schema Notes
 
-Last Updated: 2026-04-06  
+Last Updated: 2026-04-10  
 Owner: Backend/API
 
 ## Scope
@@ -117,9 +117,10 @@ Study detail fields used by the renderer:
 1. `patient_height_cm`
 2. `patient_weight_kg`
 3. `heart_rate_bpm`
-4. `patient.patient_name`
-5. `patient.patient_sex`
-6. `patient.patient_birth_date`
+4. `llm_enabled`
+5. `patient.patient_name`
+6. `patient.patient_sex`
+7. `patient.patient_birth_date`
 
 Frontend clients:
 
@@ -188,6 +189,12 @@ Each result GET route accepts `preview=true|false`:
 2. `preview=false` reads the active artifact set
 
 The frontend study-results wrappers under [`frontend/src/api/get_study_results_apis/`](../frontend/src/api/get_study_results_apis/) use preview reads for live pipeline progress.
+
+LLM-off behavior:
+
+1. `GET /api/studies/{study_uid}` exposes `llm_enabled`
+2. the renderer suppresses the LLM report lane when `llm_enabled=false`
+3. `GET /api/studies/{study_uid}/llm-report-results` still returns `404` when LLM is disabled
 
 ### Study Analysis Payload
 

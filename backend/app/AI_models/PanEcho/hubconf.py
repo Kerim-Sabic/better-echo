@@ -6,6 +6,8 @@ import torch
 
 from pathlib import Path
 
+from app.core.runtime_paths import model_asset_path
+
 # NumPy 2.0 compatibility for dependencies that expect np.float_ / np.complex_
 if not hasattr(np, "float_"):
     np.float_ = np.float64
@@ -48,7 +50,7 @@ def load_primary_analysis_model(pretrained=True, image_encoder_only=False, backb
 
     # Load pretrained weights
     if pretrained:
-        ckpt_path = Path(__file__).parent / "weights" / "model.pt"
+        ckpt_path = model_asset_path("primary_analysis", "weights_checkpoint")
         try:
             weights = torch.load(ckpt_path, map_location='cpu', weights_only=True)['weights']
         except TypeError:

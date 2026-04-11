@@ -19,7 +19,7 @@ import pydicom
 
 
 # Local module imports
-from app.core.runtime_paths import model_assets_dir
+from app.core.runtime_paths import model_asset_path, model_assets_dir
 from ..utils import utils
 
 def _load_torch(path, map_location, label):
@@ -50,7 +50,9 @@ class EchoPrime:
         base_dir = str(model_assets_dir("secondary_analysis"))
 
         # Load echo encoder
-        checkpoint_path = os.path.join(base_dir, "model_data", "weights", "analysis_encoder.pt")
+        checkpoint_path = str(
+            model_asset_path("secondary_analysis", "encoder_checkpoint")
+        )
         checkpoint = _load_torch(checkpoint_path, device, "echo encoder")
         echo_encoder = torchvision.models.video.mvit_v2_s()
         echo_encoder.head[-1] = torch.nn.Linear(echo_encoder.head[-1].in_features, 512)
@@ -61,7 +63,9 @@ class EchoPrime:
             param.requires_grad = False
         
         # Load view classifier
-        vc_path = os.path.join(base_dir, "model_data", "weights", "view_classifier.pt")
+        vc_path = str(
+            model_asset_path("secondary_analysis", "view_classifier_checkpoint")
+        )
         vc_state_dict = _load_torch(vc_path, device, "view classifier")
         view_classifier = torchvision.models.convnext_base()
         view_classifier.classifier[-1] = torch.nn.Linear(view_classifier.classifier[-1].in_features, 11)

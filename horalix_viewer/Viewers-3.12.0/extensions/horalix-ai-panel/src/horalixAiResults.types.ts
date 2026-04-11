@@ -57,6 +57,7 @@ export type HoralixAiResultsPayload = {
   studyAnalysisCombinedResultsState?: string | null;
   studyAnalysisMeasurements?: HoralixAiMeasurements | null;
   studyAnalysisEditorState?: HoralixStudyAnalysisEditorState | null;
+  llmReportEnabled?: boolean;
   llmReportResultsState?: string | null;
   llmReportResultsDetail?: string | null;
   llmEchoReport?: HoralixLlmEchoReport | null;

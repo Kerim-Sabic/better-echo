@@ -34,6 +34,8 @@ export default function HoralixAiResultsPanelLayout({
   }
 
   const editorState = payload.studyAnalysisEditorState ?? null;
+  const showReportTab = payload.llmReportEnabled !== false;
+  const effectiveTab = showReportTab ? activeTab : 'measurements';
 
   return (
     <div className="h-full overflow-y-auto bg-[#090D14] p-2 text-white">
@@ -48,16 +50,20 @@ export default function HoralixAiResultsPanelLayout({
                 label: 'AI Measurements',
                 state: payload.studyAnalysisCombinedResultsState,
               },
-              {
-                value: 'report',
-                label: 'AI Report',
-                state: payload.llmReportResultsState,
-              },
+              ...(showReportTab
+                ? [
+                    {
+                      value: 'report',
+                      label: 'AI Report',
+                      state: payload.llmReportResultsState,
+                    },
+                  ]
+                : []),
             ]}
           />
         </div>
 
-        {activeTab === 'measurements' ? (
+        {effectiveTab === 'measurements' ? (
           payload.studyAnalysisCombinedResultsState === 'ready' ? (
             <AiMeasurementsPanel
               state={payload.studyAnalysisCombinedResultsState}

@@ -210,6 +210,7 @@ export function formatStudyDetailsDto(rawStudy) {
     indication: toNullableString(study.indication),
     machineName: toNullableString(study.machine_name),
     modality: toNullableString(study.modality),
+    llmEnabled: Boolean(study.llm_enabled),
     diagnoses: toArray(study.diagnoses),
     patient:
       Object.keys(patient).length > 0

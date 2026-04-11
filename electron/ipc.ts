@@ -9,11 +9,22 @@ import {
   resolveBackendHealthUrl,
   resolveRuntimeConfig,
 } from './runtime';
+import { getMainWindow } from './window';
 
 const RUNTIME_CONFIG_FILE = 'runtime-config.json';
 
 function getRuntimeConfigPath(): string {
   return path.join(app.getPath('userData'), RUNTIME_CONFIG_FILE);
+}
+
+function getRendererBaseUrl(): string | undefined {
+  const currentRendererUrl = getMainWindow()?.webContents.getURL();
+
+  if (currentRendererUrl && !currentRendererUrl.startsWith('data:')) {
+    return currentRendererUrl;
+  }
+
+  return undefined;
 }
 
 function readPersistedClientRuntimeConfig(): PersistedClientRuntimeConfig {
@@ -168,7 +179,9 @@ export function registerIpcHandlers(
       });
 
       const dataUrl = 'data:text/html;charset=utf-8,' + encodeURIComponent(html);
-      await hiddenWin.loadURL(dataUrl);
+      await hiddenWin.loadURL(dataUrl, {
+        baseURLForDataURL: getRendererBaseUrl(),
+      });
 
       try {
         // best effort wait for fonts

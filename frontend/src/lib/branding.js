@@ -11,19 +11,57 @@ function normalizeAssetPath(assetPath) {
   return String(assetPath || "").replace(/^\/+/, "");
 }
 
-export function getPublicAssetUrl(assetPath) {
-  const normalizedAssetPath = normalizeAssetPath(assetPath);
+function isAbsoluteAssetUrl(assetPath) {
+  return /^(?:[a-z]+:|\/\/)/i.test(String(assetPath || ""));
+}
 
-  if (typeof document !== "undefined" && document.baseURI) {
-    try {
-      return new URL(normalizedAssetPath, document.baseURI).toString();
-    } catch (error) {
-      // Fall back to PUBLIC_URL concatenation below.
-    }
+function getRuntimePublicBase() {
+  const publicBase = String(process.env.PUBLIC_URL || "").replace(/\/+$/, "");
+
+  if (publicBase === ".") {
+    return ".";
   }
 
-  const publicUrl = String(process.env.PUBLIC_URL || "").replace(/\/+$/, "");
-  return publicUrl ? `${publicUrl}/${normalizedAssetPath}` : normalizedAssetPath;
+  if (publicBase) {
+    return publicBase;
+  }
+
+  if (typeof window === "undefined") {
+    return "";
+  }
+
+  if (window.location.protocol === "file:") {
+    return ".";
+  }
+
+  return String(window.location.origin || "").replace(/\/+$/, "");
+}
+
+export function getPublicAssetUrl(assetPath) {
+  if (isAbsoluteAssetUrl(assetPath)) {
+    return String(assetPath);
+  }
+
+  const normalizedAssetPath = normalizeAssetPath(assetPath);
+  const publicBase = getRuntimePublicBase();
+
+  if (publicBase === ".") {
+    if (
+      typeof window !== "undefined" &&
+      window.location.protocol === "file:" &&
+      typeof window.location.href === "string"
+    ) {
+      return new URL(normalizedAssetPath, window.location.href).href;
+    }
+
+    return `./${normalizedAssetPath}`;
+  }
+
+  if (publicBase) {
+    return `${publicBase}/${normalizedAssetPath}`;
+  }
+
+  return `/${normalizedAssetPath}`;
 }
 
 export function resolveLogoAssetName({ theme, forceDark = false } = {}) {
