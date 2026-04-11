@@ -29,6 +29,18 @@ from app.services.inference.spectral_measurements_service import (
 from app.services.upload_mp4_to_orthanc.upload_mp4_to_orthanc import publish_mp4_as_derived_dicom
 from app.services.pipeline.stages.prefilter import _prefilter_instances
 
+_2D_WEIGHT_DISPLAY_NAMES: dict[str, str] = {
+    "ivs": " Intraventricular Septum",
+    "lvid": "Left Ventricular Internal Diameter",
+    "lvpw": "Left Ventricular Posterior Wall",
+    "aorta": "Aorta",
+    "aortic_root": "Aortic Root",
+    "la": "Left Atrium",
+    "rv_base": "Right Ventricular Basal Diameter",
+    "pa": "Pulmonary Artery",
+    "ivc": "Inferior Vena Cava",
+}
+
 
 # Part 1. Normalize inference response objects into plain dict payloads.
 def _response_payload(response: Any) -> Dict[str, Any]:
@@ -356,7 +368,7 @@ def run_dynamic_measurements_stage(
                     derived_dicom = _attach_derived_dicom_artifact(
                         instance=instance_row,
                         output_path=output_path,
-                        series_label=f"2D Measurements ({weight_name})",
+                        series_label=_2D_WEIGHT_DISPLAY_NAMES.get(weight_name, weight_name),
                     )
 
                     result_item = {
