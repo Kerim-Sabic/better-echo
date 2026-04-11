@@ -7,6 +7,7 @@ backend/.env/
 backend/app/logs
 backend/app/AI_models/PanEcho/weights
 backend/app/AI_models/PanEcho/pytorch_hub_cache
+backend/.cache
 
 # Ignores all the files in uploads except .gitkeep
 backend/app/uploads/*
