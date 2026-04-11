@@ -20,22 +20,25 @@ export default function AboutHoralixDialog() {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>About Horalix Echo</DialogTitle>
-          <DialogDescription className="space-y-3 text-left">
-            <p>
-              Horalix Echo is a hospital-grade AI echocardiography platform that provides
-              real-time analysis for cardiologists and sonographers.
-            </p>
-            <p>
-              <strong>Key Features:</strong>
-            </p>
-            <ul className="space-y-1 text-sm list-disc list-inside">
-              <li>Real-time AI segmentation and measurements</li>
-              <li>Automated ejection fraction calculation</li>
-              <li>Valve assessment and severity grading</li>
-              <li>Clinical-grade reporting</li>
-              <li>DICOM integration</li>
-            </ul>
-            <p className="pt-2 text-xs text-muted-foreground">Powered by Horalix</p>
+          <DialogDescription asChild>
+            <div className="space-y-3 text-left text-sm text-muted-foreground">
+              <p>
+                Horalix Echo is a hospital-grade AI echocardiography platform that provides
+                real-time analysis for cardiologists and sonographers.
+              </p>
+              <p>
+                <strong>Key Features:</strong>
+              </p>
+              <ul className="space-y-1 text-sm list-disc list-inside">
+                <li>Multi-model AI analysis with primary and secondary cardiac classification</li>
+                <li>Automated 2D linear measurements (IVS, LVID, LVPW, aorta, LA, RV, and more)</li>
+                <li>Doppler spectral measurements (LVOT, MV, AV, TV, and tricuspid velocities)</li>
+                <li>LV wall motion segmentation with annotated video output</li>
+                <li>AI-generated clinical reports with structured diagnoses</li>
+                <li>DICOM upload and OHIF viewer integration</li>
+              </ul>
+              <p className="pt-2 text-xs text-muted-foreground">Powered by Horalix</p>
+            </div>
           </DialogDescription>
         </DialogHeader>
       </DialogContent>
