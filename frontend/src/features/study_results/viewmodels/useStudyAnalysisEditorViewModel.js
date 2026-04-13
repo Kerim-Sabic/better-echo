@@ -83,6 +83,8 @@ export function useStudyAnalysisEditorViewModel({
   llmReportResultsData,
   readOnlySupport = false,
 }) {
+  const readOnlyErrorMessage = "This study is read-only.";
+
   // --- Part 1. Initialize mutation hooks and derive edit-related source data. ---
   const patchStudyAnalysisOverridesMutation =
     usePatchStudyAnalysisOverridesMutation();
@@ -142,7 +144,7 @@ export function useStudyAnalysisEditorViewModel({
   const saveStudyAnalysisOverride = useCallback(
     async (key, overridePayload) => {
       if (readOnlySupport) {
-        throw new Error("Vendor access is read-only.");
+        throw new Error(readOnlyErrorMessage);
       }
 
       if (!canEditStudyAnalysisMeasurements) {
@@ -175,6 +177,7 @@ export function useStudyAnalysisEditorViewModel({
     [
       canEditStudyAnalysisMeasurements,
       patchStudyAnalysisOverridesMutation,
+      readOnlyErrorMessage,
       readOnlySupport,
       studyUid,
     ]
@@ -197,7 +200,7 @@ export function useStudyAnalysisEditorViewModel({
   const clearStudyAnalysisOverride = useCallback(
     async key => {
       if (readOnlySupport) {
-        throw new Error("Vendor access is read-only.");
+        throw new Error(readOnlyErrorMessage);
       }
 
       if (!canEditStudyAnalysisMeasurements) {
@@ -227,6 +230,7 @@ export function useStudyAnalysisEditorViewModel({
     [
       canEditStudyAnalysisMeasurements,
       patchStudyAnalysisOverridesMutation,
+      readOnlyErrorMessage,
       readOnlySupport,
       studyUid,
     ]
@@ -269,7 +273,7 @@ export function useStudyAnalysisEditorViewModel({
 
   const regenerateAiReport = useCallback(async () => {
     if (readOnlySupport) {
-      throw new Error("Vendor access is read-only.");
+      throw new Error(readOnlyErrorMessage);
     }
 
     if (!studyUid) {
@@ -291,6 +295,7 @@ export function useStudyAnalysisEditorViewModel({
     generateLlmReportMutation,
     hasStudyAnalysisOverrides,
     llmEnabled,
+    readOnlyErrorMessage,
     readOnlySupport,
     studyUid,
   ]);

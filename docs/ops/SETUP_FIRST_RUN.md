@@ -176,6 +176,7 @@ npm start
    - run `python -m app.database.setup_db` from `backend/`
 4. Missing test database
    - create the configured `TEST_DATABASE_URL` database in Postgres
+   - keep `TEST_DATABASE_URL` different from `DATABASE_URL`
 5. Stale LLM process
    - run [`stop_llm.ps1`](../../scripts/stop_llm.ps1) and restart with an LLM-enabled script
 

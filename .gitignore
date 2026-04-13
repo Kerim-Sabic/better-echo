@@ -53,3 +53,7 @@ electron/build-resources/icon.*
 
 # Codex instructions
 /AGENTS.md
+agent-docs/
+skills/
+tools/compress_context.py
+tools/build_project_state.py

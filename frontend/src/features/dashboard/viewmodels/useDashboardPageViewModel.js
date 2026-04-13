@@ -1,5 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
+import { getLicenseStatusApi } from "@/api/licensing";
 import { useStudiesListQuery } from "@/features/dashboard/tanstack/queries/useStudiesListQuery";
 
 // Normalizes text values for case-insensitive matching in search/filter logic.
@@ -10,9 +12,17 @@ const toStudyDateKey = value => String(value ?? "").replaceAll("-", "").trim();
 
 export function useDashboardPageViewModel() {
   const navigate = useNavigate();
+  const { data: licenseStatus = null } = useQuery({
+    queryKey: ["serverLicenseStatus"],
+    queryFn: getLicenseStatusApi,
+    staleTime: 60_000,
+  });
+  const isExpiredLicenseReadOnly = licenseStatus?.status === "expired";
 
   // 1. Data Fetching & Mutations (Server State)
-  const { data: studies = [], isLoading: isStudiesLoading } = useStudiesListQuery();
+  const { data: studies = [], isLoading: isStudiesLoading } = useStudiesListQuery({
+    pollingEnabled: !isExpiredLicenseReadOnly,
+  });
 
   // 2. Local UI State
   const [studySearchInputQuery, setStudySearchInputQuery] = useState("");
@@ -153,6 +163,7 @@ export function useDashboardPageViewModel() {
     filteredStudies,
     studyStatusCounts,
     isStudiesLoading,
+    isExpiredLicenseReadOnly,
 
     studySearchInputQuery,
     setStudySearchInputQuery,

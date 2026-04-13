@@ -15,6 +15,10 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from platformdirs import user_data_dir
 
 from app.core.config import settings
+from app.core.artifacts import (
+    ANALYSIS_RESULTS_ROUTE_SEGMENT,
+    MEASUREMENT_RESULTS_ROUTE_SEGMENT,
+)
 from app.services.licensing.signing import canonicalize_license_payload
 
 logger = logging.getLogger(__name__)
@@ -62,6 +66,32 @@ def is_license_exempt_path(path: str) -> bool:
         "/openapi.json",
     )
     return any(path.startswith(prefix) for prefix in exempt_prefixes)
+
+
+def is_license_read_only_allowed_path(path: str, method: str) -> bool:
+    if str(method or "").upper() != "GET":
+        return False
+
+    if path == "/api/studies":
+        return True
+
+    if path == "/api/admin/users":
+        return True
+
+    if not path.startswith("/api/studies/"):
+        return False
+
+    study_path_suffix = path.removeprefix("/api/studies/")
+    if study_path_suffix and "/" not in study_path_suffix:
+        return True
+
+    allowed_suffixes = (
+        "/instances",
+        f"/{ANALYSIS_RESULTS_ROUTE_SEGMENT}",
+        f"/{MEASUREMENT_RESULTS_ROUTE_SEGMENT}",
+        "/llm-report-results",
+    )
+    return any(path.endswith(suffix) for suffix in allowed_suffixes)
 
 
 def build_activation_request() -> dict[str, Any]:

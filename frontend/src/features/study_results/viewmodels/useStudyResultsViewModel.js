@@ -1,5 +1,7 @@
 import { useCallback, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
+import { getLicenseStatusApi } from "@/api/licensing";
 import { useStudyAnalysisCombinedResultsQuery } from "@/features/study_results/tanstack/queries/useStudyAnalysisCombinedResultsQuery";
 import { useDynamicMeasurementsCombinedResultsQuery } from "@/features/study_results/tanstack/queries/useDynamicMeasurementsCombinedResultsQuery";
 import { useLlmReportResultsQuery } from "@/features/study_results/tanstack/queries/useLlmReportResultsQuery";
@@ -46,6 +48,14 @@ export function useStudyResultsViewModel(
 ) {
   const navigate = useNavigate();
   const isVendorAccess = accessMode === "vendor";
+  const { data: licenseStatus = null } = useQuery({
+    queryKey: ["serverLicenseStatus"],
+    queryFn: getLicenseStatusApi,
+    enabled: !isVendorAccess,
+    staleTime: 60_000,
+  });
+  const isReadOnlyAccess =
+    isVendorAccess || licenseStatus?.status === "expired";
 
   // Fetches the study-level metadata used for the page header/PDF context.
   const {
@@ -117,7 +127,7 @@ export function useStudyResultsViewModel(
     llmEnabled,
     llmReportResultsState,
     llmReportResultsData,
-    readOnlySupport: isVendorAccess,
+    readOnlySupport: isReadOnlyAccess,
   });
 
   // --- Part 3. Derive page-level UI state and build the OHIF bridge payload. ---
