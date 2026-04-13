@@ -4,6 +4,7 @@ from uuid import uuid4
 import pytest
 from fastapi import FastAPI
 from sqlalchemy import create_engine, inspect, text
+from sqlalchemy.engine import make_url
 from sqlalchemy.orm import sessionmaker
 
 from app.api.pipeline.pipeline_cancel_api import router as pipeline_cancel_router
@@ -32,6 +33,19 @@ def _create_test_engine(database_url: str):
     return create_engine(database_url, pool_pre_ping=True)
 
 
+def _assert_safe_test_database_url() -> None:
+    test_database_url = settings.TEST_DATABASE_URL
+    if not test_database_url:
+        raise RuntimeError(
+            "TEST_DATABASE_URL must be set for backend tests now that PostgreSQL is the active runtime path."
+        )
+
+    live_url = make_url(settings.DATABASE_URL)
+    test_url = make_url(test_database_url)
+    if live_url.render_as_string(hide_password=False) == test_url.render_as_string(hide_password=False):
+        raise RuntimeError("TEST_DATABASE_URL must not point at the live application database.")
+
+
 def _ensure_test_users_last_login_column(engine) -> None:
     inspector = inspect(engine)
     if "users" not in inspector.get_table_names():
@@ -55,12 +69,8 @@ def db_engine():
     # Ensure model metadata is imported before create_all.
     import app.database_models  # noqa: F401
 
+    _assert_safe_test_database_url()
     database_url = settings.TEST_DATABASE_URL
-    if not database_url:
-        raise RuntimeError(
-            "TEST_DATABASE_URL must be set for backend tests now that PostgreSQL is the active runtime path."
-        )
-
     engine = _create_test_engine(database_url)
     Base.metadata.create_all(bind=engine)
     _ensure_test_users_last_login_column(engine)

@@ -337,7 +337,16 @@ Frontend mutation:
 1. Study, patient, pipeline, and result routes are ownership-scoped.
 2. Non-owned study access returns `404`.
 3. Licensing middleware gates protected routes before business logic executes.
-4. Packaged-server vendor access can read any study through principal-aware read endpoints, but vendor requests remain blocked from all write endpoints.
+4. When the server license is `expired`, doctor/admin sessions stay read-only on these protected `GET` routes:
+   `GET /api/studies`,
+   `GET /api/studies/{study_uid}`,
+   `GET /api/studies/{study_uid}/instances`,
+   `GET /api/studies/{study_uid}/study-analysis-results`,
+   `GET /api/studies/{study_uid}/study-measurements-results`,
+   `GET /api/studies/{study_uid}/llm-report-results`,
+   and `GET /api/admin/users`.
+5. Under an expired license, protected write routes remain blocked for doctor/admin sessions.
+6. Packaged-server vendor access bypasses license enforcement entirely, but vendor requests remain blocked from all write endpoints by route-level permissions.
 
 ## Change Rule
 

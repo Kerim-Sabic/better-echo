@@ -1,5 +1,6 @@
 import json
 from functools import lru_cache
+from pathlib import Path
 from typing import Annotated, Optional
 
 from pydantic import Field, field_validator
@@ -118,7 +119,7 @@ class Settings(BaseSettings):
         ]
 
     class Config:
-        env_file = ".env"
+        env_file = str(Path(__file__).resolve().parents[2] / ".env")
         env_file_encoding = "utf-8"
 
 

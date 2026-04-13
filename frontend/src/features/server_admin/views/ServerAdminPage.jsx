@@ -207,6 +207,12 @@ export default function ServerAdminPage() {
                 </div>
               ) : null}
 
+              {vm.canManageUsers && vm.isUserManagementReadOnly ? (
+                <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                  User management is read-only while the license is expired.
+                </div>
+              ) : null}
+
               {vm.canManageUsers ? (
                 <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
                   <div className="overflow-hidden rounded-xl border border-border">
@@ -226,19 +232,23 @@ export default function ServerAdminPage() {
                             <td className="px-4 py-3 text-muted-foreground">{userRecord.full_name}</td>
                             <td className="px-4 py-3 text-muted-foreground">{userRecord.role}</td>
                             <td className="px-4 py-3">
-                              <div className="flex justify-end gap-2">
-                                <Button variant="outline" size="sm" onClick={() => vm.onSelectEditUser(userRecord)}>
-                                  Edit
-                                </Button>
-                                <Button
-                                  variant="destructive"
-                                  size="sm"
-                                  onClick={() => vm.onDeleteUser(userRecord.id)}
-                                  disabled={vm.deletingUserId === userRecord.id}
-                                >
-                                  {vm.deletingUserId === userRecord.id ? "Deleting..." : "Delete"}
-                                </Button>
-                              </div>
+                              {vm.canMutateUsers ? (
+                                <div className="flex justify-end gap-2">
+                                  <Button variant="outline" size="sm" onClick={() => vm.onSelectEditUser(userRecord)}>
+                                    Edit
+                                  </Button>
+                                  <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={() => vm.onDeleteUser(userRecord.id)}
+                                    disabled={vm.deletingUserId === userRecord.id}
+                                  >
+                                    {vm.deletingUserId === userRecord.id ? "Deleting..." : "Delete"}
+                                  </Button>
+                                </div>
+                              ) : (
+                                <div className="text-right text-xs text-muted-foreground">Read-only</div>
+                              )}
                             </td>
                           </tr>
                         ))}
@@ -247,97 +257,105 @@ export default function ServerAdminPage() {
                   </div>
 
                   <div className="grid gap-6">
-                    <form className="rounded-xl border border-border bg-card p-5 shadow-sm" onSubmit={vm.onCreateUserSubmit}>
-                      <h3 className="text-base font-semibold text-foreground">Create User</h3>
-                      <div className="mt-4 grid gap-3">
-                        <input
-                          value={vm.createForm.username}
-                          onChange={event => vm.onCreateFieldChange("username", event.target.value)}
-                          placeholder="Username"
-                          className="rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
-                          required
-                        />
-                        <input
-                          value={vm.createForm.fullName}
-                          onChange={event => vm.onCreateFieldChange("fullName", event.target.value)}
-                          placeholder="Full name"
-                          className="rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
-                          required
-                        />
-                        <input
-                          type="password"
-                          value={vm.createForm.password}
-                          onChange={event => vm.onCreateFieldChange("password", event.target.value)}
-                          placeholder="Password"
-                          className="rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
-                          required
-                        />
-                        <select
-                          value={vm.createForm.role}
-                          onChange={event => vm.onCreateFieldChange("role", event.target.value)}
-                          className="rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground outline-none focus:border-primary"
-                        >
-                          <option value="doctor">Doctor</option>
-                          <option value="admin">Admin</option>
-                        </select>
-                      </div>
-                      <div className="mt-4">
-                        <Button type="submit" variant="clinical" disabled={vm.isCreatingUser}>
-                          {vm.isCreatingUser ? "Creating..." : "Create User"}
-                        </Button>
-                      </div>
-                    </form>
+                    {vm.canMutateUsers ? (
+                      <>
+                        <form className="rounded-xl border border-border bg-card p-5 shadow-sm" onSubmit={vm.onCreateUserSubmit}>
+                          <h3 className="text-base font-semibold text-foreground">Create User</h3>
+                          <div className="mt-4 grid gap-3">
+                            <input
+                              value={vm.createForm.username}
+                              onChange={event => vm.onCreateFieldChange("username", event.target.value)}
+                              placeholder="Username"
+                              className="rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
+                              required
+                            />
+                            <input
+                              value={vm.createForm.fullName}
+                              onChange={event => vm.onCreateFieldChange("fullName", event.target.value)}
+                              placeholder="Full name"
+                              className="rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
+                              required
+                            />
+                            <input
+                              type="password"
+                              value={vm.createForm.password}
+                              onChange={event => vm.onCreateFieldChange("password", event.target.value)}
+                              placeholder="Password"
+                              className="rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
+                              required
+                            />
+                            <select
+                              value={vm.createForm.role}
+                              onChange={event => vm.onCreateFieldChange("role", event.target.value)}
+                              className="rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground outline-none focus:border-primary"
+                            >
+                              <option value="doctor">Doctor</option>
+                              <option value="admin">Admin</option>
+                            </select>
+                          </div>
+                          <div className="mt-4">
+                            <Button type="submit" variant="clinical" disabled={vm.isCreatingUser}>
+                              {vm.isCreatingUser ? "Creating..." : "Create User"}
+                            </Button>
+                          </div>
+                        </form>
 
-                    <form className="rounded-xl border border-border bg-card p-5 shadow-sm" onSubmit={vm.onUpdateUserSubmit}>
-                      <div className="flex items-center justify-between gap-3">
-                        <h3 className="text-base font-semibold text-foreground">Edit User</h3>
-                        {vm.editForm.userId ? (
-                          <Button type="button" variant="ghost" size="sm" onClick={vm.onCancelEdit}>
-                            Clear
-                          </Button>
-                        ) : null}
+                        <form className="rounded-xl border border-border bg-card p-5 shadow-sm" onSubmit={vm.onUpdateUserSubmit}>
+                          <div className="flex items-center justify-between gap-3">
+                            <h3 className="text-base font-semibold text-foreground">Edit User</h3>
+                            {vm.editForm.userId ? (
+                              <Button type="button" variant="ghost" size="sm" onClick={vm.onCancelEdit}>
+                                Clear
+                              </Button>
+                            ) : null}
+                          </div>
+                          <div className="mt-4 grid gap-3">
+                            <input
+                              value={vm.editForm.username}
+                              onChange={event => vm.onEditFieldChange("username", event.target.value)}
+                              placeholder="Select a user first"
+                              className="rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
+                              disabled={!vm.editForm.userId}
+                              required
+                            />
+                            <input
+                              value={vm.editForm.fullName}
+                              onChange={event => vm.onEditFieldChange("fullName", event.target.value)}
+                              placeholder="Full name"
+                              className="rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
+                              disabled={!vm.editForm.userId}
+                              required
+                            />
+                            <input
+                              type="password"
+                              value={vm.editForm.password}
+                              onChange={event => vm.onEditFieldChange("password", event.target.value)}
+                              placeholder="New password (optional)"
+                              className="rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
+                              disabled={!vm.editForm.userId}
+                            />
+                            <select
+                              value={vm.editForm.role}
+                              onChange={event => vm.onEditFieldChange("role", event.target.value)}
+                              className="rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground outline-none focus:border-primary"
+                              disabled={!vm.editForm.userId}
+                            >
+                              <option value="doctor">Doctor</option>
+                              <option value="admin">Admin</option>
+                            </select>
+                          </div>
+                          <div className="mt-4">
+                            <Button type="submit" variant="outline" disabled={!vm.editForm.userId || vm.isUpdatingUser}>
+                              {vm.isUpdatingUser ? "Saving..." : "Save Changes"}
+                            </Button>
+                          </div>
+                        </form>
+                      </>
+                    ) : (
+                      <div className="rounded-xl border border-border bg-card p-5 text-sm text-muted-foreground shadow-sm">
+                        User records are visible, but edits and deletes are disabled while the license is expired.
                       </div>
-                      <div className="mt-4 grid gap-3">
-                        <input
-                          value={vm.editForm.username}
-                          onChange={event => vm.onEditFieldChange("username", event.target.value)}
-                          placeholder="Select a user first"
-                          className="rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
-                          disabled={!vm.editForm.userId}
-                          required
-                        />
-                        <input
-                          value={vm.editForm.fullName}
-                          onChange={event => vm.onEditFieldChange("fullName", event.target.value)}
-                          placeholder="Full name"
-                          className="rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
-                          disabled={!vm.editForm.userId}
-                          required
-                        />
-                        <input
-                          type="password"
-                          value={vm.editForm.password}
-                          onChange={event => vm.onEditFieldChange("password", event.target.value)}
-                          placeholder="New password (optional)"
-                          className="rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
-                          disabled={!vm.editForm.userId}
-                        />
-                        <select
-                          value={vm.editForm.role}
-                          onChange={event => vm.onEditFieldChange("role", event.target.value)}
-                          className="rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground outline-none focus:border-primary"
-                          disabled={!vm.editForm.userId}
-                        >
-                          <option value="doctor">Doctor</option>
-                          <option value="admin">Admin</option>
-                        </select>
-                      </div>
-                      <div className="mt-4">
-                        <Button type="submit" variant="outline" disabled={!vm.editForm.userId || vm.isUpdatingUser}>
-                          {vm.isUpdatingUser ? "Saving..." : "Save Changes"}
-                        </Button>
-                      </div>
-                    </form>
+                    )}
                   </div>
                 </div>
               ) : null}

@@ -89,6 +89,7 @@ export function useServerAdminPageViewModel() {
   const isAdmin = user?.role === "admin";
   const principalType = user?.principalType || user?.principal_type || "user";
   const bootstrapRequired = Boolean(setupStatus?.bootstrap_required);
+  const isUserManagementReadOnly = licenseStatus?.status === "expired";
   const seatUsageLabel = setupStatus
     ? `${setupStatus.total_users} / ${setupStatus.max_users} users used`
     : "";
@@ -277,6 +278,10 @@ export function useServerAdminPageViewModel() {
   const onCreateUserSubmit = useCallback(async (event) => {
     event.preventDefault();
     clearNotice();
+    if (isUserManagementReadOnly) {
+      setErrorMessage("User management is read-only while the license is expired.");
+      return;
+    }
     setLoadingState(current => ({ ...current, createUser: true }));
 
     try {
@@ -294,15 +299,18 @@ export function useServerAdminPageViewModel() {
     } finally {
       setLoadingState(current => ({ ...current, createUser: false }));
     }
-  }, [clearNotice, createForm, loadSetupState, loadUsers]);
+  }, [clearNotice, createForm, isUserManagementReadOnly, loadSetupState, loadUsers]);
 
   const onUpdateUserSubmit = useCallback(async (event) => {
     event.preventDefault();
     if (!editForm.userId) {
       return;
     }
-
     clearNotice();
+    if (isUserManagementReadOnly) {
+      setErrorMessage("User management is read-only while the license is expired.");
+      return;
+    }
     setLoadingState(current => ({ ...current, updateUser: true }));
 
     try {
@@ -320,10 +328,14 @@ export function useServerAdminPageViewModel() {
     } finally {
       setLoadingState(current => ({ ...current, updateUser: false }));
     }
-  }, [clearNotice, editForm, loadSetupState, loadUsers, onCancelEdit]);
+  }, [clearNotice, editForm, isUserManagementReadOnly, loadSetupState, loadUsers, onCancelEdit]);
 
   const onDeleteUser = useCallback(async (userId) => {
     clearNotice();
+    if (isUserManagementReadOnly) {
+      setErrorMessage("User management is read-only while the license is expired.");
+      return;
+    }
     setLoadingState(current => ({ ...current, deleteUserId: userId }));
 
     try {
@@ -338,7 +350,7 @@ export function useServerAdminPageViewModel() {
     } finally {
       setLoadingState(current => ({ ...current, deleteUserId: null }));
     }
-  }, [clearNotice, editForm.userId, loadSetupState, loadUsers, onCancelEdit]);
+  }, [clearNotice, editForm.userId, isUserManagementReadOnly, loadSetupState, loadUsers, onCancelEdit]);
 
   const onGoToLogin = useCallback(() => {
     navigate("/login", { state: { from: { pathname: "/server-admin" } } });
@@ -372,6 +384,10 @@ export function useServerAdminPageViewModel() {
     () => isServerRuntime && !bootstrapRequired && isAdmin,
     [bootstrapRequired, isAdmin, isServerRuntime]
   );
+  const canMutateUsers = useMemo(
+    () => canManageUsers && !isUserManagementReadOnly,
+    [canManageUsers, isUserManagementReadOnly]
+  );
 
   return {
     isRuntimeLoading,
@@ -384,6 +400,7 @@ export function useServerAdminPageViewModel() {
     seatUsageLabel,
     bootstrapRequired,
     isAdmin,
+    isUserManagementReadOnly,
     user,
     errorMessage,
     successMessage,
@@ -398,6 +415,7 @@ export function useServerAdminPageViewModel() {
     isUpdatingUser: loadingState.updateUser,
     deletingUserId: loadingState.deleteUserId,
     canManageUsers,
+    canMutateUsers,
     onBootstrapFieldChange,
     onCreateFieldChange,
     onEditFieldChange,

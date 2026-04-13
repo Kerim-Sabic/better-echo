@@ -14,6 +14,7 @@ from app.services.licensing.service import (
     import_signed_license,
     invalidate_license_status_cache,
     is_license_exempt_path,
+    is_license_read_only_allowed_path,
 )
 from app.services.licensing import service as licensing_service
 
@@ -254,3 +255,22 @@ def test_get_license_status_expires_cached_valid_license_without_restart(monkeyp
 )
 def test_is_license_exempt_path(path_value, expected):
     assert is_license_exempt_path(path_value) is expected
+
+
+@pytest.mark.parametrize(
+    ("path_value", "method", "expected"),
+    [
+        ("/api/studies", "GET", True),
+        ("/api/admin/users", "GET", True),
+        ("/api/studies/study-123", "GET", True),
+        ("/api/studies/study-123/instances", "GET", True),
+        ("/api/studies/study-123/study-analysis-results", "GET", True),
+        ("/api/studies/study-123/study-measurements-results", "GET", True),
+        ("/api/studies/study-123/llm-report-results", "GET", True),
+        ("/api/studies/study-123/study-analysis-results", "PATCH", False),
+        ("/api/studies/study-123/study-analysis-overrides", "GET", False),
+        ("/api/admin/users", "POST", False),
+    ],
+)
+def test_is_license_read_only_allowed_path(path_value, method, expected):
+    assert is_license_read_only_allowed_path(path_value, method) is expected

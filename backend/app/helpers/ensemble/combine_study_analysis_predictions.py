@@ -26,7 +26,7 @@ def _build_regression_task_set(config: Dict[str, Any], name_key: str) -> set:
             names.add(name)
     return names
 
-# Part 1. Primary analysis task metadata (class orders, positive labels, units)
+# Part 1. Primary analysis task metadata (class orders and positive labels)
 # These control how we interpret raw primary analysis outputs.
 PRIMARY_ANALYSIS_MULTICLASS_LABELS = {
     "LVSize": ["Mildly Increased", "Moderately or Severely Increased", "Normal"],
@@ -50,13 +50,6 @@ PRIMARY_ANALYSIS_BINARY_POSITIVE_LABEL = {
     "LVOT20mmHg": "Present",
     "MVStenosis": "Mild or Moderate or Severe",
     "RAP-8-or-higher": "Present",
-}
-PRIMARY_ANALYSIS_REGRESSION_UNITS = {
-    "EF": "%", "GLS": "%", "LVEDV": "cm^3", "LVESV": "cm^3", "LVSV": "cm^3",
-    "IVSd": "cm", "LVPWd": "cm", "LVIDs": "cm", "LVIDd": "cm", "LVOTDiam": "cm",
-    "E|EAvg": "E/E' ratio", "RVSP": "mmHg", "RVIDd": "cm", "TAPSE": "cm", "RVSVel": "cm/s",
-    "LAIDs2D": "cm", "LAVol": "cm^3", "RADimensionM-L(cm)": "cm", "AVPkVel(m|s)": "m/s",
-    "TVPkGrad": "mmHg", "AORoot": "cm",
 }
 PRIMARY_ANALYSIS_REGRESSION_TASKS = _build_regression_task_set(TASK_CONFIG, "primary_source_name")
 SECONDARY_ANALYSIS_REGRESSION_TASKS = _build_regression_task_set(TASK_CONFIG, "secondary_source_name")
@@ -268,48 +261,7 @@ def normalize_secondary_analysis_predictions(secondary_analysis_raw: Dict[str, A
     return normalized
 
 
-# Part 4. Agreement helpers (convert primary analysis to abnormal probability; gap flags)
-def _primary_analysis_abnormal_probability(task_name: str, primary_analysis_normalized: Dict[str, Any]) -> Optional[float]:
-    """
-    4.1 For the primary analysis engine:
-        - Multiclass: abnormal probability = 1 - p(normal_class)
-        - Binary: abnormal probability = p_present
-    """
-    node = primary_analysis_normalized.get(task_name)
-    if not node:
-        return None
-    if node.get("kind") == "binary":
-        return node.get("probability_present")
-    if node.get("kind") == "multiclass":
-        class_probabilities: Dict[str, float] = node.get("probs") or {}
-        # 4.1.1 Map each multiclass task to its "normal" label
-        normal_class_by_task = {
-            "LVSize": "Normal",
-            "LVSystolicFunction": "Normal or Hyperdynamic",
-            "LVDiastolicFunction": "Normal",
-            "RVSize": "Normal",
-            "LASize": "Normal",
-            "AVStenosis": "None",
-            "AVRegurg": "None or Trace",
-            "MVRegurgitation": "None or Trace",
-            "TVRegurgitation": "None or Trace",
-        }
-        normal_label = normal_class_by_task.get(task_name)
-        if not normal_label:
-            return None
-        probability_normal = class_probabilities.get(normal_label)
-        if probability_normal is None:
-            return None
-        return 1.0 - probability_normal
-    return None
-
-
-def _has_large_gap(value_a: Optional[float], value_b: Optional[float], threshold: float) -> bool:
-    # 4.2 Simple absolute-difference threshold (None-safe)
-    return value_a is not None and value_b is not None and abs(value_b - value_a) >= threshold
-
-
-# Part 5. Main combiner - orchestrates normalization, comparison, and packaging
+# Part 4. Main combiner - orchestrates normalization, comparison, and packaging
 def combine_results(
     study_uid: str,
     primary_analysis_predictions: Dict[str, Any],
