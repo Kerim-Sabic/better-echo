@@ -45,6 +45,10 @@ export default function ServerAdminPage() {
     return <Navigate to="/vendor-admin" replace />;
   }
 
+  if (vm.user && !vm.isAdmin) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   return (
     <div className="bg-background text-foreground" style={{ minHeight: `calc(100vh - ${TITLEBAR_HEIGHT}px)` }}>
       <main className="container mx-auto px-6 py-6">

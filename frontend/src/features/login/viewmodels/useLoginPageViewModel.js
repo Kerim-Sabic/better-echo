@@ -1,6 +1,7 @@
-import { useContext, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useContext, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
+import { getAdminSetupStatusApi } from "@/api/admin";
 import { AuthContext } from "@/contexts/AuthenticationContext";
 import { b64uToBuf, serializePublicKeyCredential } from "@/lib/webauthn";
 
@@ -19,9 +20,20 @@ function persistSessionHint() {
   }
 }
 
+export function getPostLoginRoute(user, runtimeMode) {
+  if (user?.principalType === "vendor") {
+    return "/vendor-admin";
+  }
+
+  if (user?.role === "admin" && runtimeMode === "server") {
+    return "/server-admin";
+  }
+
+  return "/dashboard";
+}
+
 export function useLoginPageViewModel() {
   const navigate = useNavigate();
-  const location = useLocation();
   const { setUser } = useContext(AuthContext);
   const { runtimeConfig, openClientRuntimeConfigEditor } = useElectronRuntimeConfig();
 
@@ -36,25 +48,45 @@ export function useLoginPageViewModel() {
 
   // 2.2 Error Feedback State
   const [error, setError] = useState("");
+  const [canOpenServerAdmin, setCanOpenServerAdmin] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadSetupStatus() {
+      if (runtimeConfig?.runtimeMode !== "server") {
+        setCanOpenServerAdmin(false);
+        return;
+      }
+
+      try {
+        const setupStatus = await getAdminSetupStatusApi();
+        if (active) {
+          setCanOpenServerAdmin(Boolean(setupStatus?.bootstrap_required));
+        }
+      } catch {
+        if (active) {
+          setCanOpenServerAdmin(false);
+        }
+      }
+    }
+
+    loadSetupStatus();
+
+    return () => {
+      active = false;
+    };
+  }, [runtimeConfig?.runtimeMode]);
 
   // 3. Handlers
   // 3.1 Shared success handler
   const handleLoginSuccess = (formattedLoginResponse) => {
     setUser(formattedLoginResponse.user);
     persistSessionHint();
-    const returnPath = location.state?.from?.pathname;
-    if (formattedLoginResponse.user?.principalType === "vendor") {
-      navigate("/vendor-admin", { replace: true });
-      return;
-    }
-    if (
-      formattedLoginResponse.user?.role === "admin" &&
-      runtimeConfig?.runtimeMode === "server"
-    ) {
-      navigate("/server-admin", { replace: true });
-      return;
-    }
-    navigate(returnPath || "/dashboard");
+    navigate(
+      getPostLoginRoute(formattedLoginResponse.user, runtimeConfig?.runtimeMode),
+      { replace: true }
+    );
   };
 
   // 3.2 Credential login handler
@@ -137,7 +169,7 @@ export function useLoginPageViewModel() {
     setPassword,
     handleSubmit,
     handleBiometricLogin,
-    canOpenServerAdmin: runtimeConfig?.runtimeMode === "server",
+    canOpenServerAdmin,
     onOpenServerAdmin: () => navigate("/server-admin"),
     canReconfigureClientRuntime: runtimeConfig?.runtimeMode === "client",
     onOpenClientRuntimeConfigEditor: openClientRuntimeConfigEditor,
