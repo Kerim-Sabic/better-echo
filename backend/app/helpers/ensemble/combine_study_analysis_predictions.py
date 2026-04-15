@@ -511,7 +511,7 @@ def _binary_label_and_conf(
     positive_label: str,
     negative_label: str,
     is_positive: bool,
-) -> (Optional[str], Optional[float]):
+) -> tuple[Optional[str], Optional[float]]:
     """
     Helper to convert a probability + decision into a label/confidence pair.
     """
@@ -522,7 +522,7 @@ def _binary_label_and_conf(
     return negative_label, float(1.0 - prob_present)
 
 
-def _ep_labels() -> (str, str):
+def _ep_labels() -> tuple[str, str]:
     """
     Default positive/negative labels for secondary analysis binary tasks.
     """

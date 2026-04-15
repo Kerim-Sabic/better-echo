@@ -5,6 +5,7 @@ import {
   buildViewerCacheBuster,
   DYNAMIC_MEASUREMENTS_PENDING_VIEWER_TOKEN,
 } from "../model/studyResults.constants";
+import Skeleton from "./Skeleton";
 
 const MESSAGE_CHANNEL = "horalix-ai";
 const MESSAGE_VERSION = 1;
@@ -15,6 +16,8 @@ const STUDY_ANALYSIS_OVERRIDE_SAVE_TYPE =
 const STUDY_ANALYSIS_OVERRIDE_CLEAR_TYPE =
   "horalix:study-analysis-override-clear";
 const LLM_REPORT_REGENERATE_TYPE = "horalix:llm-report-regenerate";
+export const VIEWER_READY_FALLBACK_MS = 2500;
+export const VIEWER_REVEAL_DELAY_MS = 500;
 
 function stripViewerRoute(value) {
   return String(value || "")
@@ -78,9 +81,12 @@ export default function EchocardiographyViewer({ studyResultsPageViewModel }) {
   const location = useLocation();
   const iframeRef = useRef(null);
   const iframeLoadedRef = useRef(false);
+  const viewerReadyFallbackTimeoutRef = useRef(null);
+  const viewerRevealTimeoutRef = useRef(null);
   const [viewerBaseUrl, setViewerBaseUrl] = useState(
     () => String(process.env.REACT_APP_OHIF_BASE_URL || "").replace(/\/+$/, "")
   );
+  const [isViewerVisible, setIsViewerVisible] = useState(false);
 
   const base = viewerBaseUrl;
   const hasStudyUid = Boolean(studyUid);
@@ -161,6 +167,38 @@ export default function EchocardiographyViewer({ studyResultsPageViewModel }) {
       throw error;
     }
   }, [ohifAiPayload, hasBase, hasStudyUid, targetOrigin, viewerOrigin]);
+
+  const clearViewerReadyFallback = useCallback(() => {
+    if (viewerReadyFallbackTimeoutRef.current !== null) {
+      window.clearTimeout(viewerReadyFallbackTimeoutRef.current);
+      viewerReadyFallbackTimeoutRef.current = null;
+    }
+  }, []);
+
+  const clearViewerRevealDelay = useCallback(() => {
+    if (viewerRevealTimeoutRef.current !== null) {
+      window.clearTimeout(viewerRevealTimeoutRef.current);
+      viewerRevealTimeoutRef.current = null;
+    }
+  }, []);
+
+  const scheduleViewerReveal = useCallback(() => {
+    clearViewerReadyFallback();
+    clearViewerRevealDelay();
+    viewerRevealTimeoutRef.current = window.setTimeout(() => {
+      setIsViewerVisible(true);
+      viewerRevealTimeoutRef.current = null;
+    }, VIEWER_REVEAL_DELAY_MS);
+  }, [clearViewerReadyFallback, clearViewerRevealDelay]);
+
+  const scheduleViewerReadyFallback = useCallback(() => {
+    clearViewerReadyFallback();
+    viewerReadyFallbackTimeoutRef.current = window.setTimeout(() => {
+      clearViewerRevealDelay();
+      setIsViewerVisible(true);
+      viewerReadyFallbackTimeoutRef.current = null;
+    }, VIEWER_READY_FALLBACK_MS);
+  }, [clearViewerReadyFallback, clearViewerRevealDelay]);
 
   const handleStudyAnalysisOverrideSaveIntent = useCallback(
     async payload => {
@@ -248,7 +286,8 @@ export default function EchocardiographyViewer({ studyResultsPageViewModel }) {
   const handleIFrameLoad = useCallback(() => {
     iframeLoadedRef.current = true;
     postAiPayload();
-  }, [postAiPayload]);
+    scheduleViewerReadyFallback();
+  }, [postAiPayload, scheduleViewerReadyFallback]);
 
   useEffect(() => {
     let isActive = true;
@@ -268,7 +307,17 @@ export default function EchocardiographyViewer({ studyResultsPageViewModel }) {
 
   useEffect(() => {
     iframeLoadedRef.current = false;
-  }, [src]);
+    setIsViewerVisible(false);
+    clearViewerReadyFallback();
+    clearViewerRevealDelay();
+  }, [clearViewerReadyFallback, clearViewerRevealDelay, src]);
+
+  useEffect(() => {
+    return () => {
+      clearViewerReadyFallback();
+      clearViewerRevealDelay();
+    };
+  }, [clearViewerReadyFallback, clearViewerRevealDelay]);
 
   useEffect(() => {
     postAiPayload();
@@ -302,6 +351,7 @@ export default function EchocardiographyViewer({ studyResultsPageViewModel }) {
       }
 
       if (data.type === PANEL_READY_TYPE) {
+        scheduleViewerReveal();
         postAiPayload();
         return;
       }
@@ -347,6 +397,7 @@ export default function EchocardiographyViewer({ studyResultsPageViewModel }) {
     hasStudyUid,
     isVendorAccess,
     postAiPayload,
+    scheduleViewerReveal,
     viewerOrigin,
   ]);
 
@@ -363,18 +414,23 @@ export default function EchocardiographyViewer({ studyResultsPageViewModel }) {
   }
 
   return (
-    <iframe
-      ref={iframeRef}
-      key={buildViewerIframeKey({
-        studyUid,
-        locationKey: location.key,
-        cacheBuster,
-      })}
-      title="OHIF Viewer"
-      src={src}
-      allow="cross-origin-isolated"
-      onLoad={handleIFrameLoad}
-      className="h-full w-full border-none"
-    />
+    <div className="relative h-full w-full bg-black">
+      <Skeleton isVisible={!isViewerVisible} />
+      <iframe
+        ref={iframeRef}
+        key={buildViewerIframeKey({
+          studyUid,
+          locationKey: location.key,
+          cacheBuster,
+        })}
+        title="OHIF Viewer"
+        src={src}
+        allow="cross-origin-isolated"
+        onLoad={handleIFrameLoad}
+        className={`h-full w-full border-none transition-opacity duration-300 ${
+          isViewerVisible ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+      />
+    </div>
   );
 }
