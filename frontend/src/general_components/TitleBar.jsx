@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
+import { STUDY_RESULTS_CHROME_BG } from "@/features/study_results/model/studyResults.theme";
 
 export const TITLEBAR_HEIGHT = 40; // px
 
@@ -39,14 +40,20 @@ export default function TitleBar({ variant = "light" }) {
     const barClass = [
         "fixed top-0 left-0 right-0 flex items-center justify-end px-2 z-[1000]",
         "transition-colors duration-300",
-        isSplash ? "bg-transparent text-white" : isDark ? "bg-slate-950 text-white" : "bg-white text-slate-700",
+        isSplash ? "bg-transparent text-white" : isDark ? "text-white" : "bg-white text-slate-700",
     ].join(" ");
+    const barStyle = {
+        height: TITLEBAR_HEIGHT,
+        WebkitAppRegion: "drag",
+        userSelect: "none",
+        ...(isDark ? { backgroundColor: STUDY_RESULTS_CHROME_BG } : null),
+    };
 
     return (
         <div
         onDoubleClick={onDoubleClick}
         className={barClass}
-        style={{ height: TITLEBAR_HEIGHT, WebkitAppRegion: "drag", userSelect: "none" }}
+        style={barStyle}
         >
         <div className="flex items-center gap-1" style={{ WebkitAppRegion: "no-drag" }}>
             <WinButton aria-label="Minimize" onClick={minimize} splash={isSplash}>
