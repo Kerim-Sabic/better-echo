@@ -34,8 +34,29 @@ function SectionCard({ title, description, children, actions = null }) {
   );
 }
 
+function formatLicenseExpiry(value) {
+  if (!value) {
+    return { label: "Not set", utcLabel: null, title: "Not set" };
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return { label: value, utcLabel: "UTC value could not be parsed", title: value };
+  }
+
+  return {
+    label: new Intl.DateTimeFormat(undefined, {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(parsed),
+    utcLabel: `UTC: ${value}`,
+    title: value,
+  };
+}
+
 export default function ServerAdminPage() {
   const vm = useServerAdminPageViewModel();
+  const licenseExpiry = formatLicenseExpiry(vm.licenseStatus?.expires_at);
 
   if (!vm.isRuntimeLoading && !vm.isServerRuntime) {
     return <Navigate to="/login" replace />;
@@ -101,7 +122,12 @@ export default function ServerAdminPage() {
                 </div>
                 <div>
                   <div className="font-medium text-foreground">Expires</div>
-                  <div>{vm.licenseStatus?.expires_at || "Not set"}</div>
+                  <div title={licenseExpiry.title}>
+                    <div>{licenseExpiry.label}</div>
+                    {licenseExpiry.utcLabel ? (
+                      <div className="mt-1 text-xs text-muted-foreground">{licenseExpiry.utcLabel}</div>
+                    ) : null}
+                  </div>
                 </div>
                 <div>
                   <div className="font-medium text-foreground">License ID</div>

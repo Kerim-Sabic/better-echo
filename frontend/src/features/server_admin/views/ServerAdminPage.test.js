@@ -100,3 +100,53 @@ describe("ServerAdminPage redirects", () => {
     expect(screen.getByText("Horalix Pulse Server")).toBeInTheDocument();
   });
 });
+
+describe("ServerAdminPage license expiry", () => {
+  beforeEach(() => {
+    mockUseServerAdminPageViewModel.mockReset();
+  });
+
+  test("renders valid expiry as local time with UTC detail", () => {
+    mockUseServerAdminPageViewModel.mockReturnValue(
+      buildViewModel({
+        licenseStatus: {
+          status: "valid",
+          customer_name: "UKC Maribor",
+          expires_at: "2026-07-29T22:23:32.739529Z",
+          license_id: "pilot-3month",
+          features: ["core", "llm"],
+        },
+      })
+    );
+
+    render(<ServerAdminPage />);
+
+    expect(screen.getByText("UTC: 2026-07-29T22:23:32.739529Z")).toBeInTheDocument();
+    expect(screen.getByTitle("2026-07-29T22:23:32.739529Z")).toBeInTheDocument();
+  });
+
+  test("renders missing expiry as not set", () => {
+    mockUseServerAdminPageViewModel.mockReturnValue(
+      buildViewModel({
+        licenseStatus: { status: "missing", customer_name: "", expires_at: "", license_id: "", features: [] },
+      })
+    );
+
+    render(<ServerAdminPage />);
+
+    expect(screen.getAllByText("Not set").length).toBeGreaterThan(0);
+  });
+
+  test("renders invalid expiry without crashing", () => {
+    mockUseServerAdminPageViewModel.mockReturnValue(
+      buildViewModel({
+        licenseStatus: { status: "invalid", customer_name: "", expires_at: "bad-date", license_id: "", features: [] },
+      })
+    );
+
+    render(<ServerAdminPage />);
+
+    expect(screen.getByText("bad-date")).toBeInTheDocument();
+    expect(screen.getByText("UTC value could not be parsed")).toBeInTheDocument();
+  });
+});
