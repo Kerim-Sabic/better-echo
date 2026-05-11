@@ -9,26 +9,36 @@ import {
 
 export default function NewStudyLayout({ newStudyPageViewModel }) {
   return (
-    <div className="bg-[#f8f8f8]" style={{ minHeight: `calc(100vh - ${TITLEBAR_HEIGHT}px)` }}>
+    <div
+      className="flex flex-col bg-[#f8f8f8]"
+      style={{ height: `calc(100vh - ${TITLEBAR_HEIGHT}px)` }}
+    >
       <NewStudyHeader newStudyPageViewModel={newStudyPageViewModel} />
 
-      <main className="container grid gap-6 px-6 py-6 mx-auto">
-        <UploadDicomCard newStudyPageViewModel={newStudyPageViewModel} />
+      <main data-testid="new-study-scroll-region" className="min-h-0 flex-1 overflow-y-auto">
+        <div className="container grid gap-6 px-6 py-6 mx-auto">
+          <UploadDicomCard newStudyPageViewModel={newStudyPageViewModel} />
 
-        <DuplicateFilesList newStudyPageViewModel={newStudyPageViewModel} />
+          <DuplicateFilesList newStudyPageViewModel={newStudyPageViewModel} />
 
-        {newStudyPageViewModel.studyUID && (
-          <MetadataPreview newStudyPageViewModel={newStudyPageViewModel} />
-        )}
+          {newStudyPageViewModel.studyUID && (
+            <MetadataPreview newStudyPageViewModel={newStudyPageViewModel} />
+          )}
 
-        {newStudyPageViewModel.studyUID && (
-          <p className="text-sm text-muted-foreground">
-            Click <span className="font-medium">Continue to Results</span> to view the study while AI
-            analysis runs.
-          </p>
-        )}
+          {newStudyPageViewModel.studyUID && (
+            <p className="text-sm text-muted-foreground">
+              Click <span className="font-medium">Continue to Results</span> to view the study while
+              AI analysis runs.
+            </p>
+          )}
+        </div>
+      </main>
 
-        <div className="flex items-center justify-end gap-4">
+      <footer
+        data-testid="new-study-action-footer"
+        className="shrink-0 border-t border-border bg-card px-6 py-4 shadow-[0_-12px_30px_rgba(15,23,42,0.08)]"
+      >
+        <div className="container mx-auto flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-end sm:gap-4">
           <Button
             variant="outline"
             onClick={newStudyPageViewModel.cancelAndGoBack}
@@ -56,7 +66,7 @@ export default function NewStudyLayout({ newStudyPageViewModel }) {
             {newStudyPageViewModel.isContinuingToResults ? "Preparing..." : "Continue to Results"}
           </Button>
         </div>
-      </main>
+      </footer>
     </div>
   );
 }
