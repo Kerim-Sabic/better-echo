@@ -9,8 +9,8 @@ import pydicom
 from pydicom.dataset import Dataset, FileDataset, FileMetaDataset
 from pydicom.uid import (
     ExplicitVRLittleEndian,
+    MultiFrameTrueColorSecondaryCaptureImageStorage,
     PYDICOM_IMPLEMENTATION_UID,
-    SecondaryCaptureImageStorage,
     generate_uid,
 )
 
@@ -45,7 +45,7 @@ def _build_derived_series_number(source_ds: Dataset) -> int:
     return min(base_number + 900, 9999)
 
 
-def _read_mp4_as_grayscale_stack(mp4_path: str) -> np.ndarray:
+def _read_mp4_as_rgb_stack(mp4_path: str) -> np.ndarray:
     cap = cv2.VideoCapture(mp4_path)
     if not cap.isOpened():
         raise RuntimeError(f"Could not open MP4 file: {mp4_path}")
@@ -56,8 +56,7 @@ def _read_mp4_as_grayscale_stack(mp4_path: str) -> np.ndarray:
             ok, frame_bgr = cap.read()
             if not ok:
                 break
-            gray = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
-            frames.append(gray)
+            frames.append(cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB))
     finally:
         cap.release()
 
@@ -91,9 +90,9 @@ def publish_mp4_as_derived_dicom(
             return None
 
         source_ds = pydicom.dcmread(source_dicom_path, stop_before_pixels=True, force=True)
-        pixel_stack = _read_mp4_as_grayscale_stack(resolved_mp4_path)
+        pixel_stack = _read_mp4_as_rgb_stack(resolved_mp4_path)
 
-        num_frames, rows, cols = pixel_stack.shape
+        num_frames, rows, cols, _channels = pixel_stack.shape
         now = datetime.now(timezone.utc)
 
         series_instance_uid = generate_uid()
@@ -105,7 +104,7 @@ def publish_mp4_as_derived_dicom(
 
         file_meta = FileMetaDataset()
         file_meta.FileMetaInformationVersion = b"\x00\x01"
-        file_meta.MediaStorageSOPClassUID = SecondaryCaptureImageStorage
+        file_meta.MediaStorageSOPClassUID = MultiFrameTrueColorSecondaryCaptureImageStorage
         file_meta.MediaStorageSOPInstanceUID = sop_instance_uid
         file_meta.TransferSyntaxUID = ExplicitVRLittleEndian
         file_meta.ImplementationClassUID = PYDICOM_IMPLEMENTATION_UID
@@ -137,7 +136,7 @@ def publish_mp4_as_derived_dicom(
         ds.StudyInstanceUID = source_study_uid or study_uid or generate_uid()
 
         ds.SeriesInstanceUID = series_instance_uid
-        ds.SOPClassUID = SecondaryCaptureImageStorage
+        ds.SOPClassUID = MultiFrameTrueColorSecondaryCaptureImageStorage
         ds.SOPInstanceUID = sop_instance_uid
         ds.Modality = str(getattr(source_ds, "Modality", "US") or "US")
         ds.SeriesNumber = _build_derived_series_number(source_ds)
@@ -163,8 +162,9 @@ def publish_mp4_as_derived_dicom(
         ds.NumberOfFrames = str(num_frames)
         ds.Rows = int(rows)
         ds.Columns = int(cols)
-        ds.SamplesPerPixel = 1
-        ds.PhotometricInterpretation = "MONOCHROME2"
+        ds.SamplesPerPixel = 3
+        ds.PhotometricInterpretation = "RGB"
+        ds.PlanarConfiguration = 0
         ds.BitsAllocated = 8
         ds.BitsStored = 8
         ds.HighBit = 7
