@@ -114,13 +114,15 @@ function buildDynamicMeasurementsViewerRefreshToken(
     const results = toArray(instance?.results);
 
     return results
-      .map(result => toObject(result?.derived_dicom))
-      .map(derivedDicom => {
+      .map(result => {
+        const normalizedResult = toObject(result);
+        const derivedDicom = toObject(normalizedResult.derived_dicom);
         return (
           toNullableString(derivedDicom.orthanc_instance_id) ||
           toNullableString(derivedDicom.series_instance_uid) ||
           toNullableString(derivedDicom.sop_instance_uid) ||
-          toNullableString(derivedDicom.relative_dicom_path)
+          toNullableString(derivedDicom.relative_dicom_path) ||
+          toNullableString(normalizedResult.output_path)
         );
       })
       .filter(Boolean)
@@ -176,7 +178,7 @@ export function formatDynamicMeasurementsCombinedResultsDto(rawApiResponse) {
     viewerRefreshToken:
       state === "ready"
         ? buildDynamicMeasurementsViewerRefreshToken(
-            rawData.dynamic_measurements_results
+            rawData.measurement_results
           )
         : DYNAMIC_MEASUREMENTS_PENDING_VIEWER_TOKEN,
     detail: state === "failed" ? toNullableString(rawData.detail) : null,
