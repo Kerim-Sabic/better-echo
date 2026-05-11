@@ -100,3 +100,63 @@ def test_prefilter_routes_spectral_before_classifier_and_sets_deterministic_view
         assert payload["summary"]["doppler_routed_instances"] == 1
     finally:
         db.close()
+
+
+def test_prefilter_unloads_secondary_classifier_under_stage_policy(
+    db_session_factory,
+    seeded_study,
+    monkeypatch,
+):
+    db = db_session_factory()
+    try:
+        suffix = uuid4().hex[:8]
+        series = Series(
+            series_uid=f"series-unload-{suffix}",
+            modality="US",
+            description="Test Series",
+            series_orthanc_id=f"orthanc-series-unload-{suffix}",
+            study_id=seeded_study["study_id"],
+        )
+        instance = Instance(
+            sop_instance_uid=f"sop-unload-{suffix}",
+            file_path=f"/tmp/{suffix}_a4c.dcm",
+            instance_orthanc_id=f"orthanc-unload-{suffix}",
+            instance_number="12",
+            predicted_view="A4C",
+            predicted_view_confidence=0.99,
+            series=series,
+        )
+        db.add_all([series, instance])
+        db.commit()
+
+        monkeypatch.setattr(
+            "app.helpers.pipeline.pipeline_routing._detect_hard_compatibility",
+            lambda _instance: (True, None),
+        )
+        monkeypatch.setattr(
+            "app.helpers.pipeline.pipeline_routing.inspect_doppler_tags",
+            lambda _file_path: {"is_doppler_candidate": False, "details": {}},
+        )
+        monkeypatch.setattr(
+            "app.helpers.pipeline.pipeline_routing.classify_views_for_study",
+            lambda *_args, **_kwargs: {},
+        )
+        monkeypatch.setattr(
+            "app.helpers.pipeline.pipeline_routing.settings.PIPELINE_UNLOAD_POLICY",
+            "stage",
+        )
+        unload_calls = {"count": 0}
+        monkeypatch.setattr(
+            "app.helpers.pipeline.pipeline_routing.unload_secondary_analysis_model",
+            lambda: unload_calls.__setitem__("count", unload_calls["count"] + 1),
+        )
+
+        build_prefilter_routing_map(
+            db=db,
+            study_uid=seeded_study["study_uid"],
+            confidence_min=0.75,
+        )
+
+        assert unload_calls["count"] == 1
+    finally:
+        db.close()

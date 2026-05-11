@@ -18,6 +18,7 @@ hiddenimports = [
     'uvicorn.lifespan.on',
     'sqlalchemy.sql.default_comparator',
     'passlib.handlers.bcrypt',
+    'win32crypt',
     'app.main',
     'matplotlib',
     'matplotlib.pyplot',

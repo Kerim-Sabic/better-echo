@@ -6,6 +6,7 @@ from app.database_models.pipeline_artifact_sets import PipelineArtifactSet, Pipe
 from app.database_models.pipeline_jobs import PipelineJob, PipelineJobStatus
 from app.database_models.pipeline_stage_runs import PipelineStageRun, PipelineStageStatus
 from app.helpers.auth.authentication_functions import get_current_user_id
+from app.services.auth.principal_service import get_current_doctor_user_id
 from app.services.pipeline.service import run_pending_jobs_once
 
 
@@ -82,6 +83,7 @@ def test_pipeline_status_reflects_completed_skeleton_run(app, seeded_study, db_s
 
 def test_pipeline_status_blocks_cross_user_access(app, seeded_study):
     app.dependency_overrides[get_current_user_id] = lambda: seeded_study["user_id"] + 999
+    app.dependency_overrides[get_current_doctor_user_id] = lambda: seeded_study["user_id"] + 999
     client = TestClient(app)
     response = client.get(f"/api/studies/{seeded_study['study_uid']}/pipeline/status")
     assert response.status_code == 404

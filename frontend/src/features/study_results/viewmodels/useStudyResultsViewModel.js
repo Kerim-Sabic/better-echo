@@ -15,6 +15,24 @@ import {
 import { useStudyAnalysisEditorViewModel } from "@/features/study_results/viewmodels/useStudyAnalysisEditorViewModel";
 import { DYNAMIC_MEASUREMENTS_PENDING_VIEWER_TOKEN } from "@/features/study_results/model/studyResults.constants";
 
+const MEMORY_FAILURE_CODES = [
+  "DICOM_UPLOAD_LIMIT_EXCEEDED",
+  "SECONDARY_ANALYSIS_STUDY_TOO_LARGE",
+  "MEMORY_LIMIT_EXCEEDED",
+];
+
+export function buildMemoryFailureNotice(details) {
+  const detail = details.find(item => typeof item === "string" && MEMORY_FAILURE_CODES.some(code => item.includes(code)));
+  if (!detail) {
+    return null;
+  }
+
+  return {
+    title: "Study is too large for available memory",
+    message: detail.replace(/^[A-Z_]+:\s*/, "") || "Please retry with a smaller study.",
+  };
+}
+
 // Resolves a single page-level state from the three study results query states.
 function resolveOverallState(states) {
   const normalizedStates = states.filter(Boolean);
@@ -111,6 +129,10 @@ export function useStudyResultsViewModel(
 
   const studyAnalysisCombinedResultsData =
     studyAnalysisQueryData?.studyAnalysisCombinedResults ?? null;
+  const studyAnalysisCombinedResultsDetail =
+    studyAnalysisQueryData?.detail ?? null;
+  const dynamicMeasurementsCombinedResultsDetail =
+    dynamicMeasurementsQueryData?.detail ?? null;
 
   const llmReportResultsData = llmReportQueryData?.llmReport ?? null;
   const llmReportResultsDetail = llmReportQueryData?.detail ?? null;
@@ -179,6 +201,20 @@ export function useStudyResultsViewModel(
       llmReportResultsData,
       llmReportResultsDetail,
       studyAnalysisEditorViewModel,
+    ]
+  );
+
+  const failureNotice = useMemo(
+    () =>
+      buildMemoryFailureNotice([
+        studyAnalysisCombinedResultsDetail,
+        dynamicMeasurementsCombinedResultsDetail,
+        llmReportResultsDetail,
+      ]),
+    [
+      studyAnalysisCombinedResultsDetail,
+      dynamicMeasurementsCombinedResultsDetail,
+      llmReportResultsDetail,
     ]
   );
 
@@ -278,6 +314,7 @@ export function useStudyResultsViewModel(
     studyAnalysisCombinedResultsData,
 
     dynamicMeasurementsCombinedResultsState,
+    dynamicMeasurementsCombinedResultsDetail,
 
     llmReportResultsState,
     llmReportResultsData,
@@ -286,6 +323,7 @@ export function useStudyResultsViewModel(
 
     anyLoading,
     isPolling,
+    failureNotice,
 
     ohifAiPayload,
     viewerRefreshToken,

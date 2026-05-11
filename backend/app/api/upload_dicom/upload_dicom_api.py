@@ -20,6 +20,7 @@ from app.database_models.series import Series
 from app.database_models.instances import Instance
 from app.schemas.upload_dicom.upload_dicom_schemas import UploadDicomResponseSchema
 from app.core.artifacts import UPLOAD_DIR
+from app.core.config import settings
 from app.services.auth.principal_service import get_current_doctor_user_id
 
 logger = logging.getLogger(__name__)
@@ -71,6 +72,28 @@ def _clean_for_ui(tags: dict) -> dict:
         "InstanceNumber": _tag(tags, "0020,0013", ""),
     }
 
+def _dicom_upload_limit_detail(current_count: int, max_files: int) -> str:
+    return (
+        "DICOM_UPLOAD_LIMIT_EXCEEDED: "
+        f"This study already has {current_count} DICOM files. "
+        f"The configured limit is {max_files}. Please retry with a smaller study."
+    )
+
+def _enforce_study_upload_limit(db: Session, study_uid: str) -> None:
+    max_files = max(int(settings.DICOM_UPLOAD_MAX_FILES or 0), 1)
+    current_count = (
+        db.query(Instance.id)
+        .join(Instance.series)
+        .join(Series.study)
+        .filter(Study.study_uid == study_uid)
+        .count()
+    )
+    if current_count >= max_files:
+        raise HTTPException(
+            status_code=400,
+            detail=_dicom_upload_limit_detail(current_count, max_files),
+        )
+
 @router.post("/upload-dicom", response_model=UploadDicomResponseSchema)
 async def upload_dicom(file: UploadFile = File(...),
                        db: Session = Depends(get_db),
@@ -101,6 +124,8 @@ async def upload_dicom(file: UploadFile = File(...),
             study_uid = ds.StudyInstanceUID
         except Exception as err:
             raise HTTPException(status_code=400, detail=f"Invalid DICOM file: {str(err)}")
+
+        _enforce_study_upload_limit(db, study_uid)
         
         # --- Step 3: create study specific folder ---
         study_folder = os.path.join(UPLOAD_DIR, study_uid)

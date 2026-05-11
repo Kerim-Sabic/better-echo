@@ -16,6 +16,7 @@ from app.services.licensing.service import (
     is_license_exempt_path,
     is_license_read_only_allowed_path,
 )
+from app.services.licensing import machine_identity
 from app.services.licensing import service as licensing_service
 
 
@@ -69,6 +70,25 @@ def test_import_signed_license_accepts_matching_machine(monkeypatch, tmp_path):
     assert get_license_file_path().exists()
 
 
+def test_activation_request_fingerprint_is_stable(monkeypatch, tmp_path):
+    _configure_license_env(monkeypatch, tmp_path)
+
+    first_request = build_activation_request()
+    second_request = build_activation_request()
+
+    assert first_request["machine_fingerprint"] == second_request["machine_fingerprint"]
+
+
+def test_machine_fingerprint_ignores_hostname_and_network_inputs(monkeypatch, tmp_path):
+    _configure_license_env(monkeypatch, tmp_path)
+    original_fingerprint = build_activation_request()["machine_fingerprint"]
+
+    monkeypatch.setattr(licensing_service.socket, "gethostname", lambda: "RENAMED-SERVER")
+    monkeypatch.setattr(licensing_service.platform, "machine", lambda: "DIFFERENT-MACHINE")
+
+    assert build_activation_request()["machine_fingerprint"] == original_fingerprint
+
+
 def test_import_signed_license_replaces_existing_license_and_extends_expiry(monkeypatch, tmp_path):
     private_key = _configure_license_env(monkeypatch, tmp_path)
     activation_request = build_activation_request()
@@ -107,6 +127,7 @@ def test_import_signed_license_replaces_existing_license_and_extends_expiry(monk
     assert second_status["valid"] is True
     assert second_status["license_id"] == "pilot-renewed"
     assert second_status["expires_at"] == second_payload["expires_at"]
+    assert second_status["features"] == ["core", "llm"]
 
 
 def test_import_signed_license_rejects_wrong_machine(monkeypatch, tmp_path):
@@ -239,6 +260,80 @@ def test_get_license_status_expires_cached_valid_license_without_restart(monkeyp
     assert status_after_expiry["valid"] is False
     assert status_after_expiry["status"] == "expired"
     assert "expired" in (status_after_expiry["detail"] or "").lower()
+
+
+def test_license_clock_allows_small_backward_correction(monkeypatch, tmp_path):
+    private_key = _configure_license_env(monkeypatch, tmp_path)
+    activation_request = build_activation_request()
+    base_time = datetime(2026, 1, 10, 12, 0, tzinfo=timezone.utc)
+    payload = {
+        "license_id": "pilot-clock-grace",
+        "customer_name": "Clock Hospital",
+        "issued_at": base_time.isoformat().replace("+00:00", "Z"),
+        "expires_at": (base_time + timedelta(days=30)).isoformat().replace("+00:00", "Z"),
+        "machine_fingerprint": activation_request["machine_fingerprint"],
+        "features": ["core"],
+    }
+    envelope = {
+        "payload": payload,
+        "signature": _canonical_signature(payload, private_key),
+    }
+    license_path = get_license_file_path()
+    license_path.parent.mkdir(parents=True, exist_ok=True)
+    license_path.write_text(json.dumps(envelope, indent=2), encoding="utf-8")
+    invalidate_license_status_cache()
+
+    monkeypatch.setattr(licensing_service, "_now_utc", lambda: base_time)
+    assert get_license_status(force_reload=True)["status"] == "valid"
+
+    monkeypatch.setattr(licensing_service, "_now_utc", lambda: base_time - timedelta(hours=23))
+    status = get_license_status(force_reload=True)
+
+    assert status["status"] == "valid"
+
+
+def test_license_clock_rejects_large_rollback(monkeypatch, tmp_path):
+    private_key = _configure_license_env(monkeypatch, tmp_path)
+    activation_request = build_activation_request()
+    base_time = datetime(2026, 1, 10, 12, 0, tzinfo=timezone.utc)
+    payload = {
+        "license_id": "pilot-clock-rollback",
+        "customer_name": "Clock Hospital",
+        "issued_at": base_time.isoformat().replace("+00:00", "Z"),
+        "expires_at": (base_time + timedelta(days=30)).isoformat().replace("+00:00", "Z"),
+        "machine_fingerprint": activation_request["machine_fingerprint"],
+        "features": ["core"],
+    }
+    envelope = {
+        "payload": payload,
+        "signature": _canonical_signature(payload, private_key),
+    }
+    license_path = get_license_file_path()
+    license_path.parent.mkdir(parents=True, exist_ok=True)
+    license_path.write_text(json.dumps(envelope, indent=2), encoding="utf-8")
+    invalidate_license_status_cache()
+
+    monkeypatch.setattr(licensing_service, "_now_utc", lambda: base_time)
+    assert get_license_status(force_reload=True)["status"] == "valid"
+
+    monkeypatch.setattr(licensing_service, "_now_utc", lambda: base_time - timedelta(hours=25))
+    status = get_license_status(force_reload=True)
+
+    assert status["status"] == "invalid"
+    assert "clock rollback" in (status["detail"] or "").lower()
+
+
+def test_license_clock_last_seen_only_moves_forward(monkeypatch, tmp_path):
+    _configure_license_env(monkeypatch, tmp_path)
+    base_time = datetime(2026, 1, 10, 12, 0, tzinfo=timezone.utc)
+    later_time = base_time + timedelta(hours=1)
+
+    machine_identity.assert_license_clock_not_rolled_back(base_time)
+    machine_identity.assert_license_clock_not_rolled_back(base_time - timedelta(hours=1))
+    assert machine_identity._load_clock_state()["last_seen_utc"] == base_time.isoformat().replace("+00:00", "Z")
+
+    machine_identity.assert_license_clock_not_rolled_back(later_time)
+    assert machine_identity._load_clock_state()["last_seen_utc"] == later_time.isoformat().replace("+00:00", "Z")
 
 
 @pytest.mark.parametrize(

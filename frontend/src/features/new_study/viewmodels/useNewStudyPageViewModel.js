@@ -6,8 +6,22 @@ import { usePromoteStudyPipelineDraftMutation } from "@/features/new_study/tanst
 import { useCancelStudyPipelineMutation } from "@/features/new_study/tanstack/mutations/useCancelStudyPipelineMutation";
 import { getStudyUIDFromDicomFile } from "@/features/new_study/model/getStudyUIDFromDicomFile";
 
+export const DICOM_UPLOAD_LIMIT_EXCEEDED = "DICOM_UPLOAD_LIMIT_EXCEEDED";
+
+export function getDicomUploadMaxFiles() {
+  const configuredValue = Number(process.env.REACT_APP_DICOM_UPLOAD_MAX_FILES || 30);
+  return Number.isFinite(configuredValue) && configuredValue > 0
+    ? Math.floor(configuredValue)
+    : 30;
+}
+
+export function buildDicomUploadLimitMessage(selectedCount, maxFiles) {
+  return `${DICOM_UPLOAD_LIMIT_EXCEEDED}: ${selectedCount} DICOM files were selected, but the configured limit is ${maxFiles}. Please retry with a smaller study.`;
+}
+
 export function useNewStudyPageViewModel() {
   const navigate = useNavigate();
+  const dicomUploadMaxFiles = getDicomUploadMaxFiles();
 
   // --- Data Fetching & Mutations (Server State) ---
   const uploadDicomMutation = useUploadDicomMutation();
@@ -28,8 +42,30 @@ export function useNewStudyPageViewModel() {
     navigate("/dashboard");
   };
 
+  const selectDicomFiles = incomingFiles => {
+    const incomingList = Array.from(incomingFiles || []);
+    if (!incomingList.length) {
+      return;
+    }
+
+    const existingNames = new Set((files || []).map(file => file.name));
+    const freshFiles = incomingList.filter(file => !existingNames.has(file.name));
+    const nextFiles = [...(files || []), ...freshFiles];
+
+    if (nextFiles.length > dicomUploadMaxFiles) {
+      setStatus(buildDicomUploadLimitMessage(nextFiles.length, dicomUploadMaxFiles));
+      return;
+    }
+
+    setFiles(nextFiles);
+  };
+
   const handleUpload = async () => {
     if (!files.length) {
+      return;
+    }
+    if (files.length > dicomUploadMaxFiles) {
+      setStatus(buildDicomUploadLimitMessage(files.length, dicomUploadMaxFiles));
       return;
     }
 
@@ -173,6 +209,8 @@ export function useNewStudyPageViewModel() {
   return {
     files,
     setFiles,
+    selectDicomFiles,
+    dicomUploadMaxFiles,
     isDicomUploading: uploadDicomMutation.isPending || startStudyPipelineMutation.isPending,
     status,
     studyUID,

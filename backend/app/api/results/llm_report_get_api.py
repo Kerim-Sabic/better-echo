@@ -79,7 +79,7 @@ def get_llm_report(
     queue_failed_detail = get_latest_stage_failure_detail(
         db=db,
         study_id=study.id,
-        stage_names=["combined", "dynamic_measurements", "llm"],
+        stage_names=["prefilter", "combined", "dynamic_measurements", "llm"],
     )
     if queue_failed_detail:
         failed = LLMFailedResponse(status="failed", detail=queue_failed_detail)

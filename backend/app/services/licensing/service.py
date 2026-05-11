@@ -1,10 +1,8 @@
 import base64
-import hashlib
 import json
 import logging
 import platform
 import socket
-import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
@@ -20,6 +18,12 @@ from app.core.artifacts import (
     MEASUREMENT_RESULTS_ROUTE_SEGMENT,
 )
 from app.services.licensing.signing import canonicalize_license_payload
+from app.services.licensing.machine_identity import (
+    ClockRollbackError,
+    MachineIdentityError,
+    assert_license_clock_not_rolled_back,
+    get_stable_machine_fingerprint,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -154,15 +158,7 @@ def log_current_license_status() -> None:
 
 
 def get_machine_fingerprint() -> str:
-    source = "|".join(
-        [
-            socket.gethostname(),
-            platform.system(),
-            platform.machine(),
-            str(uuid.getnode()),
-        ]
-    )
-    return hashlib.sha256(source.encode("utf-8")).hexdigest()
+    return get_stable_machine_fingerprint()
 
 
 def _load_license_status(license_path: Path) -> dict[str, Any]:
@@ -231,6 +227,11 @@ def _verify_license_envelope(envelope: dict[str, Any]) -> dict[str, Any]:
     if payload.get("machine_fingerprint") != get_machine_fingerprint():
         raise ValueError("License machine fingerprint does not match this server.")
 
+    try:
+        assert_license_clock_not_rolled_back(_now_utc())
+    except ClockRollbackError as exc:
+        raise ValueError(str(exc)) from exc
+
     expires_at = _parse_iso8601(payload.get("expires_at"))
     if expires_at is None:
         raise ValueError("License payload is missing a valid expires_at value.")
@@ -274,6 +275,13 @@ def _can_return_cached_status(status: dict[str, Any]) -> bool:
     if not status.get("valid"):
         return True
 
+    try:
+        if status.get("machine_fingerprint") != get_machine_fingerprint():
+            return False
+        assert_license_clock_not_rolled_back(_now_utc())
+    except (ClockRollbackError, MachineIdentityError):
+        return False
+
     expires_at = _parse_iso8601(status.get("expires_at"))
     if expires_at is None:
         return False
@@ -297,6 +305,7 @@ def _build_status(
         "customer_name": payload.get("customer_name"),
         "expires_at": payload.get("expires_at"),
         "features": list(payload.get("features") or []),
+        "machine_fingerprint": payload.get("machine_fingerprint"),
     }
 
 

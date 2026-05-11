@@ -12,6 +12,7 @@ from app.database_models.patients import Patient
 from app.database_models.series import Series
 from app.database_models.studies import Study
 from app.helpers.auth.authentication_functions import get_current_user_id
+from app.services.auth.principal_service import get_current_doctor_user_id
 
 
 def _seed_completed_required_results(*, db, study_id: int) -> None:
@@ -239,6 +240,7 @@ def test_delete_study_preserves_patient_when_other_studies_exist(app, db_session
 def test_study_mutation_routes_return_404_for_non_owner(app, db_session_factory, seeded_study):
     client = TestClient(app)
     app.dependency_overrides[get_current_user_id] = lambda: seeded_study["user_id"] + 1000
+    app.dependency_overrides[get_current_doctor_user_id] = lambda: seeded_study["user_id"] + 1000
 
     patch_response = client.patch(
         f"/api/studies/{seeded_study['study_id']}",
