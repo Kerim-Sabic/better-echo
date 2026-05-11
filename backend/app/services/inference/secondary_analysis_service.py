@@ -1,10 +1,10 @@
 import logging
 import os
-import shutil
 import tempfile
 import threading
 import time
-from typing import Any, Callable, Dict, List, Optional
+import shutil
+from typing import Any, Callable, Dict, Iterable, List, Optional
 
 import requests
 import torch
@@ -29,10 +29,67 @@ orthanc_pass = settings.ORTHANC_PASS
 
 logger = logging.getLogger(__name__)
 
+SECONDARY_ANALYSIS_STUDY_TOO_LARGE = "SECONDARY_ANALYSIS_STUDY_TOO_LARGE"
+MEMORY_LIMIT_EXCEEDED = "MEMORY_LIMIT_EXCEEDED"
+
 
 _ep: Optional[Any] = None
 _ep_lock = threading.Lock()
 _preload_thread: Optional[threading.Thread] = None
+
+
+class SecondaryAnalysisStudyTooLargeError(RuntimeError):
+    pass
+
+
+class SecondaryAnalysisMemoryError(RuntimeError):
+    pass
+
+
+def _positive_int(value: object, fallback: int) -> int:
+    try:
+        parsed = int(value)
+    except Exception:
+        parsed = fallback
+    return max(parsed, 1)
+
+
+def _chunked(items: List[Any], chunk_size: int) -> Iterable[List[Any]]:
+    for start in range(0, len(items), chunk_size):
+        yield items[start:start + chunk_size]
+
+
+def _enforce_secondary_instance_limit(count: int) -> None:
+    max_instances = _positive_int(settings.SECONDARY_ANALYSIS_MAX_INSTANCES, 100)
+    if count > max_instances:
+        raise SecondaryAnalysisStudyTooLargeError(
+            f"{SECONDARY_ANALYSIS_STUDY_TOO_LARGE}: "
+            f"This study has {count} EchoPrime-eligible DICOM files, but the configured limit is "
+            f"{max_instances}. Please retry with a smaller study."
+        )
+
+
+def _is_memory_exception(exc: BaseException) -> bool:
+    torch_oom_error = getattr(torch.cuda, "OutOfMemoryError", None)
+    if isinstance(exc, MemoryError):
+        return True
+    if torch_oom_error is not None and isinstance(exc, torch_oom_error):
+        return True
+    return "out of memory" in str(exc).lower()
+
+
+def _raise_memory_normalized(exc: BaseException) -> None:
+    if _is_memory_exception(exc):
+        raise SecondaryAnalysisMemoryError(
+            f"{MEMORY_LIMIT_EXCEEDED}: Secondary analysis exceeded available memory. "
+            "Please retry with a smaller study."
+        ) from exc
+    raise exc
+
+
+def _clear_torch_cache() -> None:
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
 
 
 # Part 1. Secondary analysis model lifecycle helpers.
@@ -109,12 +166,7 @@ def unload_secondary_analysis_model() -> None:
 
 
 # Part 2. Study input download and subset-build helpers.
-def download_dicoms_for_study(instance_ids: List[str]) -> List[Dict[str, str]]:
-    """
-    Download all DICOMs for a study into a temporary folder.
-    Returns a list of dicts with instance_id and local path.
-    """
-    tmp_dir = tempfile.mkdtemp(prefix="secondary_analysis_study_")
+def download_dicoms_for_instances(instance_ids: List[str], output_dir: str) -> List[Dict[str, str]]:
     records: List[Dict[str, str]] = []
     for idx, iid in enumerate(instance_ids):
         response = requests.get(
@@ -123,7 +175,7 @@ def download_dicoms_for_study(instance_ids: List[str]) -> List[Dict[str, str]]:
             stream=True,
         )
         response.raise_for_status()
-        filepath = os.path.join(tmp_dir, f"{idx:05d}_{iid}.dcm")
+        filepath = os.path.join(output_dir, f"{idx:05d}_{iid}.dcm")
         with open(filepath, "wb") as output_file:
             for chunk in response.iter_content(chunk_size=8192):
                 output_file.write(chunk)
@@ -131,15 +183,30 @@ def download_dicoms_for_study(instance_ids: List[str]) -> List[Dict[str, str]]:
     return records
 
 
-def _build_subset_input_folder(file_paths: List[str]) -> tuple[str, str, bool]:
-    temp_dir = tempfile.mkdtemp(prefix="secondary_analysis_view_subset_")
-    for idx, src in enumerate(file_paths):
-        dst = os.path.join(temp_dir, f"{idx:05d}_{os.path.basename(src)}")
-        try:
-            os.link(src, dst)
-        except Exception:
-            shutil.copy2(src, dst)
-    return temp_dir, temp_dir, True
+def download_dicoms_for_study(instance_ids: List[str]) -> List[Dict[str, str]]:
+    """
+    Download all DICOMs for a study into a temporary folder.
+    Returns a list of dicts with instance_id and local path.
+    """
+    tmp_dir = tempfile.mkdtemp(prefix="secondary_analysis_study_")
+    return download_dicoms_for_instances(instance_ids, tmp_dir)
+
+
+def _stack_processed_dicoms(ep: Any, dicom_paths: List[str]) -> tuple[torch.Tensor, List[str]]:
+    clips = []
+    processed_paths = []
+    for dicom_path in dicom_paths:
+        clip = ep.process_dicom_file(dicom_path)
+        if clip is None:
+            continue
+        clips.append(clip)
+        processed_paths.append(dicom_path)
+
+    if not clips:
+        empty = torch.empty((0, 3, 16, 224, 224), dtype=torch.float32)
+        return empty, processed_paths
+
+    return torch.stack(clips), processed_paths
 
 
 # Part 3. Secondary analysis metrics inference service entrypoint.
@@ -152,18 +219,47 @@ def run_secondary_analysis_metrics(
 ) -> Dict[str, object]:
     logger.info("[SecondaryAnalysis] infer called with study_uid=%s", study_uid)
 
-    ep = get_secondary_analysis_model()
     instance_orthanc_ids = include_instance_orthanc_ids or fetch_orthanc_instance_ids_from_study(study_uid)
     if not instance_orthanc_ids:
         raise ValueError(f"No instances found for study_uid={study_uid}")
+    _enforce_secondary_instance_limit(len(instance_orthanc_ids))
 
-    downloaded = download_dicoms_for_study(instance_orthanc_ids)
-    study_dir = os.path.dirname(downloaded[0]["path"]) if downloaded else tempfile.mkdtemp(prefix="secondary_analysis_study_empty_")
+    ep = get_secondary_analysis_model()
+    metrics_chunk_size = _positive_int(settings.SECONDARY_ANALYSIS_METRICS_CHUNK_SIZE, 8)
+    encoder_batch_size = _positive_int(settings.SECONDARY_ANALYSIS_ENCODER_BATCH, 4)
+    chunk_dirs: List[str] = []
 
     try:
-        stack_of_videos = ep.process_dicoms(study_dir)
-        encoded_study = ep.encode_study(stack_of_videos, visualize=False)
-        predictions = ep.predict_metrics(encoded_study)
+        metrics_accumulator = ep.create_metrics_accumulator()
+        processed_instances = 0
+
+        for chunk_ids in _chunked(instance_orthanc_ids, metrics_chunk_size):
+            chunk_dir = tempfile.mkdtemp(prefix="secondary_analysis_metrics_chunk_")
+            chunk_dirs.append(chunk_dir)
+            downloaded = download_dicoms_for_instances(chunk_ids, chunk_dir)
+            stack_of_videos, _processed_paths = _stack_processed_dicoms(
+                ep,
+                [record["path"] for record in downloaded],
+            )
+
+            if stack_of_videos.shape[0] > 0:
+                metrics_accumulator = ep.accumulate_metrics_chunk(
+                    metrics_accumulator,
+                    stack_of_videos,
+                    encoder_batch_size=encoder_batch_size,
+                    visualize=False,
+                )
+                processed_instances += int(stack_of_videos.shape[0])
+
+            del stack_of_videos
+            _clear_torch_cache()
+            shutil.rmtree(chunk_dir, ignore_errors=True)
+            chunk_dirs.remove(chunk_dir)
+
+        if processed_instances <= 0:
+            raise ValueError("No EchoPrime-compatible DICOM instances found for secondary analysis.")
+
+        predictions = ep.predict_metrics_from_accumulator(metrics_accumulator)
 
         study = db.query(Study).filter(Study.study_uid == study_uid).first()
         if study:
@@ -202,14 +298,14 @@ def run_secondary_analysis_metrics(
         logger.info("[SecondaryAnalysis] Metrics inference completed for study_uid=%s", study_uid)
         return {
             "study_uid": study_uid,
-            "num_instances": len(instance_orthanc_ids),
+            "num_instances": processed_instances,
             "predictions": predictions,
         }
+    except Exception as exc:
+        _raise_memory_normalized(exc)
     finally:
-        try:
-            shutil.rmtree(study_dir)
-        except Exception:
-            pass
+        for chunk_dir in list(chunk_dirs):
+            shutil.rmtree(chunk_dir, ignore_errors=True)
 
 
 # Part 4. Secondary analysis view-classification service entrypoint.
@@ -284,52 +380,54 @@ def classify_views_for_study(
     )
     if not disk_files:
         return {}
-
-    input_folder = study_folder
-    cleanup_path = ""
-    requires_cleanup = False
-    if target_paths_set is not None and len(disk_files) != len(study_disk_files):
-        input_folder, cleanup_path, requires_cleanup = _build_subset_input_folder(disk_files)
+    _enforce_secondary_instance_limit(len(disk_files))
 
     ep = get_secondary_analysis_model()
-    try:
-        stack_of_videos = ep.process_dicoms(input_folder)
-        view_list, view_confidence_list = ep.get_views(
-            stack_of_videos,
-            visualize=False,
-            return_view_list=True,
-            return_scores=True,
-        )
-    finally:
-        if requires_cleanup and cleanup_path:
-            shutil.rmtree(cleanup_path, ignore_errors=True)
-
-    prediction_count = len(view_list)
-    if prediction_count != len(disk_files):
-        logger.warning(
-            "[view_classifier] Mismatch for study %s: %d predictions vs %d files",
-            study_uid,
-            prediction_count,
-            len(disk_files),
-        )
-
-    # Part 4.2 Persist predictions to matching Instance rows.
-    limit = min(prediction_count, len(disk_files))
+    classify_chunk_size = _positive_int(settings.SECONDARY_ANALYSIS_CLASSIFY_CHUNK_SIZE, 8)
     result_map: Dict[str, Dict[str, Optional[float | str]]] = {}
-    for idx, file_path in enumerate(disk_files[:limit]):
-        instance = instances_by_path.get(file_path)
-        if not instance:
-            continue
-        label = view_list[idx]
-        confidence = float(view_confidence_list[idx]) if idx < len(view_confidence_list) else None
-        instance.predicted_view = str(label).upper() if label else None
-        instance.predicted_view_confidence = confidence
-        db.add(instance)
-        result_map[instance.sop_instance_uid] = {
-            "view": instance.predicted_view,
-            "confidence": confidence,
-            "file_path": file_path,
-        }
+    try:
+        for chunk_paths in _chunked(disk_files, classify_chunk_size):
+            stack_of_videos, processed_paths = _stack_processed_dicoms(ep, chunk_paths)
+            if stack_of_videos.shape[0] == 0:
+                continue
+
+            view_list, view_confidence_list = ep.get_views(
+                stack_of_videos,
+                visualize=False,
+                return_view_list=True,
+                return_scores=True,
+            )
+
+            prediction_count = len(view_list)
+            if prediction_count != len(processed_paths):
+                logger.warning(
+                    "[view_classifier] Mismatch for study %s: %d predictions vs %d files in chunk",
+                    study_uid,
+                    prediction_count,
+                    len(processed_paths),
+                )
+
+            # Part 4.2 Persist predictions to matching Instance rows.
+            limit = min(prediction_count, len(processed_paths))
+            for idx, file_path in enumerate(processed_paths[:limit]):
+                instance = instances_by_path.get(file_path)
+                if not instance:
+                    continue
+                label = view_list[idx]
+                confidence = float(view_confidence_list[idx]) if idx < len(view_confidence_list) else None
+                instance.predicted_view = str(label).upper() if label else None
+                instance.predicted_view_confidence = confidence
+                db.add(instance)
+                result_map[instance.sop_instance_uid] = {
+                    "view": instance.predicted_view,
+                    "confidence": confidence,
+                    "file_path": file_path,
+                }
+
+            del stack_of_videos
+            _clear_torch_cache()
+    except Exception as exc:
+        _raise_memory_normalized(exc)
 
     db.commit()
     logger.info(

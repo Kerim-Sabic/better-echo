@@ -157,6 +157,7 @@ export function formatStudyAnalysisCombinedResultsDto(rawApiResponse) {
   return {
     state,
     studyAnalysisCombinedResults: studyAnalysisResults,
+    detail: state === "failed" ? toNullableString(rawData.detail) : null,
   };
 }
 
@@ -178,6 +179,7 @@ export function formatDynamicMeasurementsCombinedResultsDto(rawApiResponse) {
             rawData.dynamic_measurements_results
           )
         : DYNAMIC_MEASUREMENTS_PENDING_VIEWER_TOKEN,
+    detail: state === "failed" ? toNullableString(rawData.detail) : null,
   };
 }
 

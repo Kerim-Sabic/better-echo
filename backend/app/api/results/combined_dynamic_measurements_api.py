@@ -78,7 +78,7 @@ def get_dynamic_measurements_combined_results(
     queue_failed_detail = get_latest_stage_failure_detail(
         db=db,
         study_id=study.id,
-        stage_names=["combined", "dynamic_measurements"],
+        stage_names=["prefilter", "combined", "dynamic_measurements"],
     )
     if queue_failed_detail:
         failed = FailedResponse(status="failed", detail=queue_failed_detail)

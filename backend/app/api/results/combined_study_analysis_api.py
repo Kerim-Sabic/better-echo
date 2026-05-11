@@ -96,7 +96,7 @@ def get_combined_results(
     queue_failed_detail = get_latest_stage_failure_detail(
         db=db,
         study_id=study.id,
-        stage_names=["combined"],
+        stage_names=["prefilter", "combined"],
     )
     if queue_failed_detail:
         failed = FailedResponse(status="failed", detail=queue_failed_detail)

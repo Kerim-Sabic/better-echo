@@ -8,11 +8,17 @@ from typing import Any, Dict, List, Optional
 import pydicom
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.database_models.instances import Instance
 from app.database_models.series import Series
 from app.database_models.studies import Study
 from app.helpers.doppler.doppler_tags import inspect_doppler_tags
-from app.services.inference.secondary_analysis_service import classify_views_for_study
+from app.services.inference.secondary_analysis_service import (
+    SecondaryAnalysisMemoryError,
+    SecondaryAnalysisStudyTooLargeError,
+    classify_views_for_study,
+    unload_secondary_analysis_model,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +28,13 @@ SPECTRAL_DOPPLER_TAG_ROUTED = "SPECTRAL_DOPPLER_TAG_ROUTED"
 LOW_VIEW_CONFIDENCE = "LOW_VIEW_CONFIDENCE"
 NO_TASK_MATCH = "NO_TASK_MATCH"
 VIEW_CLASSIFIER_FAILED = "VIEW_CLASSIFIER_FAILED"
+
+
+def _should_unload_after_stage() -> bool:
+    return (
+        str(settings.PIPELINE_UNLOAD_POLICY).strip().lower() == "stage"
+        or str(settings.INFERENCE_PROFILE).strip().lower() == "low_vram"
+    )
 
 
 # Part 1. Dynamic/2D weights per supported classifier view.
@@ -165,6 +178,12 @@ def build_prefilter_routing_map(
                 db,
                 include_file_paths=classifier_target_paths,
             )
+        except (SecondaryAnalysisMemoryError, SecondaryAnalysisStudyTooLargeError):
+            logger.exception(
+                "[PIPELINE_PREFILTER] View classifier failed with user-facing failure for study_uid=%s",
+                study_uid,
+            )
+            raise
         except Exception as exc:
             classifier_failed = True
             classifier_error = str(exc)
@@ -172,6 +191,9 @@ def build_prefilter_routing_map(
                 "[PIPELINE_PREFILTER] View classifier failed for study_uid=%s",
                 study_uid,
             )
+        finally:
+            if _should_unload_after_stage():
+                unload_secondary_analysis_model()
 
     # Part 6. Build final routing decisions.
     decisions: List[Dict[str, Any]] = []

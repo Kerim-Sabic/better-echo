@@ -6,15 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/gen
 export default function UploadDicomCard({ newStudyPageViewModel }) {
   const [isActive, setIsActive] = useState(false);
 
-  const { files, setFiles, isDicomUploading, handleUpload } = newStudyPageViewModel;
-
-  const dedupeFiles = incomingFiles => {
-    const existingNames = new Set((files || []).map(file => file.name));
-    const freshFiles = incomingFiles.filter(file => !existingNames.has(file.name));
-    if (freshFiles.length) {
-      setFiles([...(files || []), ...freshFiles]);
-    }
-  };
+  const {
+    files,
+    setFiles,
+    selectDicomFiles,
+    dicomUploadMaxFiles,
+    isDicomUploading,
+    handleUpload,
+  } = newStudyPageViewModel;
 
   return (
     <Card className="glass-card border-0">
@@ -47,7 +46,7 @@ export default function UploadDicomCard({ newStudyPageViewModel }) {
             event.preventDefault();
             const incomingFiles = Array.from(event.dataTransfer?.files || []);
             if (incomingFiles.length) {
-              dedupeFiles(incomingFiles);
+              selectDicomFiles(incomingFiles);
             }
             setIsActive(false);
           }}
@@ -61,7 +60,7 @@ export default function UploadDicomCard({ newStudyPageViewModel }) {
               if (!incomingFiles.length) {
                 return;
               }
-              dedupeFiles(incomingFiles);
+              selectDicomFiles(incomingFiles);
             }}
             className="hidden"
             id="dicom-upload"
@@ -74,7 +73,9 @@ export default function UploadDicomCard({ newStudyPageViewModel }) {
 
             <div>
               <p className="text-lg font-semibold text-foreground mb-1">Click to upload or drag and drop</p>
-              <p className="text-sm text-muted-foreground">DICOM files (.dcm) - PHI-safe handling recommended</p>
+              <p className="text-sm text-muted-foreground">
+                DICOM files (.dcm) - up to {dicomUploadMaxFiles} files per study
+              </p>
             </div>
           </label>
         </div>

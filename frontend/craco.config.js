@@ -12,6 +12,7 @@ module.exports = {
         ...(jestConfig.moduleNameMapper || {}),
         '^@/(.*)$': '<rootDir>/src/$1',
       };
+      jestConfig.transformIgnorePatterns = ['/node_modules/(?!axios/)'];
       return jestConfig;
     },
   },

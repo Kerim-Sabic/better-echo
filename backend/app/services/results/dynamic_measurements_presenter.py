@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional
 _TASK_LABEL_FALLBACKS = {
     "motion_segmentation_lv": "Motion Segmentation",
     "measurement_linear": "Linear Measurements",
-    "measurement_spectral": "Spectral Measurements",
+    "measurement_spectral": "Doppler Measurements",
 }
 
 _VIDEO_SUFFIXES = (".mp4", ".webm", ".mov", ".avi")
@@ -137,13 +137,12 @@ def _normalize_meta(meta: Any) -> Optional[Dict[str, int]]:
         return None
 
     normalized: Dict[str, int] = {}
-    for key in (
-        "motion_runs",
-        "linear_runs",
-        "spectral_runs",
-        "skipped_instances",
-        "error_count",
-    ):
+    meta_keys = (
+        ("dynamic_runs", "measurements_2d_runs", "measurement_spectral_runs")
+        if any(key in payload for key in ("dynamic_runs", "measurements_2d_runs", "measurement_spectral_runs"))
+        else ("motion_runs", "linear_runs", "spectral_runs")
+    )
+    for key in (*meta_keys, "skipped_instances", "error_count"):
         value = payload.get(key)
         if isinstance(value, int):
             normalized[key] = value

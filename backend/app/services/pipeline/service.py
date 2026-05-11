@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.helpers.pipeline.study_status import is_llm_enabled
 from app.database_models.pipeline_artifact_sets import (
     PipelineArtifactSet,
@@ -47,6 +48,7 @@ logger = logging.getLogger(__name__)
 # Part 1. Stage order templates for queue jobs.
 BASE_STAGE_ORDER = ["prefilter", "combined", "dynamic_measurements"]
 LLM_STAGE = "llm"
+DICOM_UPLOAD_LIMIT_EXCEEDED = "DICOM_UPLOAD_LIMIT_EXCEEDED"
 
 
 def _stage_handlers_for_runtime() -> Dict[str, Any]:
@@ -97,6 +99,18 @@ def start_pipeline_job(
     """
     study = _resolve_owned_study_or_404(db, study_uid, user_id)
     _ensure_active_artifact_set_and_backfill(db, study_id=study.id)
+    uploaded_instance_uids = uploaded_instance_uids or []
+
+    max_uploaded_files = max(int(settings.DICOM_UPLOAD_MAX_FILES or 0), 1)
+    if run_mode == PipelineRunMode.upload_preview and len(uploaded_instance_uids) > max_uploaded_files:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"{DICOM_UPLOAD_LIMIT_EXCEEDED}: "
+                f"{len(uploaded_instance_uids)} DICOM files were uploaded, but the configured limit is "
+                f"{max_uploaded_files}. Please retry with a smaller study."
+            ),
+        )
 
     # Part 1.1 Validate regenerate mode contract before reusing/creating jobs.
     if run_mode == PipelineRunMode.regenerate_combined:
@@ -123,7 +137,7 @@ def start_pipeline_job(
         current_stage=None,
         run_mode=run_mode,
         cleanup_scope=cleanup_scope,
-        uploaded_instance_uids_json=uploaded_instance_uids or [],
+        uploaded_instance_uids_json=uploaded_instance_uids,
     )
     db.add(job)
     db.flush()

@@ -15,6 +15,11 @@ jest.mock(
 );
 
 jest.mock("../../contexts/AuthenticationContext", () => ({
+  AuthContext: require("react").createContext({
+    user: null,
+    login: jest.fn(),
+    logout: jest.fn(),
+  }),
   AuthProvider: ({ children }) => children,
 }));
 

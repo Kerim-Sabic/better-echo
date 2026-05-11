@@ -3,6 +3,7 @@ import os
 import math
 import glob
 import json
+import logging
 import pickle
 import random
 import warnings
@@ -22,6 +23,8 @@ import pydicom
 from app.core.runtime_paths import model_asset_path, model_assets_dir
 from ..utils import utils
 
+logger = logging.getLogger(__name__)
+
 def _load_torch(path, map_location, label):
     try:
         return torch.load(path, map_location=map_location, weights_only=True)
@@ -38,8 +41,8 @@ def _import_transformers():
 
 class EchoPrime:
     def __init__(self, device=None):
-        self.frames_to_take = 32
-        self.frame_stride = 2
+        self.frames_to_take = 16
+        self.frame_stride = 1
         self.video_size = 224
         self.mean = torch.tensor([29.110628, 28.076836, 29.096405]).reshape(3,1,1,1)
         self.std = torch.tensor([47.989223, 46.456997, 47.20083]).reshape(3,1,1,1)
@@ -95,6 +98,72 @@ class EchoPrime:
         section_to_phenotypes_path = os.path.join(base_dir, "assets", "section_to_phenotypes.pkl")
         self.section_to_phenotypes = pd.read_pickle(section_to_phenotypes_path)
 
+    def _coerce_pixels_to_rgb_frames(self, pixels):
+        pixels = np.asarray(pixels)
+        if pixels.ndim == 2:
+            pixels = pixels[None, :, :]
+
+        if pixels.ndim == 3:
+            if pixels.shape[-1] in (3, 4):
+                return pixels[None, :, :, :3]
+            return np.repeat(pixels[..., None], 3, axis=3)
+
+        if pixels.ndim == 4:
+            channels = pixels.shape[-1]
+            if channels == 1:
+                return np.repeat(pixels, 3, axis=3)
+            if channels >= 3:
+                return pixels[:, :, :, :3]
+
+        return None
+
+    def _sample_frame_indices(self, frame_count):
+        if frame_count <= 0:
+            return []
+        if frame_count >= self.frames_to_take:
+            return np.linspace(0, frame_count - 1, self.frames_to_take).round().astype(int).tolist()
+        return list(range(frame_count)) + [frame_count - 1] * (self.frames_to_take - frame_count)
+
+    def process_dicom_file(self, dicom_path):
+        try:
+            dcm = pydicom.dcmread(dicom_path)
+            raw_pixels = dcm.pixel_array
+            try:
+                pixels = utils.mask_outside_ultrasound(raw_pixels)
+            except Exception:
+                pixels = raw_pixels
+
+            pixels = self._coerce_pixels_to_rgb_frames(pixels)
+            if pixels is None or len(pixels) == 0:
+                return None
+
+            frame_indices = self._sample_frame_indices(len(pixels))
+            if not frame_indices:
+                return None
+
+            x = np.empty((self.frames_to_take, self.video_size, self.video_size, 3), dtype=np.float32)
+            for output_idx, source_idx in enumerate(frame_indices):
+                x[output_idx] = utils.crop_and_scale(pixels[source_idx]).astype(np.float32, copy=False)
+
+            x = torch.as_tensor(x, dtype=torch.float32).permute([3, 0, 1, 2])
+            x.sub_(self.mean).div_(self.std)
+            return x
+        except Exception as exc:
+            logger.warning("[EchoPrime] Skipping unreadable DICOM %s: %s", dicom_path, exc)
+            return None
+
+    def process_dicom_paths(self, dicom_paths):
+        stack_of_videos = []
+        for dicom_path in dicom_paths:
+            processed = self.process_dicom_file(dicom_path)
+            if processed is not None:
+                stack_of_videos.append(processed)
+
+        if not stack_of_videos:
+            return torch.empty((0, 3, self.frames_to_take, self.video_size, self.video_size), dtype=torch.float32)
+
+        return torch.stack(stack_of_videos)
+
     def process_dicoms(self,INPUT):
         """
         Reads DICOM video data from the specified folder and returns a tensor 
@@ -109,60 +178,8 @@ class EchoPrime:
                                             ready to be fed into EchoPrime.
         """
 
-        dicom_paths = glob.glob(f'{INPUT}/**/*.dcm',recursive=True)
-        stack_of_videos=[]
-        for idx, dicom_path in enumerate(dicom_paths):
-            try:
-                # simple dicom_processing
-                dcm=pydicom.dcmread(dicom_path)
-                pixels = dcm.pixel_array
-                
-                # exclude images like (600,800) or (600,800,3)
-                if pixels.ndim < 3 or pixels.shape[2]==3:
-                    continue 
-                    
-                # if single channel repeat to 3 channels    
-                if pixels.ndim==3:
-                    
-                    pixels = np.repeat(pixels[..., None], 3, axis=3)
-                
-                # mask everything outside ultrasound region
-                pixels=utils.mask_outside_ultrasound(dcm.pixel_array)
-                
-                
-                
-                #model specific preprocessing
-                x = np.zeros((len(pixels),224,224,3))
-                for i in range(len(x)):
-                    x[i] = utils.crop_and_scale(pixels[i])
-                
-                x = torch.as_tensor(x, dtype=torch.float).permute([3,0,1,2])
-                # normalize
-                x.sub_(self.mean).div_(self.std)
-            
-                ## if not enough frames add padding
-                if x.shape[1] < self.frames_to_take:
-                    padding = torch.zeros(
-                    (
-                        3,
-                        self.frames_to_take - x.shape[1],
-                        self.video_size,
-                        self.video_size,
-                    ),
-                    dtype=torch.float,
-                    )
-                    x = torch.cat((x, padding), dim=1)
-                    
-                start=0
-                stack_of_videos.append(x[:, start : ( start + self.frames_to_take) : self.frame_stride, : , : ])
-                
-            except Exception as e:
-                print("corrupt file")
-                print(str(e))
-
-        stack_of_videos=torch.stack(stack_of_videos)
-        
-        return stack_of_videos
+        dicom_paths = sorted(glob.glob(f'{INPUT}/**/*.dcm',recursive=True))
+        return self.process_dicom_paths(dicom_paths)
 
     def process_mp4s(self,INPUT):
         """
@@ -220,7 +237,7 @@ class EchoPrime:
 
         return stack_of_videos
 
-    def embed_videos(self,stack_of_videos):
+    def embed_videos(self,stack_of_videos, batch_size=None):
         """
         Given a set of videos that belong to one echocardiogram study,
         embed them in the latent space using EchoPrime encoder
@@ -233,7 +250,7 @@ class EchoPrime:
             stack_of_features (torch.Tensor) A float tensor of shape (N, 512)
                                             with latent embeddings corresponding to echo videos
         """
-        bin_size=50
+        bin_size=max(int(batch_size or 50), 1)
         n_bins=math.ceil(stack_of_videos.shape[0]/bin_size)
         stack_of_features_list=[]
         with torch.no_grad():
@@ -320,30 +337,37 @@ class EchoPrime:
         
         return encoded_study
 
-    def predict_metrics(self,study_embedding: torch.Tensor,
-                    k=50) -> dict:
-        """
-        study_embedding is a set of embeddings of all videos from the study e.g (52,512)
-        Takes a study embedding as input and
-        outputs a dictionary for a set of 26 features
-        """
-        #per_section_study_embedding has shape (15,512)
-        per_section_study_embedding = torch.zeros(len(self.non_empty_sections), 512, device=self.device)
+    def create_metrics_accumulator(self):
+        return torch.zeros(len(self.non_empty_sections), 512, device=self.device)
+
+    def accumulate_study_embedding(self, per_section_study_embedding, study_embedding: torch.Tensor):
         study_embedding = study_embedding.to(self.device)
-        # make per section study embedding
-        for s_dx, sec in enumerate(self.non_empty_sections):
-            # get section weights
-            this_section_weights=[self.section_weights[s_dx][torch.where(view_encoding==1)[0]]
-                        for view_encoding in study_embedding[:,512:]]
-            this_section_study_embedding = (study_embedding[:,:512] * \
-                                            torch.tensor(this_section_weights,
-                                                        dtype=torch.float, device=self.device).unsqueeze(1))
-            
-            #weighted average
-            this_section_study_embedding=torch.sum(this_section_study_embedding,dim=0)
-            per_section_study_embedding[s_dx]=this_section_study_embedding
-            
-        per_section_study_embedding=torch.nn.functional.normalize(per_section_study_embedding)
+        view_indices = torch.argmax(study_embedding[:, 512:], dim=1).detach().cpu().numpy()
+
+        for s_dx, _sec in enumerate(self.non_empty_sections):
+            weights = torch.as_tensor(
+                self.section_weights[s_dx][view_indices],
+                dtype=torch.float,
+                device=self.device,
+            )
+            per_section_study_embedding[s_dx] += torch.sum(
+                study_embedding[:, :512] * weights.unsqueeze(1),
+                dim=0,
+            )
+        return per_section_study_embedding
+
+    @torch.no_grad()
+    def accumulate_metrics_chunk(self, per_section_study_embedding, stack_of_videos, encoder_batch_size=None, visualize=False):
+        if stack_of_videos is None or stack_of_videos.shape[0] == 0:
+            return per_section_study_embedding
+
+        stack_of_features = self.embed_videos(stack_of_videos, batch_size=encoder_batch_size)
+        stack_of_view_encodings = self.get_views(stack_of_videos, visualize)
+        study_embedding = torch.cat((stack_of_features, stack_of_view_encodings), dim=1)
+        return self.accumulate_study_embedding(per_section_study_embedding, study_embedding)
+
+    def _predict_metrics_from_per_section_embedding(self, per_section_study_embedding: torch.Tensor, k=50) -> dict:
+        per_section_study_embedding = torch.nn.functional.normalize(per_section_study_embedding.to(self.device))
         #similarities has shape (15,230676)
         similarities=per_section_study_embedding @ self.candidate_embeddings.T
 
@@ -354,11 +378,25 @@ class EchoPrime:
         preds={}
         for s_dx, section in enumerate(self.section_to_phenotypes.keys()):
             for pheno in self.section_to_phenotypes[section]:
-                preds[pheno] = np.nanmean([self.candidate_labels[pheno][self.candidate_studies[c_ids]]
+                preds[pheno] = np.nanmean([self.candidate_labels[pheno][self.candidate_studies[int(c_ids)]]
                                     for c_ids in top_candidate_ids[s_dx]
-                                        if self.candidate_studies[c_ids] in self.candidate_labels[pheno]])
-        
+                                        if self.candidate_studies[int(c_ids)] in self.candidate_labels[pheno]])
+
         return preds
+
+    def predict_metrics_from_accumulator(self, per_section_study_embedding: torch.Tensor, k=50) -> dict:
+        return self._predict_metrics_from_per_section_embedding(per_section_study_embedding, k=k)
+
+    def predict_metrics(self,study_embedding: torch.Tensor,
+                    k=50) -> dict:
+        """
+        study_embedding is a set of embeddings of all videos from the study e.g (52,512)
+        Takes a study embedding as input and
+        outputs a dictionary for a set of 26 features
+        """
+        per_section_study_embedding = self.create_metrics_accumulator()
+        per_section_study_embedding = self.accumulate_study_embedding(per_section_study_embedding, study_embedding)
+        return self.predict_metrics_from_accumulator(per_section_study_embedding, k=k)
 
 class EchoPrimeTextEncoder(torch.nn.Module):
     def __init__(self,device="cuda"):

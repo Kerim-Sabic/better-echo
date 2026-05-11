@@ -40,6 +40,17 @@ export default function StudyResultsLayout({ studyResultsPageViewModel }) {
         </div>
       </header>
 
+      {studyResultsPageViewModel.failureNotice ? (
+        <div
+          role="alert"
+          className="fixed left-6 right-6 z-40 rounded-2xl border border-amber-300/40 bg-amber-950/95 px-4 py-3 text-amber-50 shadow-2xl"
+          style={{ top: `calc(${TITLEBAR_HEIGHT}px + 4.75rem)` }}
+        >
+          <div className="text-sm font-semibold">{studyResultsPageViewModel.failureNotice.title}</div>
+          <div className="mt-1 text-xs text-amber-100">{studyResultsPageViewModel.failureNotice.message}</div>
+        </div>
+      ) : null}
+
       <main className="flex-1 pt-16">
         <EchocardiographyViewer studyResultsPageViewModel={studyResultsPageViewModel} />
       </main>

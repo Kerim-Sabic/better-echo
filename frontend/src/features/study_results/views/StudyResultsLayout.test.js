@@ -30,4 +30,19 @@ describe("StudyResultsLayout", () => {
       `background-color: ${STUDY_RESULTS_CHROME_BG}`
     );
   });
+
+  test("renders memory failure notice when provided", () => {
+    const viewModel = {
+      studyUid: "study-123",
+      failureNotice: {
+        title: "Study is too large for available memory",
+        message: "Please retry with a smaller study.",
+      },
+    };
+
+    render(<StudyResultsLayout studyResultsPageViewModel={viewModel} />);
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Study is too large");
+    expect(screen.getByRole("alert")).toHaveTextContent("smaller study");
+  });
 });
