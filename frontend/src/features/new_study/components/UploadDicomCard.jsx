@@ -84,15 +84,18 @@ export default function UploadDicomCard({ newStudyPageViewModel }) {
           <div className="space-y-3 animate-fade-in" style={{ animationDelay: "80ms" }}>
             <div className="text-base font-semibold text-foreground">Selected Files ({files.length})</div>
 
-            <div className="space-y-3">
+            <div
+              data-testid="selected-files-grid"
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2"
+            >
               {files.map((file, index) => (
                 <div
                   key={index}
-                  className="glass-card p-5 flex items-center justify-between group hover:bg-muted/30 hover:shadow-lg smooth-transition"
+                  className="glass-card p-3 flex items-center justify-between gap-2 group hover:bg-muted/30 hover:shadow-lg smooth-transition"
                 >
-                  <div className="flex items-center gap-4 min-w-0">
-                    <div className="w-12 h-12 rounded-xl icon-chip-accent flex items-center justify-center">
-                      <FileText className="w-6 h-6 text-accent-main" />
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-9 h-9 rounded-lg icon-chip-accent flex shrink-0 items-center justify-center">
+                      <FileText className="w-4 h-4 text-accent-main" />
                     </div>
 
                     <div className="min-w-0">
@@ -111,10 +114,11 @@ export default function UploadDicomCard({ newStudyPageViewModel }) {
                     type="button"
                     variant="ghost"
                     size="icon"
+                    aria-label={`Remove ${file.name}`}
                     onClick={() => setFiles(files.filter((_, i) => i !== index))}
-                    className="opacity-60 group-hover:opacity-100 smooth-transition hover:bg-destructive/10 hover:text-destructive hover:scale-110"
+                    className="h-8 w-8 shrink-0 opacity-60 group-hover:opacity-100 smooth-transition hover:bg-destructive/10 hover:text-destructive hover:scale-110"
                   >
-                    <X className="w-5 h-5" />
+                    <X className="w-4 h-4" />
                   </Button>
                 </div>
               ))}
