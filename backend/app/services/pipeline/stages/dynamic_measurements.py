@@ -10,6 +10,8 @@ from app.AI_models.measurements.runner_doppler import unload_doppler_models
 from app.core.config import settings
 from app.core.artifacts import (
     LINEAR_MEASUREMENTS_TASK_KEY,
+    LV_SEGMENTATION_OVERLAY_KIND,
+    LV_SEGMENTATION_OVERLAY_TYPE,
     MEASUREMENT_WORKFLOW_TYPE,
     MOTION_SEGMENTATION_TASK_KEY,
     SPECTRAL_MEASUREMENTS_TASK_KEY,
@@ -19,7 +21,7 @@ from app.database_models.instances import Instance
 from app.database_models.pipeline_artifact_sets import PipelineArtifactSet
 from app.database_models.pipeline_jobs import PipelineJob
 from app.services.inference.linear_measurements_service import run_linear_measurements
-from app.services.inference.motion_segmentation_service import (
+from app.services.inference.motion_segmentation import (
     run_motion_segmentation,
     unload_motion_segmentation_model,
 )
@@ -276,7 +278,6 @@ def run_dynamic_measurements_stage(
             if not record["run_dynamic"]:
                 continue
             sop_uid = record["sop_uid"]
-            instance_row = record["instance"]
             instance_results = record["instance_results"]
             try:
                 dynamic_response = run_motion_segmentation(
@@ -289,20 +290,20 @@ def run_dynamic_measurements_stage(
                 dynamic_payload = _response_payload(dynamic_response)
                 dynamic_runs += 1
                 output_path = dynamic_payload.get("output_file") or dynamic_payload.get("outputfile")
-                derived_dicom = _attach_derived_dicom_artifact(
-                    instance=instance_row,
-                    output_path=output_path,
-                    series_label="LV Segmentation",
-                )
 
                 result_item = {
                     "task": MOTION_SEGMENTATION_TASK_KEY,
                     "status": "DONE",
                     "ui_label": "Motion Segmentation",
                     "output_path": output_path,
+                    "overlay": {
+                        "overlay_type": dynamic_payload.get("overlay_type") or LV_SEGMENTATION_OVERLAY_TYPE,
+                        "kind": dynamic_payload.get("kind") or LV_SEGMENTATION_OVERLAY_KIND,
+                        "available": bool(dynamic_payload.get("has_overlay")),
+                        "frame_count": dynamic_payload.get("frame_count"),
+                        "mean_confidence": dynamic_payload.get("mean_confidence"),
+                    },
                 }
-                if derived_dicom:
-                    result_item["derived_dicom"] = derived_dicom
 
                 instance_results.append(result_item)
             except Exception as exc:

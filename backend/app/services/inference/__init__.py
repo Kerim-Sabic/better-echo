@@ -1,5 +1,5 @@
 from .linear_measurements_service import run_linear_measurements
-from .motion_segmentation_service import (
+from .motion_segmentation import (
     load_motion_segmentation_model,
     run_motion_segmentation,
     unload_motion_segmentation_model,

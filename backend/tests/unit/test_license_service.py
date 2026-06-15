@@ -361,9 +361,13 @@ def test_is_license_exempt_path(path_value, expected):
         ("/api/studies/study-123/instances", "GET", True),
         ("/api/studies/study-123/study-analysis-results", "GET", True),
         ("/api/studies/study-123/study-measurements-results", "GET", True),
+        ("/api/studies/study-123/overlays", "GET", True),
+        ("/api/instances/sop-123/overlays", "GET", True),
+        ("/api/instances/sop-123/overlays/lv_segmentation/payload", "GET", True),
         ("/api/studies/study-123/llm-report-results", "GET", True),
         ("/api/studies/study-123/study-analysis-results", "PATCH", False),
         ("/api/studies/study-123/study-analysis-overrides", "GET", False),
+        ("/api/instances/sop-123/not-overlays", "GET", False),
         ("/api/admin/users", "POST", False),
     ],
 )
