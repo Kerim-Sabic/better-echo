@@ -9,6 +9,7 @@ class OverlayMetadata(BaseModel):
     sop_instance_uid: str
     instance_id: Optional[int] = None
     overlay_type: str
+    overlay_key: Optional[str] = None
     kind: Optional[str] = None
     structured: bool = False
     status: str
@@ -19,9 +20,13 @@ class OverlayMetadata(BaseModel):
     frame_width: Optional[int] = None
     frame_height: Optional[int] = None
     fps: Optional[float] = None
+    geometry_type: Optional[str] = None
     mask_format: Optional[str] = None
     mean_confidence: Optional[float] = None
     frames_with_mask: Optional[int] = None
+    measurement_name: Optional[str] = None
+    measurement_value: Optional[float] = None
+    measurement_units: Optional[str] = None
     warnings: List[str] = Field(default_factory=list)
     generated_at: Optional[str] = None
     payload_url: str

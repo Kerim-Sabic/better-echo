@@ -230,8 +230,8 @@ def shutdown_cleanup():
     except Exception as exc:
         logger.warning("Shutdown cleanup: failed to unload primary analysis: %s", exc)
     try:
-        from app.AI_models.measurements.runner_2d import unload_2d_models
-        from app.AI_models.measurements.runner_doppler import unload_doppler_models
+        from app.services.inference.linear_measurements import unload_2d_models
+        from app.services.inference.spectral_measurements import unload_doppler_models
 
         unload_2d_models()
         unload_doppler_models()

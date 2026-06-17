@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { HoralixAiResultsPayload } from '../horalixAiResults.types';
 import AiPanelEmptyState from '../components/AiPanelEmptyState';
 import AiPanelSectionSwitcher from '../components/AiPanelSectionSwitcher';
@@ -8,6 +8,10 @@ import AiReportPanel from '../components/ai_report/AiReportPanel';
 import AiReportLoadingState from '../components/ai_report/AiReportLoadingState';
 import AiOverlaysPanel from '../components/ai_overlays/AiOverlaysPanel';
 import { useLvMaskOverlay } from '../logic/overlays/lvOverlayController';
+import {
+  overlayIdentity,
+  usePointLineOverlays,
+} from '../logic/overlays/pointLineOverlayController';
 
 type Props = {
   payload: HoralixAiResultsPayload | null;
@@ -30,17 +34,30 @@ export default function HoralixAiResultsPanelLayout({
   onRequestRegenerateLlmReport,
 }: Props) {
   const [activeTab, setActiveTab] = useState<PanelTab>('measurements');
-  const [overlayEnabled, setOverlayEnabled] = useState(true);
+  const [disabledOverlayIds, setDisabledOverlayIds] = useState<string[]>([]);
   const [overlayOpacity, setOverlayOpacity] = useState(0.28);
   const autoRevealedRef = useRef(false);
-  const userTouchedToggleRef = useRef(false);
 
   const aiOverlays = payload?.aiOverlays ?? [];
   const hasAvailableOverlay = aiOverlays.some(overlay => overlay?.available);
+  const enabledOverlayIds = useMemo(() => {
+    return aiOverlays
+      .filter(overlay => overlay?.available)
+      .map(overlayIdentity)
+      .filter(id => !disabledOverlayIds.includes(id));
+  }, [aiOverlays, disabledOverlayIds]);
+  const enabledAiOverlays = useMemo(() => {
+    const enabledSet = new Set(enabledOverlayIds);
+    return aiOverlays.filter(overlay => enabledSet.has(overlayIdentity(overlay)));
+  }, [aiOverlays, enabledOverlayIds]);
 
-  const handleOverlayToggle = (next: boolean) => {
-    userTouchedToggleRef.current = true;
-    setOverlayEnabled(next);
+  const handleOverlayToggle = (overlayId: string, next: boolean) => {
+    setDisabledOverlayIds(previous => {
+      if (next) {
+        return previous.filter(id => id !== overlayId);
+      }
+      return previous.includes(overlayId) ? previous : [...previous, overlayId];
+    });
   };
 
   useEffect(() => {
@@ -49,16 +66,19 @@ export default function HoralixAiResultsPanelLayout({
     }
 
     autoRevealedRef.current = true;
-    if (!userTouchedToggleRef.current) {
-      setOverlayEnabled(true);
-    }
     setActiveTab('overlays');
   }, [hasAvailableOverlay]);
 
-  const overlayStatus = useLvMaskOverlay({
+  const lvOverlayStatus = useLvMaskOverlay({
     servicesManager,
-    overlays: aiOverlays,
-    enabled: overlayEnabled,
+    overlays: enabledAiOverlays,
+    enabled: enabledAiOverlays.length > 0,
+    opacity: overlayOpacity,
+  });
+  const pointLineOverlayStatus = usePointLineOverlays({
+    servicesManager,
+    overlays: enabledAiOverlays,
+    enabled: enabledAiOverlays.length > 0,
     opacity: overlayOpacity,
   });
 
@@ -109,11 +129,12 @@ export default function HoralixAiResultsPanelLayout({
           <AiOverlaysPanel
             overlaysState={overlaysState}
             overlays={aiOverlays}
-            enabled={overlayEnabled}
+            enabledOverlayIds={enabledOverlayIds}
             opacity={overlayOpacity}
-            onToggle={handleOverlayToggle}
+            onOverlayToggle={handleOverlayToggle}
             onOpacityChange={setOverlayOpacity}
-            status={overlayStatus}
+            lvStatus={lvOverlayStatus}
+            pointLineStatus={pointLineOverlayStatus}
           />
         ) : effectiveTab === 'measurements' ? (
           payload.studyAnalysisCombinedResultsState === 'ready' ? (

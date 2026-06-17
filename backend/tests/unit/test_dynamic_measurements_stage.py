@@ -1,6 +1,10 @@
 ﻿from uuid import uuid4
 
 from app.core.artifacts import (
+    DOPPLER_MEASUREMENT_OVERLAY_KIND,
+    DOPPLER_MEASUREMENT_OVERLAY_TYPE,
+    LINEAR_MEASUREMENT_OVERLAY_KIND,
+    LINEAR_MEASUREMENT_OVERLAY_TYPE,
     LV_SEGMENTATION_OVERLAY_KIND,
     LV_SEGMENTATION_OVERLAY_TYPE,
     MEASUREMENT_WORKFLOW_TYPE,
@@ -72,6 +76,35 @@ def _lv_overlay_payload(*, frame_count=12, mean_confidence=0.87):
     }
 
 
+def _linear_overlay_payload(*, weight_name="rv_base", metric_value=3.4):
+    return {
+        "output_file_mp4": None,
+        "overlay_type": LINEAR_MEASUREMENT_OVERLAY_TYPE,
+        "overlay_key": weight_name,
+        "kind": LINEAR_MEASUREMENT_OVERLAY_KIND,
+        "has_overlay": True,
+        "metric_name": weight_name,
+        "metric_value": metric_value,
+        "units": "cm",
+        "min_length_cm": 3.1,
+        "max_length_cm": 3.7,
+    }
+
+
+def _doppler_overlay_payload(*, weight_name="lvotvmax", metric_value=102.4):
+    return {
+        "output_file_image": None,
+        "overlay_type": DOPPLER_MEASUREMENT_OVERLAY_TYPE,
+        "overlay_key": weight_name,
+        "kind": DOPPLER_MEASUREMENT_OVERLAY_KIND,
+        "has_overlay": True,
+        "metric_name": weight_name,
+        "metric_value": metric_value,
+        "units": "cm/s",
+        "low_confidence": False,
+    }
+
+
 def test_dynamic_stage_persists_instance_number_and_output_paths(
     db_session_factory,
     seeded_study,
@@ -88,23 +121,12 @@ def test_dynamic_stage_persists_instance_number_and_output_paths(
         )
         monkeypatch.setattr(
             "app.services.pipeline.stages.dynamic_measurements.run_linear_measurements",
-            lambda **_: {"output_file_mp4": "linear_measurements_files/study/instance/rv_base.mp4"},
+            lambda **_: _linear_overlay_payload(),
         )
         monkeypatch.setattr(
             "app.services.pipeline.stages.dynamic_measurements.run_spectral_measurements",
-            lambda **_: {"output_file_image": "measurement_spectral/study/instance/lvotvmax.jpg"},
+            lambda **_: _doppler_overlay_payload(),
         )
-        derived_calls = []
-
-        def _attach_derived_side_effect(**kwargs):
-            derived_calls.append(kwargs.get("series_label"))
-            return {"series_label": kwargs.get("series_label")}
-
-        monkeypatch.setattr(
-            "app.services.pipeline.stages.dynamic_measurements._attach_derived_dicom_artifact",
-            _attach_derived_side_effect,
-        )
-
         payload = {
             "instances": [
                 {
@@ -156,14 +178,31 @@ def test_dynamic_stage_persists_instance_number_and_output_paths(
             "mean_confidence": 0.87,
         }
         assert "derived_dicom" not in by_task["motion_segmentation_lv"]
-        assert by_task["measurement_linear"]["output_path"].endswith(".mp4")
-        assert by_task["measurement_linear"]["derived_dicom"] == {
-            "series_label": "Right Ventricular Basal Diameter"
+        assert by_task["measurement_linear"]["output_path"] is None
+        assert by_task["measurement_linear"]["overlay"] == {
+            "overlay_type": LINEAR_MEASUREMENT_OVERLAY_TYPE,
+            "overlay_key": "rv_base",
+            "kind": LINEAR_MEASUREMENT_OVERLAY_KIND,
+            "available": True,
+            "metric_name": "rv_base",
+            "metric_value": 3.4,
+            "units": "cm",
+            "min_length_cm": 3.1,
+            "max_length_cm": 3.7,
         }
-        assert by_task["measurement_spectral"]["output_path"].endswith(".jpg")
-        assert by_task["measurement_spectral"]["output_kind"] == "image"
-        assert "LV Segmentation" not in derived_calls
-        assert "Right Ventricular Basal Diameter" in derived_calls
+        assert "derived_dicom" not in by_task["measurement_linear"]
+        assert by_task["measurement_spectral"]["output_path"] is None
+        assert by_task["measurement_spectral"]["output_kind"] is None
+        assert by_task["measurement_spectral"]["overlay"] == {
+            "overlay_type": DOPPLER_MEASUREMENT_OVERLAY_TYPE,
+            "overlay_key": "lvotvmax",
+            "kind": DOPPLER_MEASUREMENT_OVERLAY_KIND,
+            "available": True,
+            "metric_name": "lvotvmax",
+            "metric_value": 102.4,
+            "units": "cm/s",
+            "low_confidence": False,
+        }
     finally:
         db.close()
 
@@ -176,7 +215,7 @@ def test_dynamic_stage_handles_pydantic_style_response_objects(
     class _DopplerResponse:
         # Part 1. Minimal pydantic-like response object with model_dump support.
         def model_dump(self):
-            return {"output_file_image": "measurement_spectral/study/instance/avvmax.jpg"}
+            return _doppler_overlay_payload(weight_name="avvmax", metric_value=222.2)
 
     db = db_session_factory()
     try:
@@ -188,7 +227,7 @@ def test_dynamic_stage_handles_pydantic_style_response_objects(
         )
         monkeypatch.setattr(
             "app.services.pipeline.stages.dynamic_measurements.run_linear_measurements",
-            lambda **_: {"output_file_mp4": "linear_measurements_files/study/instance/rv_base.mp4"},
+            lambda **_: _linear_overlay_payload(),
         )
         monkeypatch.setattr(
             "app.services.pipeline.stages.dynamic_measurements.run_spectral_measurements",
@@ -231,7 +270,17 @@ def test_dynamic_stage_handles_pydantic_style_response_objects(
         doppler_result = next(
             entry for entry in summary.get("results", []) if entry.get("task") == "measurement_spectral"
         )
-        assert doppler_result.get("output_path").endswith(".jpg")
+        assert doppler_result.get("output_path") is None
+        assert doppler_result.get("overlay") == {
+            "overlay_type": DOPPLER_MEASUREMENT_OVERLAY_TYPE,
+            "overlay_key": "avvmax",
+            "kind": DOPPLER_MEASUREMENT_OVERLAY_KIND,
+            "available": True,
+            "metric_name": "avvmax",
+            "metric_value": 222.2,
+            "units": "cm/s",
+            "low_confidence": False,
+        }
     finally:
         db.close()
 
@@ -269,7 +318,7 @@ def test_dynamic_stage_persists_pending_progress_between_tasks(
             first_results = summaries[0].get("results", [])
             assert any(r.get("task") == "motion_segmentation_lv" for r in first_results)
             progress_seen["value"] = True
-            return {"output_file_mp4": "linear_measurements_files/study/instance/rv_base.mp4"}
+            return _linear_overlay_payload()
 
         monkeypatch.setattr(
             "app.services.pipeline.stages.dynamic_measurements.run_linear_measurements",
@@ -277,7 +326,7 @@ def test_dynamic_stage_persists_pending_progress_between_tasks(
         )
         monkeypatch.setattr(
             "app.services.pipeline.stages.dynamic_measurements.run_spectral_measurements",
-            lambda **_: {"output_file_image": "measurement_spectral/study/instance/lvotvmax.jpg"},
+            lambda **_: _doppler_overlay_payload(),
         )
 
         payload = {
@@ -337,7 +386,7 @@ def test_dynamic_stage_failure_keeps_previous_progress(
         )
         monkeypatch.setattr(
             "app.services.pipeline.stages.dynamic_measurements.run_spectral_measurements",
-            lambda **_: {"output_file_image": "measurement_spectral/study/instance/lvotvmax.jpg"},
+            lambda **_: _doppler_overlay_payload(),
         )
 
         payload = {
@@ -400,11 +449,11 @@ def test_dynamic_stage_executes_lane_order_dynamic_then_weight_batches(
 
         def _measurements_side_effect(**kwargs):
             call_order.append(("2d", kwargs.get("model_weights"), kwargs.get("sop_instance_uid")))
-            return {"output_file_mp4": f"m2d/{kwargs.get('model_weights')}/{kwargs.get('sop_instance_uid')}.mp4"}
+            return _linear_overlay_payload(weight_name=kwargs.get("model_weights"))
 
         def _doppler_side_effect(**kwargs):
             call_order.append(("doppler", kwargs.get("model_weights"), kwargs.get("sop_instance_uid")))
-            return {"output_file_image": f"doppler/{kwargs.get('model_weights')}/{kwargs.get('sop_instance_uid')}.jpg"}
+            return _doppler_overlay_payload(weight_name=kwargs.get("model_weights"))
 
         monkeypatch.setattr(
             "app.services.pipeline.stages.dynamic_measurements.run_motion_segmentation",
@@ -484,11 +533,11 @@ def test_dynamic_stage_unloads_measurement_caches_between_weights_in_stage_polic
         )
         monkeypatch.setattr(
             "app.services.pipeline.stages.dynamic_measurements.run_linear_measurements",
-            lambda **kwargs: {"output_file_mp4": f"m2d/{kwargs.get('model_weights')}.mp4"},
+            lambda **kwargs: _linear_overlay_payload(weight_name=kwargs.get("model_weights")),
         )
         monkeypatch.setattr(
             "app.services.pipeline.stages.dynamic_measurements.run_spectral_measurements",
-            lambda **kwargs: {"output_file_image": f"doppler/{kwargs.get('model_weights')}.jpg"},
+            lambda **kwargs: _doppler_overlay_payload(weight_name=kwargs.get("model_weights")),
         )
 
         unload_calls = {"m2d": 0, "doppler": 0}

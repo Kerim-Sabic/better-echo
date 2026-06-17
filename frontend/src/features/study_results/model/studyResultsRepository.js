@@ -1,7 +1,7 @@
 import {
   getStudyAnalysisCombinedResultsApi,
   getDynamicMeasurementsCombinedResultsApi,
-  getInstanceOverlayPayloadApi,
+  getOverlayPayloadByUrlApi,
   getLlmReportApi,
   getStudyOverlaysApi,
 } from "@/api/get_study_results_apis";
@@ -71,16 +71,12 @@ export const studyResultsRepository = {
         if (
           !overlay?.available ||
           !overlay?.payload_url ||
-          !overlay?.sop_instance_uid ||
-          !overlay?.overlay_type
+          !overlay?.sop_instance_uid
         ) {
           return { ...overlay, document: null };
         }
 
-        const payloadResponse = await getInstanceOverlayPayloadApi(
-          overlay.sop_instance_uid,
-          overlay.overlay_type
-        );
+        const payloadResponse = await getOverlayPayloadByUrlApi(overlay.payload_url);
 
         return {
           ...overlay,

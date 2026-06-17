@@ -12,10 +12,20 @@ def test_build_dynamic_measurements_payload_normalizes_and_whitelists_fields():
                     "predicted_view_confidence": "0.99",
                     "results": [
                         {
-                            "task": "measurements_2d",
+                            "task": "measurement_linear",
                             "status": "DONE",
                             "weights": "rv_base",
-                            "output_path": "measurements_2D/study/rv_base.mp4",
+                            "output_path": None,
+                            "overlay": {
+                                "overlay_type": "linear_measurement",
+                                "overlay_key": "rv_base",
+                                "kind": "linear_measurement_overlay",
+                                "available": True,
+                                "metric_name": "rv_base",
+                                "metric_value": 3.4,
+                                "units": "cm",
+                                "unexpected_overlay": "drop-me",
+                            },
                             "unexpected": "drop-me",
                         }
                     ],
@@ -42,12 +52,21 @@ def test_build_dynamic_measurements_payload_normalizes_and_whitelists_fields():
         "predicted_view_confidence": 0.99,
         "results": [
             {
-                "task": "measurements_2d",
+                "task": "measurement_linear",
                 "ui_label": "rv_base",
                 "status": "DONE",
-                "output_path": "measurements_2D/study/rv_base.mp4",
-                "output_kind": "video",
+                "output_path": None,
+                "output_kind": None,
                 "message": None,
+                "overlay": {
+                    "overlay_type": "linear_measurement",
+                    "overlay_key": "rv_base",
+                    "kind": "linear_measurement_overlay",
+                    "available": True,
+                    "metric_name": "rv_base",
+                    "metric_value": 3.4,
+                    "units": "cm",
+                },
             }
         ],
     }

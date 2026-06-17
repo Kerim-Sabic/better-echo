@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
-from app.core.artifacts import LV_SEGMENTATION_OVERLAY_TYPE, OVERLAYS_ROUTE_SEGMENT
+from app.core.artifacts import OVERLAYS_ROUTE_SEGMENT
 from app.database.db import get_db
 from app.database_models.instances import Instance
 from app.database_models.series import Series
@@ -18,7 +18,10 @@ from app.services.pipeline.read import get_study_or_404_for_principal
 from app.services.results.overlay_presenter import (
     SUPPORTED_OVERLAY_TYPES,
     overlay_metadata,
+    overlay_key_for_result_type,
+    overlay_type_for_result_type,
     resolve_overlay_row,
+    resolve_overlay_rows,
     structured_overlay_document,
 )
 
@@ -70,25 +73,27 @@ def list_study_overlays(
 
     overlays = []
     for instance in instances:
-        row = resolve_overlay_row(
+        rows = resolve_overlay_rows(
             db=db,
             study=study,
             instance=instance,
-            overlay_type=LV_SEGMENTATION_OVERLAY_TYPE,
             preview=preview,
         )
-        if row is None:
-            continue
-        overlays.append(
-            OverlayMetadata(
-                **overlay_metadata(
-                    sop_instance_uid=instance.sop_instance_uid,
-                    instance_id=instance.id,
-                    overlay_type=LV_SEGMENTATION_OVERLAY_TYPE,
-                    row=row,
+        for row in rows:
+            overlay_type = overlay_type_for_result_type(row.type)
+            if overlay_type is None:
+                continue
+            overlays.append(
+                OverlayMetadata(
+                    **overlay_metadata(
+                        sop_instance_uid=instance.sop_instance_uid,
+                        instance_id=instance.id,
+                        overlay_type=overlay_type,
+                        overlay_key=overlay_key_for_result_type(row.type),
+                        row=row,
+                    )
                 )
             )
-        )
 
     return StudyOverlaysResponse(study_uid=study_uid, overlays=overlays)
 
@@ -110,21 +115,24 @@ def list_instance_overlays(
         instance=instance,
         current_principal=current_principal,
     )
-    row = resolve_overlay_row(
+    rows = resolve_overlay_rows(
         db=db,
         study=study,
         instance=instance,
-        overlay_type=LV_SEGMENTATION_OVERLAY_TYPE,
         preview=preview,
     )
     overlays = []
-    if row is not None:
+    for row in rows:
+        overlay_type = overlay_type_for_result_type(row.type)
+        if overlay_type is None:
+            continue
         overlays.append(
             OverlayMetadata(
                 **overlay_metadata(
                     sop_instance_uid=sop_instance_uid,
                     instance_id=instance.id,
-                    overlay_type=LV_SEGMENTATION_OVERLAY_TYPE,
+                    overlay_type=overlay_type,
+                    overlay_key=overlay_key_for_result_type(row.type),
                     row=row,
                 )
             )
@@ -145,6 +153,48 @@ def get_instance_overlay_payload(
     current_principal: dict[str, object] = Depends(get_current_study_read_principal),
 ):
     # Part 3. Return the persisted structured document without wrapping it.
+    return _overlay_payload_response(
+        sop_instance_uid=sop_instance_uid,
+        overlay_type=overlay_type,
+        overlay_key=None,
+        preview=preview,
+        db=db,
+        current_principal=current_principal,
+    )
+
+
+@router.get(
+    f"/instances/{{sop_instance_uid}}/{OVERLAYS_ROUTE_SEGMENT}/{{overlay_type}}/{{overlay_key}}/payload",
+    response_model=None,
+)
+def get_instance_keyed_overlay_payload(
+    sop_instance_uid: str,
+    overlay_type: str,
+    overlay_key: str,
+    preview: bool = Query(False, description="Prefer latest draft artifacts when available"),
+    db: Session = Depends(get_db),
+    current_principal: dict[str, object] = Depends(get_current_study_read_principal),
+):
+    # Part 4. Measurement overlays are addressed by overlay type plus overlay key.
+    return _overlay_payload_response(
+        sop_instance_uid=sop_instance_uid,
+        overlay_type=overlay_type,
+        overlay_key=overlay_key,
+        preview=preview,
+        db=db,
+        current_principal=current_principal,
+    )
+
+
+def _overlay_payload_response(
+    *,
+    sop_instance_uid: str,
+    overlay_type: str,
+    overlay_key: str | None,
+    preview: bool,
+    db: Session,
+    current_principal: dict[str, object],
+):
     if overlay_type not in SUPPORTED_OVERLAY_TYPES:
         raise HTTPException(status_code=404, detail="Overlay type not found")
 
@@ -159,9 +209,14 @@ def get_instance_overlay_payload(
         study=study,
         instance=instance,
         overlay_type=overlay_type,
+        overlay_key=overlay_key,
         preview=preview,
     )
-    document = structured_overlay_document(row=row, overlay_type=overlay_type)
+    document = structured_overlay_document(
+        row=row,
+        overlay_type=overlay_type,
+        overlay_key=overlay_key,
+    )
     if document is None:
         raise HTTPException(status_code=404, detail="Overlay payload not found")
 

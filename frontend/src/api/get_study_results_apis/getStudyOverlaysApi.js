@@ -1,5 +1,13 @@
 import { apiClient } from "../client";
 
+function normalizeOverlayPayloadUrl(payloadUrl) {
+  const value = String(payloadUrl || "").trim();
+  if (value.startsWith("/api/")) {
+    return value.slice(4);
+  }
+  return value;
+}
+
 export const getStudyOverlaysApi = async (
   studyUid,
   { preview = true } = {}
@@ -18,13 +26,12 @@ export const getStudyOverlaysApi = async (
   };
 };
 
-export const getInstanceOverlayPayloadApi = async (
-  sopInstanceUid,
-  overlayType,
+export const getOverlayPayloadByUrlApi = async (
+  payloadUrl,
   { preview = true } = {}
 ) => {
   const response = await apiClient.get(
-    `/instances/${encodeURIComponent(sopInstanceUid)}/overlays/${encodeURIComponent(overlayType)}/payload`,
+    normalizeOverlayPayloadUrl(payloadUrl),
     {
       params: { preview },
       validateStatus: s => (s >= 200 && s < 300) || s === 404,

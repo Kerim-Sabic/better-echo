@@ -57,14 +57,46 @@ export type HoralixOverlayRle = {
 };
 
 export type HoralixOverlayFrame = {
+  frameIndex?: number | null;
   rle?: HoralixOverlayRle | null;
   present?: boolean;
   confidence?: number | null;
   areaPx?: number | null;
+  points?: HoralixOverlayPoint[];
+  segments?: HoralixOverlaySegment[];
+  measurement?: HoralixOverlayMeasurement | null;
 };
 
-export type HoralixLvOverlayDocument = {
+export type HoralixOverlayPoint = {
+  id?: string | null;
+  x?: number | null;
+  y?: number | null;
+  confidence?: number | null;
+};
+
+export type HoralixOverlaySegment = {
+  from?: string | null;
+  to?: string | null;
+  role?: string | null;
+};
+
+export type HoralixOverlayMeasurement = {
+  name?: string | null;
+  value?: number | null;
+  units?: string | null;
+  lengthPx?: number | null;
+};
+
+export type HoralixOverlayReferenceLine = {
+  y?: number | null;
+  relativeY?: number | null;
+  role?: string | null;
+};
+
+export type HoralixOverlayDocument = {
   schemaVersion?: number | null;
+  overlayType?: string | null;
+  overlayKey?: string | null;
   kind?: string | null;
   sopInstanceUid?: string | null;
   instanceId?: number | null;
@@ -74,14 +106,29 @@ export type HoralixLvOverlayDocument = {
   frameWidth?: number | null;
   frameHeight?: number | null;
   fps?: number | null;
+  coordinateSpace?: string | null;
+  geometryType?: string | null;
+  selectedFrameIndex?: number | null;
   maskFormat?: string | null;
   maskResolution?: number[];
+  points?: HoralixOverlayPoint[];
+  segments?: HoralixOverlaySegment[];
   frames?: HoralixOverlayFrame[];
+  measurement?: HoralixOverlayMeasurement | null;
+  referenceLine?: HoralixOverlayReferenceLine | null;
+  dopplerRegion?: Record<string, unknown>;
+  frameSelection?: Record<string, unknown>;
+  quality?: Record<string, unknown>;
 };
+
+export type HoralixLvOverlayDocument = HoralixOverlayDocument;
+export type HoralixPointLineFrame = HoralixOverlayFrame;
+export type HoralixPointLineOverlayDocument = HoralixOverlayDocument;
 
 export type HoralixAiOverlay = {
   sopInstanceUid?: string | null;
   overlayType?: string | null;
+  overlayKey?: string | null;
   kind?: string | null;
   structured?: boolean;
   status?: string | null;
@@ -92,13 +139,17 @@ export type HoralixAiOverlay = {
   frameWidth?: number | null;
   frameHeight?: number | null;
   fps?: number | null;
+  geometryType?: string | null;
   maskFormat?: string | null;
   meanConfidence?: number | null;
   framesWithMask?: number | null;
+  measurementName?: string | null;
+  measurementValue?: number | null;
+  measurementUnits?: string | null;
   warnings?: string[];
   generatedAt?: string | null;
   payloadUrl?: string | null;
-  document?: HoralixLvOverlayDocument | null;
+  document?: HoralixOverlayDocument | null;
 };
 
 // COMBINED PAYLOAD

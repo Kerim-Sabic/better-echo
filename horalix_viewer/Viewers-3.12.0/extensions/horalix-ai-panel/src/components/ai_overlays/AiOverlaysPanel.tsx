@@ -2,17 +2,22 @@ import React from 'react';
 
 import { HoralixAiOverlay } from '../../horalixAiResults.types';
 import { LvOverlayStatus } from '../../logic/overlays/lvOverlayController';
+import {
+  overlayIdentity,
+  PointLineOverlayStatus,
+} from '../../logic/overlays/pointLineOverlayController';
 
 const OPACITY_MAX = 0.6;
 
 type Props = {
   overlaysState?: string | null;
   overlays: HoralixAiOverlay[];
-  enabled: boolean;
+  enabledOverlayIds: string[];
   opacity: number;
-  onToggle: (next: boolean) => void;
+  onOverlayToggle: (overlayId: string, next: boolean) => void;
   onOpacityChange: (next: number) => void;
-  status: LvOverlayStatus;
+  lvStatus: LvOverlayStatus;
+  pointLineStatus: PointLineOverlayStatus;
 };
 
 function statusChip(label: string, tone: 'ok' | 'busy' | 'bad' | 'idle') {
@@ -34,16 +39,16 @@ function statusChip(label: string, tone: 'ok' | 'busy' | 'bad' | 'idle') {
 
 function resolveStatusChip(
   overlaysState: string | null | undefined,
-  primary: HoralixAiOverlay | null
+  overlay: HoralixAiOverlay | null
 ) {
-  const status = primary?.status;
+  const status = overlay?.status;
   if (status === 'failed') {
     return statusChip('Failed', 'bad');
   }
   if (status === 'running' || status === 'queued' || overlaysState === 'pending') {
     return statusChip(status === 'queued' ? 'Queued' : 'Running', 'busy');
   }
-  if (primary?.available) {
+  if (overlay?.available) {
     return statusChip('Completed', 'ok');
   }
   if (overlaysState === 'loading') {
@@ -88,49 +93,103 @@ function formatConfidence(value: number | null | undefined) {
   return `${Math.round(value * 100)}%`;
 }
 
+function overlayLabel(overlay: HoralixAiOverlay) {
+  if (overlay.kind === 'lv_segmentation_overlay') {
+    return 'AI LV Mask';
+  }
+  if (overlay.kind === 'linear_measurement_overlay') {
+    return '2D Linear';
+  }
+  if (overlay.kind === 'doppler_measurement_overlay') {
+    return 'Doppler';
+  }
+  return 'AI Overlay';
+}
+
+function overlayColor(overlay: HoralixAiOverlay) {
+  if (overlay.kind === 'doppler_measurement_overlay') {
+    return '#FBBF24';
+  }
+  if (overlay.kind === 'linear_measurement_overlay') {
+    return '#38BDF8';
+  }
+  return '#2DD4BF';
+}
+
+function formatMeasurement(overlay: HoralixAiOverlay) {
+  const value = overlay.measurementValue;
+  if (typeof value !== 'number' || Number.isNaN(value)) {
+    return null;
+  }
+
+  const rounded = Math.abs(value) >= 100 ? value.toFixed(1) : value.toFixed(2);
+  return `${rounded}${overlay.measurementUnits ? ` ${overlay.measurementUnits}` : ''}`;
+}
+
 export default function AiOverlaysPanel({
   overlaysState,
   overlays,
-  enabled,
+  enabledOverlayIds,
   opacity,
-  onToggle,
+  onOverlayToggle,
   onOpacityChange,
-  status,
+  lvStatus,
+  pointLineStatus,
 }: Props) {
   const availableOverlays = (overlays || []).filter(overlay => overlay?.available);
-  const primary =
-    availableOverlays.find(
-      overlay => overlay.sopInstanceUid === status.sopInstanceUid
-    ) ||
-    availableOverlays[0] ||
-    (overlays || [])[0] ||
-    null;
-
+  const enabledSet = new Set(enabledOverlayIds);
   const hasAvailable = availableOverlays.length > 0;
+  const anyEnabled = availableOverlays.some(overlay =>
+    enabledSet.has(overlayIdentity(overlay))
+  );
   const sliderValue = Math.round((opacity / OPACITY_MAX) * 100);
+  const hasDimensionMismatch =
+    lvStatus.dimensionMismatch || pointLineStatus.dimensionMismatch;
 
   return (
     <div className="space-y-3 text-[12px]">
-      <div className="rounded-lg border border-[#1A2030] bg-[#0B0F17] p-3">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <span className="inline-block h-2.5 w-2.5 rounded-sm bg-[#2DD4BF]" />
-            <span className="font-semibold text-white">AI LV Mask</span>
-          </div>
-          <Toggle
-            checked={enabled && hasAvailable}
-            disabled={!hasAvailable}
-            onChange={onToggle}
-          />
-        </div>
-        <div className="mt-2 flex items-center justify-between">
-          <span className="text-[11px] text-[#8D98B3]">Overlay layer</span>
-          {resolveStatusChip(overlaysState, primary)}
-        </div>
-      </div>
-
       {hasAvailable && (
         <div className="space-y-3 rounded-lg border border-[#1A2030] bg-[#0B0F17] p-3">
+          <div className="space-y-2">
+            {availableOverlays.map(overlay => {
+              const id = overlayIdentity(overlay);
+              const measurement = formatMeasurement(overlay);
+
+              return (
+                <div key={id} className="border-b border-[#1A2030] pb-2 last:border-b-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="inline-block h-2.5 w-2.5 shrink-0 rounded-sm"
+                          style={{ backgroundColor: overlayColor(overlay) }}
+                        />
+                        <span className="truncate text-[12px] font-semibold text-white">
+                          {overlayLabel(overlay)}
+                        </span>
+                      </div>
+                      <div className="mt-1 truncate text-[10px] text-[#8D98B3]">
+                        {overlay.overlayKey || overlay.modelName || 'default'}
+                        {measurement ? ` - ${measurement}` : ''}
+                      </div>
+                    </div>
+                    <Toggle
+                      checked={enabledSet.has(id)}
+                      disabled={!overlay.available}
+                      onChange={next => onOverlayToggle(id, next)}
+                    />
+                  </div>
+                  <div className="mt-2 flex items-center justify-between">
+                    <span className="truncate pr-2 text-[10px] text-[#60708F]">
+                      {overlay.sopInstanceUid || '-'}
+                    </span>
+                    {resolveStatusChip(overlaysState, overlay)}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
           <div>
             <div className="mb-1 flex items-center justify-between">
               <span className="text-[11px] text-[#8D98B3]">Opacity</span>
@@ -144,7 +203,7 @@ export default function AiOverlaysPanel({
               max={100}
               step={1}
               value={sliderValue}
-              disabled={!enabled}
+              disabled={!anyEnabled}
               onChange={event =>
                 onOpacityChange((Number(event.target.value) / 100) * OPACITY_MAX)
               }
@@ -156,38 +215,40 @@ export default function AiOverlaysPanel({
             <div className="rounded-md bg-[#121928] px-2 py-1.5">
               <div className="text-[10px] uppercase text-[#60708F]">Confidence</div>
               <div className="text-[13px] font-semibold text-white">
-                {formatConfidence(primary?.meanConfidence)}
+                {formatConfidence(
+                  availableOverlays.find(
+                    overlay => typeof overlay.meanConfidence === 'number'
+                  )?.meanConfidence
+                )}
               </div>
             </div>
             <div className="rounded-md bg-[#121928] px-2 py-1.5">
-              <div className="text-[10px] uppercase text-[#60708F]">Frames</div>
+              <div className="text-[10px] uppercase text-[#60708F]">Overlays</div>
               <div className="text-[13px] font-semibold text-white">
-                {primary?.framesWithMask ?? '-'}
-                <span className="text-[#60708F]">/{primary?.frameCount ?? '-'}</span>
+                {enabledOverlayIds.length}
+                <span className="text-[#60708F]">/{availableOverlays.length}</span>
               </div>
             </div>
           </div>
-
-          {primary?.modelName && (
-            <div className="text-[10px] text-[#60708F]">
-              {primary.modelName}
-              {primary.modelVersion ? ` - ${primary.modelVersion}` : ''}
-            </div>
-          )}
         </div>
       )}
 
-      {status.dimensionMismatch && (
+      {hasDimensionMismatch && (
         <div className="rounded-lg border border-[#5C2122] bg-[#2A1314] p-3 text-[11px] text-[#F8B4B4]">
-          Overlay hidden: the AI mask dimensions or frame count do not match this image.
+          Overlay hidden: the AI overlay dimensions do not match this image.
           Re-run analysis on the original instance to restore the overlay.
+        </div>
+      )}
+
+      {pointLineStatus.selectedFrameHidden && (
+        <div className="rounded-lg border border-[#5C4E1C] bg-[#2A260F] p-3 text-[11px] text-[#FDE68A]">
+          Doppler overlay is available on its selected source frame.
         </div>
       )}
 
       {!hasAvailable && overlaysState !== 'loading' && overlaysState !== 'pending' && (
         <div className="rounded-lg border border-[#1A2030] bg-[#0B0F17] p-3 text-[11px] text-[#8D98B3]">
-          No AI overlay is available for the displayed instance. LV overlays are produced for
-          apical-4-chamber cines during analysis.
+          No AI overlay is available for the displayed instance.
         </div>
       )}
 

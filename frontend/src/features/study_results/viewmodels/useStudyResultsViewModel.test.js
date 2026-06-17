@@ -102,6 +102,20 @@ describe("useStudyResultsViewModel overlays", () => {
         status: "completed",
         document: { sopInstanceUid: "sop-1" },
       },
+      {
+        overlayType: "linear_measurement",
+        overlayKey: "rv_base",
+        sopInstanceUid: "sop-1",
+        status: "completed",
+        document: { sopInstanceUid: "sop-1", overlayKey: "rv_base" },
+      },
+      {
+        overlayType: "doppler_measurement",
+        overlayKey: "lvotvmax",
+        sopInstanceUid: "sop-2",
+        status: "running",
+        document: null,
+      },
     ];
     mockUseStudyOverlaysQuery.mockReturnValue(
       readyQuery({ aiOverlays })
@@ -110,9 +124,9 @@ describe("useStudyResultsViewModel overlays", () => {
     const { result } = renderHook(() => useStudyResultsViewModel("study-1"));
 
     expect(result.current.aiOverlays).toBe(aiOverlays);
-    expect(result.current.aiOverlaysState).toBe("ready");
+    expect(result.current.aiOverlaysState).toBe("pending");
     expect(result.current.ohifAiPayload.aiOverlays).toBe(aiOverlays);
-    expect(result.current.ohifAiPayload.aiOverlaysState).toBe("ready");
+    expect(result.current.ohifAiPayload.aiOverlaysState).toBe("pending");
     expect(result.current.viewerRefreshToken).toBe("media-token");
   });
 });

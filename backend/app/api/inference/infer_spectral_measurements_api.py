@@ -11,7 +11,7 @@ from app.schemas.inference.infer_spectral_measurements_schemas import (
     SpectralTagAuditResponse,
     SpectralTagCheckResponse,
 )
-from app.services.inference.spectral_measurements_service import (
+from app.services.inference.spectral_measurements import (
     audit_spectral_tags_for_study,
     resolve_spectral_instance_or_400,
     run_spectral_measurements,

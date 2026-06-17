@@ -32,6 +32,16 @@ describe("buildStudyResultsOhifAiPayload", () => {
           sopInstanceUid: "sop-1",
           document: { sopInstanceUid: "sop-1" },
         },
+        {
+          overlayType: "linear_measurement",
+          overlayKey: "rv_base",
+          sopInstanceUid: "sop-1",
+          document: {
+            overlayType: "linear_measurement",
+            overlayKey: "rv_base",
+            sopInstanceUid: "sop-1",
+          },
+        },
       ],
     });
 
@@ -48,6 +58,18 @@ describe("buildStudyResultsOhifAiPayload", () => {
           sopInstanceUid: "sop-1",
         },
       },
+      {
+        overlayType: "linear_measurement",
+        overlayKey: "rv_base",
+        sopInstanceUid: "sop-1",
+        document: {
+          overlayType: "linear_measurement",
+          overlayKey: "rv_base",
+          sopInstanceUid: "sop-1",
+        },
+      },
     ]);
+    expect(payload.aiOverlays[0]).not.toHaveProperty("sopInstanceUID");
+    expect(payload.aiOverlays[0].document).not.toHaveProperty("sopInstanceUID");
   });
 });

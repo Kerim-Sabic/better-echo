@@ -32,6 +32,10 @@ class SpectralMeasurementsResponse(BaseModel):
     message: str
     sop_instance_uid: str
     model_weights: str
+    overlay_type: Optional[str] = None
+    overlay_key: Optional[str] = None
+    kind: Optional[str] = None
+    has_overlay: Optional[bool] = None
     metric_name: Optional[str] = None
     metric_value: Optional[float] = None
     units: Optional[str] = None

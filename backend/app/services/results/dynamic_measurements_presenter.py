@@ -84,6 +84,30 @@ def _normalize_derived_dicom(value: Any) -> Optional[Dict[str, Any]]:
     return normalized
 
 
+def _normalize_overlay(value: Any) -> Optional[Dict[str, Any]]:
+    payload = _safe_dict(value)
+    if not payload:
+        return None
+    return {
+        key: payload.get(key)
+        for key in (
+            "overlay_type",
+            "overlay_key",
+            "kind",
+            "available",
+            "frame_count",
+            "mean_confidence",
+            "metric_name",
+            "metric_value",
+            "units",
+            "min_length_cm",
+            "max_length_cm",
+            "low_confidence",
+        )
+        if key in payload
+    }
+
+
 def _normalize_result_item(result: Any) -> Optional[Dict[str, Any]]:
     payload = _safe_dict(result)
     if not payload:
@@ -96,6 +120,7 @@ def _normalize_result_item(result: Any) -> Optional[Dict[str, Any]]:
     message = _to_optional_str(payload.get("message"))
     ui_label = _normalize_result_label(payload)
     derived_dicom = _normalize_derived_dicom(payload.get("derived_dicom"))
+    overlay = _normalize_overlay(payload.get("overlay"))
 
     normalized_result = {
         "task": task,
@@ -107,6 +132,8 @@ def _normalize_result_item(result: Any) -> Optional[Dict[str, Any]]:
     }
     if derived_dicom is not None:
         normalized_result["derived_dicom"] = derived_dicom
+    if overlay is not None:
+        normalized_result["overlay"] = overlay
 
     return normalized_result
 
