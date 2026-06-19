@@ -49,6 +49,12 @@ export const getBackendUrl = async () => {
         }
     }
 
+    // The client-mode throw above ensures we never reach this path with an
+    // unconfigured cloud/LAN client — for those builds RuntimeConfigGate must
+    // resolve a backendBaseUrl before any API call fires. The fallbacks below
+    // only serve (a) the on-prem server build (where Electron has started the
+    // local backend but hasn't published its port yet) and (b) the browser
+    // dev workflow driven by REACT_APP_API_URL.
     const envBaseUrl = normalizeBaseUrl(process.env.REACT_APP_API_URL);
     const envUploadsUrl = normalizeBaseUrl(process.env.REACT_APP_API_URL_UPLOADS);
 

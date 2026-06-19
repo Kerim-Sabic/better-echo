@@ -323,7 +323,7 @@ def complete_authenticate(
         value=auth_token,
         httponly=True,
         samesite="lax",
-        secure=False,
+        secure=settings.COOKIE_SECURE,
     )
     mark_user_last_login(db, user)
 

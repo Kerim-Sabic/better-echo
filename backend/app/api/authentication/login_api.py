@@ -80,7 +80,7 @@ def login(
         value=auth_token,
         httponly=True,
         samesite="lax",
-        secure=False,  # Set to True when served over HTTPS in production
+        secure=settings.COOKIE_SECURE,
     )
 
     # --- Step 5: Return user info ---

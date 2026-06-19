@@ -1,5 +1,6 @@
 import { app, ipcMain, session } from 'electron';
 import * as path from 'path';
+import * as fs from 'fs';
 import { loadBackendEnvIntoProcessEnv } from './env';
 import { registerIpcHandlers } from './ipc';
 import { setupOrthancAuth } from './orthanc';
@@ -9,6 +10,7 @@ import { startLLM, stopLLM, isLLMRunning } from './llm';
 import { getRuntimeMode } from './runtime';
 import { startManagedInfrastructure, stopManagedInfrastructure } from './infrastructure';
 import { runServerPreflight } from './preflight';
+import { startStaticServer, stopStaticServer } from './staticServer';
 
 loadBackendEnvIntoProcessEnv();
 
@@ -39,6 +41,21 @@ const STOP_LOCAL_INFRA_ON_QUIT: boolean = (
 // Best-effort cleanup; local Docker services may be left running if this flag is off or stop fails.
 
 let isQuitting = false;
+
+// Loopback http origin the packaged CLIENT renderer is served from (set during
+// app 'ready'). Undefined in dev (loads the CRA dev server) and in server mode
+// (keeps file://). See staticServer.ts for why this exists.
+let packagedClientUrl: string | undefined;
+
+// Locate the packaged React build directory (mirror of window.ts's index.html
+// candidate search, but returns the directory the static server should serve).
+function resolvePackagedBuildDir(): string | null {
+    const candidates = [
+        path.join(__dirname, '..', '..', 'frontend', 'build'),
+        path.join(__dirname, '..', 'frontend', 'build'),
+    ];
+    return candidates.find(dir => fs.existsSync(path.join(dir, 'index.html'))) || null;
+}
 
 function parseBooleanEnvFlag(value: string | undefined, fallback: boolean): boolean {
     if (value === undefined) {
@@ -79,6 +96,7 @@ function ensureMainWindow(): void {
         openDevtools: OPEN_DEVTOOLS_DEFAULT,
         iconPath: trayIconPath,
         isQuitting: () => isQuitting,
+        packagedClientUrl,
     });
     if (win.isMinimized()) win.restore();
     win.show();
@@ -101,6 +119,64 @@ async function clearRendererWebCaches(): Promise<void> {
 app.on('ready', async () => {
   try {
     console.log(`Electron runtime mode: ${runtimeMode}`);
+
+    // In client mode the renderer connects to a remote backend. Chromium
+    // enforces CORS on cross-origin requests (origin is http://localhost:3000
+    // in dev, null/file:// in production).
+    //
+    // Fix: capture each request's Origin in onBeforeSendHeaders (where request
+    // headers are always available) keyed by request ID, then inject
+    // Access-Control-Allow-Origin in onHeadersReceived before Chromium does its
+    // CORS check. Safe here because we're inside a sandboxed Electron renderer.
+    if (runtimeMode === 'client') {
+      const pendingOrigins = new Map<number, string>();
+
+      session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
+        const origin = details.requestHeaders['Origin'] || details.requestHeaders['origin'];
+        if (origin) {
+          pendingOrigins.set(details.id, origin);
+        }
+        callback({ requestHeaders: details.requestHeaders });
+      });
+
+      session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+        const origin = pendingOrigins.get(details.id);
+        pendingOrigins.delete(details.id);
+        const responseHeaders = { ...(details.responseHeaders as Record<string, string[]>) };
+        if (origin) {
+          responseHeaders['access-control-allow-origin'] = [origin];
+          responseHeaders['access-control-allow-credentials'] = ['true'];
+          responseHeaders['access-control-allow-headers'] = ['Content-Type, Authorization, X-Horalix-Desktop-Client'];
+          responseHeaders['access-control-allow-methods'] = ['GET, POST, PUT, DELETE, OPTIONS, PATCH'];
+          // FastAPI's CORSMiddleware returns 400 for OPTIONS preflights from
+          // origins not in its allowlist. The browser rejects preflights with
+          // non-2xx status regardless of headers, so fix the status line too.
+          if (details.method === 'OPTIONS' && details.statusCode >= 400) {
+            callback({ responseHeaders, statusLine: 'HTTP/1.1 200 OK' });
+            return;
+          }
+        }
+        callback({ responseHeaders });
+      });
+    }
+
+    // Packaged client: serve the renderer over a loopback http origin instead
+    // of file:// so it has a real, non-null origin (required by the CORS
+    // interceptor above and by the OHIF AI-panel postMessage bridge). Dev uses
+    // the CRA dev server; server mode keeps file:// unchanged.
+    if (runtimeMode === 'client' && !isDev) {
+      const buildDir = resolvePackagedBuildDir();
+      if (buildDir) {
+        try {
+          packagedClientUrl = await startStaticServer(buildDir);
+          console.log('Client renderer served at', packagedClientUrl);
+        } catch (err) {
+          console.error('Static server failed to start; falling back to file://', err);
+        }
+      } else {
+        console.warn('Packaged frontend build not found; falling back to file://');
+      }
+    }
 
     if (CLEAR_ELECTRON_WEB_CACHE_ON_START) {
       await clearRendererWebCaches();
@@ -178,6 +254,7 @@ app.on('activate', () => {
 
 app.on('before-quit', () => {
   isQuitting = true;
+  stopStaticServer();
   if (managesLocalServices) {
     stopBackend();
     stopLLM();

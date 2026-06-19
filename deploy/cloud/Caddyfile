@@ -1,0 +1,62 @@
+# Caddyfile for the AWS cloud trial deployment.
+#
+# Required environment variables (passed via docker-compose.cloud.yml):
+#   DOMAIN  - the public hostname for this tenant, e.g. acme.echo.horalix.com
+#   ACME_EMAIL - operator email used by Let's Encrypt for cert expiry notices
+#
+# Routing summary:
+#   /api/*        -> FastAPI backend (path preserved; FastAPI mounts at /api)
+#   /healthz      -> static 200 response for load balancer / uptime probes
+#   everything    -> OHIF viewer (which internally proxies /dicom-web to Orthanc
+#                    via nginx inside the horalix-viewer container)
+#
+# The Orthanc service is intentionally NOT exposed directly via Caddy: the
+# OHIF container already proxies DICOMweb to orthanc:8042 on the internal
+# compose network, which keeps Orthanc unreachable from the public internet
+# except through the viewer's allowed routes.
+
+{
+    email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+    encode gzip zstd
+
+    # Sensible production headers.
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        # Allow Electron clients (file:// origin) to embed the viewer in an iframe.
+        -X-Frame-Options
+        Content-Security-Policy "frame-ancestors *"
+    }
+
+    handle /api/* {
+        reverse_proxy backend:8000 {
+            # Replace (not append to) X-Forwarded-* so an attacker can't spoof
+            # 127.0.0.1 to bypass require_loopback_request on the licensing
+            # admin endpoints (backend/app/helpers/http/request_access.py).
+            # uvicorn runs with --forwarded-allow-ips=*, so the upstream value
+            # MUST be authoritative — and that authority comes from Caddy.
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto https
+            header_up X-Forwarded-Host {host}
+            # Long-running uploads / inference responses.
+            transport http {
+                read_timeout 10m
+                write_timeout 10m
+            }
+        }
+    }
+
+    respond /healthz 200 {
+        body "ok"
+        close
+    }
+
+    # Catch-all -> OHIF viewer. OHIF's own nginx handles /dicom-web -> orthanc.
+    handle {
+        reverse_proxy horalix-viewer:80
+    }
+}

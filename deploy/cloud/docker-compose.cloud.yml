@@ -1,0 +1,168 @@
+# Cloud-only docker-compose stack for the AWS hospital-trial deployment.
+#
+# Differences from the on-prem docker-compose.yml at the repo root:
+#   - Adds a `backend` service (Linux FastAPI image, instead of the Windows
+#     PyInstaller binary that the on-prem Electron server build spawns).
+#   - Adds an `llm` service (vLLM, replacing the WSL-launched on-prem LLM).
+#   - Adds a `caddy` reverse proxy terminating TLS via Let's Encrypt.
+#   - Bind-mounts persistent state under /var/lib/horalix/ on the EC2 host
+#     (placed on a separate EBS volume by Terraform).
+#   - Only exposes ports 80/443 to the host. Postgres, Orthanc, the backend,
+#     and the LLM stay on the internal compose network.
+#
+# Run from the deploy/cloud/ directory (build contexts use ../.. to reach
+# the repo root):
+#   docker compose -f docker-compose.cloud.yml --env-file .env up -d
+
+name: horalix-cloud
+
+x-restart: &restart unless-stopped
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: horalix_caddy
+    restart: *restart
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: "${DOMAIN}"
+      ACME_EMAIL: "${ACME_EMAIL}"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - /var/lib/horalix/caddy/data:/data
+      - /var/lib/horalix/caddy/config:/config
+    depends_on:
+      - backend
+      - horalix-viewer
+    networks:
+      - horalix
+
+  backend:
+    build:
+      context: ../..
+      dockerfile: deploy/cloud/backend.Dockerfile
+    image: horalix/echo-backend:${BACKEND_IMAGE_TAG:-dev}
+    container_name: horalix_backend
+    restart: *restart
+    environment:
+      # --- Internal compose-network topology (service DNS, not tenant config) ---
+      # These point at other containers on the `horalix` network. They are
+      # deployment-invariant wiring, so they stay inline rather than in .env.
+      DATABASE_URL: "postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}"
+      ORTHANC_URL: "http://orthanc:8042"
+      LLM_BASE_URL: "http://llm:8012/v1"
+      # --- Everything else is sourced from the generated .env (single source) ---
+      # bootstrap.sh renders every key below; defaults live there and in
+      # .env.example, NOT here. Do not add ${VAR:-default} fallbacks — that
+      # reintroduces a second home for the value. (BACKEND_HOST/PORT and
+      # PYTHONUNBUFFERED are image-intrinsic and live in backend.Dockerfile.)
+      ORTHANC_USER: "${ORTHANC_USER}"
+      ORTHANC_PASS: "${ORTHANC_PASS}"
+      SECRET_KEY: "${SECRET_KEY}"
+      TOKEN_EXPIRE_HOURS: "${TOKEN_EXPIRE_HOURS}"
+      CORS_ORIGIN: "${CORS_ORIGIN}"
+      COOKIE_SECURE: "${COOKIE_SECURE}"
+      ENABLE_LLM: "${ENABLE_LLM}"
+      REPORTING_MODEL_ID: "${REPORTING_MODEL_ID}"
+      LLM_SERVER_MAX_LEN: "${LLM_SERVER_MAX_LEN}"
+      LICENSE_ENFORCEMENT: "${LICENSE_ENFORCEMENT}"
+      LICENSE_STORAGE_DIR: "${LICENSE_STORAGE_DIR}"
+      LICENSE_PUBLIC_KEY_B64: "${LICENSE_PUBLIC_KEY_B64}"
+    volumes:
+      - /var/lib/horalix/licensing:/var/lib/horalix/licensing
+      - /var/lib/horalix/models:/app/models:ro
+      - /var/lib/horalix/backend-logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      orthanc:
+        condition: service_started
+    networks:
+      - horalix
+
+  llm:
+    profiles: ["gpu"]
+    build:
+      context: ../..
+      dockerfile: deploy/cloud/llm.Dockerfile
+    image: horalix/vllm:${LLM_IMAGE_TAG:-dev}
+    container_name: horalix_llm
+    restart: *restart
+    environment:
+      # Runtime config from the generated .env (no ${VAR:-default} fallbacks —
+      # bootstrap.sh renders these; defaults live in .env.example). LLM_PORT and
+      # HF_HOME are container-internal constants.
+      LLM_MODEL: "${REPORTING_MODEL_ID}"
+      LLM_PORT: "8012"
+      LLM_MAX_MODEL_LEN: "${LLM_SERVER_MAX_LEN}"
+      LLM_GPU_MEMORY_UTILIZATION: "${LLM_GPU_MEMORY_UTILIZATION}"
+      LLM_MAX_NUM_SEQS: "${LLM_MAX_NUM_SEQS}"
+      HF_HOME: "/models/hf-cache"
+    volumes:
+      - /var/lib/horalix/models:/models
+    ipc: host
+    networks:
+      - horalix
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: horalix_postgres
+    restart: *restart
+    environment:
+      POSTGRES_DB: "${POSTGRES_DB}"
+      POSTGRES_USER: "${POSTGRES_USER}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+    volumes:
+      - /var/lib/horalix/postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - horalix
+
+  orthanc:
+    image: jodogne/orthanc-plugins
+    container_name: horalix_orthanc
+    restart: *restart
+    volumes:
+      - ../../orthanc/orthanc.json:/etc/orthanc/orthanc.json:ro
+      - /var/lib/horalix/orthanc-data:/var/lib/orthanc/db
+    networks:
+      - horalix
+
+  horalix-viewer:
+    build:
+      context: ../../horalix_viewer/Viewers-3.12.0
+      dockerfile: Dockerfile
+      args:
+        APP_CONFIG: config/default.js
+        PUBLIC_URL: /
+        PORT: 80
+    image: horalix-viewer:${VIEWER_IMAGE_TAG:-cloud}
+    container_name: horalix_viewer
+    restart: *restart
+    volumes:
+      - ./viewer/app-config.js:/usr/share/nginx/html/app-config.js:ro
+      - ../../horalix_viewer/runtime_config/orthanc-standalone.json:/usr/share/nginx/html/orthanc-standalone.json:ro
+      - ../../horalix_viewer/runtime_config/start-ohif.sh:/start-ohif.sh:ro
+    command: ["/bin/sh", "/start-ohif.sh"]
+    depends_on:
+      - orthanc
+    networks:
+      - horalix
+
+networks:
+  horalix:
+    name: horalix
+    driver: bridge

@@ -25,6 +25,11 @@ class Settings(BaseSettings):
     SECRET_KEY: str
     TOKEN_EXPIRE_HOURS: int
 
+    # Set true when the backend is reached via HTTPS (e.g. the AWS cloud trial
+    # deployment behind Caddy). Stays false for on-prem LAN deployments where
+    # doctors hit the server over plain http on the hospital network.
+    COOKIE_SECURE: bool = False
+
     # WebAuthn pending ceremony state backend (memory | redis).
     WEBAUTHN_STATE_BACKEND: str = "memory"
     # Enforce single-process runtime when using in-memory WebAuthn state.
