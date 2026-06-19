@@ -52,9 +52,9 @@ electron/build-resources/icon.*
 **/.terraform/*
 *.tfstate
 *.tfstate.*
-.terraform.lock.hcl
 deploy/terraform/terraform.tfstate.d/
 deploy/terraform/.secrets/
+# NOTE: .terraform.lock.hcl IS committed on purpose (pins provider versions).
 
 # General
 .DS_Store
