@@ -51,6 +51,14 @@ export type HoralixLlmEchoReport = {
 };
 
 // AI OVERLAY LAYER
+export type HoralixOverlayViewport = {
+  viewportId: string;
+  viewportIndex: number;
+  viewportLabel?: string | null;
+  sopInstanceUid?: string | null;
+  currentFrameIndex?: number | null;
+};
+
 export type HoralixOverlayRle = {
   size?: number[];
   counts?: number[];
@@ -146,10 +154,32 @@ export type HoralixAiOverlay = {
   measurementName?: string | null;
   measurementValue?: number | null;
   measurementUnits?: string | null;
+  displayName?: string | null;
+  familyLabel?: string | null;
+  summaryValueLabel?: string | null;
+  summaryValueKind?: string | null;
+  confidenceScore?: number | null;
+  confidenceSource?: string | null;
+  confidenceThreshold?: number | null;
+  lowConfidence?: boolean;
   warnings?: string[];
   generatedAt?: string | null;
   payloadUrl?: string | null;
   document?: HoralixOverlayDocument | null;
+};
+
+export type HoralixAiOverlayInstanceSummary = {
+  sopInstanceUid?: string | null;
+  instanceId?: number | null;
+  predictedView?: string | null;
+  predictedViewLabel?: string | null;
+  predictedViewConfidence?: number | null;
+  overlayStatus?: string | null;
+  overlayCount?: number | null;
+  availableOverlayCount?: number | null;
+  runningOverlayCount?: number | null;
+  failedOverlayCount?: number | null;
+  lowConfidenceCount?: number | null;
 };
 
 // COMBINED PAYLOAD
@@ -166,4 +196,5 @@ export type HoralixAiResultsPayload = {
   apiBaseUrl?: string | null;
   aiOverlaysState?: string | null;
   aiOverlays?: HoralixAiOverlay[];
+  aiOverlayInstances?: HoralixAiOverlayInstanceSummary[];
 };

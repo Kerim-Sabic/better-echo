@@ -22,8 +22,8 @@ from app.services.inference.spectral_measurements.geometry import (
 logger = logging.getLogger(__name__)
 
 TWO_POINT_DOPPLER_WEIGHTS = {"mvpeak_2c", "tapse_2c"}
-SINGLE_POINT_CONFIDENCE_MIN = 0.0100
-TWO_POINT_CONFIDENCE_MIN = 0.0100
+SINGLE_POINT_CONFIDENCE_MIN = 0.0500
+TWO_POINT_CONFIDENCE_MIN = 0.0500
 
 _loaded_models: dict[str, torch.nn.Module] = {}
 _device: Optional[torch.device] = None

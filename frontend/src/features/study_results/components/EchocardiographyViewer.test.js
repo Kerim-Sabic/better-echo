@@ -125,6 +125,59 @@ describe("EchocardiographyViewer", () => {
     });
   });
 
+  test("does not remount when only the AI payload changes", async () => {
+    jest.useFakeTimers();
+
+    const { rerender } = render(
+      <EchocardiographyViewer studyResultsPageViewModel={buildViewModel()} />
+    );
+
+    const iframe = await screen.findByTitle("OHIF Viewer");
+    const initialSrc = iframe.getAttribute("src");
+    Object.defineProperty(iframe, "contentWindow", {
+      configurable: true,
+      value: window,
+    });
+
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent("message", {
+          data: {
+            channel: "horalix-ai",
+            version: 1,
+            type: "horalix:panel-ready",
+          },
+          source: window,
+        })
+      );
+    });
+
+    act(() => {
+      jest.advanceTimersByTime(VIEWER_REVEAL_DELAY_MS);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("viewer-skeleton")).toHaveClass("opacity-0");
+    });
+
+    rerender(
+      <EchocardiographyViewer
+        studyResultsPageViewModel={buildViewModel({
+          ohifAiPayload: {
+            studyUid: "study-123",
+            aiOverlaysState: "ready",
+            aiOverlays: [{ overlayType: "lv_segmentation" }],
+          },
+        })}
+      />
+    );
+
+    const currentIframe = screen.getByTitle("OHIF Viewer");
+    expect(currentIframe).toBe(iframe);
+    expect(currentIframe.getAttribute("src")).toBe(initialSrc);
+    expect(screen.getByTestId("viewer-skeleton")).toHaveClass("opacity-0");
+  });
+
   test("reveals the viewer after iframe load if panel-ready never arrives", async () => {
     jest.useFakeTimers();
 

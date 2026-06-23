@@ -146,6 +146,14 @@ export function formatStudyOverlaysDto(rawOverlays) {
         measurementName: toNullableString(overlay.measurement_name),
         measurementValue: toNumberOrNull(overlay.measurement_value),
         measurementUnits: toNullableString(overlay.measurement_units),
+        displayName: toNullableString(overlay.display_name),
+        familyLabel: toNullableString(overlay.family_label),
+        summaryValueLabel: toNullableString(overlay.summary_value_label),
+        summaryValueKind: toNullableString(overlay.summary_value_kind),
+        confidenceScore: toNumberOrNull(overlay.confidence_score),
+        confidenceSource: toNullableString(overlay.confidence_source),
+        confidenceThreshold: toNumberOrNull(overlay.confidence_threshold),
+        lowConfidence: Boolean(overlay.low_confidence),
         warnings: toArray(overlay.warnings),
         generatedAt: toNullableString(overlay.generated_at),
         payloadUrl: toNullableString(overlay.payload_url),
@@ -153,4 +161,31 @@ export function formatStudyOverlaysDto(rawOverlays) {
       };
     })
     .filter(overlay => overlay.sopInstanceUid && overlay.overlayType);
+}
+
+export function formatStudyOverlayInstancesDto(rawInstances) {
+  return toArray(rawInstances)
+    .map(rawInstance => {
+      const instance = toObject(rawInstance);
+
+      return {
+        sopInstanceUid: toNullableString(instance.sop_instance_uid),
+        instanceId: toNumberOrNull(instance.instance_id),
+        predictedView: toNullableString(instance.predicted_view),
+        predictedViewLabel: toNullableString(instance.predicted_view_label),
+        predictedViewConfidence: toNumberOrNull(
+          instance.predicted_view_confidence
+        ),
+        overlayStatus: toNullableString(instance.overlay_status) || "none",
+        overlayCount: toNumberOrNull(instance.overlay_count) ?? 0,
+        availableOverlayCount:
+          toNumberOrNull(instance.available_overlay_count) ?? 0,
+        runningOverlayCount:
+          toNumberOrNull(instance.running_overlay_count) ?? 0,
+        failedOverlayCount: toNumberOrNull(instance.failed_overlay_count) ?? 0,
+        lowConfidenceCount:
+          toNumberOrNull(instance.low_confidence_count) ?? 0,
+      };
+    })
+    .filter(instance => instance.sopInstanceUid);
 }

@@ -27,6 +27,12 @@ def build_overlay_document(
     duration_s: float,
 ) -> dict[str, Any]:
     frame_selection = prediction.get("frame_selection") or {}
+    points = prediction.get("points") or []
+    quality = prediction.get("quality") or {}
+    quality.setdefault(
+        "confidence_source",
+        "point_heatmap_peak_min" if len(points) > 1 else "point_heatmap_peak",
+    )
     return {
         "schema_version": DOPPLER_MEASUREMENT_OVERLAY_SCHEMA_VERSION,
         "overlay_type": DOPPLER_MEASUREMENT_OVERLAY_TYPE,
@@ -43,7 +49,7 @@ def build_overlay_document(
         "coordinate_space": "source_pixel",
         "geometry_type": prediction.get("geometry_type") or "point_marker",
         "selected_frame_index": int(prediction.get("selected_frame_index") or 0),
-        "points": prediction.get("points") or [],
+        "points": points,
         "segments": prediction.get("segments") or [],
         "reference_line": prediction.get("reference_line"),
         "measurement": {
@@ -53,7 +59,7 @@ def build_overlay_document(
         },
         "doppler_region": prediction.get("doppler_region") or {},
         "frame_selection": frame_selection,
-        "quality": prediction.get("quality") or {},
+        "quality": quality,
         "metadata": prediction.get("metadata") or {},
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "processing": {

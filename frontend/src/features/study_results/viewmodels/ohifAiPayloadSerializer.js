@@ -10,6 +10,7 @@ export function buildStudyResultsOhifAiPayload({
   apiBaseUrl = null,
   aiOverlaysState = "idle",
   aiOverlays = [],
+  aiOverlayInstances = [],
 }) {
   const studyAnalysisDisplay = studyAnalysisCombinedResultsData?.display ?? {
     mainMeasurements: [],
@@ -56,5 +57,6 @@ export function buildStudyResultsOhifAiPayload({
     apiBaseUrl,
     aiOverlaysState,
     aiOverlays,
+    aiOverlayInstances,
   };
 }

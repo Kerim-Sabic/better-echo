@@ -22,6 +22,7 @@ from app.core.artifacts import (
 from app.database_models.derived_results import DerivedResult, ResultStatus
 from app.database_models.instances import Instance
 from app.database_models.studies import Study
+from app.helpers.clinical.overlay_display import overlay_display_metadata
 from app.services.pipeline.read import (
     get_active_artifact_set,
     get_latest_draft_artifact_set,
@@ -36,6 +37,25 @@ _SUPPORTED_KIND_BY_TYPE = {
     LV_SEGMENTATION_OVERLAY_TYPE: LV_SEGMENTATION_OVERLAY_KIND,
     LINEAR_MEASUREMENT_OVERLAY_TYPE: LINEAR_MEASUREMENT_OVERLAY_KIND,
     DOPPLER_MEASUREMENT_OVERLAY_TYPE: DOPPLER_MEASUREMENT_OVERLAY_KIND,
+}
+_VIEW_LABELS_BY_PREDICTED_VIEW = {
+    "PARASTERNAL_LONG": "PLAX",
+    "PARASTERNAL_SHORT": "PSAX",
+    "APICAL_2CHAMBER": "A2C",
+    "A2C": "A2C",
+    "AP2": "A2C",
+    "APICAL_3CHAMBER": "A3C",
+    "A3C": "A3C",
+    "AP3": "A3C",
+    "APICAL_4CHAMBER": "A4C",
+    "A4C": "A4C",
+    "AP4": "A4C",
+    "APICAL_5CHAMBER": "A5C",
+    "A5C": "A5C",
+    "AP5": "A5C",
+    "SPECTRAL_DOPPLER_PW": "PW",
+    "SPECTRAL_DOPPLER_CW": "CW",
+    "COLOR_DOPPLER": "Color",
 }
 
 
@@ -80,6 +100,18 @@ def overlay_key_for_result_type(result_type: str | None) -> str | None:
     if result_type.startswith(SPECTRAL_MEASUREMENTS_TYPE_PREFIX):
         return result_type.removeprefix(SPECTRAL_MEASUREMENTS_TYPE_PREFIX)
     return None
+
+
+def predicted_view_label(predicted_view: str | None) -> str | None:
+    if not predicted_view:
+        return None
+    normalized = predicted_view.strip().upper().replace("-", "_").replace(" ", "_")
+    if not normalized:
+        return None
+    return _VIEW_LABELS_BY_PREDICTED_VIEW.get(
+        normalized,
+        normalized.replace("_", " ").title(),
+    )
 
 
 def _result_type_for_overlay(
@@ -324,6 +356,27 @@ def _measurement_summary(
     }
 
 
+def _confidence_summary(*, doc: dict[str, Any], overlay_type: str) -> dict[str, Any]:
+    quality = doc.get("quality") if isinstance(doc.get("quality"), dict) else {}
+
+    if overlay_type == LV_SEGMENTATION_OVERLAY_TYPE:
+        confidence_score = quality.get("confidence_score", quality.get("mean_confidence"))
+        return {
+            "confidence_score": confidence_score,
+            "confidence_source": quality.get("confidence_source")
+            or "foreground_probability_mean",
+            "confidence_threshold": quality.get("confidence_threshold"),
+            "low_confidence": bool(quality.get("low_confidence", False)),
+        }
+
+    return {
+        "confidence_score": quality.get("confidence_score"),
+        "confidence_source": quality.get("confidence_source"),
+        "confidence_threshold": quality.get("confidence_threshold"),
+        "low_confidence": bool(quality.get("low_confidence", False)),
+    }
+
+
 def overlay_metadata(
     *,
     sop_instance_uid: str,
@@ -341,6 +394,13 @@ def overlay_metadata(
         overlay_type=overlay_type,
         overlay_key=resolved_overlay_key,
     )
+    display = overlay_display_metadata(
+        doc=doc,
+        overlay_type=overlay_type,
+        overlay_key=resolved_overlay_key,
+        measurement=measurement,
+    )
+    confidence = _confidence_summary(doc=doc, overlay_type=overlay_type)
 
     return {
         "sop_instance_uid": sop_instance_uid,
@@ -364,6 +424,8 @@ def overlay_metadata(
         "mean_confidence": quality.get("mean_confidence"),
         "frames_with_mask": quality.get("frames_with_mask"),
         **measurement,
+        **display,
+        **confidence,
         "warnings": quality.get("warnings") or [],
         "generated_at": doc.get("generated_at"),
         "payload_url": payload_url_for(
@@ -371,4 +433,44 @@ def overlay_metadata(
             overlay_type=overlay_type,
             overlay_key=resolved_overlay_key,
         ),
+    }
+
+
+def overlay_instance_summary(
+    *, instance: Instance, overlays: list[dict[str, Any]]
+) -> dict[str, Any]:
+    running_count = sum(
+        1 for overlay in overlays if overlay.get("status") in {"queued", "running"}
+    )
+    failed_count = sum(1 for overlay in overlays if overlay.get("status") == "failed")
+    available_count = sum(1 for overlay in overlays if overlay.get("available"))
+    low_confidence_count = sum(
+        1
+        for overlay in overlays
+        if overlay.get("available") and overlay.get("low_confidence")
+    )
+
+    if running_count:
+        overlay_status = "processing"
+    elif available_count and failed_count:
+        overlay_status = "partial"
+    elif available_count:
+        overlay_status = "ready"
+    elif failed_count:
+        overlay_status = "failed"
+    else:
+        overlay_status = "none"
+
+    return {
+        "sop_instance_uid": instance.sop_instance_uid,
+        "instance_id": instance.id,
+        "predicted_view": instance.predicted_view,
+        "predicted_view_label": predicted_view_label(instance.predicted_view),
+        "predicted_view_confidence": instance.predicted_view_confidence,
+        "overlay_status": overlay_status,
+        "overlay_count": available_count,
+        "available_overlay_count": available_count,
+        "running_overlay_count": running_count,
+        "failed_overlay_count": failed_count,
+        "low_confidence_count": low_confidence_count,
     }

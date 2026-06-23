@@ -8,10 +8,13 @@ import {
 import { HoralixAiOverlay, HoralixLvOverlayDocument } from '../../horalixAiResults.types';
 import { buildMaskCanvas, Rgb } from './maskBitmap';
 import { DecodedMask, decodeRleToMask } from './maskRle';
+import {
+  OVERLAY_VIEWPORT_RECONCILE_INTERVAL_MS,
+  sopInstanceUidForViewport,
+} from './overlayViewportState';
 
 const LV_OVERLAY_KIND = 'lv_segmentation_overlay';
 const OVERLAY_COLOR: Rgb = [45, 212, 191];
-const RECONCILE_INTERVAL_MS = 750;
 const OVERLAY_Z_INDEX = '5';
 
 export type LvOverlayStatus = {
@@ -24,60 +27,6 @@ type ImageDimensions = {
   columns: number;
   rows: number;
 };
-
-function sopUidForImageId(imageId: string | undefined): string | null {
-  if (!imageId) {
-    return null;
-  }
-
-  try {
-    const instance = csMeta.get('instance', imageId);
-    return (instance && instance.SOPInstanceUID) || null;
-  } catch {
-    return null;
-  }
-}
-
-function sopUidForViewport(viewport: any, servicesManager: any): string | null {
-  let imageId: string | undefined;
-  try {
-    imageId = viewport.getCurrentImageId?.();
-  } catch {
-    imageId = undefined;
-  }
-
-  const imageSop = sopUidForImageId(imageId);
-  if (imageSop) {
-    return imageSop;
-  }
-
-  try {
-    const services = servicesManager?.services || {};
-    const { displaySetService, viewportGridService } = services;
-    const gridState = viewportGridService?.getState?.();
-    const viewports = gridState?.viewports;
-    const entry =
-      (viewports && typeof viewports.get === 'function' && viewports.get(viewport.id)) ||
-      (viewports && viewports[viewport.id]) ||
-      null;
-    const displaySetInstanceUIDs: string[] = entry?.displaySetInstanceUIDs || [];
-
-    for (const displaySetInstanceUID of displaySetInstanceUIDs) {
-      const displaySet = displaySetService?.getDisplaySetByUID?.(displaySetInstanceUID);
-      const sop =
-        displaySet?.SOPInstanceUID ||
-        displaySet?.instances?.[0]?.SOPInstanceUID ||
-        displaySet?.images?.[0]?.SOPInstanceUID;
-      if (sop) {
-        return sop;
-      }
-    }
-  } catch {
-    return null;
-  }
-
-  return null;
-}
 
 function imageDimensions(imageId: string | undefined): ImageDimensions | null {
   if (!imageId) {
@@ -378,7 +327,7 @@ export function useLvMaskOverlay({
             return;
           }
 
-          const sop = sopUidForViewport(viewport, servicesManager);
+          const sop = sopInstanceUidForViewport(viewport, servicesManager);
           const overlay =
             sop && enabledRef.current ? overlaysBySop.get(sop) : null;
           if (!overlay?.document) {
@@ -427,7 +376,10 @@ export function useLvMaskOverlay({
 
     reconcileRef.current = reconcile;
     reconcile();
-    const interval = window.setInterval(reconcile, RECONCILE_INTERVAL_MS);
+    const interval = window.setInterval(
+      reconcile,
+      OVERLAY_VIEWPORT_RECONCILE_INTERVAL_MS
+    );
 
     return () => {
       disposed = true;

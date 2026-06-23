@@ -43,6 +43,15 @@ describe("buildStudyResultsOhifAiPayload", () => {
           },
         },
       ],
+      aiOverlayInstances: [
+        {
+          sopInstanceUid: "sop-1",
+          predictedView: "A4C",
+          predictedViewLabel: "A4C",
+          overlayStatus: "ready",
+          overlayCount: 2,
+        },
+      ],
     });
 
     expect(payload.studyAnalysisMeasurements.totalMeasurements).toBe(2);
@@ -71,5 +80,14 @@ describe("buildStudyResultsOhifAiPayload", () => {
     ]);
     expect(payload.aiOverlays[0]).not.toHaveProperty("sopInstanceUID");
     expect(payload.aiOverlays[0].document).not.toHaveProperty("sopInstanceUID");
+    expect(payload.aiOverlayInstances).toEqual([
+      {
+        sopInstanceUid: "sop-1",
+        predictedView: "A4C",
+        predictedViewLabel: "A4C",
+        overlayStatus: "ready",
+        overlayCount: 2,
+      },
+    ]);
   });
 });

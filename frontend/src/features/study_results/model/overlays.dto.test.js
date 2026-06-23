@@ -1,4 +1,5 @@
 import {
+  formatStudyOverlayInstancesDto,
   formatStudyOverlaysDto,
   normalizeOverlayDocument,
 } from "./overlays.dto";
@@ -23,6 +24,14 @@ describe("overlay DTOs", () => {
         mask_format: "rle",
         mean_confidence: 0.8,
         frames_with_mask: 1,
+        display_name: "LV Segmentation",
+        family_label: "LV Segmentation",
+        summary_value_label: null,
+        summary_value_kind: null,
+        confidence_score: 0.8,
+        confidence_source: "foreground_probability_mean",
+        confidence_threshold: null,
+        low_confidence: false,
         warnings: ["low_confidence"],
         generated_at: "2026-06-08T00:00:00Z",
         payload_url: "/api/instances/sop-1/overlays/lv_segmentation/payload",
@@ -70,6 +79,14 @@ describe("overlay DTOs", () => {
         maskFormat: "rle",
         meanConfidence: 0.8,
         framesWithMask: 1,
+        displayName: "LV Segmentation",
+        familyLabel: "LV Segmentation",
+        summaryValueLabel: null,
+        summaryValueKind: null,
+        confidenceScore: 0.8,
+        confidenceSource: "foreground_probability_mean",
+        confidenceThreshold: null,
+        lowConfidence: false,
         warnings: ["low_confidence"],
         generatedAt: "2026-06-08T00:00:00Z",
         payloadUrl: "/api/instances/sop-1/overlays/lv_segmentation/payload",
@@ -105,6 +122,40 @@ describe("overlay DTOs", () => {
     expect(normalizeOverlayDocument({ frames: [] })).toBeNull();
   });
 
+  test("normalizes overlay instance summaries", () => {
+    expect(
+      formatStudyOverlayInstancesDto([
+        {
+          sop_instance_uid: "sop-1",
+          instance_id: 12,
+          predicted_view: "A4C",
+          predicted_view_label: "A4C",
+          predicted_view_confidence: 0.97,
+          overlay_status: "ready",
+          overlay_count: 2,
+          available_overlay_count: 2,
+          running_overlay_count: 0,
+          failed_overlay_count: 0,
+          low_confidence_count: 1,
+        },
+      ])
+    ).toEqual([
+      {
+        sopInstanceUid: "sop-1",
+        instanceId: 12,
+        predictedView: "A4C",
+        predictedViewLabel: "A4C",
+        predictedViewConfidence: 0.97,
+        overlayStatus: "ready",
+        overlayCount: 2,
+        availableOverlayCount: 2,
+        runningOverlayCount: 0,
+        failedOverlayCount: 0,
+        lowConfidenceCount: 1,
+      },
+    ]);
+  });
+
   test("normalizes linear measurement point-line documents", () => {
     const document = normalizeOverlayDocument({
       schema_version: 1,
@@ -118,9 +169,10 @@ describe("overlay DTOs", () => {
         {
           frame_index: 0,
           present: true,
+          confidence: 0.85,
           points: [
-            { id: "p0", x: 10, y: 20, confidence: null },
-            { id: "p1", x: 40, y: 20, confidence: null },
+            { id: "p0", x: 10, y: 20, confidence: 0.9 },
+            { id: "p1", x: 40, y: 20, confidence: 0.8 },
           ],
           segments: [{ from: "p0", to: "p1", role: "measurement_line" }],
           measurement: { name: "rv_base", value: 3.4, units: "cm", length_px: 30 },
@@ -141,9 +193,10 @@ describe("overlay DTOs", () => {
       })
     );
     expect(document.frames[0].points).toEqual([
-      { id: "p0", x: 10, y: 20, confidence: null },
-      { id: "p1", x: 40, y: 20, confidence: null },
+      { id: "p0", x: 10, y: 20, confidence: 0.9 },
+      { id: "p1", x: 40, y: 20, confidence: 0.8 },
     ]);
+    expect(document.frames[0].confidence).toBe(0.85);
     expect(document.frames[0].segments).toEqual([
       { from: "p0", to: "p1", role: "measurement_line" },
     ]);

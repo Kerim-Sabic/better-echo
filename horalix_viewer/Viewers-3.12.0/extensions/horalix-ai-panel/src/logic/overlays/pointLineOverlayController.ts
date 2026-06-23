@@ -20,11 +20,14 @@ import {
   CanvasSegment,
   drawPointLineOverlay,
 } from './pointLineCanvas';
+import {
+  OVERLAY_VIEWPORT_RECONCILE_INTERVAL_MS,
+  sopInstanceUidForViewport,
+} from './overlayViewportState';
 
 const LINEAR_OVERLAY_KIND = 'linear_measurement_overlay';
 const DOPPLER_OVERLAY_KIND = 'doppler_measurement_overlay';
 const COORDINATE_SPACE_SOURCE_PIXEL = 'source_pixel';
-const RECONCILE_INTERVAL_MS = 750;
 const OVERLAY_Z_INDEX = '6';
 
 type ImageDimensions = {
@@ -56,60 +59,6 @@ type RenderResult = {
 
 function finiteNumber(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
-}
-
-function sopUidForImageId(imageId: string | undefined): string | null {
-  if (!imageId) {
-    return null;
-  }
-
-  try {
-    const instance = csMeta.get('instance', imageId);
-    return (instance && instance.SOPInstanceUID) || null;
-  } catch {
-    return null;
-  }
-}
-
-function sopUidForViewport(viewport: any, servicesManager: any): string | null {
-  let imageId: string | undefined;
-  try {
-    imageId = viewport.getCurrentImageId?.();
-  } catch {
-    imageId = undefined;
-  }
-
-  const imageSop = sopUidForImageId(imageId);
-  if (imageSop) {
-    return imageSop;
-  }
-
-  try {
-    const services = servicesManager?.services || {};
-    const { displaySetService, viewportGridService } = services;
-    const gridState = viewportGridService?.getState?.();
-    const viewports = gridState?.viewports;
-    const entry =
-      (viewports && typeof viewports.get === 'function' && viewports.get(viewport.id)) ||
-      (viewports && viewports[viewport.id]) ||
-      null;
-    const displaySetInstanceUIDs: string[] = entry?.displaySetInstanceUIDs || [];
-
-    for (const displaySetInstanceUID of displaySetInstanceUIDs) {
-      const displaySet = displaySetService?.getDisplaySetByUID?.(displaySetInstanceUID);
-      const sop =
-        displaySet?.SOPInstanceUID ||
-        displaySet?.instances?.[0]?.SOPInstanceUID ||
-        displaySet?.images?.[0]?.SOPInstanceUID;
-      if (sop) {
-        return sop;
-      }
-    }
-  } catch {
-    return null;
-  }
-
-  return null;
 }
 
 function imageDimensions(imageId: string | undefined): ImageDimensions | null {
@@ -595,7 +544,7 @@ export function usePointLineOverlays({
             return;
           }
 
-          const sop = sopUidForViewport(viewport, servicesManager);
+          const sop = sopInstanceUidForViewport(viewport, servicesManager);
           const matchingOverlays =
             sop && enabledRef.current ? overlayMap.get(sop) || [] : [];
           if (!matchingOverlays.length) {
@@ -648,7 +597,10 @@ export function usePointLineOverlays({
 
     reconcileRef.current = reconcile;
     reconcile();
-    const interval = window.setInterval(reconcile, RECONCILE_INTERVAL_MS);
+    const interval = window.setInterval(
+      reconcile,
+      OVERLAY_VIEWPORT_RECONCILE_INTERVAL_MS
+    );
 
     return () => {
       disposed = true;

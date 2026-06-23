@@ -74,10 +74,17 @@ export default function PanelStudyBrowserTracking({
     displaySets,
     displaySetLoadingState,
     thumbnailImageSrcMap,
-    viewports
+    viewports,
+    overlayInstanceSummaries = []
   ) => {
     const thumbnailDisplaySets = [];
     const thumbnailNoImageDisplaySets = [];
+    const overlaySummaryBySop = new Map(
+      overlayInstanceSummaries
+        .filter(summary => summary?.sopInstanceUid)
+        .map(summary => [summary.sopInstanceUid, summary])
+    );
+
     displaySets
       .filter(ds => !ds.excludeFromThumbnailBrowser)
       .forEach(ds => {
@@ -88,6 +95,8 @@ export default function PanelStudyBrowserTracking({
           componentType === 'thumbnailTracked' ? thumbnailDisplaySets : thumbnailNoImageDisplaySets;
 
         const loadingProgress = displaySetLoadingState?.[displaySetInstanceUID];
+        const sourceSopInstanceUid = getSourceSopInstanceUid(ds);
+        const overlaySummary = overlaySummaryBySop.get(sourceSopInstanceUid);
 
         array.push({
           displaySetInstanceUID,
@@ -99,6 +108,11 @@ export default function PanelStudyBrowserTracking({
           loadingProgress,
           countIcon: ds.countIcon,
           messages: ds.messages,
+          predictedView: overlaySummary?.predictedView,
+          predictedViewLabel: overlaySummary?.predictedViewLabel,
+          overlayStatus: overlaySummary?.overlayStatus,
+          overlayCount: overlaySummary?.overlayCount,
+          lowConfidenceCount: overlaySummary?.lowConfidenceCount,
           StudyInstanceUID: ds.StudyInstanceUID,
           componentType,
           imageSrc: thumbnailSrc || thumbnailImageSrcMap[displaySetInstanceUID],
@@ -124,6 +138,16 @@ export default function PanelStudyBrowserTracking({
       return 'thumbnailNoImage';
     }
     return 'thumbnailTracked';
+  };
+
+  const getSourceSopInstanceUid = displaySet => {
+    const firstInstance = displaySet.instances?.[0];
+    return (
+      firstInstance?.SOPInstanceUID ||
+      firstInstance?.sopInstanceUid ||
+      displaySet.SOPInstanceUID ||
+      displaySet.sopInstanceUid
+    );
   };
 
   return (

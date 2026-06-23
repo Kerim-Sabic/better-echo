@@ -22,7 +22,7 @@ from app.database_models.pipeline_artifact_sets import PipelineArtifactSet, Pipe
 from app.database_models.series import Series
 
 
-def _seed_instance(db, seeded_study):
+def _seed_instance(db, seeded_study, *, predicted_view="A4C"):
     suffix = uuid4().hex[:8]
     series = Series(
         series_uid=f"series-{suffix}",
@@ -36,7 +36,7 @@ def _seed_instance(db, seeded_study):
         file_path=f"/tmp/{suffix}.dcm",
         instance_orthanc_id=f"orthanc-instance-{suffix}",
         instance_number="3",
-        predicted_view="A4C",
+        predicted_view=predicted_view,
         predicted_view_confidence=0.99,
         series=series,
     )
@@ -76,7 +76,15 @@ def _overlay_document(instance):
             {"rle": {"size": [3, 4], "counts": [12]}, "area_px": 0, "present": False},
             {"rle": {"size": [3, 4], "counts": [5, 2, 5]}, "area_px": 2, "present": True},
         ],
-        "quality": {"frames_with_mask": 1, "mean_confidence": 0.8, "warnings": []},
+        "quality": {
+            "frames_with_mask": 1,
+            "mean_confidence": 0.8,
+            "confidence_score": 0.8,
+            "confidence_source": "foreground_probability_mean",
+            "confidence_threshold": None,
+            "low_confidence": False,
+            "warnings": [],
+        },
         "generated_at": "2026-06-08T00:00:00Z",
     }
 
@@ -101,12 +109,25 @@ def _linear_overlay_document(instance, overlay_key="rv_base"):
             {
                 "frame_index": 0,
                 "present": True,
-                "points": [{"id": "p0", "x": 10, "y": 20}, {"id": "p1", "x": 30, "y": 20}],
+                "confidence": 0.85,
+                "points": [
+                    {"id": "p0", "x": 10, "y": 20, "confidence": 0.9},
+                    {"id": "p1", "x": 30, "y": 20, "confidence": 0.8},
+                ],
                 "segments": [{"from": "p0", "to": "p1", "role": "measurement_line"}],
                 "measurement": {"name": overlay_key, "value": 2.0, "units": "cm"},
             }
         ],
-        "quality": {"frames_with_geometry": 1, "min_length_cm": 2.0, "max_length_cm": 2.0, "warnings": []},
+        "quality": {
+            "frames_with_geometry": 1,
+            "min_length_cm": 2.0,
+            "max_length_cm": 2.0,
+            "confidence_score": 0.85,
+            "confidence_source": "point_heatmap_peak_mean",
+            "confidence_threshold": 0.05,
+            "low_confidence": False,
+            "warnings": [],
+        },
         "generated_at": "2026-06-08T00:00:00Z",
     }
 
@@ -134,7 +155,13 @@ def _doppler_overlay_document(instance, overlay_key="lvotvmax"):
         "measurement": {"name": overlay_key, "value": 102.4, "units": "cm/s"},
         "doppler_region": {"reference_line": 190},
         "frame_selection": {"selected_frame_index": 0},
-        "quality": {"confidence_score": 0.91, "confidence_threshold": 0.01, "low_confidence": False, "warnings": []},
+        "quality": {
+            "confidence_score": 0.91,
+            "confidence_source": "point_heatmap_peak",
+            "confidence_threshold": 0.05,
+            "low_confidence": False,
+            "warnings": [],
+        },
         "generated_at": "2026-06-08T00:00:00Z",
     }
 
@@ -148,6 +175,7 @@ def _seed_result_row(
     model_name,
     value_json,
     artifact_set=None,
+    status=ResultStatus.complete,
 ):
     row = DerivedResult(
         study_id=seeded_study["study_id"],
@@ -156,7 +184,7 @@ def _seed_result_row(
         type=result_type,
         model_name=model_name,
         model_version="v1",
-        status=ResultStatus.complete,
+        status=status,
         value_json=value_json,
     )
     db.add(row)
@@ -201,9 +229,27 @@ def test_study_overlays_lists_structured_lv_metadata(app, db_session_factory, se
     assert overlay["status"] == "completed"
     assert overlay["frame_count"] == 2
     assert overlay["mean_confidence"] == 0.8
+    assert overlay["confidence_score"] == 0.8
+    assert overlay["confidence_source"] == "foreground_probability_mean"
+    assert overlay["confidence_threshold"] is None
+    assert overlay["low_confidence"] is False
+    assert overlay["display_name"] == "LV Segmentation"
+    assert overlay["family_label"] == "LV Segmentation"
     assert overlay["payload_url"].endswith(
         f"/instances/{sop_instance_uid}/overlays/lv_segmentation/payload"
     )
+    assert len(data["instances"]) == 1
+    summary = data["instances"][0]
+    assert summary["sop_instance_uid"] == sop_instance_uid
+    assert summary["predicted_view"] == "A4C"
+    assert summary["predicted_view_label"] == "A4C"
+    assert summary["predicted_view_confidence"] == 0.99
+    assert summary["overlay_status"] == "ready"
+    assert summary["overlay_count"] == 1
+    assert summary["available_overlay_count"] == 1
+    assert summary["running_overlay_count"] == 0
+    assert summary["failed_overlay_count"] == 0
+    assert summary["low_confidence_count"] == 0
 
 
 def test_instance_overlays_returns_structured_lv_metadata(app, db_session_factory, seeded_study):
@@ -263,6 +309,14 @@ def test_study_overlays_lists_multiple_measurement_overlays(app, db_session_fact
             model_name=SPECTRAL_MEASUREMENTS_MODEL_NAME,
             value_json=_doppler_overlay_document(instance, "lvotvmax"),
         )
+        _seed_result_row(
+            db,
+            seeded_study,
+            instance,
+            result_type=spectral_measurements_result_type("mvpeak_2c"),
+            model_name=SPECTRAL_MEASUREMENTS_MODEL_NAME,
+            value_json=_doppler_overlay_document(instance, "mvpeak_2c"),
+        )
     finally:
         db.close()
 
@@ -270,10 +324,11 @@ def test_study_overlays_lists_multiple_measurement_overlays(app, db_session_fact
     assert response.status_code == 200
 
     overlays = response.json()["overlays"]
-    assert len(overlays) == 2
-    by_type = {overlay["overlay_type"]: overlay for overlay in overlays}
-    linear = by_type[LINEAR_MEASUREMENT_OVERLAY_TYPE]
-    doppler = by_type[DOPPLER_MEASUREMENT_OVERLAY_TYPE]
+    assert len(overlays) == 3
+    by_key = {overlay["overlay_key"]: overlay for overlay in overlays}
+    linear = by_key["rv_base"]
+    doppler = by_key["lvotvmax"]
+    mvpeak = by_key["mvpeak_2c"]
 
     assert linear["sop_instance_uid"] == sop_instance_uid
     assert linear["overlay_key"] == "rv_base"
@@ -281,6 +336,14 @@ def test_study_overlays_lists_multiple_measurement_overlays(app, db_session_fact
     assert linear["measurement_name"] == "rv_base"
     assert linear["measurement_value"] == 2.0
     assert linear["measurement_units"] == "cm"
+    assert linear["display_name"] == "RV Basal Diameter"
+    assert linear["family_label"] == "2D Linear"
+    assert linear["summary_value_label"] == "Max 2.00 cm"
+    assert linear["summary_value_kind"] == "max_length_cm"
+    assert linear["confidence_score"] == 0.85
+    assert linear["confidence_source"] == "point_heatmap_peak_mean"
+    assert linear["confidence_threshold"] == 0.05
+    assert linear["low_confidence"] is False
     assert linear["payload_url"].endswith(
         f"/instances/{sop_instance_uid}/overlays/linear_measurement/rv_base/payload"
     )
@@ -290,9 +353,106 @@ def test_study_overlays_lists_multiple_measurement_overlays(app, db_session_fact
     assert doppler["measurement_name"] == "lvotvmax"
     assert doppler["measurement_value"] == 102.4
     assert doppler["measurement_units"] == "cm/s"
+    assert doppler["display_name"] == "LVOT Vmax"
+    assert doppler["family_label"] == "Doppler"
+    assert doppler["summary_value_label"] == "102.4 cm/s"
+    assert doppler["summary_value_kind"] == "measurement_value"
+    assert doppler["confidence_score"] == 0.91
+    assert doppler["confidence_source"] == "point_heatmap_peak"
+    assert doppler["confidence_threshold"] == 0.05
+    assert doppler["low_confidence"] is False
     assert doppler["payload_url"].endswith(
         f"/instances/{sop_instance_uid}/overlays/doppler_measurement/lvotvmax/payload"
     )
+
+    assert mvpeak["overlay_key"] == "mvpeak_2c"
+    assert mvpeak["display_name"] == "Mitral Inflow E/A Ratio"
+    assert mvpeak["family_label"] == "Doppler"
+
+    summary = response.json()["instances"][0]
+    assert summary["overlay_status"] == "ready"
+    assert summary["overlay_count"] == 3
+    assert summary["available_overlay_count"] == 3
+
+
+def test_study_overlays_instance_summary_counts_processing_failed_and_low_confidence(
+    app,
+    db_session_factory,
+    seeded_study,
+):
+    db = db_session_factory()
+    try:
+        instance = _seed_instance(db, seeded_study)
+        linear_doc = _linear_overlay_document(instance, "rv_base")
+        linear_doc["quality"]["low_confidence"] = True
+        _seed_result_row(
+            db,
+            seeded_study,
+            instance,
+            result_type=linear_measurements_result_type("rv_base"),
+            model_name=LINEAR_MEASUREMENTS_MODEL_NAME,
+            value_json=linear_doc,
+        )
+        _seed_result_row(
+            db,
+            seeded_study,
+            instance,
+            result_type=spectral_measurements_result_type("lvotvmax"),
+            model_name=SPECTRAL_MEASUREMENTS_MODEL_NAME,
+            value_json={},
+            status=ResultStatus.pending,
+        )
+        _seed_result_row(
+            db,
+            seeded_study,
+            instance,
+            result_type=spectral_measurements_result_type("mvpeak_2c"),
+            model_name=SPECTRAL_MEASUREMENTS_MODEL_NAME,
+            value_json={},
+            status=ResultStatus.failed,
+        )
+    finally:
+        db.close()
+
+    response = TestClient(app).get(f"/api/studies/{seeded_study['study_uid']}/overlays")
+    assert response.status_code == 200
+
+    summary = response.json()["instances"][0]
+    assert summary["overlay_status"] == "processing"
+    assert summary["overlay_count"] == 1
+    assert summary["available_overlay_count"] == 1
+    assert summary["running_overlay_count"] == 1
+    assert summary["failed_overlay_count"] == 1
+    assert summary["low_confidence_count"] == 1
+
+
+def test_study_overlays_uses_compact_predicted_view_labels(app, db_session_factory, seeded_study):
+    db = db_session_factory()
+    try:
+        plax_instance = _seed_instance(
+            db,
+            seeded_study,
+            predicted_view="PARASTERNAL_LONG",
+        )
+        pw_instance = _seed_instance(
+            db,
+            seeded_study,
+            predicted_view="SPECTRAL_DOPPLER_PW",
+        )
+        _seed_overlay_row(db, seeded_study, plax_instance)
+        _seed_overlay_row(db, seeded_study, pw_instance)
+    finally:
+        db.close()
+
+    response = TestClient(app).get(f"/api/studies/{seeded_study['study_uid']}/overlays")
+    assert response.status_code == 200
+
+    summaries = {
+        summary["predicted_view"]: summary["predicted_view_label"]
+        for summary in response.json()["instances"]
+    }
+    assert summaries["PARASTERNAL_LONG"] == "PLAX"
+    assert summaries["SPECTRAL_DOPPLER_PW"] == "PW"
 
 
 def test_measurement_overlay_payload_routes_return_exact_documents(app, db_session_factory, seeded_study):
