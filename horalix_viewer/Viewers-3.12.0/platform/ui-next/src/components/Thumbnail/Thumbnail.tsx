@@ -20,6 +20,10 @@ const Thumbnail = ({
   loadingProgress,
   countIcon,
   messages,
+  predictedViewLabel,
+  overlayStatus,
+  overlayCount,
+  lowConfidenceCount,
   isActive,
   onClick,
   onDoubleClick,
@@ -57,6 +61,13 @@ const Thumbnail = ({
     }
     setLastTap(currentTime);
   };
+
+  const viewLabel = compactLabel(predictedViewLabel);
+  const overlayBadge = renderOverlayBadge({
+    overlayStatus,
+    overlayCount,
+    lowConfidenceCount,
+  });
 
   const renderThumbnailPreset = () => {
     return (
@@ -141,6 +152,21 @@ const Thumbnail = ({
           </div>
         </div>
         <div className="flex h-[52px] w-[128px] flex-col justify-start pt-px">
+          {(viewLabel || overlayBadge) && (
+            <div className="flex h-[18px] w-full items-center justify-between gap-[4px] px-1">
+              {viewLabel ? (
+                <span
+                  title={viewLabel}
+                  className="max-w-[84px] overflow-hidden text-ellipsis whitespace-nowrap rounded bg-primary/20 px-[5px] py-[1px] text-[10px] font-semibold leading-3 text-primary-light"
+                >
+                  {viewLabel}
+                </span>
+              ) : (
+                <span />
+              )}
+              {overlayBadge}
+            </div>
+          )}
           <Tooltip>
             <TooltipContent>{description}</TooltipContent>
             <TooltipTrigger>
@@ -209,6 +235,11 @@ const Thumbnail = ({
 
             <div className="flex h-[12px] items-center gap-[7px] overflow-hidden">
               <div className="text-muted-foreground text-[12px]"> S:{seriesNumber}</div>
+              {viewLabel && (
+                <div className="max-w-[58px] overflow-hidden text-ellipsis whitespace-nowrap rounded bg-primary/20 px-[4px] text-[11px] font-semibold text-primary-light">
+                  {viewLabel}
+                </div>
+              )}
               <div className="text-muted-foreground text-[12px]">
                 <div className="flex items-center gap-[4px]">
                   {' '}
@@ -224,6 +255,7 @@ const Thumbnail = ({
           </div>
         </div>
         <div className="flex h-full items-center gap-[4px]">
+          {overlayBadge}
           <DisplaySetMessageListTooltip
             messages={messages}
             id={`display-set-tooltip-${displaySetInstanceUID}`}
@@ -326,7 +358,71 @@ Thumbnail.propTypes = {
   isTracked: PropTypes.bool,
   onClickUntrack: PropTypes.func,
   countIcon: PropTypes.string,
+  predictedView: PropTypes.string,
+  predictedViewLabel: PropTypes.string,
+  overlayStatus: PropTypes.string,
+  overlayCount: PropTypes.number,
+  lowConfidenceCount: PropTypes.number,
   thumbnailType: PropTypes.oneOf(['thumbnail', 'thumbnailTracked', 'thumbnailNoImage']),
 };
 
 export { Thumbnail };
+
+function compactLabel(value) {
+  const label = String(value || '').trim();
+  return label || null;
+}
+
+function renderOverlayBadge({ overlayStatus, overlayCount, lowConfidenceCount }) {
+  const status = String(overlayStatus || 'none').trim().toLowerCase();
+  const count = Number.isFinite(overlayCount) ? overlayCount : 0;
+  const hasLowConfidence = Number.isFinite(lowConfidenceCount) && lowConfidenceCount > 0;
+
+  if (status === 'processing') {
+    if (count <= 0) {
+      return null;
+    }
+
+    return (
+      <span
+        title={`${count} AI overlay${count === 1 ? '' : 's'} available; more processing`}
+        className="inline-flex h-[18px] min-w-[24px] items-center justify-center gap-[3px] rounded bg-[#713F12]/80 px-[5px] text-[10px] font-semibold text-[#FDE68A]"
+      >
+        {count}
+      </span>
+    );
+  }
+
+  if ((status === 'ready' || status === 'partial') && count > 0) {
+    return (
+      <span
+        title={
+          hasLowConfidence
+            ? `${count} AI overlay${count === 1 ? '' : 's'} available; review flagged results`
+            : `${count} AI overlay${count === 1 ? '' : 's'} available`
+        }
+        className={classnames(
+          'inline-flex h-[18px] min-w-[24px] items-center justify-center gap-[2px] rounded px-[5px] text-[10px] font-semibold',
+          hasLowConfidence || status === 'partial' ? 'bg-[#713F12]/80' : 'bg-primary/20',
+          hasLowConfidence || status === 'partial' ? 'text-[#FDE68A]' : 'text-[#67E8F9]'
+        )}
+      >
+        <Icons.GroupLayers className="h-[10px] w-[10px]" />
+        {count}
+      </span>
+    );
+  }
+
+  if (status === 'failed') {
+    return (
+      <span
+        title="AI overlay failed"
+        className="inline-flex h-[18px] items-center rounded bg-black/70 px-[5px] text-[10px] font-semibold text-[#FCA5A5]"
+      >
+        !
+      </span>
+    );
+  }
+
+  return null;
+}

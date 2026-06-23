@@ -224,6 +224,7 @@ def _clip(value: float, low: float, high: float) -> float:
 def build_frame_geometry(
     *,
     predictions: np.ndarray,
+    point_confidences: Optional[np.ndarray] = None,
     frame_width: int,
     frame_height: int,
     dicom_scale: Optional[DicomScale],
@@ -235,6 +236,29 @@ def build_frame_geometry(
 
     frames: list[dict[str, Any]] = []
     for frame_index, prediction in enumerate(predictions):
+        confidences = (
+            point_confidences[frame_index]
+            if point_confidences is not None and frame_index < len(point_confidences)
+            else None
+        )
+        confidence0 = (
+            round(float(confidences[0]), 6)
+            if confidences is not None and len(confidences) > 0
+            else None
+        )
+        confidence1 = (
+            round(float(confidences[1]), 6)
+            if confidences is not None and len(confidences) > 1
+            else None
+        )
+        frame_confidences = [
+            confidence for confidence in (confidence0, confidence1) if confidence is not None
+        ]
+        frame_confidence = (
+            round(float(np.mean(frame_confidences)), 6)
+            if frame_confidences
+            else None
+        )
         p0 = prediction[0]
         p1 = prediction[1]
         x0 = _clip(float(p0[0]) * scale_x, 0.0, float(frame_width - 1))
@@ -278,9 +302,10 @@ def build_frame_geometry(
             {
                 "frame_index": int(frame_index),
                 "present": True,
+                "confidence": frame_confidence,
                 "points": [
-                    {"id": "p0", "x": round(x0, 3), "y": round(y0, 3), "confidence": None},
-                    {"id": "p1", "x": round(x1, 3), "y": round(y1, 3), "confidence": None},
+                    {"id": "p0", "x": round(x0, 3), "y": round(y0, 3), "confidence": confidence0},
+                    {"id": "p1", "x": round(x1, 3), "y": round(y1, 3), "confidence": confidence1},
                 ],
                 "segments": [
                     {"from": "p0", "to": "p1", "role": "measurement_line"}

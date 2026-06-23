@@ -10,6 +10,7 @@ from app.database_models.instances import Instance
 from app.database_models.series import Series
 from app.schemas.results.overlays_schemas import (
     InstanceOverlaysResponse,
+    OverlayInstanceSummary,
     OverlayMetadata,
     StudyOverlaysResponse,
 )
@@ -17,6 +18,7 @@ from app.services.auth.principal_service import get_current_study_read_principal
 from app.services.pipeline.read import get_study_or_404_for_principal
 from app.services.results.overlay_presenter import (
     SUPPORTED_OVERLAY_TYPES,
+    overlay_instance_summary,
     overlay_metadata,
     overlay_key_for_result_type,
     overlay_type_for_result_type,
@@ -72,6 +74,7 @@ def list_study_overlays(
     )
 
     overlays = []
+    instance_summaries = []
     for instance in instances:
         rows = resolve_overlay_rows(
             db=db,
@@ -79,23 +82,35 @@ def list_study_overlays(
             instance=instance,
             preview=preview,
         )
+        instance_overlays = []
         for row in rows:
             overlay_type = overlay_type_for_result_type(row.type)
             if overlay_type is None:
                 continue
-            overlays.append(
-                OverlayMetadata(
-                    **overlay_metadata(
-                        sop_instance_uid=instance.sop_instance_uid,
-                        instance_id=instance.id,
-                        overlay_type=overlay_type,
-                        overlay_key=overlay_key_for_result_type(row.type),
-                        row=row,
-                    )
+            metadata = overlay_metadata(
+                sop_instance_uid=instance.sop_instance_uid,
+                instance_id=instance.id,
+                overlay_type=overlay_type,
+                overlay_key=overlay_key_for_result_type(row.type),
+                row=row,
+            )
+            instance_overlays.append(metadata)
+            overlays.append(OverlayMetadata(**metadata))
+
+        instance_summaries.append(
+            OverlayInstanceSummary(
+                **overlay_instance_summary(
+                    instance=instance,
+                    overlays=instance_overlays,
                 )
             )
+        )
 
-    return StudyOverlaysResponse(study_uid=study_uid, overlays=overlays)
+    return StudyOverlaysResponse(
+        study_uid=study_uid,
+        overlays=overlays,
+        instances=instance_summaries,
+    )
 
 
 @router.get(

@@ -1,5 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { HoralixAiResultsPayload } from '../horalixAiResults.types';
+import {
+  HoralixAiResultsPayload,
+  HoralixOverlayViewport,
+} from '../horalixAiResults.types';
 import AiPanelEmptyState from '../components/AiPanelEmptyState';
 import AiPanelSectionSwitcher from '../components/AiPanelSectionSwitcher';
 import AiMeasurementsPanel from '../components/ai_measurements/AiMeasurementsPanel';
@@ -9,6 +12,11 @@ import AiReportLoadingState from '../components/ai_report/AiReportLoadingState';
 import AiOverlaysPanel from '../components/ai_overlays/AiOverlaysPanel';
 import { useLvMaskOverlay } from '../logic/overlays/lvOverlayController';
 import {
+  OVERLAY_VIEWPORT_RECONCILE_INTERVAL_MS,
+  resolveVisibleOverlayViewports,
+  sameOverlayViewports,
+} from '../logic/overlays/overlayViewportState';
+import {
   overlayIdentity,
   usePointLineOverlays,
 } from '../logic/overlays/pointLineOverlayController';
@@ -16,6 +24,7 @@ import {
 type Props = {
   payload: HoralixAiResultsPayload | null;
   servicesManager?: any;
+  commandsManager?: any;
   onRequestSaveStudyAnalysisOverride?: (
     key: string,
     override: { value?: number; label?: string }
@@ -29,6 +38,7 @@ type PanelTab = 'overlays' | 'measurements' | 'report';
 export default function HoralixAiResultsPanelLayout({
   payload,
   servicesManager,
+  commandsManager,
   onRequestSaveStudyAnalysisOverride,
   onRequestClearStudyAnalysisOverride,
   onRequestRegenerateLlmReport,
@@ -36,10 +46,26 @@ export default function HoralixAiResultsPanelLayout({
   const [activeTab, setActiveTab] = useState<PanelTab>('measurements');
   const [disabledOverlayIds, setDisabledOverlayIds] = useState<string[]>([]);
   const [overlayOpacity, setOverlayOpacity] = useState(0.28);
+  const [visibleOverlayViewports, setVisibleOverlayViewports] = useState<
+    HoralixOverlayViewport[]
+  >([]);
   const autoRevealedRef = useRef(false);
 
   const aiOverlays = payload?.aiOverlays ?? [];
-  const hasAvailableOverlay = aiOverlays.some(overlay => overlay?.available);
+  const visibleOverlaySops = useMemo(() => {
+    return new Set(
+      visibleOverlayViewports
+        .map(viewport => viewport.sopInstanceUid)
+        .filter((sop): sop is string => Boolean(sop))
+    );
+  }, [visibleOverlayViewports]);
+  const hasVisibleAvailableOverlay = aiOverlays.some(
+    overlay =>
+      overlay?.available &&
+      Boolean(
+        overlay.sopInstanceUid && visibleOverlaySops.has(overlay.sopInstanceUid)
+      )
+  );
   const enabledOverlayIds = useMemo(() => {
     return aiOverlays
       .filter(overlay => overlay?.available)
@@ -60,14 +86,53 @@ export default function HoralixAiResultsPanelLayout({
     });
   };
 
+  const handleGoToSelectedFrame = (viewportId: string, selectedFrameIndex: number) => {
+    if (!viewportId || !Number.isFinite(selectedFrameIndex)) {
+      return;
+    }
+
+    const options = {
+      imageIndex: selectedFrameIndex,
+      viewport: { id: viewportId },
+    };
+
+    try {
+      if (typeof commandsManager?.run === 'function') {
+        commandsManager.run('jumpToImage', options);
+        return;
+      }
+
+      commandsManager?.runCommand?.('jumpToImage', options);
+    } catch {
+      return;
+    }
+  };
+
   useEffect(() => {
-    if (!hasAvailableOverlay || autoRevealedRef.current) {
+    const reconcile = () => {
+      const next = resolveVisibleOverlayViewports(servicesManager);
+      setVisibleOverlayViewports(previous =>
+        sameOverlayViewports(previous, next) ? previous : next
+      );
+    };
+
+    reconcile();
+    const interval = window.setInterval(
+      reconcile,
+      OVERLAY_VIEWPORT_RECONCILE_INTERVAL_MS
+    );
+
+    return () => window.clearInterval(interval);
+  }, [servicesManager]);
+
+  useEffect(() => {
+    if (!hasVisibleAvailableOverlay || autoRevealedRef.current) {
       return;
     }
 
     autoRevealedRef.current = true;
     setActiveTab('overlays');
-  }, [hasAvailableOverlay]);
+  }, [hasVisibleAvailableOverlay]);
 
   const lvOverlayStatus = useLvMaskOverlay({
     servicesManager,
@@ -92,7 +157,7 @@ export default function HoralixAiResultsPanelLayout({
   const showReportTab = payload.llmReportEnabled !== false;
   const effectiveTab = showReportTab || activeTab !== 'report' ? activeTab : 'measurements';
   const overlaysState = payload.aiOverlaysState ?? null;
-  const overlaysTabState = hasAvailableOverlay ? 'ready' : overlaysState;
+  const overlaysTabState = hasVisibleAvailableOverlay ? 'ready' : overlaysState;
 
   return (
     <div className="h-full overflow-y-auto bg-[#090D14] p-2 text-white">
@@ -129,10 +194,12 @@ export default function HoralixAiResultsPanelLayout({
           <AiOverlaysPanel
             overlaysState={overlaysState}
             overlays={aiOverlays}
+            visibleViewports={visibleOverlayViewports}
             enabledOverlayIds={enabledOverlayIds}
             opacity={overlayOpacity}
             onOverlayToggle={handleOverlayToggle}
             onOpacityChange={setOverlayOpacity}
+            onGoToSelectedFrame={handleGoToSelectedFrame}
             lvStatus={lvOverlayStatus}
             pointLineStatus={pointLineOverlayStatus}
           />

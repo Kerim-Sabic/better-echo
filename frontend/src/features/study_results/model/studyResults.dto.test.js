@@ -1,4 +1,4 @@
-import { DYNAMIC_MEASUREMENTS_PENDING_VIEWER_TOKEN } from "./studyResults.constants";
+import { NO_DERIVED_DICOM_VIEWER_TOKEN } from "./studyResults.constants";
 import { formatDynamicMeasurementsCombinedResultsDto } from "./studyResults.dto";
 
 function formatDynamicMeasurements(data, status = 200) {
@@ -29,7 +29,7 @@ describe("formatDynamicMeasurementsCombinedResultsDto", () => {
     expect(result.viewerRefreshToken).toBe("orthanc-derived-1");
   });
 
-  test("uses output path when a measurement result has no derived DICOM ref", () => {
+  test("does not use output path when a measurement result has no derived DICOM ref", () => {
     const result = formatDynamicMeasurements({
       status: "complete",
       measurement_results: {
@@ -45,10 +45,10 @@ describe("formatDynamicMeasurementsCombinedResultsDto", () => {
       },
     });
 
-    expect(result.viewerRefreshToken).toBe("measurement_spectral/study/lvotvmax.jpg");
+    expect(result.viewerRefreshToken).toBe(NO_DERIVED_DICOM_VIEWER_TOKEN);
   });
 
-  test("keeps pending viewer token while measurements are still pending", () => {
+  test("keeps stable no-derived-media token while measurements are still pending", () => {
     const result = formatDynamicMeasurements(
       {
         status: "pending",
@@ -64,19 +64,19 @@ describe("formatDynamicMeasurementsCombinedResultsDto", () => {
     );
 
     expect(result.state).toBe("pending");
-    expect(result.viewerRefreshToken).toBe(DYNAMIC_MEASUREMENTS_PENDING_VIEWER_TOKEN);
+    expect(result.viewerRefreshToken).toBe(NO_DERIVED_DICOM_VIEWER_TOKEN);
   });
 
-  test("builds stable deduped token regardless of result order", () => {
+  test("builds stable deduped derived DICOM token regardless of result order", () => {
     const first = formatDynamicMeasurements({
       status: "complete",
       measurement_results: {
         instances: [
           {
             results: [
-              { output_path: "b.mp4" },
-              { output_path: "a.mp4" },
-              { output_path: "b.mp4" },
+              { derived_dicom: { orthanc_instance_id: "derived-b" } },
+              { derived_dicom: { orthanc_instance_id: "derived-a" } },
+              { derived_dicom: { orthanc_instance_id: "derived-b" } },
             ],
           },
         ],
@@ -89,15 +89,15 @@ describe("formatDynamicMeasurementsCombinedResultsDto", () => {
         instances: [
           {
             results: [
-              { output_path: "b.mp4" },
-              { output_path: "a.mp4" },
+              { derived_dicom: { orthanc_instance_id: "derived-b" } },
+              { derived_dicom: { orthanc_instance_id: "derived-a" } },
             ],
           },
         ],
       },
     });
 
-    expect(first.viewerRefreshToken).toBe("a.mp4|b.mp4");
+    expect(first.viewerRefreshToken).toBe("derived-a|derived-b");
     expect(second.viewerRefreshToken).toBe(first.viewerRefreshToken);
   });
 });

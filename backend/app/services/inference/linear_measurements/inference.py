@@ -4,6 +4,7 @@ import gc
 import logging
 import os
 import time
+from dataclasses import dataclass
 from typing import Optional
 
 import cv2
@@ -24,6 +25,12 @@ _loaded_models: dict[str, torch.nn.Module] = {}
 _device: Optional[torch.device] = None
 
 
+@dataclass(frozen=True)
+class LinearMeasurementPrediction:
+    coordinates: np.ndarray
+    point_confidences: np.ndarray
+
+
 def get_device() -> torch.device:
     global _device
     if _device is None:
@@ -42,6 +49,10 @@ def _segmentation_to_coordinates(logits: torch.Tensor, order: str = "XY") -> tor
     if order.upper() == "XY":
         return torch.stack([x, y], dim=-1)
     return torch.stack([y, x], dim=-1)
+
+
+def _point_peak_confidences(probs: torch.Tensor) -> torch.Tensor:
+    return probs.flatten(start_dim=2).amax(dim=2)
 
 
 def load_2d_model(model_key: str) -> torch.nn.Module:
@@ -99,7 +110,7 @@ def predict_linear_measurement_points(
     *,
     model_weights: str,
     model_frames_bgr: list[np.ndarray],
-) -> np.ndarray:
+) -> LinearMeasurementPrediction:
     # Part 1. Normalize source frames into the exact tensor shape used by the existing model.
     if not model_frames_bgr:
         raise RuntimeError("No frames available for measurements.")
@@ -115,9 +126,10 @@ def predict_linear_measurement_points(
     device = get_device()
     batch_size = get_batch_size("study_measurements")
     predictions: list[np.ndarray] = []
+    point_confidences: list[np.ndarray] = []
     start = time.time()
 
-    # Part 2. Preserve the existing sigmoid centroid inference path.
+    # Part 2. Preserve the existing sigmoid centroid inference path and capture peak scores.
     with torch.no_grad():
         for batch_start in range(0, tensor.shape[0], batch_size):
             batch_end = min(batch_start + batch_size, tensor.shape[0])
@@ -130,7 +142,14 @@ def predict_linear_measurement_points(
                 .cpu()
                 .numpy()
             )
+            confidence_batch = (
+                _point_peak_confidences(probs)
+                .detach()
+                .cpu()
+                .numpy()
+            )
             predictions.extend(coords_batch)
+            point_confidences.extend(confidence_batch)
 
             if batch_end == tensor.shape[0] or batch_end % max(1, batch_size * 2) == 0:
                 elapsed = time.time() - start
@@ -144,11 +163,15 @@ def predict_linear_measurement_points(
                     device,
                 )
 
-    return np.asarray(predictions, dtype=np.float32)
+    return LinearMeasurementPrediction(
+        coordinates=np.asarray(predictions, dtype=np.float32),
+        point_confidences=np.asarray(point_confidences, dtype=np.float32),
+    )
 
 
 __all__ = [
     "MODEL_INPUT_SIZE",
+    "LinearMeasurementPrediction",
     "get_device",
     "load_2d_model",
     "predict_linear_measurement_points",

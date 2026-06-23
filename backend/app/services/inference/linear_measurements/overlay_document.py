@@ -16,6 +16,7 @@ from app.database_models.derived_results import DerivedResult, ResultStatus
 from app.database_models.instances import Instance
 
 MODEL_VERSION = "v1"
+LINEAR_CONFIDENCE_MIN = 0.05
 
 
 def _cm_lengths(frames: list[dict[str, Any]]) -> list[float]:
@@ -32,6 +33,15 @@ def _cm_lengths(frames: list[dict[str, Any]]) -> list[float]:
     return lengths
 
 
+def _frame_confidences(frames: list[dict[str, Any]]) -> list[float]:
+    confidences: list[float] = []
+    for frame in frames:
+        value = frame.get("confidence")
+        if isinstance(value, (int, float)):
+            confidences.append(float(value))
+    return confidences
+
+
 # Part 1. Build the persisted 2D Linear overlay payload.
 def build_overlay_document(
     *,
@@ -44,9 +54,20 @@ def build_overlay_document(
     duration_s: float,
 ) -> dict[str, Any]:
     lengths = _cm_lengths(frames)
+    confidences = _frame_confidences(frames)
+    confidence_score = (
+        round(sum(confidences) / len(confidences), 6)
+        if confidences
+        else None
+    )
+    low_confidence = bool(
+        confidence_score is not None and confidence_score < LINEAR_CONFIDENCE_MIN
+    )
     warnings: list[str] = []
     if not lengths:
         warnings.append("dicom_scale_unavailable_length_cm_omitted")
+    if low_confidence:
+        warnings.append("low_confidence")
 
     return {
         "schema_version": LINEAR_MEASUREMENT_OVERLAY_SCHEMA_VERSION,
@@ -68,6 +89,10 @@ def build_overlay_document(
             "frames_with_geometry": sum(1 for frame in frames if frame.get("present")),
             "min_length_cm": round(min(lengths), 4) if lengths else None,
             "max_length_cm": round(max(lengths), 4) if lengths else None,
+            "confidence_score": confidence_score,
+            "confidence_source": "point_heatmap_peak_mean",
+            "confidence_threshold": LINEAR_CONFIDENCE_MIN,
+            "low_confidence": low_confidence,
             "warnings": warnings,
         },
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -123,6 +148,7 @@ def is_structured_overlay(value_json: Any) -> bool:
 
 
 __all__ = [
+    "LINEAR_CONFIDENCE_MIN",
     "MODEL_VERSION",
     "build_overlay_document",
     "is_structured_overlay",

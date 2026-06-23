@@ -63,6 +63,8 @@ def _cached_response(
         "output_file_mp4": None,
         "min_length_cm": quality.get("min_length_cm"),
         "max_length_cm": max_length_cm,
+        "confidence_score": quality.get("confidence_score"),
+        "low_confidence": quality.get("low_confidence"),
         "in_progress": False,
     }
 
@@ -108,7 +110,7 @@ def _run_structured(
     start = time.time()
     inputs = load_measurement_inputs(instance.file_path)
     try:
-        predictions = predict_linear_measurement_points(
+        prediction = predict_linear_measurement_points(
             model_weights=model_weights,
             model_frames_bgr=inputs.model_frames_bgr,
         )
@@ -120,14 +122,15 @@ def _run_structured(
         if unload_after_request and (not defer_model_unload):
             unload_2d_models()
 
-    if predictions.shape[0] != len(inputs.source_frames_bgr):
+    if prediction.coordinates.shape[0] != len(inputs.source_frames_bgr):
         raise HTTPException(
             status_code=500,
             detail="2D measurement prediction count did not match source frame count.",
         )
 
     frame_geometry = build_frame_geometry(
-        predictions=predictions,
+        predictions=prediction.coordinates,
+        point_confidences=prediction.point_confidences,
         frame_width=inputs.frame_width,
         frame_height=inputs.frame_height,
         dicom_scale=inputs.dicom_scale,
@@ -173,6 +176,8 @@ def _run_structured(
         "output_file_mp4": None,
         "min_length_cm": quality.get("min_length_cm"),
         "max_length_cm": max_length_cm,
+        "confidence_score": quality.get("confidence_score"),
+        "low_confidence": quality.get("low_confidence"),
         "in_progress": False,
     }
 

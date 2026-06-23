@@ -15,7 +15,10 @@ import {
   formatStudyAnalysisCombinedResultsDto,
   formatStudyDetailsDto,
 } from "./studyResults.dto";
-import { formatStudyOverlaysDto } from "./overlays.dto";
+import {
+  formatStudyOverlayInstancesDto,
+  formatStudyOverlaysDto,
+} from "./overlays.dto";
 
 export const studyResultsRepository = {
   // Fetches and formats the study metadata used by the Study Results page.
@@ -63,7 +66,7 @@ export const studyResultsRepository = {
     const rawStudyOverlays = await getStudyOverlaysApi(studyUid);
 
     if (rawStudyOverlays.status === 404 || !rawStudyOverlays.data) {
-      return { aiOverlays: [] };
+      return { aiOverlays: [], aiOverlayInstances: [] };
     }
 
     const overlaysWithDocuments = await Promise.all(
@@ -87,6 +90,9 @@ export const studyResultsRepository = {
 
     return {
       aiOverlays: formatStudyOverlaysDto(overlaysWithDocuments),
+      aiOverlayInstances: formatStudyOverlayInstancesDto(
+        rawStudyOverlays.data.instances
+      ),
     };
   },
 

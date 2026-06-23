@@ -34,6 +34,7 @@ describe("studyResultsRepository overlays", () => {
 
     await expect(studyResultsRepository.getStudyOverlays("study-1")).resolves.toEqual({
       aiOverlays: [],
+      aiOverlayInstances: [],
     });
     expect(getOverlayPayloadByUrlApi).not.toHaveBeenCalled();
   });
@@ -69,6 +70,21 @@ describe("studyResultsRepository overlays", () => {
             structured: true,
             payload_url:
               "/api/instances/sop-1/overlays/linear_measurement/rv_base/payload",
+          },
+        ],
+        instances: [
+          {
+            sop_instance_uid: "sop-1",
+            instance_id: 12,
+            predicted_view: "A4C",
+            predicted_view_label: "A4C",
+            predicted_view_confidence: 0.97,
+            overlay_status: "ready",
+            overlay_count: 2,
+            available_overlay_count: 2,
+            running_overlay_count: 0,
+            failed_overlay_count: 0,
+            low_confidence_count: 1,
           },
         ],
       },
@@ -119,5 +135,20 @@ describe("studyResultsRepository overlays", () => {
     expect(result.aiOverlays[1].document).toBeNull();
     expect(result.aiOverlays[2].overlayKey).toBe("rv_base");
     expect(result.aiOverlays[2].document.overlayKey).toBe("rv_base");
+    expect(result.aiOverlayInstances).toEqual([
+      {
+        sopInstanceUid: "sop-1",
+        instanceId: 12,
+        predictedView: "A4C",
+        predictedViewLabel: "A4C",
+        predictedViewConfidence: 0.97,
+        overlayStatus: "ready",
+        overlayCount: 2,
+        availableOverlayCount: 2,
+        runningOverlayCount: 0,
+        failedOverlayCount: 0,
+        lowConfidenceCount: 1,
+      },
+    ]);
   });
 });

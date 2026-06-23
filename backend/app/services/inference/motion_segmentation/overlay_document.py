@@ -62,6 +62,10 @@ def build_overlay_document(
         "quality": {
             "frames_with_mask": frames_with_mask,
             "mean_confidence": mean_confidence,
+            "confidence_score": mean_confidence,
+            "confidence_source": "foreground_probability_mean",
+            "confidence_threshold": None,
+            "low_confidence": False,
             "warnings": warnings,
         },
         "generated_at": datetime.now(timezone.utc).isoformat(),

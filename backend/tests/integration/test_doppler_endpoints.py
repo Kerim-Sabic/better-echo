@@ -173,7 +173,7 @@ def _fake_doppler_prediction(
         "geometry_type": "point_line" if two_point else "point_marker",
         "quality": {
             "confidence_score": 0.001 if low_confidence else 0.91,
-            "confidence_threshold": 0.01,
+            "confidence_threshold": 0.05,
             "low_confidence": low_confidence,
             "warnings": ["low_confidence"] if low_confidence else [],
         },

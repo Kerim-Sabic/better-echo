@@ -21,6 +21,9 @@ from app.services.inference.linear_measurements.geometry import (
     DicomScale,
     LinearMeasurementInputs,
 )
+from app.services.inference.linear_measurements.inference import (
+    LinearMeasurementPrediction,
+)
 
 
 def _seed_instance(db, seeded_study, tmp_path, *, file_exists=True):
@@ -86,13 +89,19 @@ def test_structured_linear_measurement_creates_no_media_and_persists_overlay(
         monkeypatch.setattr(
             svc,
             "predict_linear_measurement_points",
-            lambda **_: np.array(
-                [
-                    [[80.0, 80.0], [160.0, 80.0]],
-                    [[90.0, 80.0], [170.0, 80.0]],
-                    [[100.0, 80.0], [180.0, 80.0]],
-                ],
-                dtype=np.float32,
+            lambda **_: LinearMeasurementPrediction(
+                coordinates=np.array(
+                    [
+                        [[80.0, 80.0], [160.0, 80.0]],
+                        [[90.0, 80.0], [170.0, 80.0]],
+                        [[100.0, 80.0], [180.0, 80.0]],
+                    ],
+                    dtype=np.float32,
+                ),
+                point_confidences=np.array(
+                    [[0.9, 0.8], [0.7, 0.6], [0.5, 0.4]],
+                    dtype=np.float32,
+                ),
             ),
         )
         monkeypatch.setattr(svc, "unload_2d_models", lambda: None)
@@ -112,6 +121,8 @@ def test_structured_linear_measurement_creates_no_media_and_persists_overlay(
         assert result["output_file_mp4"] is None
         assert result["min_length_cm"] == 1.0
         assert result["max_length_cm"] == 1.0
+        assert result["confidence_score"] == 0.65
+        assert result["low_confidence"] is False
 
         row = (
             db.query(DerivedResult)
@@ -137,14 +148,19 @@ def test_structured_linear_measurement_creates_no_media_and_persists_overlay(
         assert doc["quality"]["frames_with_geometry"] == 3
         assert doc["quality"]["min_length_cm"] == 1.0
         assert doc["quality"]["max_length_cm"] == 1.0
+        assert doc["quality"]["confidence_score"] == 0.65
+        assert doc["quality"]["confidence_source"] == "point_heatmap_peak_mean"
+        assert doc["quality"]["confidence_threshold"] == 0.05
+        assert doc["quality"]["low_confidence"] is False
         assert len(doc["frames"]) == 3
         assert all(len(frame["points"]) == 2 for frame in doc["frames"])
         assert all(len(frame["segments"]) == 1 for frame in doc["frames"])
         assert all(frame["measurement"]["units"] == "cm" for frame in doc["frames"])
         assert doc["frames"][0]["points"] == [
-            {"id": "p0", "x": 10.0, "y": 10.0, "confidence": None},
-            {"id": "p1", "x": 20.0, "y": 10.0, "confidence": None},
+            {"id": "p0", "x": 10.0, "y": 10.0, "confidence": 0.9},
+            {"id": "p1", "x": 20.0, "y": 10.0, "confidence": 0.8},
         ]
+        assert doc["frames"][0]["confidence"] == 0.85
         assert doc["frames"][0]["segments"] == [
             {"from": "p0", "to": "p1", "role": "measurement_line"}
         ]
@@ -163,6 +179,72 @@ def test_structured_linear_measurement_creates_no_media_and_persists_overlay(
         assert not list(study_media_dir.rglob("*.mp4"))
         assert not list(study_media_dir.rglob("*.csv"))
         assert _file_hash(dcm_path) == hash_before
+    finally:
+        db.close()
+
+
+def test_structured_linear_measurement_flags_low_confidence(
+    db_session_factory,
+    seeded_study,
+    monkeypatch,
+    tmp_path,
+):
+    db = db_session_factory()
+    try:
+        instance, _ = _seed_instance(db, seeded_study, tmp_path)
+
+        source_frames = [np.zeros((60, 80, 3), np.uint8)]
+        model_frames = [np.zeros((480, 640, 3), np.uint8)]
+        inputs = LinearMeasurementInputs(
+            source_frames_bgr=source_frames,
+            model_frames_bgr=model_frames,
+            fps=30.0,
+            frame_width=80,
+            frame_height=60,
+            dicom_scale=DicomScale(
+                conv_x_cm=0.1,
+                conv_y_cm=0.2,
+                ratio_w=80 / 640,
+                ratio_h=60 / 480,
+            ),
+        )
+        monkeypatch.setattr(svc, "load_measurement_inputs", lambda _path: inputs)
+        monkeypatch.setattr(
+            svc,
+            "predict_linear_measurement_points",
+            lambda **_: LinearMeasurementPrediction(
+                coordinates=np.array(
+                    [[[80.0, 80.0], [160.0, 80.0]]],
+                    dtype=np.float32,
+                ),
+                point_confidences=np.array([[0.0, 0.02]], dtype=np.float32),
+            ),
+        )
+        monkeypatch.setattr(svc, "unload_2d_models", lambda: None)
+
+        result = svc.run_linear_measurements(
+            sop_instance_uid=instance.sop_instance_uid,
+            model_weights="pa",
+            force=True,
+            db=db,
+            skip_orthanc_check=True,
+        )
+
+        assert result["confidence_score"] == 0.01
+        assert result["low_confidence"] is True
+
+        row = (
+            db.query(DerivedResult)
+            .filter(
+                DerivedResult.instance_id == instance.id,
+                DerivedResult.type == linear_measurements_result_type("pa"),
+            )
+            .first()
+        )
+        assert row is not None
+        assert row.value_json["quality"]["confidence_threshold"] == 0.05
+        assert row.value_json["quality"]["low_confidence"] is True
+        assert row.value_json["quality"]["warnings"] == ["low_confidence"]
     finally:
         db.close()
 

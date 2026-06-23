@@ -3,7 +3,6 @@ import { useLocation } from "react-router-dom";
 import { getViewerBaseUrl } from "../../../config/api";
 import {
   buildViewerCacheBuster,
-  DYNAMIC_MEASUREMENTS_PENDING_VIEWER_TOKEN,
 } from "../model/studyResults.constants";
 import Skeleton from "./Skeleton";
 
@@ -107,8 +106,7 @@ export default function EchocardiographyViewer({ studyResultsPageViewModel }) {
   const cacheBuster = buildViewerCacheBuster({
     studyUid,
     locationKey: location.key,
-    viewerRefreshToken:
-      viewerRefreshToken || DYNAMIC_MEASUREMENTS_PENDING_VIEWER_TOKEN,
+    viewerRefreshToken,
   });
 
   const configUrl = configUrlRaw.includes("?")

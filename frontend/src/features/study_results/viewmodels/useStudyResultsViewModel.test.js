@@ -1,4 +1,5 @@
 import { renderHook } from "@testing-library/react";
+import { NO_DERIVED_DICOM_VIEWER_TOKEN } from "@/features/study_results/model/studyResults.constants";
 import { useStudyResultsViewModel } from "./useStudyResultsViewModel";
 
 const mockNavigate = jest.fn();
@@ -117,16 +118,50 @@ describe("useStudyResultsViewModel overlays", () => {
         document: null,
       },
     ];
+    const aiOverlayInstances = [
+      {
+        sopInstanceUid: "sop-1",
+        predictedView: "A4C",
+        predictedViewLabel: "A4C",
+        overlayStatus: "ready",
+        overlayCount: 2,
+      },
+    ];
     mockUseStudyOverlaysQuery.mockReturnValue(
-      readyQuery({ aiOverlays })
+      readyQuery({ aiOverlays, aiOverlayInstances })
     );
 
     const { result } = renderHook(() => useStudyResultsViewModel("study-1"));
 
     expect(result.current.aiOverlays).toBe(aiOverlays);
+    expect(result.current.aiOverlayInstances).toBe(aiOverlayInstances);
     expect(result.current.aiOverlaysState).toBe("pending");
     expect(result.current.ohifAiPayload.aiOverlays).toBe(aiOverlays);
+    expect(result.current.ohifAiPayload.aiOverlayInstances).toBe(aiOverlayInstances);
     expect(result.current.ohifAiPayload.aiOverlaysState).toBe("pending");
     expect(result.current.viewerRefreshToken).toBe("media-token");
+  });
+
+  test("uses no-derived-media token when dynamic results have no refresh token", () => {
+    mockUseDynamicMeasurementsCombinedResultsQuery.mockReturnValue(
+      readyQuery(null)
+    );
+    mockUseStudyOverlaysQuery.mockReturnValue(
+      readyQuery({
+        aiOverlays: [
+          {
+            overlayType: "lv_segmentation",
+            sopInstanceUid: "sop-1",
+            status: "completed",
+            document: { sopInstanceUid: "sop-1" },
+          },
+        ],
+      })
+    );
+
+    const { result } = renderHook(() => useStudyResultsViewModel("study-1"));
+
+    expect(result.current.aiOverlaysState).toBe("ready");
+    expect(result.current.viewerRefreshToken).toBe(NO_DERIVED_DICOM_VIEWER_TOKEN);
   });
 });

@@ -1,6 +1,9 @@
 import React from 'react';
 
-import { HoralixAiOverlay } from '../../horalixAiResults.types';
+import {
+  HoralixAiOverlay,
+  HoralixOverlayViewport,
+} from '../../horalixAiResults.types';
 import { LvOverlayStatus } from '../../logic/overlays/lvOverlayController';
 import {
   overlayIdentity,
@@ -8,54 +11,20 @@ import {
 } from '../../logic/overlays/pointLineOverlayController';
 
 const OPACITY_MAX = 0.6;
+const DOPPLER_OVERLAY_KIND = 'doppler_measurement_overlay';
 
 type Props = {
   overlaysState?: string | null;
   overlays: HoralixAiOverlay[];
+  visibleViewports: HoralixOverlayViewport[];
   enabledOverlayIds: string[];
   opacity: number;
   onOverlayToggle: (overlayId: string, next: boolean) => void;
   onOpacityChange: (next: number) => void;
+  onGoToSelectedFrame?: (viewportId: string, selectedFrameIndex: number) => void;
   lvStatus: LvOverlayStatus;
   pointLineStatus: PointLineOverlayStatus;
 };
-
-function statusChip(label: string, tone: 'ok' | 'busy' | 'bad' | 'idle') {
-  const toneClass =
-    tone === 'ok'
-      ? 'bg-[#0F2A22] text-[#34D399] ring-1 ring-[#1C5045]'
-      : tone === 'busy'
-        ? 'bg-[#2A260F] text-[#FBBF24] ring-1 ring-[#5C4E1C]'
-        : tone === 'bad'
-          ? 'bg-[#2A1314] text-[#F87171] ring-1 ring-[#5C2122]'
-          : 'bg-[#121928] text-[#8D98B3] ring-1 ring-[#1A2030]';
-
-  return (
-    <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${toneClass}`}>
-      {label}
-    </span>
-  );
-}
-
-function resolveStatusChip(
-  overlaysState: string | null | undefined,
-  overlay: HoralixAiOverlay | null
-) {
-  const status = overlay?.status;
-  if (status === 'failed') {
-    return statusChip('Failed', 'bad');
-  }
-  if (status === 'running' || status === 'queued' || overlaysState === 'pending') {
-    return statusChip(status === 'queued' ? 'Queued' : 'Running', 'busy');
-  }
-  if (overlay?.available) {
-    return statusChip('Completed', 'ok');
-  }
-  if (overlaysState === 'loading') {
-    return statusChip('Loading', 'busy');
-  }
-  return statusChip('Not available', 'idle');
-}
 
 function Toggle({
   checked,
@@ -86,28 +55,116 @@ function Toggle({
   );
 }
 
-function formatConfidence(value: number | null | undefined) {
-  if (typeof value !== 'number' || Number.isNaN(value)) {
-    return '-';
+function TargetIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 16 16"
+      className="h-3.5 w-3.5"
+      fill="none"
+    >
+      <circle
+        cx="8"
+        cy="8"
+        r="5"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      />
+      <circle
+        cx="8"
+        cy="8"
+        r="1.5"
+        fill="currentColor"
+      />
+      <path
+        d="M8 1v3M8 12v3M1 8h3M12 8h3"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="1.5"
+      />
+    </svg>
+  );
+}
+
+function ReviewFlag({ overlay }: { overlay: HoralixAiOverlay }) {
+  if (!overlay.lowConfidence) {
+    return (
+      <span
+        aria-hidden="true"
+        className="inline-flex h-6 w-6 shrink-0"
+      />
+    );
   }
-  return `${Math.round(value * 100)}%`;
+  return (
+    <span
+      aria-label="Low AI localization confidence. Verify point placement before using this measurement."
+      title="Review AI point placement"
+      className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#2A260F] text-[12px] font-bold text-[#FDE68A] ring-1 ring-[#5C4E1C]"
+    >
+      !
+    </span>
+  );
+}
+
+function finiteNumber(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function selectedFrameIndex(overlay: HoralixAiOverlay): number | null {
+  return finiteNumber(overlay.document?.selectedFrameIndex);
+}
+
+function groupSelectedFrameIndex(
+  overlays: HoralixAiOverlay[],
+  viewport: HoralixOverlayViewport
+) {
+  const currentIndex = finiteNumber(viewport.currentFrameIndex);
+  const selectedIndexes = Array.from(
+    new Set(
+      overlays
+        .filter(overlay => overlay.kind === DOPPLER_OVERLAY_KIND)
+        .map(selectedFrameIndex)
+        .filter((index): index is number => index !== null)
+        .filter(index => currentIndex === null || currentIndex !== index)
+    )
+  );
+  return selectedIndexes.length === 1 ? selectedIndexes[0] : null;
 }
 
 function overlayLabel(overlay: HoralixAiOverlay) {
+  if (overlay.displayName) {
+    return overlay.displayName;
+  }
   if (overlay.kind === 'lv_segmentation_overlay') {
-    return 'AI LV Mask';
+    return 'LV Segmentation';
+  }
+  if (overlay.kind === 'linear_measurement_overlay') {
+    return 'AI Measurement Overlay';
+  }
+  if (overlay.kind === DOPPLER_OVERLAY_KIND) {
+    return 'AI Measurement Overlay';
+  }
+  return 'AI Overlay';
+}
+
+function familyLabel(overlay: HoralixAiOverlay) {
+  if (overlay.familyLabel) {
+    return overlay.familyLabel;
+  }
+  if (overlay.kind === 'lv_segmentation_overlay') {
+    return 'LV Segmentation';
   }
   if (overlay.kind === 'linear_measurement_overlay') {
     return '2D Linear';
   }
-  if (overlay.kind === 'doppler_measurement_overlay') {
+  if (overlay.kind === DOPPLER_OVERLAY_KIND) {
     return 'Doppler';
   }
   return 'AI Overlay';
 }
 
 function overlayColor(overlay: HoralixAiOverlay) {
-  if (overlay.kind === 'doppler_measurement_overlay') {
+  if (overlay.kind === DOPPLER_OVERLAY_KIND) {
     return '#FBBF24';
   }
   if (overlay.kind === 'linear_measurement_overlay') {
@@ -117,6 +174,10 @@ function overlayColor(overlay: HoralixAiOverlay) {
 }
 
 function formatMeasurement(overlay: HoralixAiOverlay) {
+  if (overlay.summaryValueLabel) {
+    return overlay.summaryValueLabel;
+  }
+
   const value = overlay.measurementValue;
   if (typeof value !== 'number' || Number.isNaN(value)) {
     return null;
@@ -129,19 +190,40 @@ function formatMeasurement(overlay: HoralixAiOverlay) {
 export default function AiOverlaysPanel({
   overlaysState,
   overlays,
+  visibleViewports,
   enabledOverlayIds,
   opacity,
   onOverlayToggle,
   onOpacityChange,
+  onGoToSelectedFrame,
   lvStatus,
   pointLineStatus,
 }: Props) {
   const availableOverlays = (overlays || []).filter(overlay => overlay?.available);
   const enabledSet = new Set(enabledOverlayIds);
-  const hasAvailable = availableOverlays.length > 0;
-  const anyEnabled = availableOverlays.some(overlay =>
-    enabledSet.has(overlayIdentity(overlay))
+  const overlaysBySop = new Map<string, HoralixAiOverlay[]>();
+  availableOverlays.forEach(overlay => {
+    if (!overlay.sopInstanceUid) {
+      return;
+    }
+
+    const bucket = overlaysBySop.get(overlay.sopInstanceUid) || [];
+    bucket.push(overlay);
+    overlaysBySop.set(overlay.sopInstanceUid, bucket);
+  });
+  const viewportGroups = (visibleViewports || [])
+    .filter(viewport => viewport.sopInstanceUid)
+    .map(viewport => ({
+      viewport,
+      overlays: overlaysBySop.get(viewport.sopInstanceUid || '') || [],
+    }))
+    .filter(group => group.overlays.length > 0);
+  const visibleOverlayIds = viewportGroups.flatMap(group =>
+    group.overlays.map(overlayIdentity)
   );
+  const hasAvailable = visibleOverlayIds.length > 0;
+  const anyEnabled = visibleOverlayIds.some(id => enabledSet.has(id));
+  const visibleEnabledCount = visibleOverlayIds.filter(id => enabledSet.has(id)).length;
   const sliderValue = Math.round((opacity / OPACITY_MAX) * 100);
   const hasDimensionMismatch =
     lvStatus.dimensionMismatch || pointLineStatus.dimensionMismatch;
@@ -151,43 +233,90 @@ export default function AiOverlaysPanel({
       {hasAvailable && (
         <div className="space-y-3 rounded-lg border border-[#1A2030] bg-[#0B0F17] p-3">
           <div className="space-y-2">
-            {availableOverlays.map(overlay => {
-              const id = overlayIdentity(overlay);
-              const measurement = formatMeasurement(overlay);
+            {viewportGroups.map(group => (
+              <div
+                key={group.viewport.viewportId}
+                className="rounded-md border border-[#1A2030] bg-[#0F1520] p-2"
+              >
+                <div className="mb-2 flex min-h-8 items-center justify-between gap-2">
+                  <div className="min-w-0 truncate text-[11px] font-semibold text-[#C3CCE0]">
+                    {group.viewport.viewportLabel ||
+                      `Viewport ${group.viewport.viewportIndex + 1}`}
+                  </div>
+                  {(() => {
+                    const targetFrame = groupSelectedFrameIndex(
+                      group.overlays,
+                      group.viewport
+                    );
+                    if (targetFrame === null) {
+                      return (
+                        <div className="text-[10px] tabular-nums text-[#60708F]">
+                          {group.overlays.length} overlay
+                          {group.overlays.length === 1 ? '' : 's'}
+                        </div>
+                      );
+                    }
 
-              return (
-                <div key={id} className="border-b border-[#1A2030] pb-2 last:border-b-0">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="inline-block h-2.5 w-2.5 shrink-0 rounded-sm"
-                          style={{ backgroundColor: overlayColor(overlay) }}
-                        />
-                        <span className="truncate text-[12px] font-semibold text-white">
-                          {overlayLabel(overlay)}
-                        </span>
-                      </div>
-                      <div className="mt-1 truncate text-[10px] text-[#8D98B3]">
-                        {overlay.overlayKey || overlay.modelName || 'default'}
-                        {measurement ? ` - ${measurement}` : ''}
-                      </div>
-                    </div>
-                    <Toggle
-                      checked={enabledSet.has(id)}
-                      disabled={!overlay.available}
-                      onChange={next => onOverlayToggle(id, next)}
-                    />
-                  </div>
-                  <div className="mt-2 flex items-center justify-between">
-                    <span className="truncate pr-2 text-[10px] text-[#60708F]">
-                      {overlay.sopInstanceUid || '-'}
-                    </span>
-                    {resolveStatusChip(overlaysState, overlay)}
-                  </div>
+                    return (
+                      <button
+                        type="button"
+                        aria-label={`Go to selected Doppler frame ${targetFrame + 1}`}
+                        title="Go to selected Doppler frame"
+                        onClick={() =>
+                          onGoToSelectedFrame?.(
+                            group.viewport.viewportId,
+                            targetFrame
+                          )
+                        }
+                        className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-[#5C4E1C] bg-[#2A260F] px-2 text-[10px] font-semibold text-[#FDE68A] transition-colors hover:bg-[#3A3418]"
+                      >
+                        <TargetIcon />
+                        <span>Go to frame {targetFrame + 1}</span>
+                      </button>
+                    );
+                  })()}
                 </div>
-              );
-            })}
+
+                <div className="space-y-2">
+                  {group.overlays.map(overlay => {
+                    const id = overlayIdentity(overlay);
+                    const measurement = formatMeasurement(overlay);
+                    const subtitle = familyLabel(overlay);
+
+                    return (
+                      <div
+                        key={id}
+                        className="border-b border-[#1A2030] pb-2 last:border-b-0 last:pb-0"
+                      >
+                        <div className="grid min-h-[44px] grid-cols-[minmax(0,1fr)_24px_auto] items-center gap-2">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span
+                                className="inline-block h-2.5 w-2.5 shrink-0 rounded-sm"
+                                style={{ backgroundColor: overlayColor(overlay) }}
+                              />
+                              <span className="truncate text-[12px] font-semibold text-white">
+                                {overlayLabel(overlay)}
+                              </span>
+                            </div>
+                            <div className="mt-1 truncate text-[10px] text-[#8D98B3]">
+                              {subtitle}
+                              {measurement ? ` - ${measurement}` : ''}
+                            </div>
+                          </div>
+                          <ReviewFlag overlay={overlay} />
+                          <Toggle
+                            checked={enabledSet.has(id)}
+                            disabled={!overlay.available}
+                            onChange={next => onOverlayToggle(id, next)}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
 
           <div>
@@ -211,23 +340,11 @@ export default function AiOverlaysPanel({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
-            <div className="rounded-md bg-[#121928] px-2 py-1.5">
-              <div className="text-[10px] uppercase text-[#60708F]">Confidence</div>
-              <div className="text-[13px] font-semibold text-white">
-                {formatConfidence(
-                  availableOverlays.find(
-                    overlay => typeof overlay.meanConfidence === 'number'
-                  )?.meanConfidence
-                )}
-              </div>
-            </div>
-            <div className="rounded-md bg-[#121928] px-2 py-1.5">
-              <div className="text-[10px] uppercase text-[#60708F]">Overlays</div>
-              <div className="text-[13px] font-semibold text-white">
-                {enabledOverlayIds.length}
-                <span className="text-[#60708F]">/{availableOverlays.length}</span>
-              </div>
+          <div className="rounded-md bg-[#121928] px-2 py-1.5">
+            <div className="text-[10px] uppercase text-[#60708F]">Overlays</div>
+            <div className="text-[13px] font-semibold text-white">
+              {visibleEnabledCount}
+              <span className="text-[#60708F]">/{visibleOverlayIds.length}</span>
             </div>
           </div>
         </div>
@@ -237,12 +354,6 @@ export default function AiOverlaysPanel({
         <div className="rounded-lg border border-[#5C2122] bg-[#2A1314] p-3 text-[11px] text-[#F8B4B4]">
           Overlay hidden: the AI overlay dimensions do not match this image.
           Re-run analysis on the original instance to restore the overlay.
-        </div>
-      )}
-
-      {pointLineStatus.selectedFrameHidden && (
-        <div className="rounded-lg border border-[#5C4E1C] bg-[#2A260F] p-3 text-[11px] text-[#FDE68A]">
-          Doppler overlay is available on its selected source frame.
         </div>
       )}
 

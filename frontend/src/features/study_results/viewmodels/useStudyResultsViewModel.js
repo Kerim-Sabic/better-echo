@@ -15,7 +15,7 @@ import {
   openAiReportPrintPreview,
 } from "@/features/study_results/viewmodels/pdf_printing/studyResultsPdfGenerator";
 import { useStudyAnalysisEditorViewModel } from "@/features/study_results/viewmodels/useStudyAnalysisEditorViewModel";
-import { DYNAMIC_MEASUREMENTS_PENDING_VIEWER_TOKEN } from "@/features/study_results/model/studyResults.constants";
+import { NO_DERIVED_DICOM_VIEWER_TOKEN } from "@/features/study_results/model/studyResults.constants";
 
 const MEMORY_FAILURE_CODES = [
   "DICOM_UPLOAD_LIMIT_EXCEEDED",
@@ -141,7 +141,7 @@ export function useStudyResultsViewModel(
 
   const viewerRefreshToken =
     dynamicMeasurementsQueryData?.viewerRefreshToken ??
-    DYNAMIC_MEASUREMENTS_PENDING_VIEWER_TOKEN;
+    NO_DERIVED_DICOM_VIEWER_TOKEN;
 
   const {
     data: studyOverlaysQueryData = null,
@@ -156,6 +156,10 @@ export function useStudyResultsViewModel(
 
   const aiOverlays = useMemo(
     () => studyOverlaysQueryData?.aiOverlays ?? [],
+    [studyOverlaysQueryData]
+  );
+  const aiOverlayInstances = useMemo(
+    () => studyOverlaysQueryData?.aiOverlayInstances ?? [],
     [studyOverlaysQueryData]
   );
   const hasProcessingOverlay = aiOverlays.some(
@@ -226,6 +230,7 @@ export function useStudyResultsViewModel(
         apiBaseUrl,
         aiOverlaysState,
         aiOverlays,
+        aiOverlayInstances,
       }),
     [
       studyUid,
@@ -239,6 +244,7 @@ export function useStudyResultsViewModel(
       apiBaseUrl,
       aiOverlaysState,
       aiOverlays,
+      aiOverlayInstances,
     ]
   );
 
@@ -355,6 +361,7 @@ export function useStudyResultsViewModel(
     isVendorAccess,
     studyResultsState,
     aiOverlays,
+    aiOverlayInstances,
     aiOverlaysState,
 
     studyAnalysisCombinedResultsState,
