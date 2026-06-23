@@ -24,6 +24,7 @@ type Props = {
       allowedParentOrigins?: string[];
     };
   };
+  servicesManager?: any;
 };
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -90,7 +91,10 @@ function sendPanelReady(channel: string, allowedParentOrigins: string[]) {
   sendParentMessage(channel, allowedParentOrigins, PANEL_READY_TYPE);
 }
 
-export default function HoralixAiResultsPanelBridge({ appConfig }: Props) {
+export default function HoralixAiResultsPanelBridge({
+  appConfig,
+  servicesManager,
+}: Props) {
   const [payload, setPayload] = useState<HoralixAiResultsPayload | null>(null);
 
   const bridgeConfig = useMemo(() => resolveBridgeConfig(appConfig), [appConfig]);
@@ -197,6 +201,7 @@ export default function HoralixAiResultsPanelBridge({ appConfig }: Props) {
   return (
     <HoralixAiResultsPanelLayout
       payload={payload}
+      servicesManager={servicesManager}
       onRequestSaveStudyAnalysisOverride={onRequestSaveStudyAnalysisOverride}
       onRequestClearStudyAnalysisOverride={onRequestClearStudyAnalysisOverride}
       onRequestRegenerateLlmReport={onRequestRegenerateLlmReport}

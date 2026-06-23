@@ -1,17 +1,21 @@
 import {
   getStudyAnalysisCombinedResultsApi,
   getDynamicMeasurementsCombinedResultsApi,
+  getInstanceOverlayPayloadApi,
   getLlmReportApi,
+  getStudyOverlaysApi,
 } from "@/api/get_study_results_apis";
 import { getStudyByUidApi } from "@/api/studies";
 import { patchStudyAnalysisOverridesApi } from "@/api/study_analysis_overrides/patchStudyAnalysisOverridesApi";
 import { postGenerateLlmReportApi } from "@/api/llm_report_generate/postGenerateLlmReportApi";
+import { toArray } from "@/general_components/utility/dataShapeUtils";
 import {
   formatDynamicMeasurementsCombinedResultsDto,
   formatLlmReportResultsDto,
   formatStudyAnalysisCombinedResultsDto,
   formatStudyDetailsDto,
 } from "./studyResults.dto";
+import { formatStudyOverlaysDto } from "./overlays.dto";
 
 export const studyResultsRepository = {
   // Fetches and formats the study metadata used by the Study Results page.
@@ -52,6 +56,42 @@ export const studyResultsRepository = {
       );
 
     return formattedDynamicMeasurementsCombinedResults;
+  },
+
+  // Fetches overlay metadata and available structured payloads in the parent app.
+  async getStudyOverlays(studyUid) {
+    const rawStudyOverlays = await getStudyOverlaysApi(studyUid);
+
+    if (rawStudyOverlays.status === 404 || !rawStudyOverlays.data) {
+      return { aiOverlays: [] };
+    }
+
+    const overlaysWithDocuments = await Promise.all(
+      toArray(rawStudyOverlays.data.overlays).map(async overlay => {
+        if (
+          !overlay?.available ||
+          !overlay?.payload_url ||
+          !overlay?.sop_instance_uid ||
+          !overlay?.overlay_type
+        ) {
+          return { ...overlay, document: null };
+        }
+
+        const payloadResponse = await getInstanceOverlayPayloadApi(
+          overlay.sop_instance_uid,
+          overlay.overlay_type
+        );
+
+        return {
+          ...overlay,
+          document: payloadResponse.data,
+        };
+      })
+    );
+
+    return {
+      aiOverlays: formatStudyOverlaysDto(overlaysWithDocuments),
+    };
   },
 
   // Fetches and formats the LLM report observer payload for display in the AI report tab.

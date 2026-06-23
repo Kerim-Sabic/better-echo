@@ -1,6 +1,10 @@
 ﻿from uuid import uuid4
 
-from app.core.artifacts import MEASUREMENT_WORKFLOW_TYPE
+from app.core.artifacts import (
+    LV_SEGMENTATION_OVERLAY_KIND,
+    LV_SEGMENTATION_OVERLAY_TYPE,
+    MEASUREMENT_WORKFLOW_TYPE,
+)
 from app.database_models.derived_results import DerivedResult, ResultStatus
 from app.database_models.instances import Instance
 from app.database_models.pipeline_artifact_sets import PipelineArtifactSet, PipelineArtifactSetState
@@ -56,6 +60,18 @@ def _build_job_runtime_graph(db, *, seeded_study):
     return instance, job, draft_set
 
 
+def _lv_overlay_payload(*, frame_count=12, mean_confidence=0.87):
+    # Part 1. Mirror structured LV segmentation output without any legacy media path.
+    return {
+        "output_file": None,
+        "overlay_type": LV_SEGMENTATION_OVERLAY_TYPE,
+        "kind": LV_SEGMENTATION_OVERLAY_KIND,
+        "has_overlay": True,
+        "frame_count": frame_count,
+        "mean_confidence": mean_confidence,
+    }
+
+
 def test_dynamic_stage_persists_instance_number_and_output_paths(
     db_session_factory,
     seeded_study,
@@ -68,7 +84,7 @@ def test_dynamic_stage_persists_instance_number_and_output_paths(
         # Part 2. Stub inference calls with deterministic media paths.
         monkeypatch.setattr(
             "app.services.pipeline.stages.dynamic_measurements.run_motion_segmentation",
-            lambda **_: {"output_file": "motion_segmentation_files/study/instance.mp4"},
+            lambda **_: _lv_overlay_payload(),
         )
         monkeypatch.setattr(
             "app.services.pipeline.stages.dynamic_measurements.run_linear_measurements",
@@ -77,6 +93,16 @@ def test_dynamic_stage_persists_instance_number_and_output_paths(
         monkeypatch.setattr(
             "app.services.pipeline.stages.dynamic_measurements.run_spectral_measurements",
             lambda **_: {"output_file_image": "measurement_spectral/study/instance/lvotvmax.jpg"},
+        )
+        derived_calls = []
+
+        def _attach_derived_side_effect(**kwargs):
+            derived_calls.append(kwargs.get("series_label"))
+            return {"series_label": kwargs.get("series_label")}
+
+        monkeypatch.setattr(
+            "app.services.pipeline.stages.dynamic_measurements._attach_derived_dicom_artifact",
+            _attach_derived_side_effect,
         )
 
         payload = {
@@ -121,10 +147,23 @@ def test_dynamic_stage_persists_instance_number_and_output_paths(
         assert summary.get("instance_number") == "14"
 
         by_task = {entry.get("task"): entry for entry in summary.get("results", [])}
-        assert by_task["motion_segmentation_lv"]["output_path"].endswith(".mp4")
+        assert by_task["motion_segmentation_lv"]["output_path"] is None
+        assert by_task["motion_segmentation_lv"]["overlay"] == {
+            "overlay_type": LV_SEGMENTATION_OVERLAY_TYPE,
+            "kind": LV_SEGMENTATION_OVERLAY_KIND,
+            "available": True,
+            "frame_count": 12,
+            "mean_confidence": 0.87,
+        }
+        assert "derived_dicom" not in by_task["motion_segmentation_lv"]
         assert by_task["measurement_linear"]["output_path"].endswith(".mp4")
+        assert by_task["measurement_linear"]["derived_dicom"] == {
+            "series_label": "Right Ventricular Basal Diameter"
+        }
         assert by_task["measurement_spectral"]["output_path"].endswith(".jpg")
         assert by_task["measurement_spectral"]["output_kind"] == "image"
+        assert "LV Segmentation" not in derived_calls
+        assert "Right Ventricular Basal Diameter" in derived_calls
     finally:
         db.close()
 
@@ -145,7 +184,7 @@ def test_dynamic_stage_handles_pydantic_style_response_objects(
 
         monkeypatch.setattr(
             "app.services.pipeline.stages.dynamic_measurements.run_motion_segmentation",
-            lambda **_: {"output_file": "motion_segmentation_files/study/instance.mp4"},
+            lambda **_: _lv_overlay_payload(),
         )
         monkeypatch.setattr(
             "app.services.pipeline.stages.dynamic_measurements.run_linear_measurements",
@@ -209,7 +248,7 @@ def test_dynamic_stage_persists_pending_progress_between_tasks(
 
         monkeypatch.setattr(
             "app.services.pipeline.stages.dynamic_measurements.run_motion_segmentation",
-            lambda **_: {"output_file": "motion_segmentation_files/study/instance.mp4"},
+            lambda **_: _lv_overlay_payload(),
         )
 
         def _measurements_side_effect(**_):
@@ -290,7 +329,7 @@ def test_dynamic_stage_failure_keeps_previous_progress(
 
         monkeypatch.setattr(
             "app.services.pipeline.stages.dynamic_measurements.run_motion_segmentation",
-            lambda **_: {"output_file": "motion_segmentation_files/study/instance.mp4"},
+            lambda **_: _lv_overlay_payload(),
         )
         monkeypatch.setattr(
             "app.services.pipeline.stages.dynamic_measurements.run_linear_measurements",
@@ -357,7 +396,7 @@ def test_dynamic_stage_executes_lane_order_dynamic_then_weight_batches(
         # Part 1. Collect execution order across dynamic/2D/doppler lanes.
         def _dynamic_side_effect(**kwargs):
             call_order.append(("dynamic", kwargs.get("sop_instance_uid")))
-            return {"output_file": f"dynamic/{kwargs.get('sop_instance_uid')}.mp4"}
+            return _lv_overlay_payload()
 
         def _measurements_side_effect(**kwargs):
             call_order.append(("2d", kwargs.get("model_weights"), kwargs.get("sop_instance_uid")))
@@ -441,7 +480,7 @@ def test_dynamic_stage_unloads_measurement_caches_between_weights_in_stage_polic
         # Part 1. Stub inference and collect unload calls.
         monkeypatch.setattr(
             "app.services.pipeline.stages.dynamic_measurements.run_motion_segmentation",
-            lambda **_: {"output_file": "dynamic/out.mp4"},
+            lambda **_: _lv_overlay_payload(),
         )
         monkeypatch.setattr(
             "app.services.pipeline.stages.dynamic_measurements.run_linear_measurements",

@@ -2,8 +2,10 @@ import { useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { getLicenseStatusApi } from "@/api/licensing";
+import { apiClient } from "@/api/client";
 import { useStudyAnalysisCombinedResultsQuery } from "@/features/study_results/tanstack/queries/useStudyAnalysisCombinedResultsQuery";
 import { useDynamicMeasurementsCombinedResultsQuery } from "@/features/study_results/tanstack/queries/useDynamicMeasurementsCombinedResultsQuery";
+import { useStudyOverlaysQuery } from "@/features/study_results/tanstack/queries/useStudyOverlaysQuery";
 import { useLlmReportResultsQuery } from "@/features/study_results/tanstack/queries/useLlmReportResultsQuery";
 import { useStudyDetailsQuery } from "@/features/study_results/tanstack/queries/useStudyDetailsQuery";
 import { buildStudyResultsOhifAiPayload } from "@/features/study_results/viewmodels/ohifAiPayloadSerializer";
@@ -141,6 +143,33 @@ export function useStudyResultsViewModel(
     dynamicMeasurementsQueryData?.viewerRefreshToken ??
     DYNAMIC_MEASUREMENTS_PENDING_VIEWER_TOKEN;
 
+  const {
+    data: studyOverlaysQueryData = null,
+    isLoading: isStudyOverlaysLoading,
+    isFetching: isStudyOverlaysFetching,
+    error: studyOverlaysError,
+    refetch: refetchStudyOverlays,
+  } = useStudyOverlaysQuery(studyUid, {
+    enabled: Boolean(studyUid),
+    pollWhileProcessing: dynamicMeasurementsCombinedResultsState === "pending",
+  });
+
+  const aiOverlays = useMemo(
+    () => studyOverlaysQueryData?.aiOverlays ?? [],
+    [studyOverlaysQueryData]
+  );
+  const hasProcessingOverlay = aiOverlays.some(
+    overlay => overlay.status === "queued" || overlay.status === "running"
+  );
+  const aiOverlaysState = isStudyOverlaysLoading
+    ? "loading"
+    : studyOverlaysError
+      ? "error"
+      : dynamicMeasurementsCombinedResultsState === "pending" || hasProcessingOverlay
+        ? "pending"
+        : "ready";
+  const apiBaseUrl = apiClient.defaults.baseURL || null;
+
   // --- Part 2. Compose the study-analysis editing workflow ViewModel. ---
   const studyAnalysisEditorViewModel = useStudyAnalysisEditorViewModel({
     studyUid,
@@ -173,11 +202,14 @@ export function useStudyResultsViewModel(
     isStudyAnalysisFetching ||
     isDynamicMeasurementsLoading ||
     isDynamicMeasurementsFetching ||
+    isStudyOverlaysLoading ||
+    isStudyOverlaysFetching ||
     (llmEnabled && (isLlmReportLoading || isLlmReportFetching));
 
   const isPolling =
     studyAnalysisCombinedResultsState === "pending" ||
     dynamicMeasurementsCombinedResultsState === "pending" ||
+    aiOverlaysState === "pending" ||
     (llmEnabled && llmReportResultsState === "pending");
 
   const ohifAiPayload = useMemo(
@@ -191,6 +223,9 @@ export function useStudyResultsViewModel(
         llmReportResultsData,
         llmReportResultsDetail,
         studyAnalysisEditorViewModel,
+        apiBaseUrl,
+        aiOverlaysState,
+        aiOverlays,
       }),
     [
       studyUid,
@@ -201,6 +236,9 @@ export function useStudyResultsViewModel(
       llmReportResultsData,
       llmReportResultsDetail,
       studyAnalysisEditorViewModel,
+      apiBaseUrl,
+      aiOverlaysState,
+      aiOverlays,
     ]
   );
 
@@ -300,15 +338,24 @@ export function useStudyResultsViewModel(
   const refetchStudyResults = useCallback(() => {
     refetchStudyAnalysis();
     refetchDynamicMeasurements();
+    refetchStudyOverlays();
     if (llmEnabled) {
       refetchLlmReport();
     }
-  }, [llmEnabled, refetchStudyAnalysis, refetchDynamicMeasurements, refetchLlmReport]);
+  }, [
+    llmEnabled,
+    refetchStudyAnalysis,
+    refetchDynamicMeasurements,
+    refetchStudyOverlays,
+    refetchLlmReport,
+  ]);
 
   return {
     studyUid,
     isVendorAccess,
     studyResultsState,
+    aiOverlays,
+    aiOverlaysState,
 
     studyAnalysisCombinedResultsState,
     studyAnalysisCombinedResultsData,

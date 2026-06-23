@@ -42,7 +42,10 @@ export default function AiPanelSectionSwitcher({
   onChange,
 }: Props) {
   return (
-    <div className="grid grid-cols-2 gap-1.5">
+    <div
+      className="grid gap-1.5"
+      style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
+    >
       {options.map(option => (
         <button
           key={option.value}

@@ -50,6 +50,57 @@ export type HoralixLlmEchoReport = {
   reportGeneratedAt?: string | null;
 };
 
+// AI OVERLAY LAYER
+export type HoralixOverlayRle = {
+  size?: number[];
+  counts?: number[];
+};
+
+export type HoralixOverlayFrame = {
+  rle?: HoralixOverlayRle | null;
+  present?: boolean;
+  confidence?: number | null;
+  areaPx?: number | null;
+};
+
+export type HoralixLvOverlayDocument = {
+  schemaVersion?: number | null;
+  kind?: string | null;
+  sopInstanceUid?: string | null;
+  instanceId?: number | null;
+  modelName?: string | null;
+  modelVersion?: string | null;
+  frameCount?: number | null;
+  frameWidth?: number | null;
+  frameHeight?: number | null;
+  fps?: number | null;
+  maskFormat?: string | null;
+  maskResolution?: number[];
+  frames?: HoralixOverlayFrame[];
+};
+
+export type HoralixAiOverlay = {
+  sopInstanceUid?: string | null;
+  overlayType?: string | null;
+  kind?: string | null;
+  structured?: boolean;
+  status?: string | null;
+  available?: boolean;
+  modelName?: string | null;
+  modelVersion?: string | null;
+  frameCount?: number | null;
+  frameWidth?: number | null;
+  frameHeight?: number | null;
+  fps?: number | null;
+  maskFormat?: string | null;
+  meanConfidence?: number | null;
+  framesWithMask?: number | null;
+  warnings?: string[];
+  generatedAt?: string | null;
+  payloadUrl?: string | null;
+  document?: HoralixLvOverlayDocument | null;
+};
+
 // COMBINED PAYLOAD
 export type HoralixAiResultsPayload = {
   sentAt?: string | null;
@@ -61,4 +112,7 @@ export type HoralixAiResultsPayload = {
   llmReportResultsState?: string | null;
   llmReportResultsDetail?: string | null;
   llmEchoReport?: HoralixLlmEchoReport | null;
+  apiBaseUrl?: string | null;
+  aiOverlaysState?: string | null;
+  aiOverlays?: HoralixAiOverlay[];
 };

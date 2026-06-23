@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { HoralixAiResultsPayload } from '../horalixAiResults.types';
 import AiPanelEmptyState from '../components/AiPanelEmptyState';
 import AiPanelSectionSwitcher from '../components/AiPanelSectionSwitcher';
@@ -6,9 +6,12 @@ import AiMeasurementsPanel from '../components/ai_measurements/AiMeasurementsPan
 import AiMeasurementsLoadingState from '../components/ai_measurements/AiMeasurementsLoadingState';
 import AiReportPanel from '../components/ai_report/AiReportPanel';
 import AiReportLoadingState from '../components/ai_report/AiReportLoadingState';
+import AiOverlaysPanel from '../components/ai_overlays/AiOverlaysPanel';
+import { useLvMaskOverlay } from '../logic/overlays/lvOverlayController';
 
 type Props = {
   payload: HoralixAiResultsPayload | null;
+  servicesManager?: any;
   onRequestSaveStudyAnalysisOverride?: (
     key: string,
     override: { value?: number; label?: string }
@@ -17,15 +20,47 @@ type Props = {
   onRequestRegenerateLlmReport?: () => void;
 };
 
-type PanelTab = 'measurements' | 'report';
+type PanelTab = 'overlays' | 'measurements' | 'report';
 
 export default function HoralixAiResultsPanelLayout({
   payload,
+  servicesManager,
   onRequestSaveStudyAnalysisOverride,
   onRequestClearStudyAnalysisOverride,
   onRequestRegenerateLlmReport,
 }: Props) {
   const [activeTab, setActiveTab] = useState<PanelTab>('measurements');
+  const [overlayEnabled, setOverlayEnabled] = useState(true);
+  const [overlayOpacity, setOverlayOpacity] = useState(0.28);
+  const autoRevealedRef = useRef(false);
+  const userTouchedToggleRef = useRef(false);
+
+  const aiOverlays = payload?.aiOverlays ?? [];
+  const hasAvailableOverlay = aiOverlays.some(overlay => overlay?.available);
+
+  const handleOverlayToggle = (next: boolean) => {
+    userTouchedToggleRef.current = true;
+    setOverlayEnabled(next);
+  };
+
+  useEffect(() => {
+    if (!hasAvailableOverlay || autoRevealedRef.current) {
+      return;
+    }
+
+    autoRevealedRef.current = true;
+    if (!userTouchedToggleRef.current) {
+      setOverlayEnabled(true);
+    }
+    setActiveTab('overlays');
+  }, [hasAvailableOverlay]);
+
+  const overlayStatus = useLvMaskOverlay({
+    servicesManager,
+    overlays: aiOverlays,
+    enabled: overlayEnabled,
+    opacity: overlayOpacity,
+  });
 
   if (!payload) {
     return (
@@ -35,16 +70,23 @@ export default function HoralixAiResultsPanelLayout({
 
   const editorState = payload.studyAnalysisEditorState ?? null;
   const showReportTab = payload.llmReportEnabled !== false;
-  const effectiveTab = showReportTab ? activeTab : 'measurements';
+  const effectiveTab = showReportTab || activeTab !== 'report' ? activeTab : 'measurements';
+  const overlaysState = payload.aiOverlaysState ?? null;
+  const overlaysTabState = hasAvailableOverlay ? 'ready' : overlaysState;
 
   return (
     <div className="h-full overflow-y-auto bg-[#090D14] p-2 text-white">
       <div className="space-y-2">
         <div className="sticky top-0 z-10 -mx-2 -mt-2 bg-[#090D14]/95 px-2 pt-2 pb-2 backdrop-blur-sm">
           <AiPanelSectionSwitcher
-            activeValue={activeTab}
+            activeValue={effectiveTab}
             onChange={value => setActiveTab(value as PanelTab)}
             options={[
+              {
+                value: 'overlays',
+                label: 'AI Overlay',
+                state: overlaysTabState,
+              },
               {
                 value: 'measurements',
                 label: 'AI Measurements',
@@ -63,7 +105,17 @@ export default function HoralixAiResultsPanelLayout({
           />
         </div>
 
-        {effectiveTab === 'measurements' ? (
+        {effectiveTab === 'overlays' ? (
+          <AiOverlaysPanel
+            overlaysState={overlaysState}
+            overlays={aiOverlays}
+            enabled={overlayEnabled}
+            opacity={overlayOpacity}
+            onToggle={handleOverlayToggle}
+            onOpacityChange={setOverlayOpacity}
+            status={overlayStatus}
+          />
+        ) : effectiveTab === 'measurements' ? (
           payload.studyAnalysisCombinedResultsState === 'ready' ? (
             <AiMeasurementsPanel
               state={payload.studyAnalysisCombinedResultsState}
