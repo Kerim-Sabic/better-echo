@@ -10,6 +10,8 @@ from pydicom.uid import ExplicitVRLittleEndian, generate_uid
 
 from app.api.inference.infer_spectral_measurements_api import router as doppler_router
 from app.core.artifacts import (
+    DOPPLER_MEASUREMENT_OVERLAY_KIND,
+    DOPPLER_MEASUREMENT_OVERLAY_TYPE,
     SPECTRAL_MEASUREMENTS_UPLOAD_DIRNAME,
     spectral_measurements_result_type,
 )
@@ -18,7 +20,7 @@ from app.database_models.derived_results import DerivedResult
 from app.database_models.instances import Instance
 from app.database_models.series import Series
 from app.database_models.studies import Study
-from app.services.inference import spectral_measurements_service as doppler_service
+import app.services.inference.spectral_measurements.service as doppler_service
 
 
 def _write_test_dicom(
@@ -118,6 +120,70 @@ def _create_test_app(db_session_factory) -> FastAPI:
     return app
 
 
+def _fake_doppler_prediction(
+    *,
+    model_weights: str,
+    metric_value: float,
+    low_confidence: bool = False,
+    two_point: bool = False,
+) -> dict:
+    points = [
+        {
+            "id": "p0",
+            "x": 320,
+            "y": 260,
+            "confidence": 0.001 if low_confidence else 0.91,
+        }
+    ]
+    segments = []
+    if two_point:
+        points.append({"id": "p1", "x": 410, "y": 300, "confidence": 0.92})
+        segments.append({"from": "p0", "to": "p1", "role": "measurement_line"})
+
+    return {
+        "model_weights": model_weights,
+        "metric_name": "mv_e_over_a" if two_point else model_weights,
+        "metric_value": metric_value,
+        "units": "ratio" if two_point else "cm/s",
+        "frame_width": 1000,
+        "frame_height": 760,
+        "selected_frame_index": 0,
+        "points": points,
+        "segments": segments,
+        "reference_line": {
+            "y": 532,
+            "relative_y": 190,
+            "role": "doppler_baseline",
+        },
+        "doppler_region": {
+            "x0": 8,
+            "y0": 342,
+            "x1": 1000,
+            "y1": 760,
+            "reference_line": 190,
+            "physical_delta_x": 0.02,
+            "physical_delta_y": 0.03,
+            "spectral_subtype": "pw",
+        },
+        "frame_selection": {
+            "selection_mode": "single_frame",
+            "num_frames": 1,
+            "selected_frame_index": 0,
+        },
+        "geometry_type": "point_line" if two_point else "point_marker",
+        "quality": {
+            "confidence_score": 0.001 if low_confidence else 0.91,
+            "confidence_threshold": 0.01,
+            "low_confidence": low_confidence,
+            "warnings": ["low_confidence"] if low_confidence else [],
+        },
+        "metadata": {
+            "low_confidence": low_confidence,
+            "confidence_score": 0.001 if low_confidence else 0.91,
+        },
+    }
+
+
 def test_doppler_tag_check_endpoint_returns_candidate(db_session_factory, seeded_study, tmp_path):
     dicom_path = tmp_path / "doppler_candidate.dcm"
     _write_test_dicom(dicom_path)
@@ -208,23 +274,13 @@ def test_doppler_inference_endpoint_runs_and_persists(db_session_factory, seeded
         instance_number="1",
     )
 
-    output_image_abs = upload_root / SPECTRAL_MEASUREMENTS_UPLOAD_DIRNAME / "artifact.jpg"
-    output_image_abs.parent.mkdir(parents=True, exist_ok=True)
-    output_image_abs.write_bytes(b"test-image")
-
-    def _fake_run_doppler_inference(*, model_weights: str, input_path: str, output_dir: str, region_override=None):
-        return {
-            "model_weights": model_weights,
-            "metric_name": "lvotvmax",
-            "metric_value": 321.12,
-            "units": "cm/s",
-            "output_file_image": str(output_image_abs),
-            "metadata": {"fake": True, "input_path": input_path, "output_dir": output_dir},
-        }
-
     monkeypatch.setattr(
-        "app.AI_models.measurements.runner_doppler.run_doppler_inference",
-        _fake_run_doppler_inference,
+        doppler_service,
+        "run_doppler_inference",
+        lambda **kwargs: _fake_doppler_prediction(
+            model_weights=kwargs["model_weights"],
+            metric_value=321.12,
+        ),
     )
 
     app = _create_test_app(db_session_factory)
@@ -234,9 +290,13 @@ def test_doppler_inference_endpoint_runs_and_persists(db_session_factory, seeded
     assert response.status_code == 200
     body = response.json()
     assert body["success"] is True
+    assert body["overlay_type"] == DOPPLER_MEASUREMENT_OVERLAY_TYPE
+    assert body["overlay_key"] == "lvotvmax"
+    assert body["kind"] == DOPPLER_MEASUREMENT_OVERLAY_KIND
+    assert body["has_overlay"] is True
     assert body["metric_name"] == "lvotvmax"
     assert body["metric_value"] == 321.12
-    assert body["output_file_image"] == f"{SPECTRAL_MEASUREMENTS_UPLOAD_DIRNAME}/artifact.jpg"
+    assert body["output_file_image"] is None
     assert body["low_confidence"] is False
 
     db = db_session_factory()
@@ -252,7 +312,83 @@ def test_doppler_inference_endpoint_runs_and_persists(db_session_factory, seeded
             .first()
         )
         assert row is not None
-        assert row.value_json["metric_name"] == "lvotvmax"
+        assert row.value_json["kind"] == DOPPLER_MEASUREMENT_OVERLAY_KIND
+        assert row.value_json["overlay_key"] == "lvotvmax"
+        assert row.value_json["selected_frame_index"] == 0
+        assert row.value_json["geometry_type"] == "point_marker"
+        assert len(row.value_json["points"]) == 1
+        assert row.value_json["segments"] == []
+        assert row.value_json["measurement"]["name"] == "lvotvmax"
+        assert row.value_json["measurement"]["value"] == 321.12
+        assert row.value_json["measurement"]["units"] == "cm/s"
+        assert row.value_json["reference_line"] == {
+            "y": 532,
+            "relative_y": 190,
+            "role": "doppler_baseline",
+        }
+        assert row.value_json["doppler_region"]["reference_line"] == 190
+        assert row.value_json["quality"]["confidence_score"] == 0.91
+        assert row.value_json["quality"]["low_confidence"] is False
+        assert row.value_json["metadata"]["confidence_score"] == 0.91
+        assert not list(doppler_root.rglob("*.jpg"))
+    finally:
+        db.close()
+
+
+def test_doppler_inference_endpoint_persists_two_point_segment(
+    db_session_factory,
+    seeded_study,
+    tmp_path,
+    monkeypatch,
+):
+    dicom_path = tmp_path / "doppler_two_point.dcm"
+    _write_test_dicom(dicom_path)
+    sop_uid = _insert_instance_for_study(
+        db_session_factory=db_session_factory,
+        study_id=seeded_study["study_id"],
+        file_path=str(dicom_path),
+        instance_number="1",
+    )
+
+    monkeypatch.setattr(
+        doppler_service,
+        "run_doppler_inference",
+        lambda **kwargs: _fake_doppler_prediction(
+            model_weights=kwargs["model_weights"],
+            metric_value=1.45,
+            two_point=True,
+        ),
+    )
+
+    app = _create_test_app(db_session_factory)
+    client = TestClient(app)
+    response = client.post(
+        f"/api/infer/measurements/doppler?sop_instance_uid={sop_uid}&model_weights=mvpeak_2c"
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["success"] is True
+    assert body["overlay_key"] == "mvpeak_2c"
+    assert body["output_file_image"] is None
+
+    db = db_session_factory()
+    try:
+        instance = db.query(Instance).filter(Instance.sop_instance_uid == sop_uid).first()
+        row = (
+            db.query(DerivedResult)
+            .filter(
+                DerivedResult.instance_id == instance.id,
+                DerivedResult.type == spectral_measurements_result_type("mvpeak_2c"),
+            )
+            .order_by(DerivedResult.id.desc())
+            .first()
+        )
+        assert row is not None
+        assert row.value_json["geometry_type"] == "point_line"
+        assert len(row.value_json["points"]) == 2
+        assert len(row.value_json["segments"]) == 1
+        assert row.value_json["measurement"]["name"] == "mv_e_over_a"
     finally:
         db.close()
 
@@ -328,23 +464,14 @@ def test_doppler_inference_endpoint_sets_low_confidence_flag(db_session_factory,
         instance_number="1",
     )
 
-    output_image_abs = upload_root / SPECTRAL_MEASUREMENTS_UPLOAD_DIRNAME / "artifact_low.jpg"
-    output_image_abs.parent.mkdir(parents=True, exist_ok=True)
-    output_image_abs.write_bytes(b"test-image")
-
-    def _fake_run_doppler_inference(*, model_weights: str, input_path: str, output_dir: str, region_override=None):
-        return {
-            "model_weights": model_weights,
-            "metric_name": "lvotvmax",
-            "metric_value": 12.34,
-            "units": "cm/s",
-            "output_file_image": str(output_image_abs),
-            "metadata": {"low_confidence": True, "input_path": input_path, "output_dir": output_dir},
-        }
-
     monkeypatch.setattr(
-        "app.AI_models.measurements.runner_doppler.run_doppler_inference",
-        _fake_run_doppler_inference,
+        doppler_service,
+        "run_doppler_inference",
+        lambda **kwargs: _fake_doppler_prediction(
+            model_weights=kwargs["model_weights"],
+            metric_value=12.34,
+            low_confidence=True,
+        ),
     )
 
     app = _create_test_app(db_session_factory)
@@ -355,5 +482,27 @@ def test_doppler_inference_endpoint_sets_low_confidence_flag(db_session_factory,
     body = response.json()
     assert body["success"] is True
     assert body["low_confidence"] is True
-    assert body["message"] == "Inference completed with low confidence"
+    assert body["message"] == "Doppler measurement completed with low confidence"
+    assert body["output_file_image"] is None
+
+    db = db_session_factory()
+    try:
+        instance = db.query(Instance).filter(Instance.sop_instance_uid == sop_uid).first()
+        row = (
+            db.query(DerivedResult)
+            .filter(
+                DerivedResult.instance_id == instance.id,
+                DerivedResult.type == spectral_measurements_result_type("lvotvmax"),
+            )
+            .order_by(DerivedResult.id.desc())
+            .first()
+        )
+        assert row is not None
+        assert row.value_json["quality"]["low_confidence"] is True
+        assert row.value_json["quality"]["warnings"] == ["low_confidence"]
+        assert row.value_json["metadata"]["low_confidence"] is True
+        assert row.value_json["metadata"]["confidence_score"] == 0.001
+        assert not list(doppler_root.rglob("*.jpg"))
+    finally:
+        db.close()
 

@@ -7,7 +7,7 @@ from app.database.db import get_db
 from app.schemas.inference.infer_linear_measurements_schemas import (
     LinearMeasurementsResponse,
 )
-from app.services.inference.linear_measurements_service import (
+from app.services.inference.linear_measurements import (
     run_linear_measurements,
 )
 
