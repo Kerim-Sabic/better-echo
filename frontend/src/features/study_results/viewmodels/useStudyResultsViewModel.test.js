@@ -164,4 +164,25 @@ describe("useStudyResultsViewModel overlays", () => {
     expect(result.current.aiOverlaysState).toBe("ready");
     expect(result.current.viewerRefreshToken).toBe(NO_DERIVED_DICOM_VIEWER_TOKEN);
   });
+
+  test("refetches overlays after dynamic measurements finish", () => {
+    let dynamicState = "pending";
+    const refetchStudyOverlays = jest.fn();
+
+    mockUseDynamicMeasurementsCombinedResultsQuery.mockImplementation(() =>
+      readyQuery({ state: dynamicState, viewerRefreshToken: "media-token" })
+    );
+    mockUseStudyOverlaysQuery.mockReturnValue({
+      ...readyQuery({ aiOverlays: [], aiOverlayInstances: [] }),
+      refetch: refetchStudyOverlays,
+    });
+
+    const { rerender } = renderHook(() => useStudyResultsViewModel("study-1"));
+    expect(refetchStudyOverlays).not.toHaveBeenCalled();
+
+    dynamicState = "ready";
+    rerender();
+
+    expect(refetchStudyOverlays).toHaveBeenCalledTimes(1);
+  });
 });
