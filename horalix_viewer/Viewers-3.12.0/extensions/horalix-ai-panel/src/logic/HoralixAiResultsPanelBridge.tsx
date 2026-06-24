@@ -1,6 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import HoralixAiResultsPanelLayout from '../layouts/HoralixAiResultsPanelLayout';
-import { HoralixAiResultsPayload } from '../horalixAiResults.types';
+import {
+  HoralixAiOverlayInstanceSummary,
+  HoralixAiResultsPayload,
+} from '../horalixAiResults.types';
 
 const CHANNEL_DEFAULT = 'horalix-ai';
 const MESSAGE_VERSION = 1;
@@ -11,10 +14,14 @@ const STUDY_ANALYSIS_OVERRIDE_SAVE_TYPE =
 const STUDY_ANALYSIS_OVERRIDE_CLEAR_TYPE =
   'horalix:study-analysis-override-clear';
 const LLM_REPORT_REGENERATE_TYPE = 'horalix:llm-report-regenerate';
-
+const OVERLAY_INSTANCE_SUMMARIES_EVENT = 'horalix:ai-overlay-instances';
 type StudyAnalysisOverridePayload = {
   value?: number;
   label?: string;
+};
+
+type HoralixOverlayWindow = Window & {
+  __HORALIX_AI_OVERLAY_INSTANCE_SUMMARIES__?: HoralixAiOverlayInstanceSummary[];
 };
 
 type Props = {
@@ -24,6 +31,8 @@ type Props = {
       allowedParentOrigins?: string[];
     };
   };
+  servicesManager?: any;
+  commandsManager?: any;
 };
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -90,7 +99,22 @@ function sendPanelReady(channel: string, allowedParentOrigins: string[]) {
   sendParentMessage(channel, allowedParentOrigins, PANEL_READY_TYPE);
 }
 
-export default function HoralixAiResultsPanelBridge({ appConfig }: Props) {
+function publishOverlayInstanceSummaries(payload: HoralixAiResultsPayload | null) {
+  const summaries = Array.isArray(payload?.aiOverlayInstances)
+    ? payload.aiOverlayInstances
+    : [];
+  (window as HoralixOverlayWindow).__HORALIX_AI_OVERLAY_INSTANCE_SUMMARIES__ =
+    summaries;
+  window.dispatchEvent(
+    new CustomEvent(OVERLAY_INSTANCE_SUMMARIES_EVENT, { detail: summaries })
+  );
+}
+
+export default function HoralixAiResultsPanelBridge({
+  appConfig,
+  servicesManager,
+  commandsManager,
+}: Props) {
   const [payload, setPayload] = useState<HoralixAiResultsPayload | null>(null);
 
   const bridgeConfig = useMemo(() => resolveBridgeConfig(appConfig), [appConfig]);
@@ -128,6 +152,10 @@ export default function HoralixAiResultsPanelBridge({ appConfig }: Props) {
       window.removeEventListener('message', onMessage);
     };
   }, [bridgeConfig]);
+
+  useEffect(() => {
+    publishOverlayInstanceSummaries(payload);
+  }, [payload]);
 
   const onRequestSaveStudyAnalysisOverride = useCallback(
     (key: string, override: StudyAnalysisOverridePayload) => {
@@ -197,6 +225,8 @@ export default function HoralixAiResultsPanelBridge({ appConfig }: Props) {
   return (
     <HoralixAiResultsPanelLayout
       payload={payload}
+      servicesManager={servicesManager}
+      commandsManager={commandsManager}
       onRequestSaveStudyAnalysisOverride={onRequestSaveStudyAnalysisOverride}
       onRequestClearStudyAnalysisOverride={onRequestClearStudyAnalysisOverride}
       onRequestRegenerateLlmReport={onRequestRegenerateLlmReport}

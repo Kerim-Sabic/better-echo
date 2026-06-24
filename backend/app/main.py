@@ -5,6 +5,7 @@ import warnings
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 import uvicorn
 
@@ -107,6 +108,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(GZipMiddleware, minimum_size=1024)
 
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
@@ -165,7 +167,7 @@ def startup_preload_models():
         get_model_and_device()
 
     def _preload_motion_segmentation():
-        from app.services.inference.motion_segmentation_service import (
+        from app.services.inference.motion_segmentation import (
             load_motion_segmentation_model,
         )
         load_motion_segmentation_model()
@@ -228,8 +230,8 @@ def shutdown_cleanup():
     except Exception as exc:
         logger.warning("Shutdown cleanup: failed to unload primary analysis: %s", exc)
     try:
-        from app.AI_models.measurements.runner_2d import unload_2d_models
-        from app.AI_models.measurements.runner_doppler import unload_doppler_models
+        from app.services.inference.linear_measurements import unload_2d_models
+        from app.services.inference.spectral_measurements import unload_doppler_models
 
         unload_2d_models()
         unload_doppler_models()

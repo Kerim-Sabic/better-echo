@@ -1,5 +1,4 @@
-export const DYNAMIC_MEASUREMENTS_PENDING_VIEWER_TOKEN =
-  "dynamic-measurements-not-ready";
+export const NO_DERIVED_DICOM_VIEWER_TOKEN = "no-derived-dicom";
 
 export function buildViewerCacheBuster({
   studyUid,
@@ -9,7 +8,7 @@ export function buildViewerCacheBuster({
   const normalizedStudyUid = studyUid || "study";
   const normalizedLocationKey = locationKey || "location";
   const normalizedViewerRefreshToken =
-    viewerRefreshToken || DYNAMIC_MEASUREMENTS_PENDING_VIEWER_TOKEN;
+    viewerRefreshToken || NO_DERIVED_DICOM_VIEWER_TOKEN;
 
   return `${normalizedStudyUid}-${normalizedLocationKey}-${normalizedViewerRefreshToken}`;
 }

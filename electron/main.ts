@@ -1,4 +1,4 @@
-import { app, ipcMain, session } from 'electron';
+import { app, dialog, ipcMain, session } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { loadBackendEnvIntoProcessEnv } from './env';
@@ -11,7 +11,9 @@ import { getRuntimeMode } from './runtime';
 import { startManagedInfrastructure, stopManagedInfrastructure } from './infrastructure';
 import { runServerPreflight } from './preflight';
 import { startStaticServer, stopStaticServer } from './staticServer';
+import { installStartupLogging } from './startupLogger';
 
+installStartupLogging();
 loadBackendEnvIntoProcessEnv();
 
 const isDev = process.env.NODE_ENV === 'development';
@@ -73,6 +75,8 @@ function parseBooleanEnvFlag(value: string | undefined, fallback: boolean): bool
     return fallback;
 }
 
+const ENABLE_LLM = parseBooleanEnvFlag(process.env.ENABLE_LLM, true);
+
 // Ensure single instance
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
@@ -119,6 +123,7 @@ async function clearRendererWebCaches(): Promise<void> {
 app.on('ready', async () => {
   try {
     console.log(`Electron runtime mode: ${runtimeMode}`);
+    console.log(`Electron resources path: ${process.resourcesPath || '<unset>'}`);
 
     // In client mode the renderer connects to a remote backend. Chromium
     // enforces CORS on cross-origin requests (origin is http://localhost:3000
@@ -203,10 +208,9 @@ app.on('ready', async () => {
     }
 
     if (managesLocalServices) {
-      const enableLLM = parseBooleanEnvFlag(process.env.ENABLE_LLM, true);
       const llmRunning = await isLLMRunning();
 
-      if (enableLLM && !llmRunning) {
+      if (ENABLE_LLM && !llmRunning) {
         console.log('ENABLE_LLM is true and LLM not running, starting LLM in background...');
         startLLM({ resourcesPath }).catch((err) => {
           console.warn('LLM start warning:', err);
@@ -230,8 +234,13 @@ app.on('ready', async () => {
             },
         });
         ensureMainWindow();
+        console.log('Application startup complete.');
     } catch (error) {
         console.error('Failed to start application:', error);
+        dialog.showErrorBox(
+            'Horalix Pulse Server failed to start',
+            error instanceof Error ? error.message : String(error)
+        );
         app.quit();
     }
 });
@@ -257,7 +266,9 @@ app.on('before-quit', () => {
   stopStaticServer();
   if (managesLocalServices) {
     stopBackend();
-    stopLLM();
+    if (ENABLE_LLM) {
+      stopLLM();
+    }
   }
   if (managesLocalServices && STOP_LOCAL_INFRA_ON_QUIT && !isDev) {
     stopManagedInfrastructure().catch((e) => console.warn('Failed to stop managed infrastructure on quit:', e));
@@ -286,8 +297,10 @@ async function gracefulShutdown(signal: string): Promise<void> {
       console.log('Stopping backend...');
       stopBackend();
 
-      console.log('Stopping LLM...');
-      stopLLM();
+      if (ENABLE_LLM) {
+        console.log('Stopping LLM...');
+        stopLLM();
+      }
 
       if (STOP_LOCAL_INFRA_ON_QUIT && !isDev) {
         console.log('Stopping local infrastructure...');

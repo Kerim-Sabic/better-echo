@@ -1,6 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
 
-from PyInstaller.utils.hooks import collect_data_files
+from PyInstaller.utils.hooks import collect_data_files, collect_dynamic_libs
 
 block_cipher = None
 
@@ -17,6 +17,8 @@ hiddenimports = [
     'uvicorn.lifespan',
     'uvicorn.lifespan.on',
     'sqlalchemy.sql.default_comparator',
+    'psycopg_binary._psycopg',
+    'psycopg_binary.pq',
     'passlib.handlers.bcrypt',
     'win32crypt',
     'app.main',
@@ -45,6 +47,7 @@ datas += collect_data_files('matplotlib')
 
 # Binaries - include torch and CUDA libraries if present
 binaries = []
+binaries += collect_dynamic_libs('psycopg_binary')
 
 a = Analysis(
     ['launcher.py'],

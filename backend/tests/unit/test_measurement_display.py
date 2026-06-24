@@ -1,3 +1,4 @@
+from app.AI_models.measurements.constants import VALID_2D_WEIGHTS, VALID_DOPPLER_WEIGHTS
 from app.helpers.clinical.measurement_display import (
     get_color_for_label,
     get_color_for_numeric,
@@ -7,6 +8,7 @@ from app.helpers.clinical.measurement_display import (
     get_main_measurement_order,
     get_range_status,
     get_section_name,
+    get_task_definition,
     is_editable_task,
     is_indexable_task,
     is_main_measurement,
@@ -24,6 +26,35 @@ def test_get_display_metadata_for_known_tasks():
     assert is_indexable_task("lvedv") is True
     assert get_display_name("trv") == "Tricuspid Regurgitation Velocity (TRV)"
     assert get_display_name("tvpkgrad") == "Tricuspid Regurgitation Peak Gradient (TRPG)"
+
+
+def test_measurement_display_keys_are_direct_catalog_entries():
+    expected_names = {
+        "ivs": "IVS Thickness",
+        "lvid": "LV Internal Diameter",
+        "lvpw": "LVPW Thickness",
+        "aorta": "Ascending Aorta Diameter",
+        "aortic_root": "Aortic Root Diameter",
+        "la": "LA Diameter",
+        "rv_base": "RV Basal Diameter",
+        "pa": "PA Diameter",
+        "ivc": "IVC Diameter",
+        "avvmax": "AV Vmax",
+        "trvmax": "TR Vmax",
+        "mrvmax": "MR Vmax",
+        "lvotvmax": "LVOT Vmax",
+        "latevel": "Lateral e' Velocity",
+        "medevel": "Septal e' Velocity",
+        "mvpeak_2c": "Mitral Inflow E/A Ratio",
+        "tapse_2c": "TAPSE",
+    }
+
+    assert set(expected_names) == VALID_2D_WEIGHTS | VALID_DOPPLER_WEIGHTS
+    for task_key, display_name in expected_names.items():
+        assert get_task_definition(task_key) is not None
+        assert get_display_name(task_key) == display_name
+
+    assert get_display_name("lv_segmentation") == "LV Segmentation"
 
 
 def test_get_edit_metadata_for_categorical_and_derived_numeric_tasks():

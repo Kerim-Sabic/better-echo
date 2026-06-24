@@ -12,6 +12,13 @@ const INFRA_START_TIMEOUT_ATTEMPTS = 60;
 const INFRA_RETRY_DELAY_MS = 1000;
 const VIEWER_IMAGE_NAME = 'horalix-viewer:local-dev';
 const VIEWER_BUILD_STAMP_FILE = 'viewer-build-stamp.json';
+const CONTAINER_NAMES = {
+  postgres: 'horalix_postgres',
+  orthanc: 'orthanc',
+  viewer: 'horalix-viewer',
+} as const;
+const CLINICAL_DATA_CONTAINERS = [CONTAINER_NAMES.postgres, CONTAINER_NAMES.orthanc] as const;
+const SHUTDOWN_CONTAINERS = [CONTAINER_NAMES.viewer, ...CLINICAL_DATA_CONTAINERS] as const;
 
 export type ManagedInfrastructureConfig = {
   postgresPort?: number;
@@ -23,8 +30,31 @@ export async function startManagedInfrastructure(config: ManagedInfrastructureCo
   const composeFile = resolveComposeFilePath();
   await ensureDockerAvailable();
 
-  await ensureViewerImageFresh(composeFile);
-  await runComposeCommand(composeFile, ['up', '-d', ...INFRA_SERVICE_NAMES]);
+  const postgresExists = await containerExists(CONTAINER_NAMES.postgres);
+  const orthancExists = await containerExists(CONTAINER_NAMES.orthanc);
+
+  if (postgresExists !== orthancExists) {
+    throw new Error(
+      'Partial Docker clinical data state detected. Found only one of horalix_postgres/orthanc. ' +
+      'Startup stopped to avoid creating a new empty database or DICOM store. Contact support before continuing.'
+    );
+  }
+
+  const viewerImageRebuilt = await ensureViewerImageFresh(composeFile);
+  const viewerExists = await containerExists(CONTAINER_NAMES.viewer);
+
+  if (postgresExists && orthancExists) {
+    console.log('Reusing existing Docker clinical data containers: horalix_postgres, orthanc');
+    await startContainers(CLINICAL_DATA_CONTAINERS);
+    await startOrRefreshViewerContainer(composeFile, viewerExists, viewerImageRebuilt);
+  } else {
+    if (viewerExists) {
+      console.log('Removing orphaned viewer container before fresh infrastructure startup.');
+      await removeContainer(CONTAINER_NAMES.viewer);
+    }
+    console.log('Starting fresh Docker infrastructure from compose file.');
+    await runComposeCommand(composeFile, ['up', '-d', ...INFRA_SERVICE_NAMES]);
+  }
 
   await waitForTcpPort('127.0.0.1', config.postgresPort || DEFAULT_POSTGRES_PORT, 'PostgreSQL');
   await waitForTcpPort(...getHostAndPort(config.orthancUrl, 'Orthanc'));
@@ -32,9 +62,21 @@ export async function startManagedInfrastructure(config: ManagedInfrastructureCo
 }
 
 export async function stopManagedInfrastructure(): Promise<void> {
-  const composeFile = resolveComposeFilePath();
   await ensureDockerAvailable();
-  await runComposeCommand(composeFile, ['down']);
+  const existingContainers: string[] = [];
+
+  for (const containerName of SHUTDOWN_CONTAINERS) {
+    if (await containerExists(containerName)) {
+      existingContainers.push(containerName);
+    }
+  }
+
+  if (existingContainers.length === 0) {
+    return;
+  }
+
+  console.log(`Stopping Docker containers without removing them: ${existingContainers.join(', ')}`);
+  await runCommand('docker', ['stop', ...existingContainers]);
 }
 
 function resolveComposeFilePath(): string {
@@ -140,17 +182,159 @@ async function hasViewerImage(): Promise<boolean> {
   }
 }
 
-async function ensureViewerImageFresh(composeFile: string): Promise<void> {
+async function ensureViewerImageFresh(composeFile: string): Promise<boolean> {
   const currentFingerprint = await computeViewerBuildFingerprint(composeFile);
   const previousFingerprint = await readViewerBuildStamp();
   const viewerImageExists = await hasViewerImage();
 
   if (previousFingerprint === currentFingerprint && viewerImageExists) {
+    return false;
+  }
+
+  console.log('Building Horalix viewer Docker image for current packaged resources.');
+  await runComposeCommand(composeFile, ['build', 'horalix-viewer']);
+  await writeViewerBuildStamp(currentFingerprint);
+  return true;
+}
+
+async function startOrRefreshViewerContainer(
+  composeFile: string,
+  viewerExists: boolean,
+  viewerImageRebuilt: boolean
+): Promise<void> {
+  const usesCurrentResources = viewerExists
+    ? await viewerContainerUsesCurrentResources(composeFile)
+    : false;
+  const sharesOrthancNetwork = viewerExists
+    ? await containersShareNetwork(CONTAINER_NAMES.viewer, CONTAINER_NAMES.orthanc)
+    : false;
+
+  if (!viewerExists || viewerImageRebuilt || !usesCurrentResources || !sharesOrthancNetwork) {
+    if (viewerExists) {
+      console.log('Recreating Horalix viewer container for current packaged resources.');
+      await removeContainer(CONTAINER_NAMES.viewer);
+    } else {
+      console.log('Creating Horalix viewer container.');
+    }
+
+    const orthancComposeProject = await getComposeProjectName(CONTAINER_NAMES.orthanc);
+    const composeEnv = orthancComposeProject
+      ? { COMPOSE_PROJECT_NAME: orthancComposeProject }
+      : {};
+
+    if (orthancComposeProject) {
+      console.log(`Creating Horalix viewer in existing Orthanc Docker Compose project: ${orthancComposeProject}`);
+    }
+
+    await runComposeCommand(composeFile, ['up', '-d', '--no-deps', 'horalix-viewer'], composeEnv);
     return;
   }
 
-  await runComposeCommand(composeFile, ['build', 'horalix-viewer']);
-  await writeViewerBuildStamp(currentFingerprint);
+  console.log('Reusing existing Horalix viewer container.');
+  await startContainers([CONTAINER_NAMES.viewer]);
+}
+
+async function getComposeProjectName(containerName: string): Promise<string | null> {
+  try {
+    const projectName = await runCommandOutput('docker', [
+      'inspect',
+      '--format',
+      '{{ index .Config.Labels "com.docker.compose.project" }}',
+      containerName,
+    ]);
+    const normalizedProjectName = projectName.trim();
+    return normalizedProjectName && normalizedProjectName !== '<no value>'
+      ? normalizedProjectName
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+async function containersShareNetwork(leftContainerName: string, rightContainerName: string): Promise<boolean> {
+  const [leftNetworks, rightNetworks] = await Promise.all([
+    getContainerNetworkNames(leftContainerName),
+    getContainerNetworkNames(rightContainerName),
+  ]);
+
+  return leftNetworks.some((networkName) => rightNetworks.includes(networkName));
+}
+
+async function getContainerNetworkNames(containerName: string): Promise<string[]> {
+  try {
+    const rawNetworks = await runCommandOutput('docker', [
+      'inspect',
+      '--format',
+      '{{json .NetworkSettings.Networks}}',
+      containerName,
+    ]);
+    const networks = JSON.parse(rawNetworks) as Record<string, unknown>;
+    return Object.keys(networks);
+  } catch {
+    return [];
+  }
+}
+
+async function viewerContainerUsesCurrentResources(composeFile: string): Promise<boolean> {
+  try {
+    const rawMounts = await runCommandOutput('docker', [
+      'inspect',
+      '--format',
+      '{{json .Mounts}}',
+      CONTAINER_NAMES.viewer,
+    ]);
+    const mounts = JSON.parse(rawMounts) as Array<{ Source?: string; Destination?: string }>;
+    const resourcesRoot = path.dirname(composeFile);
+    const expectedSourcesByDestination = new Map([
+      [
+        '/usr/share/nginx/html/app-config.js',
+        path.join(resourcesRoot, 'horalix_viewer', 'runtime_config', 'app-config.js'),
+      ],
+      [
+        '/usr/share/nginx/html/orthanc-standalone.json',
+        path.join(resourcesRoot, 'horalix_viewer', 'runtime_config', 'orthanc-standalone.json'),
+      ],
+      [
+        '/start-ohif.sh',
+        path.join(resourcesRoot, 'horalix_viewer', 'runtime_config', 'start-ohif.sh'),
+      ],
+    ]);
+
+    for (const [destination, expectedSource] of expectedSourcesByDestination) {
+      const mount = mounts.find((candidate) => candidate.Destination === destination);
+      if (!mount?.Source || normalizeDockerPath(mount.Source) !== normalizeDockerPath(expectedSource)) {
+        return false;
+      }
+    }
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function normalizeDockerPath(value: string): string {
+  return value
+    .replace(/\\/g, '/')
+    .replace(/^\/([a-zA-Z])\//, '$1:/')
+    .toLowerCase();
+}
+
+async function containerExists(containerName: string): Promise<boolean> {
+  try {
+    await runCommand('docker', ['container', 'inspect', containerName]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function startContainers(containerNames: readonly string[]): Promise<void> {
+  await runCommand('docker', ['start', ...containerNames]);
+}
+
+async function removeContainer(containerName: string): Promise<void> {
+  await runCommand('docker', ['rm', '-f', containerName]);
 }
 
 async function ensureDockerAvailable(): Promise<void> {
@@ -158,24 +342,28 @@ async function ensureDockerAvailable(): Promise<void> {
     return;
   }
 
-  throw new Error('Docker is required for packaged server mode but was not found on PATH.');
+  throw new Error('Docker is required for packaged server mode but the Docker daemon is not reachable.');
 }
 
 function checkDocker(): Promise<boolean> {
   return new Promise((resolve) => {
-    const processRef = spawn('docker', ['--version'], { stdio: 'ignore' });
+    const processRef = spawn('docker', ['info'], { stdio: 'ignore' });
     processRef.on('error', () => resolve(false));
     processRef.on('exit', (code) => resolve(code === 0));
   });
 }
 
-async function runComposeCommand(composeFile: string, args: string[]): Promise<void> {
+async function runComposeCommand(
+  composeFile: string,
+  args: string[],
+  env: NodeJS.ProcessEnv = {}
+): Promise<void> {
   try {
-    await runCommand('docker', ['compose', '-f', composeFile, ...args]);
+    await runCommand('docker', ['compose', '-f', composeFile, ...args], env);
     return;
   } catch (dockerComposeError) {
     try {
-      await runCommand('docker-compose', ['-f', composeFile, ...args]);
+      await runCommand('docker-compose', ['-f', composeFile, ...args], env);
       return;
     } catch (dockerComposeLegacyError) {
       throw new Error(
@@ -187,17 +375,37 @@ async function runComposeCommand(composeFile: string, args: string[]): Promise<v
   }
 }
 
-function runCommand(command: string, args: string[]): Promise<void> {
+function runCommand(command: string, args: string[], env: NodeJS.ProcessEnv = {}): Promise<void> {
+  return runCommandOutput(command, args, env).then(() => undefined);
+}
+
+function runCommandOutput(command: string, args: string[], env: NodeJS.ProcessEnv = {}): Promise<string> {
   return new Promise((resolve, reject) => {
-    const processRef = spawn(command, args, { stdio: 'ignore' });
+    let stdout = '';
+    let stderr = '';
+    const processRef = spawn(command, args, {
+      env: { ...process.env, ...env },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    processRef.stdout?.on('data', (chunk) => {
+      stdout += chunk.toString();
+    });
+    processRef.stderr?.on('data', (chunk) => {
+      stderr += chunk.toString();
+    });
     processRef.on('error', reject);
     processRef.on('exit', (code) => {
       if (code === 0) {
-        resolve();
+        resolve(stdout.trim());
         return;
       }
 
-      reject(new Error(`${command} exited with code ${code}`));
+      reject(
+        new Error(
+          `${command} ${args.join(' ')} exited with code ${code}.\n` +
+          `${stdout.trim()}\n${stderr.trim()}`.trim()
+        )
+      );
     });
   });
 }

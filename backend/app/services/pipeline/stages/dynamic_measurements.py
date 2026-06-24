@@ -5,11 +5,15 @@ from typing import Any, Dict, List
 
 from sqlalchemy.orm import Session
 
-from app.AI_models.measurements.runner_2d import unload_2d_models
-from app.AI_models.measurements.runner_doppler import unload_doppler_models
 from app.core.config import settings
 from app.core.artifacts import (
+    DOPPLER_MEASUREMENT_OVERLAY_KIND,
+    DOPPLER_MEASUREMENT_OVERLAY_TYPE,
+    LINEAR_MEASUREMENT_OVERLAY_KIND,
+    LINEAR_MEASUREMENT_OVERLAY_TYPE,
     LINEAR_MEASUREMENTS_TASK_KEY,
+    LV_SEGMENTATION_OVERLAY_KIND,
+    LV_SEGMENTATION_OVERLAY_TYPE,
     MEASUREMENT_WORKFLOW_TYPE,
     MOTION_SEGMENTATION_TASK_KEY,
     SPECTRAL_MEASUREMENTS_TASK_KEY,
@@ -18,28 +22,19 @@ from app.database_models.derived_results import DerivedResult, ResultStatus
 from app.database_models.instances import Instance
 from app.database_models.pipeline_artifact_sets import PipelineArtifactSet
 from app.database_models.pipeline_jobs import PipelineJob
-from app.services.inference.linear_measurements_service import run_linear_measurements
-from app.services.inference.motion_segmentation_service import (
+from app.services.inference.linear_measurements import (
+    run_linear_measurements,
+    unload_2d_models,
+)
+from app.services.inference.motion_segmentation import (
     run_motion_segmentation,
     unload_motion_segmentation_model,
 )
-from app.services.inference.spectral_measurements_service import (
+from app.services.inference.spectral_measurements import (
     run_spectral_measurements,
+    unload_doppler_models,
 )
-from app.services.upload_mp4_to_orthanc.upload_mp4_to_orthanc import publish_mp4_as_derived_dicom
 from app.services.pipeline.stages.prefilter import _prefilter_instances
-
-_2D_WEIGHT_DISPLAY_NAMES: dict[str, str] = {
-    "ivs": " Intraventricular Septum",
-    "lvid": "Left Ventricular Internal Diameter",
-    "lvpw": "Left Ventricular Posterior Wall",
-    "aorta": "Aorta",
-    "aortic_root": "Aortic Root",
-    "la": "Left Atrium",
-    "rv_base": "Right Ventricular Basal Diameter",
-    "pa": "Pulmonary Artery",
-    "ivc": "Inferior Vena Cava",
-}
 
 
 # Part 1. Normalize inference response objects into plain dict payloads.
@@ -141,25 +136,31 @@ def _persist_progress(
     db.commit()
 
 
-def _attach_derived_dicom_artifact(
-    *,
-    instance: Instance | None,
-    output_path: str | None,
-    series_label: str,
-) -> Dict[str, Any] | None:
-    if instance is None or not output_path:
-        return None
+def _linear_overlay_summary(payload: Dict[str, Any], weight_name: str) -> Dict[str, Any]:
+    return {
+        "overlay_type": payload.get("overlay_type") or LINEAR_MEASUREMENT_OVERLAY_TYPE,
+        "overlay_key": payload.get("overlay_key") or weight_name,
+        "kind": payload.get("kind") or LINEAR_MEASUREMENT_OVERLAY_KIND,
+        "available": bool(payload.get("has_overlay")),
+        "metric_name": payload.get("metric_name"),
+        "metric_value": payload.get("metric_value"),
+        "units": payload.get("units"),
+        "min_length_cm": payload.get("min_length_cm"),
+        "max_length_cm": payload.get("max_length_cm"),
+    }
 
-    try:
-        study_uid = instance.series.study.study_uid
-        return publish_mp4_as_derived_dicom(
-            source_dicom_path=instance.file_path,
-            mp4_path=output_path,
-            study_uid=study_uid,
-            series_label=series_label,
-        )
-    except Exception:
-        return None
+
+def _doppler_overlay_summary(payload: Dict[str, Any], weight_name: str) -> Dict[str, Any]:
+    return {
+        "overlay_type": payload.get("overlay_type") or DOPPLER_MEASUREMENT_OVERLAY_TYPE,
+        "overlay_key": payload.get("overlay_key") or weight_name,
+        "kind": payload.get("kind") or DOPPLER_MEASUREMENT_OVERLAY_KIND,
+        "available": bool(payload.get("has_overlay")),
+        "metric_name": payload.get("metric_name"),
+        "metric_value": payload.get("metric_value"),
+        "units": payload.get("units"),
+        "low_confidence": bool(payload.get("low_confidence")),
+    }
 
 
 def run_dynamic_measurements_stage(
@@ -276,7 +277,6 @@ def run_dynamic_measurements_stage(
             if not record["run_dynamic"]:
                 continue
             sop_uid = record["sop_uid"]
-            instance_row = record["instance"]
             instance_results = record["instance_results"]
             try:
                 dynamic_response = run_motion_segmentation(
@@ -289,20 +289,20 @@ def run_dynamic_measurements_stage(
                 dynamic_payload = _response_payload(dynamic_response)
                 dynamic_runs += 1
                 output_path = dynamic_payload.get("output_file") or dynamic_payload.get("outputfile")
-                derived_dicom = _attach_derived_dicom_artifact(
-                    instance=instance_row,
-                    output_path=output_path,
-                    series_label="LV Segmentation",
-                )
 
                 result_item = {
                     "task": MOTION_SEGMENTATION_TASK_KEY,
                     "status": "DONE",
                     "ui_label": "Motion Segmentation",
                     "output_path": output_path,
+                    "overlay": {
+                        "overlay_type": dynamic_payload.get("overlay_type") or LV_SEGMENTATION_OVERLAY_TYPE,
+                        "kind": dynamic_payload.get("kind") or LV_SEGMENTATION_OVERLAY_KIND,
+                        "available": bool(dynamic_payload.get("has_overlay")),
+                        "frame_count": dynamic_payload.get("frame_count"),
+                        "mean_confidence": dynamic_payload.get("mean_confidence"),
+                    },
                 }
-                if derived_dicom:
-                    result_item["derived_dicom"] = derived_dicom
 
                 instance_results.append(result_item)
             except Exception as exc:
@@ -346,7 +346,6 @@ def run_dynamic_measurements_stage(
                 if not record["dynamic_eligible"] or weight_name not in record["weights_2d"]:
                     continue
                 sop_uid = record["sop_uid"]
-                instance_row = record["instance"]
                 instance_results = record["instance_results"]
                 try:
                     measurements_response = run_linear_measurements(
@@ -360,26 +359,18 @@ def run_dynamic_measurements_stage(
                     )
                     measurements_payload = _response_payload(measurements_response)
                     measurements_2d_runs += 1
-                    output_path = (
-                        measurements_payload.get("output_file_mp4")
-                        or measurements_payload.get("output_file")
-                        or measurements_payload.get("outputfile")
-                    )
-                    derived_dicom = _attach_derived_dicom_artifact(
-                        instance=instance_row,
-                        output_path=output_path,
-                        series_label=_2D_WEIGHT_DISPLAY_NAMES.get(weight_name, weight_name),
-                    )
 
                     result_item = {
                         "task": LINEAR_MEASUREMENTS_TASK_KEY,
                         "status": "DONE",
                         "weights": weight_name,
                         "ui_label": weight_name,
-                        "output_path": output_path,
+                        "output_path": None,
+                        "overlay": _linear_overlay_summary(
+                            measurements_payload,
+                            weight_name,
+                        ),
                     }
-                    if derived_dicom:
-                        result_item["derived_dicom"] = derived_dicom
 
                     instance_results.append(result_item)
                 except Exception as exc:
@@ -431,15 +422,18 @@ def run_dynamic_measurements_stage(
                     )
                     doppler_payload = _response_payload(doppler_response)
                     spectral_runs += 1
-                    output_path = doppler_payload.get("output_file_image") or doppler_payload.get("outputfile")
                     instance_results.append(
                         {
                             "task": SPECTRAL_MEASUREMENTS_TASK_KEY,
                             "status": "DONE",
                             "weights": weight_name,
                             "ui_label": weight_name,
-                            "output_path": output_path,
-                            "output_kind": "image",
+                            "output_path": None,
+                            "output_kind": None,
+                            "overlay": _doppler_overlay_summary(
+                                doppler_payload,
+                                weight_name,
+                            ),
                         }
                     )
                 except Exception as exc:

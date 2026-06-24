@@ -5,7 +5,7 @@ from app.database.db import get_db
 from app.schemas.inference.infer_motion_segmentation_schemas import (
     MotionSegmentationResponse,
 )
-from app.services.inference.motion_segmentation_service import (
+from app.services.inference.motion_segmentation import (
     load_motion_segmentation_model,
     run_motion_segmentation,
     unload_motion_segmentation_model,

@@ -7,6 +7,10 @@ export function buildStudyResultsOhifAiPayload({
   llmReportResultsData,
   llmReportResultsDetail,
   studyAnalysisEditorViewModel,
+  apiBaseUrl = null,
+  aiOverlaysState = "idle",
+  aiOverlays = [],
+  aiOverlayInstances = [],
 }) {
   const studyAnalysisDisplay = studyAnalysisCombinedResultsData?.display ?? {
     mainMeasurements: [],
@@ -49,5 +53,10 @@ export function buildStudyResultsOhifAiPayload({
     llmReportResultsState,
     llmReportResultsDetail,
     llmEchoReport,
+
+    apiBaseUrl,
+    aiOverlaysState,
+    aiOverlays,
+    aiOverlayInstances,
   };
 }

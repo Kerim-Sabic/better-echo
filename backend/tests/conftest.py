@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from app.api.pipeline.pipeline_cancel_api import router as pipeline_cancel_router
 from app.api.pipeline.pipeline_promote_api import router as pipeline_promote_router
@@ -15,6 +16,7 @@ from app.api.pipeline.pipeline_status_api import router as pipeline_status_route
 from app.api.results.combined_dynamic_measurements_api import router as dynamic_router
 from app.api.results.combined_study_analysis_api import router as study_analysis_router
 from app.api.results.llm_report_get_api import router as llm_results_router
+from app.api.results.overlays_api import router as overlays_router
 from app.api.patients import router as patients_router
 from app.api.studies import router as studies_router
 from app.core.config import settings
@@ -30,6 +32,13 @@ from app.services.auth.principal_service import (
 )
 
 def _create_test_engine(database_url: str):
+    url = make_url(database_url)
+    if url.drivername.startswith("sqlite") and url.database in (None, "", ":memory:"):
+        return create_engine(
+            database_url,
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool,
+        )
     return create_engine(database_url, pool_pre_ping=True)
 
 
@@ -145,6 +154,7 @@ def app(db_session_factory, seeded_study):
     app.include_router(study_analysis_router, prefix="/api")
     app.include_router(dynamic_router, prefix="/api")
     app.include_router(llm_results_router, prefix="/api")
+    app.include_router(overlays_router, prefix="/api")
     app.include_router(pipeline_start_router, prefix="/api")
     app.include_router(pipeline_status_router, prefix="/api")
     app.include_router(pipeline_promote_router, prefix="/api")

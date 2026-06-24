@@ -16,6 +16,7 @@ from app.core.config import settings
 from app.core.artifacts import (
     ANALYSIS_RESULTS_ROUTE_SEGMENT,
     MEASUREMENT_RESULTS_ROUTE_SEGMENT,
+    OVERLAYS_ROUTE_SEGMENT,
 )
 from app.services.licensing.signing import canonicalize_license_payload
 from app.services.licensing.machine_identity import (
@@ -82,6 +83,15 @@ def is_license_read_only_allowed_path(path: str, method: str) -> bool:
     if path == "/api/admin/users":
         return True
 
+    if path.startswith("/api/instances/"):
+        instance_path_suffix = path.removeprefix("/api/instances/")
+        if not instance_path_suffix or "/" not in instance_path_suffix:
+            return False
+        route_suffix = "/" + instance_path_suffix.split("/", 1)[1]
+        return route_suffix == f"/{OVERLAYS_ROUTE_SEGMENT}" or route_suffix.startswith(
+            f"/{OVERLAYS_ROUTE_SEGMENT}/"
+        )
+
     if not path.startswith("/api/studies/"):
         return False
 
@@ -93,6 +103,7 @@ def is_license_read_only_allowed_path(path: str, method: str) -> bool:
         "/instances",
         f"/{ANALYSIS_RESULTS_ROUTE_SEGMENT}",
         f"/{MEASUREMENT_RESULTS_ROUTE_SEGMENT}",
+        f"/{OVERLAYS_ROUTE_SEGMENT}",
         "/llm-report-results",
     )
     return any(path.endswith(suffix) for suffix in allowed_suffixes)

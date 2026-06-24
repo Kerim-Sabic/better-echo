@@ -12,6 +12,20 @@ import { type TabsProps } from '@ohif/core/src/utils/createStudyBrowserTabs';
 const { sortStudyInstances, formatDate, createStudyBrowserTabs } = utils;
 
 const thumbnailNoImageModalities = ['SR', 'SEG', 'RTSTRUCT', 'RTPLAN', 'RTDOSE', 'DOC', 'PMAP'];
+const HORALIX_OVERLAY_INSTANCES_EVENT = 'horalix:ai-overlay-instances';
+
+type HoralixOverlayInstanceSummary = {
+  sopInstanceUid?: string | null;
+  predictedView?: string | null;
+  predictedViewLabel?: string | null;
+  overlayStatus?: string | null;
+  overlayCount?: number | null;
+  lowConfidenceCount?: number | null;
+};
+
+type HoralixOverlayWindow = Window & {
+  __HORALIX_AI_OVERLAY_INSTANCE_SUMMARIES__?: HoralixOverlayInstanceSummary[];
+};
 
 /**
  * Study Browser component that displays and manages studies and their display sets
@@ -47,6 +61,9 @@ function PanelStudyBrowser({
   const [displaySets, setDisplaySets] = useState([]);
   const [displaySetsLoadingState, setDisplaySetsLoadingState] = useState({});
   const [thumbnailImageSrcMap, setThumbnailImageSrcMap] = useState({});
+  const [overlayInstanceSummaries, setOverlayInstanceSummaries] = useState<
+    HoralixOverlayInstanceSummary[]
+  >([]);
   const [jumpToDisplaySet, setJumpToDisplaySet] = useState(null);
 
   const [viewPresets, setViewPresets] = useState(
@@ -75,6 +92,26 @@ function PanelStudyBrowser({
   };
 
   const mapDisplaySetsWithState = customMapDisplaySets || _mapDisplaySets;
+
+  useEffect(() => {
+    const readSummaries = () => {
+      const summaries = (window as HoralixOverlayWindow)
+        .__HORALIX_AI_OVERLAY_INSTANCE_SUMMARIES__;
+      setOverlayInstanceSummaries(Array.isArray(summaries) ? summaries : []);
+    };
+
+    const onSummaries = (event: Event) => {
+      const detail = (event as CustomEvent).detail;
+      setOverlayInstanceSummaries(Array.isArray(detail) ? detail : []);
+    };
+
+    readSummaries();
+    window.addEventListener(HORALIX_OVERLAY_INSTANCES_EVENT, onSummaries);
+
+    return () => {
+      window.removeEventListener(HORALIX_OVERLAY_INSTANCES_EVENT, onSummaries);
+    };
+  }, []);
 
   const onDoubleClickThumbnailHandler = useCallback(
     async displaySetInstanceUID => {
@@ -227,7 +264,8 @@ function PanelStudyBrowser({
       currentDisplaySets,
       displaySetsLoadingState,
       thumbnailImageSrcMap,
-      viewports
+      viewports,
+      overlayInstanceSummaries
     );
 
     if (!customMapDisplaySets) {
@@ -240,6 +278,7 @@ function PanelStudyBrowser({
     displaySetsLoadingState,
     viewports,
     thumbnailImageSrcMap,
+    overlayInstanceSummaries,
     customMapDisplaySets,
   ]);
 
@@ -305,7 +344,8 @@ function PanelStudyBrowser({
           changedDisplaySets,
           displaySetsLoadingState,
           thumbnailImageSrcMap,
-          viewports
+          viewports,
+          overlayInstanceSummaries
         );
 
         if (!customMapDisplaySets) {
@@ -323,7 +363,8 @@ function PanelStudyBrowser({
           displaySetService.getActiveDisplaySets(),
           displaySetsLoadingState,
           thumbnailImageSrcMap,
-          viewports
+          viewports,
+          overlayInstanceSummaries
         );
 
         if (!customMapDisplaySets) {
@@ -343,6 +384,7 @@ function PanelStudyBrowser({
     thumbnailImageSrcMap,
     viewports,
     displaySetService,
+    overlayInstanceSummaries,
     customMapDisplaySets,
   ]);
 
@@ -474,9 +516,20 @@ function _mapDataSourceStudies(studies) {
   });
 }
 
-function _mapDisplaySets(displaySets, displaySetLoadingState, thumbnailImageSrcMap, viewports) {
+function _mapDisplaySets(
+  displaySets,
+  displaySetLoadingState,
+  thumbnailImageSrcMap,
+  viewports,
+  overlayInstanceSummaries = []
+) {
   const thumbnailDisplaySets = [];
   const thumbnailNoImageDisplaySets = [];
+  const overlaySummaryBySop = new Map(
+    overlayInstanceSummaries
+      .filter(summary => summary?.sopInstanceUid)
+      .map(summary => [summary.sopInstanceUid, summary])
+  );
   displaySets
     .filter(ds => !ds.excludeFromThumbnailBrowser)
     .forEach(ds => {
@@ -487,6 +540,8 @@ function _mapDisplaySets(displaySets, displaySetLoadingState, thumbnailImageSrcM
         componentType === 'thumbnail' ? thumbnailDisplaySets : thumbnailNoImageDisplaySets;
 
       const loadingProgress = displaySetLoadingState?.[displaySetInstanceUID];
+      const sourceSopInstanceUid = _sourceSopInstanceUid(ds);
+      const overlaySummary = overlaySummaryBySop.get(sourceSopInstanceUid);
 
       array.push({
         displaySetInstanceUID,
@@ -498,6 +553,11 @@ function _mapDisplaySets(displaySets, displaySetLoadingState, thumbnailImageSrcM
         loadingProgress,
         countIcon: ds.countIcon,
         messages: ds.messages,
+        predictedView: overlaySummary?.predictedView,
+        predictedViewLabel: overlaySummary?.predictedViewLabel,
+        overlayStatus: overlaySummary?.overlayStatus,
+        overlayCount: overlaySummary?.overlayCount,
+        lowConfidenceCount: overlaySummary?.lowConfidenceCount,
         StudyInstanceUID: ds.StudyInstanceUID,
         componentType,
         imageSrc: thumbnailSrc || thumbnailImageSrcMap[displaySetInstanceUID],
@@ -511,6 +571,16 @@ function _mapDisplaySets(displaySets, displaySetLoadingState, thumbnailImageSrcM
     });
 
   return [...thumbnailDisplaySets, ...thumbnailNoImageDisplaySets];
+}
+
+function _sourceSopInstanceUid(displaySet) {
+  const firstInstance = displaySet.instances?.[0];
+  return (
+    firstInstance?.SOPInstanceUID ||
+    firstInstance?.sopInstanceUid ||
+    displaySet.SOPInstanceUID ||
+    displaySet.sopInstanceUid
+  );
 }
 
 function _getComponentType(ds) {

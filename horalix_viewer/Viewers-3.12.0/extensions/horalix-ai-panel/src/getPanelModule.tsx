@@ -1,7 +1,7 @@
 import React from 'react';
 import HoralixAiResultsPanelBridge from './logic/HoralixAiResultsPanelBridge';
 
-function getPanelModule({ extensionManager }) {
+function getPanelModule({ servicesManager, extensionManager, commandsManager }) {
   return [
     {
       name: 'panelHoralixAiResults',
@@ -9,7 +9,11 @@ function getPanelModule({ extensionManager }) {
       iconLabel: 'AI',
       label: 'AI Results',
       component: () => (
-        <HoralixAiResultsPanelBridge appConfig={extensionManager.appConfig} />
+        <HoralixAiResultsPanelBridge
+          appConfig={extensionManager.appConfig}
+          servicesManager={servicesManager}
+          commandsManager={commandsManager}
+        />
       ),
     },
   ];

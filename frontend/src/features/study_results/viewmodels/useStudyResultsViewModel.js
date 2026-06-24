@@ -2,8 +2,10 @@ import { useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { getLicenseStatusApi } from "@/api/licensing";
+import { apiClient } from "@/api/client";
 import { useStudyAnalysisCombinedResultsQuery } from "@/features/study_results/tanstack/queries/useStudyAnalysisCombinedResultsQuery";
 import { useDynamicMeasurementsCombinedResultsQuery } from "@/features/study_results/tanstack/queries/useDynamicMeasurementsCombinedResultsQuery";
+import { useStudyOverlaysQuery } from "@/features/study_results/tanstack/queries/useStudyOverlaysQuery";
 import { useLlmReportResultsQuery } from "@/features/study_results/tanstack/queries/useLlmReportResultsQuery";
 import { useStudyDetailsQuery } from "@/features/study_results/tanstack/queries/useStudyDetailsQuery";
 import { buildStudyResultsOhifAiPayload } from "@/features/study_results/viewmodels/ohifAiPayloadSerializer";
@@ -13,7 +15,7 @@ import {
   openAiReportPrintPreview,
 } from "@/features/study_results/viewmodels/pdf_printing/studyResultsPdfGenerator";
 import { useStudyAnalysisEditorViewModel } from "@/features/study_results/viewmodels/useStudyAnalysisEditorViewModel";
-import { DYNAMIC_MEASUREMENTS_PENDING_VIEWER_TOKEN } from "@/features/study_results/model/studyResults.constants";
+import { NO_DERIVED_DICOM_VIEWER_TOKEN } from "@/features/study_results/model/studyResults.constants";
 
 const MEMORY_FAILURE_CODES = [
   "DICOM_UPLOAD_LIMIT_EXCEEDED",
@@ -139,7 +141,38 @@ export function useStudyResultsViewModel(
 
   const viewerRefreshToken =
     dynamicMeasurementsQueryData?.viewerRefreshToken ??
-    DYNAMIC_MEASUREMENTS_PENDING_VIEWER_TOKEN;
+    NO_DERIVED_DICOM_VIEWER_TOKEN;
+
+  const {
+    data: studyOverlaysQueryData = null,
+    isLoading: isStudyOverlaysLoading,
+    isFetching: isStudyOverlaysFetching,
+    error: studyOverlaysError,
+    refetch: refetchStudyOverlays,
+  } = useStudyOverlaysQuery(studyUid, {
+    enabled: Boolean(studyUid),
+    pollWhileProcessing: dynamicMeasurementsCombinedResultsState === "pending",
+  });
+
+  const aiOverlays = useMemo(
+    () => studyOverlaysQueryData?.aiOverlays ?? [],
+    [studyOverlaysQueryData]
+  );
+  const aiOverlayInstances = useMemo(
+    () => studyOverlaysQueryData?.aiOverlayInstances ?? [],
+    [studyOverlaysQueryData]
+  );
+  const hasProcessingOverlay = aiOverlays.some(
+    overlay => overlay.status === "queued" || overlay.status === "running"
+  );
+  const aiOverlaysState = isStudyOverlaysLoading
+    ? "loading"
+    : studyOverlaysError
+      ? "error"
+      : dynamicMeasurementsCombinedResultsState === "pending" || hasProcessingOverlay
+        ? "pending"
+        : "ready";
+  const apiBaseUrl = apiClient.defaults.baseURL || null;
 
   // --- Part 2. Compose the study-analysis editing workflow ViewModel. ---
   const studyAnalysisEditorViewModel = useStudyAnalysisEditorViewModel({
@@ -173,11 +206,14 @@ export function useStudyResultsViewModel(
     isStudyAnalysisFetching ||
     isDynamicMeasurementsLoading ||
     isDynamicMeasurementsFetching ||
+    isStudyOverlaysLoading ||
+    isStudyOverlaysFetching ||
     (llmEnabled && (isLlmReportLoading || isLlmReportFetching));
 
   const isPolling =
     studyAnalysisCombinedResultsState === "pending" ||
     dynamicMeasurementsCombinedResultsState === "pending" ||
+    aiOverlaysState === "pending" ||
     (llmEnabled && llmReportResultsState === "pending");
 
   const ohifAiPayload = useMemo(
@@ -191,6 +227,10 @@ export function useStudyResultsViewModel(
         llmReportResultsData,
         llmReportResultsDetail,
         studyAnalysisEditorViewModel,
+        apiBaseUrl,
+        aiOverlaysState,
+        aiOverlays,
+        aiOverlayInstances,
       }),
     [
       studyUid,
@@ -201,6 +241,10 @@ export function useStudyResultsViewModel(
       llmReportResultsData,
       llmReportResultsDetail,
       studyAnalysisEditorViewModel,
+      apiBaseUrl,
+      aiOverlaysState,
+      aiOverlays,
+      aiOverlayInstances,
     ]
   );
 
@@ -300,15 +344,25 @@ export function useStudyResultsViewModel(
   const refetchStudyResults = useCallback(() => {
     refetchStudyAnalysis();
     refetchDynamicMeasurements();
+    refetchStudyOverlays();
     if (llmEnabled) {
       refetchLlmReport();
     }
-  }, [llmEnabled, refetchStudyAnalysis, refetchDynamicMeasurements, refetchLlmReport]);
+  }, [
+    llmEnabled,
+    refetchStudyAnalysis,
+    refetchDynamicMeasurements,
+    refetchStudyOverlays,
+    refetchLlmReport,
+  ]);
 
   return {
     studyUid,
     isVendorAccess,
     studyResultsState,
+    aiOverlays,
+    aiOverlayInstances,
+    aiOverlaysState,
 
     studyAnalysisCombinedResultsState,
     studyAnalysisCombinedResultsData,
