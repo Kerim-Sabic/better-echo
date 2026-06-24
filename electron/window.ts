@@ -108,6 +108,9 @@ export function createMainWindow(options: {
     openDevtools: boolean;
     iconPath: string;
     isQuitting: () => boolean;
+    // When set (packaged client mode), load the renderer from this loopback
+    // http origin instead of file://, so it has a real, non-null origin.
+    packagedClientUrl?: string;
 }): BrowserWindow {
     const state = loadWindowState();
     mainWindow = new BrowserWindow({
@@ -148,6 +151,13 @@ export function createMainWindow(options: {
         if (process.env.ELECTRON_OPEN_DEVTOOLS === '1' || options.openDevtools) {
             mainWindow.webContents.openDevTools();
         }
+    } else if (options.packagedClientUrl) {
+        // Packaged client served over a loopback http origin (see staticServer.ts)
+        // so the renderer has a real, non-null origin for CORS + the OHIF bridge.
+        console.log('Loading packaged renderer from loopback origin:', options.packagedClientUrl);
+        void mainWindow.loadURL(options.packagedClientUrl).catch(error => {
+            console.error('Failed to load packaged renderer over loopback:', error);
+        });
     } else {
         const packagedIndexCandidates = [
             path.join(__dirname, '..', '..', 'frontend', 'build', 'index.html'),

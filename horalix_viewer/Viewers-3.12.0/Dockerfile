@@ -54,7 +54,7 @@ RUN npm install -g lerna@7.4.2
 ENV PATH=/usr/src/app/node_modules/.bin:$PATH
 
 # Do an initial install and then a final install
-COPY package.json yarn.lock preinstall.js lerna.json ./
+COPY package.json bun.lock preinstall.js lerna.json ./
 COPY --parents ./addOns/package.json ./addOns/*/*/package.json ./extensions/*/package.json ./modes/*/package.json ./platform/*/package.json ./
 # Run the install before copying the rest of the files
 

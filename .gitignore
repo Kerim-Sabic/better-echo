@@ -46,6 +46,16 @@ affan-docs/
 .webpack/
 electron/build-resources/icon.*
 
+# Terraform (provider cache, state, and generated per-tenant secrets)
+# .terraform/ holds large provider binaries; state + .secrets hold SSH keys,
+# DB/JWT passwords and signed licenses. None of this belongs in git.
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+deploy/terraform/terraform.tfstate.d/
+deploy/terraform/.secrets/
+# NOTE: .terraform.lock.hcl IS committed on purpose (pins provider versions).
+
 # General
 .DS_Store
 .env

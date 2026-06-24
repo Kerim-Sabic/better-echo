@@ -93,6 +93,7 @@ def _store_machine_secret(secret: bytes) -> None:
         ),
         encoding="utf-8",
     )
+    _tighten_secret_file_mode(path)
 
 
 def _load_clock_state() -> dict[str, Any]:
@@ -121,9 +122,37 @@ def _store_clock_state(state: dict[str, Any]) -> None:
         ),
         encoding="utf-8",
     )
+    _tighten_secret_file_mode(path)
+
+
+def _tighten_secret_file_mode(path: Path) -> None:
+    # On Windows the file is DPAPI-protected and ACLs already restrict access.
+    # On POSIX (cloud trial EC2, on-prem Linux dev) the secret is stored in the
+    # plain-dev scheme, so the only thing standing between it and a non-root
+    # process on the same host is the filesystem mode. AWS EBS at-rest
+    # encryption + single-tenant EC2 + 0600 is the deployment's intended
+    # threat model — see deploy/cloud/docker-compose.cloud.yml.
+    if platform.system() == "Windows":
+        return
+    try:
+        os.chmod(path, 0o600)
+    except OSError:
+        pass
 
 
 def _protect_bytes(value: bytes) -> dict[str, str]:
+    # Two protection schemes are written, one per OS family:
+    #
+    # - "dpapi-local-machine" on Windows. DPAPI ties the ciphertext to the
+    #   local SYSTEM key, defeating other Windows accounts on the same machine
+    #   from reading the secret even if they can read the file.
+    #
+    # - "plain-dev" on POSIX. Originally a dev-only fallback, this is also the
+    #   intended path for the AWS cloud trial deployment: each tenant runs in
+    #   an isolated EC2 with EBS at-rest encryption, the file is chmodded to
+    #   0600 (see _tighten_secret_file_mode), and the licensing dir is bind-
+    #   mounted from the persistent EBS volume so the fingerprint survives
+    #   container restarts.
     if platform.system() == "Windows":
         try:
             import win32crypt

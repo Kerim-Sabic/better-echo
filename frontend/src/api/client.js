@@ -9,8 +9,13 @@ function normalizeBaseUrl(value) {
     return String(value || "").trim().replace(/\/+$/, "");
 }
 
-const DEFAULT_API_URL =
-    normalizeBaseUrl(process.env.REACT_APP_API_URL) || "http://localhost:8000/api";
+// Initial baseURL. Real value is set by RuntimeConfigGate as soon as the
+// Electron runtime config (LAN host or cloud URL) is loaded, before any
+// authenticated request fires. We intentionally do NOT fall back to
+// http://localhost:8000 here: in a built client app no backend runs locally,
+// so a stray pre-config request should fail loudly rather than silently hit
+// the doctor's own machine.
+const DEFAULT_API_URL = normalizeBaseUrl(process.env.REACT_APP_API_URL);
 
 export const apiClient = axios.create({
     baseURL: DEFAULT_API_URL,

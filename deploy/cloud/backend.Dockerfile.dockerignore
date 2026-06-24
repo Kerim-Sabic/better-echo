@@ -1,0 +1,14 @@
+# Whitelist: only send backend/ to the Docker daemon.
+# The backend Dockerfile only COPYs backend/requirements.txt and backend/.
+# Excluding everything else keeps the build context under 50MB instead of
+# shipping node_modules, frontend builds, and model weights to the daemon.
+**
+!backend/
+!backend/**
+
+# Never bake local dev secrets into the cloud image. backend/.env is gitignored
+# but still present on the operator's machine, and the whitelist above would
+# otherwise copy it into /app. Runtime config comes from the generated .env via
+# docker-compose, not from a file inside the image.
+backend/.env
+backend/.env.*

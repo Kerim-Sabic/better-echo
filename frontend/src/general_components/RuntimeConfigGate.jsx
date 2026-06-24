@@ -33,15 +33,17 @@ function isConfiguredClientRuntime(runtimeConfig) {
   );
 }
 
+function hasExplicitScheme(rawValue) {
+  return /^[a-z][a-z0-9+.-]*:\/\//i.test(rawValue);
+}
+
 function parseServerAddress(value) {
   const rawValue = String(value || "").trim();
   if (!rawValue) {
     return null;
   }
 
-  const withProtocol = /^[a-z][a-z0-9+.-]*:\/\//i.test(rawValue)
-    ? rawValue
-    : `http://${rawValue}`;
+  const withProtocol = hasExplicitScheme(rawValue) ? rawValue : `http://${rawValue}`;
 
   try {
     const parsedUrl = new URL(withProtocol);
@@ -55,32 +57,72 @@ function parseServerAddress(value) {
   }
 }
 
+// A persisted config has the "LAN shape" if it matches the historical
+// hospital-on-prem deployment: plain http, backend on :8000 and viewer on :3001
+// at the same hostname. In that case the user only ever entered a hostname or
+// IP, so we round-trip it back to a bare hostname in the form. Anything else
+// (cloud trial servers behind Caddy, custom-port LAN deployments) is treated
+// as a canonical full URL and round-tripped verbatim.
+function isLanShapedRuntimeConfig(runtimeConfig) {
+  const backendUrl = parseServerAddress(runtimeConfig?.backendBaseUrl);
+  const viewerUrl = parseServerAddress(runtimeConfig?.viewerBaseUrl);
+  if (!backendUrl || !viewerUrl) {
+    return false;
+  }
+
+  return (
+    backendUrl.protocol === "http:" &&
+    backendUrl.port === BACKEND_PORT &&
+    viewerUrl.protocol === "http:" &&
+    viewerUrl.port === VIEWER_PORT &&
+    backendUrl.hostname === viewerUrl.hostname
+  );
+}
+
 function toServerAddressInput(runtimeConfig) {
-  const parsedUrl = parseServerAddress(runtimeConfig?.backendBaseUrl);
-  if (!parsedUrl) {
+  if (!runtimeConfig?.backendBaseUrl) {
     return "";
   }
 
-  const protocol = parsedUrl.protocol;
-  const hostname = parsedUrl.hostname;
-  const portSuffix =
-    parsedUrl.port && parsedUrl.port !== BACKEND_PORT ? `:${parsedUrl.port}` : "";
+  if (isLanShapedRuntimeConfig(runtimeConfig)) {
+    return parseServerAddress(runtimeConfig.backendBaseUrl)?.hostname || "";
+  }
 
-  return `${protocol}//${hostname}${portSuffix}`;
+  return normalizeBaseUrl(runtimeConfig.backendBaseUrl);
 }
 
+// Two input shapes are supported:
+//
+//   1. Bare hostname/IP (e.g. "192.168.1.10" or "server-host") — the on-prem
+//      LAN deployment. We append the historical default ports and force http.
+//
+//   2. Full URL with scheme (e.g. "https://acme.echo.horalix.com") — the AWS
+//      cloud trial deployment, where Caddy terminates TLS and reverse-proxies
+//      both /api (FastAPI) and the catch-all (OHIF viewer) on a single origin.
+//      Backend and viewer base URLs collapse to the same canonical URL; callers
+//      append "/api" themselves.
 function deriveClientBaseUrls(serverAddress) {
-  const parsedUrl = parseServerAddress(serverAddress);
+  const rawValue = String(serverAddress || "").trim();
+  if (!rawValue) {
+    return null;
+  }
+
+  const parsedUrl = parseServerAddress(rawValue);
   if (!parsedUrl) {
     return null;
   }
 
-  const protocol = parsedUrl.protocol;
-  const hostname = parsedUrl.hostname;
+  if (!hasExplicitScheme(rawValue)) {
+    return {
+      backendBaseUrl: `http://${parsedUrl.hostname}:${BACKEND_PORT}`,
+      viewerBaseUrl: `http://${parsedUrl.hostname}:${VIEWER_PORT}`,
+    };
+  }
 
+  const canonicalBase = `${parsedUrl.protocol}//${parsedUrl.host}`;
   return {
-    backendBaseUrl: `${protocol}//${hostname}:${BACKEND_PORT}`,
-    viewerBaseUrl: `${protocol}//${hostname}:${VIEWER_PORT}`,
+    backendBaseUrl: canonicalBase,
+    viewerBaseUrl: canonicalBase,
   };
 }
 
@@ -240,8 +282,8 @@ export default function RuntimeConfigGate({ children }) {
             {modal ? "Connection Settings" : "Client Setup"}
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Enter the hospital server address for this workstation. The backend and viewer URLs will
-            be set automatically.
+            Enter a hostname for an on-prem hospital server, or a full URL for a cloud-hosted
+            server. The backend and viewer URLs will be set automatically.
           </p>
 
           <label className="mt-6 block text-sm font-medium text-foreground">
@@ -251,7 +293,7 @@ export default function RuntimeConfigGate({ children }) {
             type="text"
             value={serverAddress}
             onChange={event => setServerAddress(event.target.value)}
-            placeholder="server-host or 192.168.1.10"
+            placeholder="192.168.1.10  or  https://acme.echo.horalix.com"
             className="mt-2 w-full rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-primary"
             required
           />

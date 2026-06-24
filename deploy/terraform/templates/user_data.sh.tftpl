@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# cloud-init user_data for a Horalix Echo trial EC2.
+#
+# Templated by Terraform with tenant-specific values. The heavy lifting
+# (Docker install, NVIDIA toolkit, repo sync, docker compose up) lives in
+# deploy/cloud/bootstrap.sh — we fetch that script from S3 first, then
+# invoke it with the env vars below.
+set -euo pipefail
+
+LOG=/var/log/horalix-cloud-init.log
+exec > >(tee -a "$LOG") 2>&1
+echo "[user_data $(date -u +%FT%TZ)] starting"
+
+# 1. Persist env for bootstrap.sh (and for operator inspection).
+install -d -m 0750 /etc/horalix
+cat > /etc/horalix/bootstrap.env <<'BOOTSTRAP_ENV'
+DOMAIN=${domain}
+ACME_EMAIL=${acme_email}
+POSTGRES_PASSWORD=${postgres_password}
+SECRET_KEY=${secret_key}
+LICENSE_PUBLIC_KEY_B64=${license_public_key_b64}
+RELEASE_S3_URI=${release_s3_uri}
+MODELS_S3_URI=${models_s3_uri}
+EBS_DEVICE=/dev/nvme1n1
+REPORTING_MODEL_ID=${reporting_model_id}
+TOKEN_EXPIRE_HOURS=${token_expire_hours}
+AWS_DEFAULT_REGION=${aws_region}
+ENABLE_GPU=${enable_gpu}
+BOOTSTRAP_ENV
+chmod 0600 /etc/horalix/bootstrap.env
+
+# 2. Make sure aws CLI exists. Deep Learning Base AMI has it, but be defensive.
+if ! command -v aws >/dev/null 2>&1; then
+    apt-get update -y
+    apt-get install -y awscli
+fi
+
+# 3. Pull deploy/cloud/bootstrap.sh ahead of the full sync that bootstrap.sh
+#    itself does. We need the script to exist before we can run it.
+aws s3 cp --no-progress \
+    "${release_s3_uri}deploy/cloud/bootstrap.sh" \
+    /usr/local/sbin/horalix-bootstrap.sh
+chmod 0755 /usr/local/sbin/horalix-bootstrap.sh
+
+# 4. Run bootstrap with the env loaded.
+# set -a auto-exports every variable set by source so bootstrap.sh (child
+# process) inherits them without needing explicit "export" in the env file.
+set -a
+source /etc/horalix/bootstrap.env
+set +a
+/usr/local/sbin/horalix-bootstrap.sh
+
+echo "[user_data $(date -u +%FT%TZ)] finished"
