@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { getLicenseStatusApi } from "@/api/licensing";
@@ -153,6 +153,23 @@ export function useStudyResultsViewModel(
     enabled: Boolean(studyUid),
     pollWhileProcessing: dynamicMeasurementsCombinedResultsState === "pending",
   });
+
+  const previousDynamicMeasurementsStateRef = useRef(
+    dynamicMeasurementsCombinedResultsState
+  );
+
+  useEffect(() => {
+    const previousState = previousDynamicMeasurementsStateRef.current;
+    previousDynamicMeasurementsStateRef.current =
+      dynamicMeasurementsCombinedResultsState;
+
+    if (
+      previousState === "pending" &&
+      dynamicMeasurementsCombinedResultsState !== "pending"
+    ) {
+      refetchStudyOverlays();
+    }
+  }, [dynamicMeasurementsCombinedResultsState, refetchStudyOverlays]);
 
   const aiOverlays = useMemo(
     () => studyOverlaysQueryData?.aiOverlays ?? [],
