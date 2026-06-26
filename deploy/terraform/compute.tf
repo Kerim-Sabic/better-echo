@@ -123,7 +123,10 @@ resource "aws_instance" "tenant" {
 
   root_block_device {
     volume_type = "gp3"
-    volume_size = 100
+    # 150GB: the Docker image store lives here. GPU builds use CUDA torch wheels
+    # (~2.5GB larger than CPU) on top of the 7.3GB model weights, and a rebuild
+    # transiently holds the old + new image + build cache. 100GB overflowed.
+    volume_size = 150
     encrypted   = true
   }
 

@@ -7,8 +7,8 @@ contact_email = "affankapidzic3@gmail.com"
 trial_days    = 7
 
 aws_region    = "eu-central-1"
-instance_type = "t3.large"
-enable_gpu    = false   # CPU-only (no LLM). t3.large = 2 vCPU / 8GB RAM, enough to avoid build OOM.
+instance_type = "g5.xlarge"
+enable_gpu    = true   # GPU: 1x A10G 24GB VRAM. Echo models run on CUDA (cu126 torch) + vLLM report.
 
 # Tenant subdomain attaches under this zone: <tenant_slug>.<route53_zone_name>
 route53_zone_name = "echo.horalix.com"

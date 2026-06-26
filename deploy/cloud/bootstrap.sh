@@ -155,6 +155,9 @@ fi
 # 5. Render .env for docker-compose
 # -------------------------------------------------------------------------
 log "Rendering .env for tenant $DOMAIN"
+# Torch wheel variant consumed as a build arg by the backend image: CUDA 12.6
+# wheels on GPU instances (so the echo models run on the GPU), CPU otherwise.
+if [[ "${ENABLE_GPU:-false}" == "true" ]]; then TORCH_INDEX=cu126; else TORCH_INDEX=cpu; fi
 # This heredoc is the SINGLE generator of the runtime .env that
 # docker-compose.cloud.yml reads. Every key the compose file references with
 # ${VAR} must appear here. Keep the key set in lockstep with
@@ -177,6 +180,8 @@ TOKEN_EXPIRE_HOURS=${TOKEN_EXPIRE_HOURS:-12}
 # the pipeline skips the llm stage instead of failing studies on a missing
 # llm container. Derived from the Terraform enable_gpu flag.
 ENABLE_LLM=${ENABLE_GPU:-false}
+# PyTorch wheel variant for the backend image build (cu126 on GPU, cpu otherwise).
+TORCH_INDEX=${TORCH_INDEX}
 
 # --- Derived from the per-tenant DOMAIN ------------------------------------
 CORS_ORIGIN=["https://${DOMAIN}"]
@@ -205,18 +210,23 @@ chmod 600 "$DEPLOY_DIR/.env"
 # -------------------------------------------------------------------------
 log "Starting docker compose"
 cd "$DEPLOY_DIR"
-# Build images one at a time to avoid OOM on memory-constrained instances.
-# Parallel builds (default) crash the Docker daemon on t3.micro.
-log "Building backend image"
-docker compose -f docker-compose.cloud.yml --env-file .env build backend
-log "Building horalix-viewer image"
-docker compose -f docker-compose.cloud.yml --env-file .env build horalix-viewer
-log "Starting all services"
+# On GPU deployments, layer the GPU override (adds a GPU reservation to the
+# backend so the echo models run on CUDA) and enable the "gpu" profile (which
+# starts the vLLM service for report generation).
+COMPOSE_FILES=(-f docker-compose.cloud.yml)
+UP_EXTRA=()
 if [[ "${ENABLE_GPU:-false}" == "true" ]]; then
-    docker compose -f docker-compose.cloud.yml --env-file .env --profile gpu up -d
-else
-    docker compose -f docker-compose.cloud.yml --env-file .env up -d
+    COMPOSE_FILES+=(-f docker-compose.cloud.gpu.yml)
+    UP_EXTRA+=(--profile gpu)
 fi
+# Build images one at a time to avoid OOM on memory-constrained instances.
+# Parallel builds (default) crash the Docker daemon on small instances.
+log "Building backend image"
+docker compose "${COMPOSE_FILES[@]}" --env-file .env build backend
+log "Building horalix-viewer image"
+docker compose "${COMPOSE_FILES[@]}" --env-file .env build horalix-viewer
+log "Starting all services"
+docker compose "${COMPOSE_FILES[@]}" --env-file .env "${UP_EXTRA[@]}" up -d
 
 log "Bootstrap complete. Caddy will obtain a Let's Encrypt cert for $DOMAIN"
 log "once the Route53 A record is live and propagated."

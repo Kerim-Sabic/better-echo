@@ -43,6 +43,12 @@ services:
     build:
       context: ../..
       dockerfile: deploy/cloud/backend.Dockerfile
+      args:
+        # cpu = CPU-only torch wheels (default); cu126 = CUDA 12.6 wheels for GPU
+        # instances. bootstrap.sh sets TORCH_INDEX from the Terraform enable_gpu
+        # flag. The cu126 wheels bundle CUDA, so the slim base image is unchanged;
+        # GPU access is added by docker-compose.cloud.gpu.yml's device reservation.
+        TORCH_INDEX: "${TORCH_INDEX:-cpu}"
     image: horalix/echo-backend:${BACKEND_IMAGE_TAG:-dev}
     container_name: horalix_backend
     restart: *restart
