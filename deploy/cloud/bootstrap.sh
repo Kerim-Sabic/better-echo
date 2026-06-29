@@ -37,8 +37,9 @@ require_env ACME_EMAIL
 require_env POSTGRES_PASSWORD
 require_env SECRET_KEY
 require_env LICENSE_PUBLIC_KEY_B64
-require_env EBS_DEVICE
 require_env RELEASE_S3_URI
+# EBS_DEVICE is optional: step 1 auto-detects the data volume and only falls back
+# to EBS_DEVICE if detection fails (it no longer trusts a hardcoded /dev/nvmeXn1).
 
 HORALIX_ROOT=/var/lib/horalix
 MARKERS="$HORALIX_ROOT/.markers"
@@ -50,17 +51,53 @@ is_done()  { [[ -f "$MARKERS/$1" ]]; }
 
 # -------------------------------------------------------------------------
 # 1. Mount the EBS data volume at /var/lib/horalix
+#
+# The device name is NOT fixed. On instance types with local instance store
+# (e.g. g5), the ephemeral NVMe claims /dev/nvme1n1 and the data EBS volume
+# lands on /dev/nvme2n1 — so a hardcoded path silently mounts nothing and
+# everything writes to the root disk. We instead detect the data volume by its
+# NVMe model ("Amazon Elastic Block Store"), excluding the root disk, and fail
+# loudly if it does not end up mounted.
 # -------------------------------------------------------------------------
+find_data_ebs_device() {
+    local root_disk dev base model
+    root_disk=$(lsblk -no PKNAME "$(findmnt -no SOURCE /)" 2>/dev/null)
+    for dev in /dev/nvme*n1; do
+        [[ -b "$dev" ]] || continue
+        base="${dev#/dev/}"
+        [[ "$base" == "$root_disk" ]] && continue
+        model=$(cat "/sys/block/$base/device/model" 2>/dev/null || true)
+        # Instance store reports "Amazon EC2 NVMe Instance Storage"; only EBS
+        # volumes report "Amazon Elastic Block Store".
+        [[ "$model" == *"Elastic Block Store"* ]] || continue
+        echo "$dev"; return 0
+    done
+    return 1
+}
+
 if ! is_done ebs-mounted; then
-    log "Preparing EBS volume $EBS_DEVICE -> $HORALIX_ROOT"
-    if ! blkid "$EBS_DEVICE" >/dev/null 2>&1; then
-        mkfs.ext4 -L horalix-data "$EBS_DEVICE"
+    DATA_DEV="$(find_data_ebs_device || true)"
+    DATA_DEV="${DATA_DEV:-${EBS_DEVICE:-}}"
+    if [[ -z "$DATA_DEV" || ! -b "$DATA_DEV" ]]; then
+        echo "FATAL: could not locate the data EBS volume (an Amazon EBS NVMe device that is not the root disk)" >&2
+        lsblk -o NAME,SIZE,FSTYPE,MOUNTPOINT >&2 || true
+        exit 1
+    fi
+    log "Preparing data EBS volume $DATA_DEV -> $HORALIX_ROOT"
+    if ! blkid "$DATA_DEV" >/dev/null 2>&1; then
+        mkfs.ext4 -L horalix-data "$DATA_DEV"
     fi
     mkdir -p "$HORALIX_ROOT"
     if ! grep -q "LABEL=horalix-data" /etc/fstab; then
         echo "LABEL=horalix-data $HORALIX_ROOT ext4 defaults,nofail 0 2" >> /etc/fstab
     fi
     mount -a
+    # Do NOT trust nofail's silent skip: confirm the data volume actually mounted,
+    # otherwise the whole stack writes to the root disk unnoticed.
+    if ! mountpoint -q "$HORALIX_ROOT"; then
+        echo "FATAL: $HORALIX_ROOT is not a separate mount after 'mount -a'; data EBS volume ($DATA_DEV) failed to mount" >&2
+        exit 1
+    fi
     mark_done ebs-mounted
 fi
 
@@ -112,15 +149,28 @@ if ! is_done docker-installed; then
 fi
 
 if [[ "${ENABLE_GPU:-false}" == "true" ]] && ! is_done nvidia-toolkit-installed; then
-    log "Installing NVIDIA Container Toolkit"
-    distribution=$(. /etc/os-release; echo $ID$VERSION_ID)
-    curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey \
-        | gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
-    curl -s -L https://nvidia.github.io/libnvidia-container/$distribution/libnvidia-container.list \
-        | sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' \
-        > /etc/apt/sources.list.d/nvidia-container-toolkit.list
-    apt-get update -y
-    apt-get install -y nvidia-container-toolkit
+    # The Deep Learning Base AMI already ships Docker and (usually) the NVIDIA
+    # Container Toolkit, with the NVIDIA apt repo + keyring pre-configured. In
+    # that case re-running `gpg --dearmor` onto the existing keyring file makes
+    # gpg prompt "File exists. Overwrite?" and — with no TTY under cloud-init —
+    # abort with "cannot open '/dev/tty'", which under `set -o pipefail` killed
+    # the entire bootstrap before it ever built anything. So: if nvidia-ctk is
+    # already present, skip the apt dance and just point Docker at it. Only
+    # install from scratch on a bare AMI, and pass `--yes` so the dearmor never
+    # blocks on an overwrite prompt.
+    if command -v nvidia-ctk >/dev/null 2>&1; then
+        log "NVIDIA Container Toolkit already present (Deep Learning AMI); configuring Docker runtime"
+    else
+        log "Installing NVIDIA Container Toolkit"
+        distribution=$(. /etc/os-release; echo $ID$VERSION_ID)
+        curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey \
+            | gpg --dearmor --yes -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+        curl -s -L https://nvidia.github.io/libnvidia-container/$distribution/libnvidia-container.list \
+            | sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' \
+            > /etc/apt/sources.list.d/nvidia-container-toolkit.list
+        apt-get update -y
+        apt-get install -y nvidia-container-toolkit
+    fi
     nvidia-ctk runtime configure --runtime=docker
     systemctl restart docker
     mark_done nvidia-toolkit-installed
@@ -140,7 +190,9 @@ aws s3 sync --no-progress "$RELEASE_S3_URI" "$SOURCE_DIR" \
     --exclude "*/__pycache__/*" \
     --exclude "*/.git/*" \
     --exclude "*/dist/*" \
-    --exclude "*/.cache/*"
+    --exclude "*/.cache/*" \
+    --exclude "*/venv/*" \
+    --exclude "*/.venv/*"
 
 # -------------------------------------------------------------------------
 # 4. Sync AI model weights from S3 (one-shot per release version)
@@ -184,7 +236,12 @@ ENABLE_LLM=${ENABLE_GPU:-false}
 TORCH_INDEX=${TORCH_INDEX}
 
 # --- Derived from the per-tenant DOMAIN ------------------------------------
-CORS_ORIGIN=["https://${DOMAIN}"]
+# Includes the packaged desktop client's loopback origin (staticServer.ts serves
+# the renderer at http://127.0.0.1:17645). The client's CORS preflight must be
+# allowed natively here: Electron 31 enforces CORS in the network service before
+# webRequest header rewrites apply, so the in-app interceptor can't rescue a
+# rejected preflight. Keep the port in sync with electron/staticServer.ts.
+CORS_ORIGIN=["https://${DOMAIN}","http://127.0.0.1:17645","http://localhost:17645"]
 
 # --- Fixed cloud defaults (identical for every tenant) ---------------------
 BACKEND_IMAGE_TAG=${BACKEND_IMAGE_TAG:-dev}
@@ -225,6 +282,13 @@ log "Building backend image"
 docker compose "${COMPOSE_FILES[@]}" --env-file .env build backend
 log "Building horalix-viewer image"
 docker compose "${COMPOSE_FILES[@]}" --env-file .env build horalix-viewer
+# Reclaim the (large) build cache before `up`. On GPU tenants `up` then builds
+# the vLLM image, whose layers extract to ~25GB; the ~45GB of backend build
+# cache left over from the step above would otherwise fill the root volume mid-
+# extraction ("no space left on device"). This removes cache only — the
+# backend/viewer images just built are kept, so `up` reuses them.
+log "Pruning build cache to free space before starting services"
+docker builder prune -af || true
 log "Starting all services"
 docker compose "${COMPOSE_FILES[@]}" --env-file .env "${UP_EXTRA[@]}" up -d
 
