@@ -18,5 +18,5 @@ resource "aws_route53_record" "tenant" {
   name    = local.fqdn
   type    = "A"
   ttl     = 60
-  records = [aws_instance.tenant.public_ip]
+  records = [aws_eip.tenant.public_ip]
 }
