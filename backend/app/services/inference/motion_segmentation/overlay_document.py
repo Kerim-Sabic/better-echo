@@ -15,6 +15,10 @@ from app.core.artifacts import (
 from app.database_models.derived_results import DerivedResult, ResultStatus
 from app.database_models.instances import Instance
 from app.helpers.media.mask_rle import RLE_FORMAT
+from app.services.inference.motion_segmentation.postprocess import (
+    EDGE_SMOOTHING_METHOD,
+    EDGE_SMOOTHING_VERSION,
+)
 
 MODEL_VERSION = "v1"
 
@@ -72,6 +76,9 @@ def build_overlay_document(
         "processing": {
             "device": device_type,
             "duration_s": round(float(duration_s), 2),
+            "edge_smoothing": True,
+            "edge_smoothing_method": EDGE_SMOOTHING_METHOD,
+            "edge_smoothing_version": EDGE_SMOOTHING_VERSION,
         },
     }
 

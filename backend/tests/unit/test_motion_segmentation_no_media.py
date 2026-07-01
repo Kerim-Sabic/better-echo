@@ -110,6 +110,9 @@ def test_structured_mode_creates_no_media_and_persists_overlay(
         assert doc["frame_width"] == 80
         assert doc["frame_height"] == 64
         assert doc["mask_format"] == "rle"
+        assert doc["processing"]["edge_smoothing"] is True
+        assert doc["processing"]["edge_smoothing_method"]
+        assert doc["processing"]["edge_smoothing_version"]
         assert len(doc["frames"]) == 6
         assert all("rle" in frame for frame in doc["frames"])
 
