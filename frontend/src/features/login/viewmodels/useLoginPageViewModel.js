@@ -171,7 +171,11 @@ export function useLoginPageViewModel() {
     handleBiometricLogin,
     canOpenServerAdmin,
     onOpenServerAdmin: () => navigate("/server-admin"),
-    canReconfigureClientRuntime: runtimeConfig?.runtimeMode === "client",
+    // Hide the F8 setup-wizard escape hatch on per-tenant builds: when the server
+    // URL is baked in (serverUrlLocked), the client is locked to its hospital and
+    // must not be reconfigurable.
+    canReconfigureClientRuntime:
+      runtimeConfig?.runtimeMode === "client" && !runtimeConfig?.serverUrlLocked,
     onOpenClientRuntimeConfigEditor: openClientRuntimeConfigEditor,
   };
 }

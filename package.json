@@ -28,6 +28,7 @@
     "dist": "npm run build && npm run build:backend && electron-builder build",
     "dist:server": "npm run build && npm run build:backend && electron-builder build --config electron/electron-builder.server.config.js",
     "dist:client": "npm run build && electron-builder build --config electron/electron-builder.client.config.js",
+    "dist:client:tenant": "node scripts/build-client-tenant.js",
     "audit:release:server": "python scripts/release_audit.py dist/server/win-unpacked",
     "dist:win": "npm run build && npm run build:backend && electron-builder build --win",
     "dist:mac": "npm run build && npm run build:backend && electron-builder build --mac",
