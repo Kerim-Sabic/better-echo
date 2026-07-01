@@ -54,7 +54,12 @@ export function getPublicAssetUrl(assetPath) {
       return new URL(normalizedAssetPath, window.location.href).href;
     }
 
-    return `./${normalizedAssetPath}`;
+    // Served over http from the site root (the packaged client's loopback static
+    // server, or the CRA dev server): use an ABSOLUTE path. A relative "./asset"
+    // resolves against the current route's directory, so it 404s on nested routes
+    // like /studies/{uid}/results while working on /dashboard. Only file:// (the
+    // on-prem server build) needs the relative form handled above.
+    return `/${normalizedAssetPath}`;
   }
 
   if (publicBase) {
