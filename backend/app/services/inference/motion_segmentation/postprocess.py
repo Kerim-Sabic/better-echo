@@ -4,7 +4,50 @@ import cv2
 import numpy as np
 
 PROB_THRESHOLD = 0.5
+EDGE_SMOOTHING_METHOD = "probability_cubic_blur_largest_contour"
+EDGE_SMOOTHING_VERSION = "v1"
 _MORPH_KERNEL = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+_CONTOUR_SMOOTHING_WINDOW = 7
+
+
+def _moving_average_closed_contour(points: np.ndarray) -> np.ndarray:
+    if len(points) < _CONTOUR_SMOOTHING_WINDOW:
+        return points
+
+    radius = _CONTOUR_SMOOTHING_WINDOW // 2
+    padded = np.vstack([points[-radius:], points, points[:radius]])
+    smoothed = np.empty_like(points, dtype=np.float32)
+    for index in range(len(points)):
+        window = padded[index : index + _CONTOUR_SMOOTHING_WINDOW]
+        smoothed[index] = window.mean(axis=0)
+    return smoothed
+
+
+def _rasterize_largest_smoothed_contour(mask_binary: np.ndarray) -> np.ndarray:
+    if not mask_binary.any() or mask_binary.all():
+        return mask_binary.astype(np.uint8)
+
+    contours, _ = cv2.findContours(
+        mask_binary,
+        cv2.RETR_EXTERNAL,
+        cv2.CHAIN_APPROX_NONE,
+    )
+    if not contours:
+        return mask_binary.astype(np.uint8)
+
+    largest = max(contours, key=cv2.contourArea)
+    if len(largest) < 4:
+        return mask_binary.astype(np.uint8)
+
+    height, width = mask_binary.shape
+    points = largest.reshape(-1, 2).astype(np.float32)
+    points = _moving_average_closed_contour(points)
+    points[:, 0] = np.clip(np.rint(points[:, 0]), 0, width - 1)
+    points[:, 1] = np.clip(np.rint(points[:, 1]), 0, height - 1)
+
+    smoothed = np.zeros_like(mask_binary, dtype=np.uint8)
+    cv2.fillPoly(smoothed, [points.astype(np.int32).reshape(-1, 1, 2)], 1)
+    return smoothed
 
 
 def binarize_and_clean(
@@ -12,16 +55,14 @@ def binarize_and_clean(
     frame_size: tuple[int, int],
 ) -> np.ndarray:
     """Convert a model probability map to a clean source-resolution mask."""
-    mask_small = (prob_small > PROB_THRESHOLD).astype(np.uint8)
-    mask_resized = cv2.resize(
-        mask_small,
+    prob_resized = cv2.resize(
+        prob_small.astype(np.float32),
         frame_size,
-        interpolation=cv2.INTER_NEAREST,
+        interpolation=cv2.INTER_CUBIC,
     )
 
-    mask_binary = (mask_resized > 0).astype(np.uint8)
-    mask_smooth = cv2.GaussianBlur(mask_binary * 255, (7, 7), 0)
-    _, mask_binary = cv2.threshold(mask_smooth, 127, 1, cv2.THRESH_BINARY)
+    prob_smooth = cv2.GaussianBlur(prob_resized, (5, 5), 0)
+    mask_binary = (prob_smooth > PROB_THRESHOLD).astype(np.uint8)
     mask_binary = cv2.morphologyEx(
         mask_binary,
         cv2.MORPH_OPEN,
@@ -34,7 +75,7 @@ def binarize_and_clean(
         _MORPH_KERNEL,
         iterations=1,
     )
-    return mask_binary.astype(np.uint8)
+    return _rasterize_largest_smoothed_contour(mask_binary).astype(np.uint8)
 
 
 def foreground_confidence(prob_small: np.ndarray) -> float:
@@ -46,6 +87,8 @@ def foreground_confidence(prob_small: np.ndarray) -> float:
 
 
 __all__ = [
+    "EDGE_SMOOTHING_METHOD",
+    "EDGE_SMOOTHING_VERSION",
     "PROB_THRESHOLD",
     "binarize_and_clean",
     "foreground_confidence",
