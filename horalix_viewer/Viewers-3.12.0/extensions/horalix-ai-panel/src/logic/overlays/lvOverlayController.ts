@@ -12,6 +12,11 @@ import {
   OVERLAY_VIEWPORT_RECONCILE_INTERVAL_MS,
   sopInstanceUidForViewport,
 } from './overlayViewportState';
+import {
+  isDestroyedViewportError,
+  isElementUsable,
+  safeViewportCall,
+} from './viewportLifecycle';
 
 const LV_OVERLAY_KIND = 'lv_segmentation_overlay';
 const OVERLAY_COLOR: Rgb = [45, 212, 191];
@@ -63,7 +68,8 @@ class LvOverlayLayer {
   private maskCache = new Map<number, DecodedMask | null>();
   private fillAlpha = 0.28;
   private resizeObserver: ResizeObserver | null = null;
-  private boundRender = () => this.render();
+  private destroyed = false;
+  private boundRender = () => this.safeRender();
 
   constructor(viewport: any, document: HoralixLvOverlayDocument) {
     this.viewport = viewport;
@@ -82,13 +88,17 @@ class LvOverlayLayer {
     } as CSSStyleDeclaration);
   }
 
-  attach() {
+  attach(): boolean {
+    if (this.destroyed || !isElementUsable(this.element)) {
+      return false;
+    }
+
     try {
       if (window.getComputedStyle(this.element).position === 'static') {
         this.element.style.position = 'relative';
       }
     } catch {
-      return;
+      return false;
     }
 
     this.element.appendChild(this.canvas);
@@ -97,15 +107,21 @@ class LvOverlayLayer {
     this.element.addEventListener(csEnums.Events.CAMERA_MODIFIED, this.boundRender);
 
     if (typeof ResizeObserver !== 'undefined') {
-      this.resizeObserver = new ResizeObserver(() => this.render());
+      this.resizeObserver = new ResizeObserver(() => this.safeRender());
       this.resizeObserver.observe(this.element);
     }
 
-    this.render();
+    this.safeRender();
+    return true;
   }
 
   ownsViewport(viewport: any) {
-    return this.viewport === viewport && this.element === viewport.element;
+    return (
+      !this.destroyed &&
+      this.viewport === viewport &&
+      this.element === viewport.element &&
+      isElementUsable(this.element)
+    );
   }
 
   setOpacity(alpha: number) {
@@ -113,6 +129,10 @@ class LvOverlayLayer {
   }
 
   validate(): { ok: boolean; reason?: string } {
+    if (this.destroyed || !isElementUsable(this.element)) {
+      return { ok: false, reason: 'viewport_unavailable' };
+    }
+
     const imageId = this.safeCurrentImageId();
     const dimensions = imageDimensions(imageId);
     const frameWidth = this.document.frameWidth || 0;
@@ -130,7 +150,10 @@ class LvOverlayLayer {
       if (slices && this.document.frameCount && slices !== this.document.frameCount) {
         return { ok: false, reason: 'frame_count_mismatch' };
       }
-    } catch {
+    } catch (error) {
+      if (isDestroyedViewportError(error)) {
+        return { ok: false, reason: 'viewport_destroyed' };
+      }
       return { ok: true };
     }
 
@@ -170,6 +193,10 @@ class LvOverlayLayer {
   }
 
   clear() {
+    if (this.destroyed) {
+      return;
+    }
+
     const ctx = this.canvas.getContext('2d');
     if (!ctx) {
       return;
@@ -179,7 +206,15 @@ class LvOverlayLayer {
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
   }
 
+  safeRender() {
+    return safeViewportCall(() => this.render(), undefined);
+  }
+
   render() {
+    if (this.destroyed || !isElementUsable(this.element)) {
+      return;
+    }
+
     const ctx = this.canvas.getContext('2d');
     if (!ctx) {
       return;
@@ -241,6 +276,11 @@ class LvOverlayLayer {
   }
 
   destroy() {
+    if (this.destroyed) {
+      return;
+    }
+
+    this.destroyed = true;
     this.element.removeEventListener(csEnums.Events.STACK_NEW_IMAGE, this.boundRender);
     this.element.removeEventListener(csEnums.Events.IMAGE_RENDERED, this.boundRender);
     this.element.removeEventListener(csEnums.Events.CAMERA_MODIFIED, this.boundRender);
@@ -323,7 +363,11 @@ export function useLvMaskOverlay({
         viewportIds.forEach(viewportId => {
           const viewport =
             cornerstoneViewportService.getCornerstoneViewport(viewportId);
-          if (!viewport || typeof viewport.getCurrentImageId !== 'function') {
+          if (
+            !viewport ||
+            !isElementUsable(viewport.element) ||
+            typeof viewport.getCurrentImageId !== 'function'
+          ) {
             return;
           }
 
@@ -340,7 +384,10 @@ export function useLvMaskOverlay({
             layer?.destroy();
             layer = new LvOverlayLayer(viewport, overlay.document);
             layers.set(viewportId, layer);
-            layer.attach();
+            if (!layer.attach()) {
+              layers.delete(viewportId);
+              return;
+            }
           }
 
           layer.setOpacity(opacityRef.current);
@@ -348,7 +395,7 @@ export function useLvMaskOverlay({
           if (layer.validate().ok) {
             rendering = true;
             activeSop = sop;
-            layer.render();
+            layer.safeRender();
           } else {
             dimensionMismatch = true;
             layer.clear();

@@ -24,6 +24,11 @@ import {
   OVERLAY_VIEWPORT_RECONCILE_INTERVAL_MS,
   sopInstanceUidForViewport,
 } from './overlayViewportState';
+import {
+  isDestroyedViewportError,
+  isElementUsable,
+  safeViewportCall,
+} from './viewportLifecycle';
 
 const LINEAR_OVERLAY_KIND = 'linear_measurement_overlay';
 const DOPPLER_OVERLAY_KIND = 'doppler_measurement_overlay';
@@ -252,7 +257,8 @@ class PointLineOverlayLayer {
   private overlays: HoralixAiOverlay[] = [];
   private opacity = 0.28;
   private resizeObserver: ResizeObserver | null = null;
-  private boundRender = () => this.render();
+  private destroyed = false;
+  private boundRender = () => this.safeRender();
 
   constructor(viewport: any) {
     this.viewport = viewport;
@@ -270,13 +276,17 @@ class PointLineOverlayLayer {
     } as CSSStyleDeclaration);
   }
 
-  attach() {
+  attach(): boolean {
+    if (this.destroyed || !isElementUsable(this.element)) {
+      return false;
+    }
+
     try {
       if (window.getComputedStyle(this.element).position === 'static') {
         this.element.style.position = 'relative';
       }
     } catch {
-      return;
+      return false;
     }
 
     this.element.appendChild(this.canvas);
@@ -285,15 +295,21 @@ class PointLineOverlayLayer {
     this.element.addEventListener(csEnums.Events.CAMERA_MODIFIED, this.boundRender);
 
     if (typeof ResizeObserver !== 'undefined') {
-      this.resizeObserver = new ResizeObserver(() => this.render());
+      this.resizeObserver = new ResizeObserver(() => this.safeRender());
       this.resizeObserver.observe(this.element);
     }
 
-    this.render();
+    this.safeRender();
+    return true;
   }
 
   ownsViewport(viewport: any) {
-    return this.viewport === viewport && this.element === viewport.element;
+    return (
+      !this.destroyed &&
+      this.viewport === viewport &&
+      this.element === viewport.element &&
+      isElementUsable(this.element)
+    );
   }
 
   setOverlays(overlays: HoralixAiOverlay[]) {
@@ -305,6 +321,10 @@ class PointLineOverlayLayer {
   }
 
   clear() {
+    if (this.destroyed) {
+      return;
+    }
+
     const ctx = this.canvas.getContext('2d');
     if (!ctx) {
       return;
@@ -314,7 +334,23 @@ class PointLineOverlayLayer {
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
   }
 
+  safeRender(): RenderResult {
+    return safeViewportCall(() => this.render(), {
+      rendering: false,
+      dimensionMismatch: false,
+      selectedFrameHidden: false,
+    });
+  }
+
   render(): RenderResult {
+    if (this.destroyed || !isElementUsable(this.element)) {
+      return {
+        rendering: false,
+        dimensionMismatch: false,
+        selectedFrameHidden: false,
+      };
+    }
+
     const ctx = this.canvas.getContext('2d');
     if (!ctx) {
       return {
@@ -399,6 +435,11 @@ class PointLineOverlayLayer {
   }
 
   destroy() {
+    if (this.destroyed) {
+      return;
+    }
+
+    this.destroyed = true;
     this.element.removeEventListener(csEnums.Events.STACK_NEW_IMAGE, this.boundRender);
     this.element.removeEventListener(csEnums.Events.IMAGE_RENDERED, this.boundRender);
     this.element.removeEventListener(csEnums.Events.CAMERA_MODIFIED, this.boundRender);
@@ -431,7 +472,10 @@ class PointLineOverlayLayer {
   private currentFrameIndex(): number {
     try {
       return this.viewport.getCurrentImageIdIndex?.() ?? 0;
-    } catch {
+    } catch (error) {
+      if (isDestroyedViewportError(error)) {
+        return 0;
+      }
       return 0;
     }
   }
@@ -540,7 +584,11 @@ export function usePointLineOverlays({
         viewportIds.forEach(viewportId => {
           const viewport =
             cornerstoneViewportService.getCornerstoneViewport(viewportId);
-          if (!viewport || typeof viewport.getCurrentImageId !== 'function') {
+          if (
+            !viewport ||
+            !isElementUsable(viewport.element) ||
+            typeof viewport.getCurrentImageId !== 'function'
+          ) {
             return;
           }
 
@@ -557,12 +605,15 @@ export function usePointLineOverlays({
             layer?.destroy();
             layer = new PointLineOverlayLayer(viewport);
             layers.set(viewportId, layer);
-            layer.attach();
+            if (!layer.attach()) {
+              layers.delete(viewportId);
+              return;
+            }
           }
 
           layer.setOverlays(matchingOverlays);
           layer.setOpacity(opacityRef.current);
-          const result = layer.render();
+          const result = layer.safeRender();
 
           rendering = rendering || result.rendering;
           dimensionMismatch = dimensionMismatch || result.dimensionMismatch;

@@ -5,6 +5,7 @@ import {
   BiometricLoginButton,
   LoginForm,
   LoginHeader,
+  LoginSessionExpiredNotice,
 } from "@/features/login/components";
 
 export default function LoginLayout({ loginPageVM }) {
@@ -18,6 +19,7 @@ export default function LoginLayout({ loginPageVM }) {
     setPassword,
     handleSubmit,
     handleBiometricLogin,
+    sessionExpiredNoticeVisible,
     canOpenServerAdmin,
     onOpenServerAdmin,
     canReconfigureClientRuntime,
@@ -51,6 +53,8 @@ export default function LoginLayout({ loginPageVM }) {
         <LoginHeader />
 
         <div className="glass-card rounded-2xl p-8 animate-slide-up" style={{ animationDelay: "0.05s" }}>
+          <LoginSessionExpiredNotice visible={sessionExpiredNoticeVisible} />
+
           <LoginForm
             username={username}
             password={password}

@@ -3,6 +3,24 @@ import PropTypes from 'prop-types';
 import { Enums, VolumeViewport3D, utilities as csUtils } from '@cornerstonejs/core';
 import { ImageScrollbar } from '@ohif/ui-next';
 
+function isDestroyedViewportError(error) {
+  const text =
+    error instanceof Error
+      ? `${error.name} ${error.message} ${error.stack || ''}`
+      : String(error || '');
+  const normalized = text.toLowerCase();
+
+  return (
+    normalized.includes('viewport has been destroyed') ||
+    normalized.includes('no longer usable') ||
+    normalized.includes('_throwifdestroyed')
+  );
+}
+
+function isElementUsable(element) {
+  return Boolean(element && element.isConnected !== false);
+}
+
 function CornerstoneImageScrollbar({
   viewportData,
   viewportId,
@@ -18,6 +36,14 @@ function CornerstoneImageScrollbar({
 
   const onImageScrollbarChange = (imageIndex, viewportId) => {
     const viewport = cornerstoneViewportService.getCornerstoneViewport(viewportId);
+    if (
+      !viewport ||
+      viewport instanceof VolumeViewport3D ||
+      !isElementUsable(viewport.element) ||
+      viewport.element !== element
+    ) {
+      return;
+    }
 
     const { isCineEnabled } = cineService.getState();
 
@@ -27,10 +53,16 @@ function CornerstoneImageScrollbar({
       cineService.setCine({ id: viewportId, isPlaying: false });
     }
 
-    csUtils.jumpToSlice(viewport.element, {
-      imageIndex,
-      debounceLoading: true,
-    });
+    try {
+      csUtils.jumpToSlice(viewport.element, {
+        imageIndex,
+        debounceLoading: true,
+      });
+    } catch (error) {
+      if (!isDestroyedViewportError(error)) {
+        throw error;
+      }
+    }
   };
 
   useEffect(() => {
@@ -40,7 +72,12 @@ function CornerstoneImageScrollbar({
 
     const viewport = cornerstoneViewportService.getCornerstoneViewport(viewportId);
 
-    if (!viewport || viewport instanceof VolumeViewport3D) {
+    if (
+      !viewport ||
+      viewport instanceof VolumeViewport3D ||
+      !isElementUsable(viewport.element) ||
+      viewport.element !== element
+    ) {
       return;
     }
 
@@ -53,7 +90,9 @@ function CornerstoneImageScrollbar({
         numberOfSlices,
       });
     } catch (error) {
-      console.warn(error);
+      if (!isDestroyedViewportError(error)) {
+        console.warn(error);
+      }
     }
   }, [viewportId, viewportData]);
 
@@ -69,16 +108,29 @@ function CornerstoneImageScrollbar({
 
     const updateIndex = event => {
       const viewport = cornerstoneViewportService.getCornerstoneViewport(viewportId);
-      if (!viewport || viewport instanceof VolumeViewport3D) {
+      if (
+        !viewport ||
+        viewport instanceof VolumeViewport3D ||
+        !isElementUsable(viewport.element) ||
+        viewport.element !== element
+      ) {
         return;
       }
-      const { imageIndex, newImageIdIndex = imageIndex, imageIdIndex } = event.detail;
-      const numberOfSlices = viewport.getNumberOfSlices();
-      // find the index of imageId in the imageIds
-      setImageSliceData({
-        imageIndex: newImageIdIndex ?? imageIdIndex,
-        numberOfSlices,
-      });
+
+      try {
+        const { imageIndex, newImageIdIndex = imageIndex, imageIdIndex } =
+          event.detail || {};
+        const numberOfSlices = viewport.getNumberOfSlices();
+        // find the index of imageId in the imageIds
+        setImageSliceData({
+          imageIndex: newImageIdIndex ?? imageIdIndex,
+          numberOfSlices,
+        });
+      } catch (error) {
+        if (!isDestroyedViewportError(error)) {
+          throw error;
+        }
+      }
     };
 
     element.addEventListener(eventId, updateIndex);

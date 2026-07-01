@@ -1,12 +1,17 @@
 import { createContext, useState, useEffect, useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { checkAuthApi, loginApi, logoutApi } from "@/api/authentication";
-import { clearDesktopAuthToken } from "@/api/desktopAuth";
+import {
+    clearStoredAuthSession,
+    markAuthSessionActive,
+    persistSessionHint,
+    SESSION_HINT_KEY,
+    subscribeAuthSessionExpired,
+} from "@/api/authSession";
 import { formatAuthResponse } from "@/features/login/model/login.dto";
 import { getBackendUrl } from "../config/api";
 
 export const AuthContext = createContext();
-
-const SESSION_HINT_KEY = "authSessionHint";
 
 /**
  * Provides the authenticated user and auth helpers.
@@ -19,6 +24,20 @@ const SESSION_HINT_KEY = "authSessionHint";
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [sessionExpiredNoticeVisible, setSessionExpiredNoticeVisible] = useState(false);
+    const queryClient = useQueryClient();
+
+    const clearSessionExpiredNotice = useCallback(() => {
+        setSessionExpiredNoticeVisible(false);
+    }, []);
+
+    const clearAuthenticatedState = useCallback(({ showSessionExpiredNotice = false } = {}) => {
+        setUser(null);
+        setLoading(false);
+        setSessionExpiredNoticeVisible(showSessionExpiredNotice);
+        clearStoredAuthSession();
+        queryClient.clear();
+    }, [queryClient]);
 
     const waitForHealth = useCallback(async () => {
         try {
@@ -45,13 +64,13 @@ export const AuthProvider = ({ children }) => {
             if (healthy && hasSessionHint()) {
                 const response = await checkAuthApi();
                 setUser(formatAuthResponse(response).user);
+                markAuthSessionActive();
             } else {
                 setUser(null);
             }
         } catch (error) {
             if (error?.response?.status === 401) {
-                try { localStorage.removeItem(SESSION_HINT_KEY); } catch {}
-                clearDesktopAuthToken();
+                clearStoredAuthSession();
             }
             setUser(null);
         } finally {
@@ -63,19 +82,28 @@ export const AuthProvider = ({ children }) => {
         fetchUser();
     }, [fetchUser]);
 
+    useEffect(() => {
+        return subscribeAuthSessionExpired(() => {
+            clearAuthenticatedState({ showSessionExpiredNotice: true });
+        });
+    }, [clearAuthenticatedState]);
+
     // LOGIN - instantly update context
     const login = async (username, password) => {
         const response = await loginApi(username, password);
         setUser(formatAuthResponse(response).user);
-        try { localStorage.setItem(SESSION_HINT_KEY, "1"); } catch {}
+        persistSessionHint();
+        clearSessionExpiredNotice();
         return response;
     };
 
     // LOGOUT - instantly clear context
     const logout = async () => {
-        await logoutApi();
-        setUser(null);
-        try { localStorage.removeItem(SESSION_HINT_KEY); } catch {}
+        try {
+            await logoutApi();
+        } finally {
+            clearAuthenticatedState();
+        }
     };
 
     const value = {
@@ -85,6 +113,8 @@ export const AuthProvider = ({ children }) => {
         login,
         logout,
         loading,
+        sessionExpiredNoticeVisible,
+        clearSessionExpiredNotice,
     };
 
     return (

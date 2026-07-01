@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/general_components/ui/button";
+import { clearStoredAuthSession } from "@/api/authSession";
 import { setApiClientBaseUrl } from "@/api/client";
-import { clearDesktopAuthToken } from "@/api/desktopAuth";
 import { resetResolvedApiUrls } from "@/config/api";
 import {
   ElectronRuntimeConfigProvider,
@@ -10,7 +10,6 @@ import {
 
 const BACKEND_PORT = "8000";
 const VIEWER_PORT = "3001";
-const SESSION_HINT_KEY = "authSessionHint";
 
 function normalizeBaseUrl(value) {
   return String(value || "").trim().replace(/\/+$/, "");
@@ -143,12 +142,7 @@ export default function RuntimeConfigGate({ children }) {
   }, []);
 
   const resetClientAuthState = useCallback(() => {
-    try {
-      localStorage.removeItem(SESSION_HINT_KEY);
-    } catch {
-      // Ignore storage errors in desktop mode.
-    }
-    clearDesktopAuthToken();
+    clearStoredAuthSession();
   }, []);
 
   useEffect(() => {

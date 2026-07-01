@@ -26,7 +26,9 @@ describe("formatDynamicMeasurementsCombinedResultsDto", () => {
     });
 
     expect(result.state).toBe("ready");
-    expect(result.viewerRefreshToken).toBe("orthanc-derived-1");
+    expect(result.viewerRefreshToken).toMatch(/^derived-media-/);
+    expect(result.viewerRefreshToken).not.toContain("orthanc-derived-1");
+    expect(result.viewerRefreshToken.length).toBeLessThan(48);
   });
 
   test("does not use output path when a measurement result has no derived DICOM ref", () => {
@@ -97,7 +99,58 @@ describe("formatDynamicMeasurementsCombinedResultsDto", () => {
       },
     });
 
-    expect(first.viewerRefreshToken).toBe("derived-a|derived-b");
+    expect(first.viewerRefreshToken).toMatch(/^derived-media-/);
+    expect(first.viewerRefreshToken).not.toContain("derived-a");
+    expect(first.viewerRefreshToken).not.toContain("derived-b");
     expect(second.viewerRefreshToken).toBe(first.viewerRefreshToken);
+  });
+
+  test("changes derived DICOM token when derived media identity changes", () => {
+    const first = formatDynamicMeasurements({
+      status: "complete",
+      measurement_results: {
+        instances: [
+          {
+            results: [{ derived_dicom: { orthanc_instance_id: "derived-a" } }],
+          },
+        ],
+      },
+    });
+
+    const second = formatDynamicMeasurements({
+      status: "complete",
+      measurement_results: {
+        instances: [
+          {
+            results: [{ derived_dicom: { orthanc_instance_id: "derived-b" } }],
+          },
+        ],
+      },
+    });
+
+    expect(second.viewerRefreshToken).not.toBe(first.viewerRefreshToken);
+  });
+
+  test("keeps viewer refresh token bounded for long derived DICOM paths", () => {
+    const results = Array.from({ length: 35 }, (_, index) => ({
+      derived_dicom: {
+        relative_dicom_path: `ai_derived_dicom_videos/study/${"nested-path/".repeat(60)}derived-${index}.dcm`,
+      },
+    }));
+    const result = formatDynamicMeasurements({
+      status: "complete",
+      measurement_results: {
+        instances: [
+          {
+            results,
+          },
+        ],
+      },
+    });
+
+    expect(result.viewerRefreshToken).toMatch(/^derived-media-/);
+    expect(result.viewerRefreshToken.length).toBeLessThan(48);
+    expect(result.viewerRefreshToken).not.toContain("ai_derived_dicom_videos");
+    expect(result.viewerRefreshToken).not.toContain("nested-path");
   });
 });

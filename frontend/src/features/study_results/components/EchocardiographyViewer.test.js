@@ -178,6 +178,33 @@ describe("EchocardiographyViewer", () => {
     expect(screen.getByTestId("viewer-skeleton")).toHaveClass("opacity-0");
   });
 
+  test("uses bounded canonical iframe query params", async () => {
+    const longRefreshToken = `derived-media-${"very-long-derived-path-".repeat(100)}`;
+
+    render(
+      <EchocardiographyViewer
+        studyResultsPageViewModel={buildViewModel({
+          viewerRefreshToken: longRefreshToken,
+        })}
+      />
+    );
+
+    const iframe = await screen.findByTitle("OHIF Viewer");
+    const src = iframe.getAttribute("src");
+    const url = new URL(src);
+    const configUrl = url.searchParams.get("configUrl");
+    const cacheBuster = url.searchParams.get("_cb");
+
+    expect(url.searchParams.get("StudyInstanceUIDs")).toBe("study-123");
+    expect(url.searchParams.has("studyInstanceUIDs")).toBe(false);
+    expect(url.searchParams.has("url")).toBe(false);
+    expect(configUrl).toContain("orthanc-standalone.json");
+    expect(cacheBuster).toMatch(/^viewer-/);
+    expect(src).not.toContain(longRefreshToken);
+    expect(configUrl).not.toContain(longRefreshToken);
+    expect(src.length).toBeLessThan(400);
+  });
+
   test("reveals the viewer after iframe load if panel-ready never arrives", async () => {
     jest.useFakeTimers();
 

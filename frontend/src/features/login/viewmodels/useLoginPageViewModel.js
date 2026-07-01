@@ -1,6 +1,7 @@
 import { useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+import { persistSessionHint } from "@/api/authSession";
 import { getAdminSetupStatusApi } from "@/api/admin";
 import { AuthContext } from "@/contexts/AuthenticationContext";
 import { b64uToBuf, serializePublicKeyCredential } from "@/lib/webauthn";
@@ -9,16 +10,6 @@ import { loginRepository } from "@/features/login/model/loginRepository";
 import { useLoginMutation } from "@/features/login/tanstack/mutations/useLoginMutation";
 import { useBiometricLoginMutation } from "@/features/login/tanstack/mutations/useBiometricLoginMutation";
 import { useElectronRuntimeConfig } from "@/hooks/useElectronRuntimeConfig";
-
-const SESSION_HINT_KEY = "authSessionHint";
-
-function persistSessionHint() {
-  try {
-    localStorage.setItem(SESSION_HINT_KEY, "1");
-  } catch {
-    // Ignore storage errors
-  }
-}
 
 export function getPostLoginRoute(user, runtimeMode) {
   if (user?.principalType === "vendor") {
@@ -34,7 +25,11 @@ export function getPostLoginRoute(user, runtimeMode) {
 
 export function useLoginPageViewModel() {
   const navigate = useNavigate();
-  const { setUser } = useContext(AuthContext);
+  const {
+    setUser,
+    sessionExpiredNoticeVisible,
+    clearSessionExpiredNotice,
+  } = useContext(AuthContext);
   const { runtimeConfig, openClientRuntimeConfigEditor } = useElectronRuntimeConfig();
 
   // 1. Data Fetching & Mutations (Server State)
@@ -83,6 +78,7 @@ export function useLoginPageViewModel() {
   const handleLoginSuccess = (formattedLoginResponse) => {
     setUser(formattedLoginResponse.user);
     persistSessionHint();
+    clearSessionExpiredNotice?.();
     navigate(
       getPostLoginRoute(formattedLoginResponse.user, runtimeConfig?.runtimeMode),
       { replace: true }
@@ -159,6 +155,7 @@ export function useLoginPageViewModel() {
     username,
     password,
     error,
+    sessionExpiredNoticeVisible,
 
     // 2. TanStack Loading State
     isLoading: loginMutation.isPending,

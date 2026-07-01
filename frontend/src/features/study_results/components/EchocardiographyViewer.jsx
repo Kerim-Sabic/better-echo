@@ -104,7 +104,6 @@ export default function EchocardiographyViewer({ studyResultsPageViewModel }) {
   // the iframe key/cache-buster intentionally changes only when those outputs
   // materially change.
   const cacheBuster = buildViewerCacheBuster({
-    studyUid,
     locationKey: location.key,
     viewerRefreshToken,
   });
@@ -115,8 +114,6 @@ export default function EchocardiographyViewer({ studyResultsPageViewModel }) {
 
   const params = new URLSearchParams();
   params.set("configUrl", configUrl);
-  params.set("url", configUrl);
-  params.set("studyInstanceUIDs", studyUid || "");
   params.set("StudyInstanceUIDs", studyUid || "");
   params.set("_cb", cacheBuster);
 
