@@ -6,6 +6,7 @@ jest.mock("@/features/login/components", () => ({
   BiometricLoginButton: () => <div>Bio</div>,
   LoginForm: () => <div>Form</div>,
   LoginHeader: () => <div>Header</div>,
+  LoginSessionExpiredNotice: ({ visible }) => visible ? <div>Session expired</div> : null,
 }));
 
 function buildLoginPageVM(overrides = {}) {
@@ -13,6 +14,7 @@ function buildLoginPageVM(overrides = {}) {
     username: "",
     password: "",
     error: "",
+    sessionExpiredNoticeVisible: false,
     isLoading: false,
     bioLoading: false,
     setUsername: jest.fn(),
@@ -38,5 +40,11 @@ describe("LoginLayout", () => {
     render(<LoginLayout loginPageVM={buildLoginPageVM({ canOpenServerAdmin: false })} />);
 
     expect(screen.queryByRole("button", { name: "Open Server Setup" })).not.toBeInTheDocument();
+  });
+
+  test("shows session expired notice when provided by auth state", () => {
+    render(<LoginLayout loginPageVM={buildLoginPageVM({ sessionExpiredNoticeVisible: true })} />);
+
+    expect(screen.getByText("Session expired")).toBeInTheDocument();
   });
 });

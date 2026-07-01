@@ -5,7 +5,7 @@ import {
 } from "@/general_components/utility/dataShapeUtils";
 import { formatDateTime } from "@/general_components/utility/dateUtils";
 import { formatDicomTagStudyDate } from "@/general_components/utility/dicomTagsUtils";
-import { NO_DERIVED_DICOM_VIEWER_TOKEN } from "./studyResults.constants";
+import { buildDerivedMediaViewerRefreshToken } from "./studyResults.constants";
 
 // Maps backend/http status into the frontend page/query state used by the ViewModels.
 function deriveCombinedState(responseStatus, backendStatus) {
@@ -135,7 +135,7 @@ function buildDynamicMeasurementsViewerRefreshToken(
       });
   });
 
-  return tokens.length > 0 ? tokens.sort().join("|") : NO_DERIVED_DICOM_VIEWER_TOKEN;
+  return buildDerivedMediaViewerRefreshToken(tokens);
 }
 
 // Used by:

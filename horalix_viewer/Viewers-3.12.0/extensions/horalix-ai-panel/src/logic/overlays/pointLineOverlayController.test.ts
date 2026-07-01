@@ -20,6 +20,11 @@ import {
   overlayIdentity,
   selectPointLineGeometry,
 } from './pointLineOverlayController';
+import {
+  isDestroyedViewportError,
+  isElementUsable,
+  safeViewportCall,
+} from './viewportLifecycle';
 import { HoralixAiOverlay } from '../../horalixAiResults.types';
 
 function linearOverlay(): HoralixAiOverlay {
@@ -174,5 +179,40 @@ describe('point-line overlay controller helpers', () => {
         rows: 480,
       })
     ).toBe(true);
+  });
+});
+
+describe('viewport lifecycle helpers', () => {
+  it('detects destroyed viewport errors', () => {
+    expect(
+      isDestroyedViewportError(
+        new Error('The stack viewport has been destroyed and is no longer usable.')
+      )
+    ).toBe(true);
+    expect(isDestroyedViewportError(new Error('normal render failure'))).toBe(false);
+  });
+
+  it('returns fallback for destroyed viewport calls only', () => {
+    expect(
+      safeViewportCall(() => {
+        throw new Error('StackViewport._throwIfDestroyed');
+      }, 'fallback')
+    ).toBe('fallback');
+
+    expect(() =>
+      safeViewportCall(() => {
+        throw new Error('normal render failure');
+      }, 'fallback')
+    ).toThrow('normal render failure');
+  });
+
+  it('treats connected elements as usable', () => {
+    const element = document.createElement('div');
+
+    expect(isElementUsable(element)).toBe(false);
+
+    document.body.appendChild(element);
+    expect(isElementUsable(element)).toBe(true);
+    element.remove();
   });
 });
