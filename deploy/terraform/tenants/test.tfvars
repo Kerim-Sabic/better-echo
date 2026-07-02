@@ -7,8 +7,15 @@ contact_email = "affankapidzic3@gmail.com"
 trial_days    = 7
 
 aws_region    = "eu-central-1"
-instance_type = "t3.large"
-enable_gpu    = false   # CPU-only (no LLM). t3.large = 2 vCPU / 8GB RAM, enough to avoid build OOM.
+instance_type = "g6.xlarge"
+enable_gpu    = true   # GPU: 1x A10G 24GB VRAM. Echo models run on CUDA (cu126 torch) + vLLM report.
+
+# Pin the AZ to dodge InsufficientInstanceCapacity. Leave "" to let AWS pick the
+# first default subnet (eu-central-1a, the busiest AZ — often out of g5 capacity).
+# subnet-0ea89878a5a8960bb = eu-central-1a
+# subnet-01ccc60744714f1fe = eu-central-1b
+# subnet-07fd884e43b3c0cad = eu-central-1c 
+subnet_id = "subnet-0ea89878a5a8960bb"   # eu-central-1a
 
 # Tenant subdomain attaches under this zone: <tenant_slug>.<route53_zone_name>
 route53_zone_name = "echo.horalix.com"
@@ -20,7 +27,15 @@ release_s3_uri      = "s3://horalix-releases/v1.0.0/"
 models_s3_uri       = ""
 release_bucket_arns = ["arn:aws:s3:::horalix-releases"]
 
-data_volume_size_gb = 20
+# Report-generation model served by vLLM (downloaded from HuggingFace into the
+# data volume's HF cache on first start). AWQ-quantized so it fits alongside the
+# echo models on the shared A10G.
+reporting_model_id = "Qwen/Qwen2.5-14B-Instruct-AWQ"
+
+# 40GB: the data volume holds Postgres, Orthanc DICOMs, licensing AND the vLLM
+# HuggingFace cache (~9GB for the 14B AWQ report model). 20GB overflowed once the
+# mount was fixed. Only applies to fresh deploys / a volume resize.
+data_volume_size_gb = 40
 
 # Operator office / VPN CIDRs allowed to SSH in. Leave empty to disable SSH
 # entirely (use AWS Session Manager via the SSM role instead).

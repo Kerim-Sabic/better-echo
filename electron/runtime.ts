@@ -5,6 +5,10 @@ export type RuntimeMode = 'server' | 'client';
 
 export type RuntimeConfig = {
   runtimeMode: RuntimeMode;
+  // True when a per-tenant build baked the server URL in: it's authoritative and
+  // the client is locked to its tenant (the login-page setup-wizard escape hatch
+  // is hidden).
+  serverUrlLocked: boolean;
   backendBaseUrl: string | null;
   viewerBaseUrl: string | null;
 };
@@ -21,19 +25,21 @@ const SERVER_BASE_URL_ENV_KEY = 'ELECTRON_SERVER_BASE_URL';
 const VIEWER_BASE_URL_ENV_KEY = 'ELECTRON_VIEWER_BASE_URL';
 const SERVER_VIEWER_BASE_URL_ENV_KEY = 'VIEWER_PUBLIC_BASE_URL';
 const PACKAGED_RUNTIME_MODE_FIELD = 'horalixRuntimeMode';
+const PACKAGED_SERVER_BASE_URL_FIELD = 'horalixServerBaseUrl';
+const PACKAGED_VIEWER_BASE_URL_FIELD = 'horalixViewerBaseUrl';
 
-let cachedPackagedRuntimeMode: RuntimeMode | null | undefined;
+let cachedPackagedManifest: Record<string, unknown> | null | undefined;
 
 function isRuntimeMode(value: unknown): value is RuntimeMode {
   return value === SERVER_MODE || value === CLIENT_MODE;
 }
 
-function readPackagedRuntimeMode(): RuntimeMode | null {
-  if (cachedPackagedRuntimeMode !== undefined) {
-    return cachedPackagedRuntimeMode;
+function readPackagedManifest(): Record<string, unknown> | null {
+  if (cachedPackagedManifest !== undefined) {
+    return cachedPackagedManifest;
   }
 
-  cachedPackagedRuntimeMode = null;
+  cachedPackagedManifest = null;
 
   const resourcesPath = process.resourcesPath || '';
   const packageJsonPaths = [
@@ -49,19 +55,35 @@ function readPackagedRuntimeMode(): RuntimeMode | null {
       }
 
       const rawValue = fs.readFileSync(packageJsonPath, 'utf-8');
-      const parsed = JSON.parse(rawValue) as Record<string, unknown>;
-      const runtimeMode = parsed[PACKAGED_RUNTIME_MODE_FIELD];
-
-      if (isRuntimeMode(runtimeMode)) {
-        cachedPackagedRuntimeMode = runtimeMode;
-        return cachedPackagedRuntimeMode;
-      }
+      cachedPackagedManifest = JSON.parse(rawValue) as Record<string, unknown>;
+      return cachedPackagedManifest;
     } catch {
       continue;
     }
   }
 
-  return cachedPackagedRuntimeMode;
+  return cachedPackagedManifest;
+}
+
+function readPackagedRuntimeMode(): RuntimeMode | null {
+  const runtimeMode = readPackagedManifest()?.[PACKAGED_RUNTIME_MODE_FIELD];
+  return isRuntimeMode(runtimeMode) ? runtimeMode : null;
+}
+
+// Per-tenant installers bake the hospital's server (and viewer) URL into the
+// packaged package.json via electron-builder extraMetadata (see
+// electron-builder.client.config.js), so the client connects automatically with
+// no setup wizard. Baked values are authoritative — they win over the wizard.
+function readPackagedServerBaseUrl(): string | null {
+  return normalizeBaseUrl(
+    readPackagedManifest()?.[PACKAGED_SERVER_BASE_URL_FIELD] as string | undefined
+  );
+}
+
+function readPackagedViewerBaseUrl(): string | null {
+  return normalizeBaseUrl(
+    readPackagedManifest()?.[PACKAGED_VIEWER_BASE_URL_FIELD] as string | undefined
+  );
 }
 
 export function normalizeBaseUrl(value: string | undefined | null): string | null {
@@ -119,16 +141,18 @@ export function resolveRuntimeConfig(
   const runtimeMode = getRuntimeMode(env);
   const persistedServerBaseUrl = normalizeBaseUrl(persistedClientConfig.serverBaseUrl);
   const persistedViewerBaseUrl = normalizeBaseUrl(persistedClientConfig.viewerBaseUrl);
+  const packagedServerBaseUrl = readPackagedServerBaseUrl();
 
   return {
     runtimeMode,
+    serverUrlLocked: runtimeMode === CLIENT_MODE && packagedServerBaseUrl !== null,
     backendBaseUrl:
       runtimeMode === CLIENT_MODE
-        ? persistedServerBaseUrl || getConfiguredServerBaseUrl(env)
+        ? packagedServerBaseUrl || persistedServerBaseUrl || getConfiguredServerBaseUrl(env)
         : getLocalBackendBaseUrl(localBackendPort),
     viewerBaseUrl:
       runtimeMode === CLIENT_MODE
-        ? persistedViewerBaseUrl || getConfiguredViewerBaseUrl(env)
+        ? readPackagedViewerBaseUrl() || persistedViewerBaseUrl || getConfiguredViewerBaseUrl(env)
         : getServerViewerBaseUrl(env),
   };
 }

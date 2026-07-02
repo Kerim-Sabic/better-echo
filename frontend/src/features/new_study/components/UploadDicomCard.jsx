@@ -12,6 +12,7 @@ export default function UploadDicomCard({ newStudyPageViewModel }) {
     selectDicomFiles,
     dicomUploadMaxFiles,
     isDicomUploading,
+    uploadProgress,
     handleUpload,
   } = newStudyPageViewModel;
 
@@ -123,6 +124,39 @@ export default function UploadDicomCard({ newStudyPageViewModel }) {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {isDicomUploading && uploadProgress && (
+          <div className="space-y-2 animate-fade-in" data-testid="upload-progress">
+            <div className="flex items-center justify-between text-sm gap-3">
+              <span className="font-medium text-foreground truncate">
+                {uploadProgress.fileIndex > 0
+                  ? `Uploading file ${uploadProgress.fileIndex} of ${uploadProgress.totalFiles}`
+                  : "Preparing upload..."}
+                {uploadProgress.currentFileName ? ` — ${uploadProgress.currentFileName}` : ""}
+              </span>
+              <span className="shrink-0 text-muted-foreground tabular-nums">
+                {uploadProgress.overallPercent}%
+              </span>
+            </div>
+
+            <div
+              className="w-full h-2.5 rounded-full bg-muted overflow-hidden"
+              role="progressbar"
+              aria-valuenow={uploadProgress.overallPercent}
+              aria-valuemin={0}
+              aria-valuemax={100}
+            >
+              <div
+                className="h-full rounded-full bg-accent-main smooth-transition"
+                style={{ width: `${uploadProgress.overallPercent}%` }}
+              />
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              Large studies can take a few minutes over slower connections, please keep this window open.
+            </p>
           </div>
         )}
 

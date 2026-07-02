@@ -36,6 +36,9 @@ export function useNewStudyPageViewModel() {
   const [instanceIds, setInstanceIds] = useState([]);
   const [dicomTags, setDicomTags] = useState(null);
   const [duplicatesFiles, setDuplicateFiles] = useState([]);
+  // Byte-accurate upload progress across the sequential per-file uploads.
+  // null when idle; otherwise { fileIndex, totalFiles, currentFileName, overallPercent }.
+  const [uploadProgress, setUploadProgress] = useState(null);
 
   // --- Actions / Handlers ---
   const onBack = () => {
@@ -70,6 +73,7 @@ export function useNewStudyPageViewModel() {
     }
 
     setStatus("Uploading DICOM files...");
+    setUploadProgress({ fileIndex: 0, totalFiles: files.length, currentFileName: "", overallPercent: 0 });
 
     try {
       let firstStudyUID = null;
@@ -96,9 +100,31 @@ export function useNewStudyPageViewModel() {
       const duplicateFileNames = [];
       let resolvedStudyUID = firstStudyUID;
 
+      const totalUploadBytes = files.reduce((sum, f) => sum + (f?.size || 0), 0) || 1;
+      let uploadedBytes = 0;
+      let fileIndex = 0;
+
       for (const file of files) {
+        fileIndex += 1;
+        const bytesBeforeFile = uploadedBytes;
+        const reportProgress = loadedBytes =>
+          setUploadProgress({
+            fileIndex,
+            totalFiles: files.length,
+            currentFileName: file.name,
+            // Cap at 99% mid-flight so the bar only reaches 100% once every file is done.
+            overallPercent: Math.min(
+              99,
+              Math.round(((bytesBeforeFile + (loadedBytes || 0)) / totalUploadBytes) * 100)
+            ),
+          });
+        reportProgress(0);
+
         try {
-          const formattedUploadResponse = await uploadDicomMutation.mutateAsync(file);
+          const formattedUploadResponse = await uploadDicomMutation.mutateAsync({
+            file,
+            onUploadProgress: event => reportProgress(event?.loaded),
+          });
           const { studyUid, sopInstanceUid, dicomTags } = formattedUploadResponse || {};
 
           if (studyUid) {
@@ -116,6 +142,7 @@ export function useNewStudyPageViewModel() {
           const detailMessage = error?.response?.data?.detail || error?.message || "";
           if (detailMessage.includes("already been uploaded")) {
             duplicateFileNames.push(file.name);
+            uploadedBytes += file?.size || 0;
             continue;
           }
 
@@ -123,7 +150,16 @@ export function useNewStudyPageViewModel() {
           setStatus(`Upload failed for ${file.name}: ${detailMessage}`);
           throw error;
         }
+
+        uploadedBytes += file?.size || 0;
       }
+
+      setUploadProgress({
+        fileIndex: files.length,
+        totalFiles: files.length,
+        currentFileName: "",
+        overallPercent: 100,
+      });
 
       setDuplicateFiles(duplicateFileNames);
       setStudyUID(resolvedStudyUID);
@@ -155,6 +191,7 @@ export function useNewStudyPageViewModel() {
       }
     } catch (error) {
       console.error(error);
+      setUploadProgress(null);
       const detailMessage = error?.response?.data?.detail;
       setStatus(`Upload failed: ${detailMessage || error.message}`);
     }
@@ -212,6 +249,7 @@ export function useNewStudyPageViewModel() {
     selectDicomFiles,
     dicomUploadMaxFiles,
     isDicomUploading: uploadDicomMutation.isPending || startStudyPipelineMutation.isPending,
+    uploadProgress,
     status,
     studyUID,
     instanceIds,

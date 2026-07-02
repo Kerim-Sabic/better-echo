@@ -3,6 +3,7 @@ import { newStudyRepository } from "@/features/new_study/model/newStudyRepositor
 
 export function useUploadDicomMutation() {
   return useMutation({
-    mutationFn: file => newStudyRepository.uploadDicom(file),
+    mutationFn: ({ file, onUploadProgress }) =>
+      newStudyRepository.uploadDicom(file, onUploadProgress),
   });
 }

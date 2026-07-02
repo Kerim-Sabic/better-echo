@@ -1,0 +1,27 @@
+# GPU override for the cloud stack.
+#
+# Applied ONLY on GPU deployments, layered on top of docker-compose.cloud.yml:
+#   docker compose -f docker-compose.cloud.yml -f docker-compose.cloud.gpu.yml ...
+#
+# bootstrap.sh adds this file (and --profile gpu) when ENABLE_GPU=true. It does
+# two things the base file can't do unconditionally:
+#   1. Gives the BACKEND container access to the GPU, so the echo models
+#      (PanEcho, EchoPrime, segmentation, measurements) run on CUDA instead of
+#      CPU. (The base file can't reserve an nvidia device unconditionally, or
+#      CPU-only deployments would fail to start with "could not select device
+#      driver nvidia".)
+#   2. The vLLM `llm` service already declares its own GPU reservation and is
+#      gated by the "gpu" compose profile, so it needs nothing here.
+#
+# Pair this with TORCH_INDEX=cu126 (set in the generated .env) so the backend
+# image is actually built with CUDA torch wheels.
+
+services:
+  backend:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
