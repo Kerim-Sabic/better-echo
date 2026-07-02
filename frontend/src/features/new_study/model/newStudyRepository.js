@@ -7,8 +7,8 @@ import {
 import { formatUploadDicomResponseDto } from "./newStudy.dto";
 
 export const newStudyRepository = {
-  async uploadDicom(file) {
-    const rawUploadDicomResponse = await uploadDicomApi(file);
+  async uploadDicom(file, onUploadProgress) {
+    const rawUploadDicomResponse = await uploadDicomApi(file, onUploadProgress);
     console.log("RAW UPLOAD DICOM RESPONSE", rawUploadDicomResponse);
     const formattedUploadDicomResponse = formatUploadDicomResponseDto(rawUploadDicomResponse);
     console.log("FORMATTED UPLOAD DICOM RESPONSE", formattedUploadDicomResponse);
