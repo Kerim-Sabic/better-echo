@@ -9,10 +9,10 @@ import { getStudyUIDFromDicomFile } from "@/features/new_study/model/getStudyUID
 export const DICOM_UPLOAD_LIMIT_EXCEEDED = "DICOM_UPLOAD_LIMIT_EXCEEDED";
 
 export function getDicomUploadMaxFiles() {
-  const configuredValue = Number(process.env.REACT_APP_DICOM_UPLOAD_MAX_FILES || 30);
+  const configuredValue = Number(process.env.REACT_APP_DICOM_UPLOAD_MAX_FILES || 50);
   return Number.isFinite(configuredValue) && configuredValue > 0
     ? Math.floor(configuredValue)
-    : 30;
+    : 50;
 }
 
 export function buildDicomUploadLimitMessage(selectedCount, maxFiles) {
