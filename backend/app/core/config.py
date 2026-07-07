@@ -56,6 +56,36 @@ class Settings(BaseSettings):
     SECONDARY_ANALYSIS_METRICS_CHUNK_SIZE: int = 8
     SECONDARY_ANALYSIS_ENCODER_BATCH: int = 4
 
+    # --- Mixed-precision / accelerator tuning (GPU only; CPU path unchanged) ---
+    # Master switch for Automatic Mixed Precision (torch.autocast). When on,
+    # CUDA inference runs in INFERENCE_AMP_DTYPE; CPU always stays FP32.
+    INFERENCE_AMP_ENABLED: bool = True
+    INFERENCE_AMP_DTYPE: str = "float16"  # float16 | bfloat16
+    # channels_last memory format for CNN weights + 4-D inputs (tensor cores).
+    INFERENCE_CHANNELS_LAST: bool = True
+    # cuDNN convolution autotuning; safe because inference input shapes are fixed.
+    # Disable for strict run-to-run determinism.
+    INFERENCE_CUDNN_BENCHMARK: bool = True
+    INFERENCE_ALLOW_TF32: bool = True
+    # AMP for the EchoPrime secondary-analysis path is opt-in: the view
+    # classifier is a discrete decision that is more precision-sensitive than the
+    # continuous regression/segmentation heads, so it defaults off until locally
+    # validated.
+    SECONDARY_ANALYSIS_AMP_ENABLED: bool = False
+
+    # --- Temporal sampling (Part 4) for the 2D keypoint / linear lane ---
+    # Stride of 1 == process every frame (behaviour unchanged). Set to 2 to infer
+    # every second frame and interpolate the skipped ones. Off by default: raising
+    # it changes clinical outputs and must pass the offline parity harness first.
+    LINEAR_TEMPORAL_STRIDE: int = 1
+    LINEAR_TEMPORAL_INTERPOLATION: bool = True
+    # Runtime self-gate: spot-check a few skipped frames against interpolation and
+    # fall back to full every-frame inference if the error exceeds these limits.
+    LINEAR_TEMPORAL_SELF_CHECK: bool = True
+    LINEAR_TEMPORAL_SELF_CHECK_SAMPLES: int = 3
+    LINEAR_TEMPORAL_MAX_POINT_ERROR_PX: float = 2.0
+    LINEAR_TEMPORAL_MAX_LENGTH_ERROR_CM: float = 0.1
+
     # Inference runtime profile and queue controls
     INFERENCE_PROFILE: str = "auto"
     PIPELINE_UNLOAD_POLICY: str = "stage"

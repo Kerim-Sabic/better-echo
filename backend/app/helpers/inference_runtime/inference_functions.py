@@ -18,6 +18,7 @@ from app.core.runtime_paths import (
     ensure_model_assets_available,
     model_assets_dir,
 )
+from app.helpers.inference_runtime import precision
 from app.helpers.inference_runtime.device_selector import get_device_for_model
 
 logger = logging.getLogger(__name__)
@@ -266,7 +267,12 @@ def get_model_and_device() -> Tuple[torch.nn.Module, torch.device]:
             force_reload=False
         )
         _model.to(_device).eval()
-        logger.info("[INFERENCE_FUNCTIONS] Primary analysis model loaded successfully in %.1fs", time.time() - start)
+        precision.configure_backends(_device)
+        logger.info(
+            "[INFERENCE_FUNCTIONS] Primary analysis model loaded successfully in %.1fs | %s",
+            time.time() - start,
+            precision.describe(_device).as_dict(),
+        )
 
     return _model, _device
 

@@ -117,6 +117,7 @@ def _run_structured(
         prediction = predict_linear_measurement_points(
             model_weights=model_weights,
             model_frames_bgr=inputs.model_frames_bgr,
+            model_input_tensor=inputs.model_input_tensor,
         )
     finally:
         unload_after_request = (

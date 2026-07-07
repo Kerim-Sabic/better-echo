@@ -13,6 +13,7 @@ from app.database_models.derived_results import DerivedResult
 from app.database_models.instances import Instance
 from app.database_models.series import Series
 from app.database_models.studies import Study
+from app.helpers.inference_runtime import precision
 from app.helpers.inference_runtime.batch_config import get_batch_size
 from app.helpers.inference_runtime.inference_functions import (
     cached_panecho_tensor,
@@ -130,7 +131,7 @@ def run_primary_analysis_metrics(
         batch_tensor = torch.cat(tensors, dim=0).to(device)
 
         logger.info("[PRIMARY_ANALYSIS] Running batch inference on %d instance(s)", len(valid_ids))
-        with torch.no_grad():
+        with torch.no_grad(), precision.autocast(device):
             preds_batch = model(batch_tensor)
         if not isinstance(preds_batch, dict):
             raise RuntimeError("Model did not return a dict of tasks")

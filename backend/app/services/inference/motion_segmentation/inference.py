@@ -11,6 +11,8 @@ import numpy as np
 import torch
 
 from app.core.runtime_paths import ensure_model_assets_available, model_asset_path
+from app.helpers.inference_runtime import precision
+from app.helpers.inference_runtime.adaptive_batch import run_adaptive_batches
 from app.helpers.inference_runtime.device_selector import get_device_for_model
 
 logger = logging.getLogger(__name__)
@@ -69,11 +71,16 @@ def load_motion_segmentation_model():
     model_instance.load_state_dict(normalized_state_dict, strict=False)
     model_instance.to(device)
     model_instance.eval()
+    # Accelerator tuning: cuDNN autotune (fixed 112x112 shape) + channels_last
+    # weights for the FP16 tensor-core conv kernels. No-ops on CPU.
+    precision.configure_backends(device)
+    model_instance = precision.to_channels_last(model_instance, device)
     model = model_instance
     logger.info(
-        "[MotionSegmentation] Model loaded on %s in %.1fs",
+        "[MotionSegmentation] Model loaded on %s in %.1fs | %s",
         device,
         time.time() - start,
+        precision.describe(device).as_dict(),
     )
     return model
 
@@ -108,10 +115,9 @@ def iter_lv_probabilities(
     total = len(frames)
     start_time = time.time()
 
-    for batch_start in range(0, total, batch_size):
-        batch_frames = frames[batch_start : batch_start + batch_size]
+    def _run_batch(batch_start: int, batch_end: int) -> np.ndarray:
         tensors = []
-        for frame in batch_frames:
+        for frame in frames[batch_start:batch_end]:
             img_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             resized = cv2.resize(
                 img_rgb,
@@ -121,10 +127,21 @@ def iter_lv_probabilities(
             tensors.append(F.to_tensor(resized))
 
         batch_tensor = torch.stack(tensors).to(target_device)
-        with torch.no_grad():
+        batch_tensor = precision.as_channels_last(batch_tensor, target_device)
+        with torch.no_grad(), precision.autocast(target_device):
             logits = model_instance(batch_tensor)["out"][:, 0]
-            probabilities = torch.sigmoid(logits).cpu().numpy().astype(np.float32)
+            # sigmoid + host copy done in FP32 so the probability map that feeds
+            # binarisation/RLE is identical in layout to the FP32 path.
+            probabilities = torch.sigmoid(logits.float()).cpu().numpy().astype(np.float32)
+        return probabilities
 
+    for batch_start, _batch_end, probabilities in run_adaptive_batches(
+        total,
+        batch_size,
+        _run_batch,
+        device=target_device,
+        label="MotionSegmentation",
+    ):
         for local_idx in range(probabilities.shape[0]):
             global_idx = batch_start + local_idx + 1
             if (

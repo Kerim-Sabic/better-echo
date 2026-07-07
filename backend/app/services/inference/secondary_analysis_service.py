@@ -21,8 +21,11 @@ from app.database_models.derived_results import DerivedResult
 from app.database_models.instances import Instance
 from app.database_models.series import Series
 from app.database_models.studies import Study
+from app.helpers.inference_runtime import precision
 from app.helpers.inference_runtime.inference_functions import fetch_orthanc_instance_ids_from_study
 from app.helpers.media.frame_cache import StudyFrameCache, get_study_frame_cache
+
+_SECONDARY_AMP_SETTING = "SECONDARY_ANALYSIS_AMP_ENABLED"
 
 orthanc_url = settings.ORTHANC_URL
 orthanc_user = settings.ORTHANC_USER
@@ -388,12 +391,15 @@ def run_secondary_analysis_metrics(
             )
 
             if stack_of_videos.shape[0] > 0:
-                metrics_accumulator = ep.accumulate_metrics_chunk(
-                    metrics_accumulator,
-                    stack_of_videos,
-                    encoder_batch_size=encoder_batch_size,
-                    visualize=False,
-                )
+                with precision.autocast(
+                    getattr(ep, "device", None), setting_name=_SECONDARY_AMP_SETTING
+                ):
+                    metrics_accumulator = ep.accumulate_metrics_chunk(
+                        metrics_accumulator,
+                        stack_of_videos,
+                        encoder_batch_size=encoder_batch_size,
+                        visualize=False,
+                    )
                 processed_instances += int(stack_of_videos.shape[0])
 
             del stack_of_videos
@@ -547,12 +553,15 @@ def classify_views_for_study(
             if stack_of_videos.shape[0] == 0:
                 continue
 
-            view_list, view_confidence_list = ep.get_views(
-                stack_of_videos,
-                visualize=False,
-                return_view_list=True,
-                return_scores=True,
-            )
+            with precision.autocast(
+                getattr(ep, "device", None), setting_name=_SECONDARY_AMP_SETTING
+            ):
+                view_list, view_confidence_list = ep.get_views(
+                    stack_of_videos,
+                    visualize=False,
+                    return_view_list=True,
+                    return_scores=True,
+                )
 
             prediction_count = len(view_list)
             if prediction_count != len(processed_paths):

@@ -5,8 +5,12 @@ from typing import TYPE_CHECKING, Any, Optional
 
 import cv2
 import numpy as np
+import torch
 
-from app.services.inference.linear_measurements.inference import MODEL_INPUT_SIZE
+from app.services.inference.linear_measurements.inference import (
+    MODEL_INPUT_SIZE,
+    build_model_input_tensor,
+)
 
 if TYPE_CHECKING:
     from app.helpers.media.frame_cache import StudyFrameCache
@@ -37,6 +41,11 @@ class LinearMeasurementInputs:
     frame_width: int
     frame_height: int
     dicom_scale: Optional[DicomScale]
+    # Preprocessed NCHW float tensor for the 2D models, built once per instance
+    # and shared across every routed measurement weight. Optional so callers /
+    # tests that construct inputs directly keep working; consumers fall back to
+    # building it from ``model_frames_bgr`` when absent.
+    model_input_tensor: Optional[torch.Tensor] = None
 
 
 def _normalize_uint8(image: np.ndarray) -> np.ndarray:
@@ -178,6 +187,7 @@ def _load_avi_inputs(input_path: str) -> LinearMeasurementInputs:
         frame_width=int(frame_width),
         frame_height=int(frame_height),
         dicom_scale=None,
+        model_input_tensor=build_model_input_tensor(model_frames),
     )
 
 
@@ -208,6 +218,7 @@ def _build_dicom_inputs(pixel_array: np.ndarray, ds: Any) -> LinearMeasurementIn
             frame_width=int(frame_width),
             frame_height=int(frame_height),
         ),
+        model_input_tensor=build_model_input_tensor(model_frames),
     )
 
 
