@@ -1,7 +1,14 @@
 import logging
+from typing import TYPE_CHECKING, List, Optional, Tuple
+
 import numpy as np
 import cv2
 import pydicom as dicom
+
+from app.helpers.media.frame_cache import dicom_fps
+
+if TYPE_CHECKING:
+    from app.helpers.media.frame_cache import StudyFrameCache
 
 logger = logging.getLogger(__name__)
 
@@ -29,30 +36,20 @@ def mask_frame(frame: np.ndarray) -> np.ndarray:
 
 def _get_fps(ds) -> float:
     # Prefer CineRate, fallback to FrameTime (ms), else 30
-    cine_rate = getattr(ds, "CineRate", None)
-    frame_time = getattr(ds, "FrameTime", None)  # ms
-    if isinstance(cine_rate, (int, float)) and cine_rate > 0:
-        return float(cine_rate)
-    if isinstance(frame_time, (int, float)) and frame_time > 0:
-        return max(1.0, 1000.0 / float(frame_time))
-    return 30.0
+    return dicom_fps(ds)
 
 
-def read_dicom_frames(
-    dicom_path: str,
+def frames_from_pixels(
+    px: np.ndarray,
+    fps: float,
     apply_mask: bool = True,
     preserve_geometry: bool = False,
-):
+) -> Tuple[List[np.ndarray], float]:
     """
-    Read DICOM cine frames into memory and return (frames_bgr, fps) without writing to disk.
+    Convert a decoded DICOM pixel array into (frames_bgr, fps).
 
-    Modes:
-    1. preserve_geometry=False (default): applies legacy preprocessing (blank-row removal, square crop, trim).
-    2. preserve_geometry=True: keeps original frame geometry for high-fidelity overlay rendering.
+    Never mutates the input array; all frames are freshly allocated.
     """
-    ds = dicom.dcmread(dicom_path, force=True)
-    px = ds.pixel_array  # (H,W), (F,H,W), or (F,H,W,C)
-
     if px.ndim == 2:
         px = px[np.newaxis, ...]
     elif px.ndim == 4:
@@ -85,7 +82,6 @@ def read_dicom_frames(
             px = px[:, trim:H - trim, trim:W - trim]
             H = W = px.shape[1]
 
-    fps = _get_fps(ds)
     frames = []
     for i in range(F):
         gray = _to_uint8(px[i])
@@ -95,3 +91,43 @@ def read_dicom_frames(
         frames.append(bgr)
 
     return frames, float(fps)
+
+
+def read_dicom_frames(
+    dicom_path: str,
+    apply_mask: bool = True,
+    preserve_geometry: bool = False,
+    cache: Optional["StudyFrameCache"] = None,
+):
+    """
+    Read DICOM cine frames into memory and return (frames_bgr, fps) without writing to disk.
+
+    Modes:
+    1. preserve_geometry=False (default): applies legacy preprocessing (blank-row removal, square crop, trim).
+    2. preserve_geometry=True: keeps original frame geometry for high-fidelity overlay rendering.
+
+    When a study frame cache is supplied, the pixel decode and the frame
+    conversion for this (apply_mask, preserve_geometry) combination each run
+    at most once per instance for the lifetime of the analysis job.
+    """
+    if cache is not None:
+        recipe = f"reader_frames:mask={int(apply_mask)}:geom={int(preserve_geometry)}"
+        return cache.get_derived(
+            dicom_path,
+            recipe,
+            lambda decoded: frames_from_pixels(
+                decoded.pixel_array,
+                decoded.fps,
+                apply_mask=apply_mask,
+                preserve_geometry=preserve_geometry,
+            ),
+        )
+
+    ds = dicom.dcmread(dicom_path, force=True)
+    px = ds.pixel_array  # (H,W), (F,H,W), or (F,H,W,C)
+    return frames_from_pixels(
+        px,
+        _get_fps(ds),
+        apply_mask=apply_mask,
+        preserve_geometry=preserve_geometry,
+    )

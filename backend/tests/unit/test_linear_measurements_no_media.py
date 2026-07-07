@@ -85,7 +85,7 @@ def test_structured_linear_measurement_creates_no_media_and_persists_overlay(
                 ratio_h=60 / 480,
             ),
         )
-        monkeypatch.setattr(svc, "load_measurement_inputs", lambda _path: inputs)
+        monkeypatch.setattr(svc, "load_measurement_inputs", lambda _path, cache=None: inputs)
         monkeypatch.setattr(
             svc,
             "predict_linear_measurement_points",
@@ -208,7 +208,7 @@ def test_structured_linear_measurement_flags_low_confidence(
                 ratio_h=60 / 480,
             ),
         )
-        monkeypatch.setattr(svc, "load_measurement_inputs", lambda _path: inputs)
+        monkeypatch.setattr(svc, "load_measurement_inputs", lambda _path, cache=None: inputs)
         monkeypatch.setattr(
             svc,
             "predict_linear_measurement_points",

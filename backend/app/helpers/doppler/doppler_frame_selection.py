@@ -29,6 +29,11 @@ def _to_rgb_image(frame: np.ndarray, photometric: str) -> np.ndarray:
     if image.ndim != 3 or image.shape[2] != 3:
         raise ValueError("Unsupported image format for Doppler frame selection.")
 
+    # Never write through to the caller's pixel array (it may be a shared,
+    # read-only cached decode); the ECG masking below is in-place.
+    if np.may_share_memory(image, frame):
+        image = image.copy()
+
     # Mask likely ECG overlay line in color captures.
     ecg_mask = np.logical_and(image[:, :, 1] > 200, image[:, :, 0] < 100)
     image[ecg_mask, :] = 0
@@ -44,9 +49,18 @@ def _safe_positive_int(value: Any) -> Optional[int]:
 
 
 def _resolve_frame_count(ds: pydicom.Dataset, pixel_array: np.ndarray) -> int:
-    declared = _safe_positive_int(getattr(ds, "NumberOfFrames", None))
-    photometric = str(getattr(ds, "PhotometricInterpretation", "")).upper()
+    return _resolve_frame_count_from(
+        _safe_positive_int(getattr(ds, "NumberOfFrames", None)),
+        str(getattr(ds, "PhotometricInterpretation", "")).upper(),
+        pixel_array,
+    )
 
+
+def _resolve_frame_count_from(
+    declared: Optional[int],
+    photometric: str,
+    pixel_array: np.ndarray,
+) -> int:
     derived: Optional[int] = None
     if pixel_array.ndim == 4:
         derived = int(pixel_array.shape[0])
@@ -160,6 +174,23 @@ def _find_mature_start(
 def select_doppler_frame(ds: pydicom.Dataset, y0: int) -> Tuple[np.ndarray, Dict[str, Any]]:
     """
     Select one frame for Doppler inference from single-frame or cine DICOM.
+    """
+    return select_doppler_frame_from_pixels(
+        ds.pixel_array,
+        str(getattr(ds, "PhotometricInterpretation", "")).upper(),
+        _safe_positive_int(getattr(ds, "NumberOfFrames", None)),
+        y0,
+    )
+
+
+def select_doppler_frame_from_pixels(
+    pixel_array: np.ndarray,
+    photometric: str,
+    declared_frames: Optional[int],
+    y0: int,
+) -> Tuple[np.ndarray, Dict[str, Any]]:
+    """
+    Select one frame for Doppler inference from decoded pixel data.
 
     Steps:
     1. Resolve frame count and return frame 0 for single-frame inputs.
@@ -168,9 +199,8 @@ def select_doppler_frame(ds: pydicom.Dataset, y0: int) -> Tuple[np.ndarray, Dict
     4. Return selected frame image and detailed selection metadata.
     """
     # --- Part 1: Resolve frame geometry and single-frame fast path ---
-    pixel_array = ds.pixel_array
-    photometric = str(getattr(ds, "PhotometricInterpretation", "")).upper()
-    frame_count = _resolve_frame_count(ds, pixel_array)
+    photometric = (photometric or "").upper()
+    frame_count = _resolve_frame_count_from(declared_frames, photometric, pixel_array)
 
     if frame_count <= 1:
         image_rgb = _to_rgb_image(pixel_array, photometric)

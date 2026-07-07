@@ -15,12 +15,14 @@ from app.database_models.series import Series
 from app.database_models.studies import Study
 from app.helpers.inference_runtime.batch_config import get_batch_size
 from app.helpers.inference_runtime.inference_functions import (
+    cached_panecho_tensor,
     fetch_orthanc_instance_ids_from_study,
     get_model_and_device,
     pick_frames_from_instance,
     pick_frames_from_local_dicom,
     stack_to_tensor,
 )
+from app.helpers.media.frame_cache import get_study_frame_cache
 
 logger = logging.getLogger(__name__)
 
@@ -80,6 +82,7 @@ def run_primary_analysis_metrics(
         )
 
     model, device = get_model_and_device()
+    frame_cache = get_study_frame_cache(study_uid)
 
     # Part 2.1 Collect predictions in batches and normalize per-instance outputs.
     all_preds = []
@@ -100,19 +103,22 @@ def run_primary_analysis_metrics(
         for orthanc_instance_id in batch_ids:
             try:
                 local_path = local_path_by_orthanc_id.get(orthanc_instance_id)
+                tensor = None
                 if local_path:
                     try:
-                        frames = pick_frames_from_local_dicom(local_path, 16)
+                        if frame_cache is not None:
+                            tensor = cached_panecho_tensor(frame_cache, local_path, 16)
+                        else:
+                            tensor = stack_to_tensor(pick_frames_from_local_dicom(local_path, 16))
                     except Exception as local_error:
                         logger.warning(
                             "[PRIMARY_ANALYSIS] Local frame read failed for %s (%s); falling back to Orthanc",
                             orthanc_instance_id,
                             local_error,
                         )
-                        frames = pick_frames_from_instance(orthanc_instance_id, 16)
-                else:
-                    frames = pick_frames_from_instance(orthanc_instance_id, 16)
-                tensors.append(stack_to_tensor(frames))
+                if tensor is None:
+                    tensor = stack_to_tensor(pick_frames_from_instance(orthanc_instance_id, 16))
+                tensors.append(tensor)
                 valid_ids.append(orthanc_instance_id)
             except Exception as err:
                 logger.warning("[PRIMARY_ANALYSIS] Skipping instance %s: %s", orthanc_instance_id, err)

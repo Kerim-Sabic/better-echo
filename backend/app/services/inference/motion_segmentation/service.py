@@ -21,6 +21,7 @@ from app.helpers.inference_runtime.batch_config import get_batch_size
 from app.helpers.inference_runtime.device_selector import get_device_for_model
 from app.helpers.inference_runtime.inference_functions import check_instance_exists_in_orthanc
 from app.helpers.media.dicom_frame_reader import read_dicom_frames
+from app.helpers.media.frame_cache import StudyFrameCache, get_study_frame_cache
 from app.helpers.media.mask_rle import empty_rle, encode_binary_mask_rle
 from app.services.inference.motion_segmentation.inference import (
     iter_lv_probabilities,
@@ -40,7 +41,10 @@ logger = logging.getLogger(__name__)
 
 
 # Part 1. Load source frames without modifying source geometry.
-def _load_frames(dicom_file_path: str) -> tuple[list[np.ndarray], float, tuple[int, int]]:
+def _load_frames(
+    dicom_file_path: str,
+    cache: StudyFrameCache | None = None,
+) -> tuple[list[np.ndarray], float, tuple[int, int]]:
     suffix = Path(dicom_file_path).suffix.lower()
 
     if suffix == ".dcm":
@@ -50,6 +54,7 @@ def _load_frames(dicom_file_path: str) -> tuple[list[np.ndarray], float, tuple[i
                 dicom_file_path,
                 apply_mask=False,
                 preserve_geometry=True,
+                cache=cache,
             )
         except Exception as exc:
             logger.exception("[MotionSegmentation] Failed to read DICOM frames")
@@ -229,7 +234,10 @@ def run_motion_segmentation(
             detail=f"DICOM file not found at {dicom_file_path}",
         )
 
-    frames, fps, frame_size = _load_frames(dicom_file_path)
+    cache = get_study_frame_cache(
+        instance.series.study.study_uid if instance.series and instance.series.study else None
+    )
+    frames, fps, frame_size = _load_frames(dicom_file_path, cache=cache)
     result = _run_structured(
         instance=instance,
         db=db,

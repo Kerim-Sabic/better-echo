@@ -261,10 +261,12 @@ def run_doppler_inference(
     model_weights: str,
     input_path: str,
     region_override: dict | None = None,
+    cache=None,
 ) -> dict:
     inputs = load_doppler_inputs(
         input_path=input_path,
         region_override=region_override,
+        cache=cache,
     )
     return predict_doppler_measurement(
         model_weights=model_weights,

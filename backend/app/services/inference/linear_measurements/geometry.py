@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 import cv2
 import numpy as np
 
 from app.services.inference.linear_measurements.inference import MODEL_INPUT_SIZE
+
+if TYPE_CHECKING:
+    from app.helpers.media.frame_cache import StudyFrameCache
 
 try:
     import pydicom
@@ -14,6 +17,8 @@ try:
 except Exception:  # pragma: no cover
     pydicom = None
     convert_color_space = None
+
+LINEAR_INPUTS_RECIPE = "linear_inputs"
 
 
 @dataclass(frozen=True)
@@ -63,10 +68,7 @@ def _dicom_fps(ds: Any) -> float:
     return 30.0
 
 
-def _iter_pixel_frames(ds: Any) -> list[np.ndarray]:
-    pixel_array = ds.pixel_array
-    number_of_frames = int(getattr(ds, "NumberOfFrames", 1) or 1)
-
+def _iter_pixel_frames(pixel_array: np.ndarray, number_of_frames: int) -> list[np.ndarray]:
     if pixel_array.ndim == 2:
         return [pixel_array]
     if pixel_array.ndim == 4:
@@ -179,13 +181,14 @@ def _load_avi_inputs(input_path: str) -> LinearMeasurementInputs:
     )
 
 
-def _load_dicom_inputs(input_path: str) -> LinearMeasurementInputs:
-    if pydicom is None:
-        raise RuntimeError("pydicom is required to read DICOM inputs.")
-
-    ds = pydicom.dcmread(input_path, force=True)
+def _build_dicom_inputs(pixel_array: np.ndarray, ds: Any) -> LinearMeasurementInputs:
+    """Build measurement inputs from decoded pixels plus the DICOM header."""
     photometric = str(getattr(ds, "PhotometricInterpretation", "")).upper()
-    source_frames = [_frame_to_bgr(frame, photometric) for frame in _iter_pixel_frames(ds)]
+    number_of_frames = int(getattr(ds, "NumberOfFrames", 1) or 1)
+    source_frames = [
+        _frame_to_bgr(frame, photometric)
+        for frame in _iter_pixel_frames(pixel_array, number_of_frames)
+    ]
     if not source_frames:
         raise ValueError("No frames extracted from DICOM")
 
@@ -208,11 +211,30 @@ def _load_dicom_inputs(input_path: str) -> LinearMeasurementInputs:
     )
 
 
-def load_measurement_inputs(input_path: str) -> LinearMeasurementInputs:
+def _load_dicom_inputs(input_path: str) -> LinearMeasurementInputs:
+    if pydicom is None:
+        raise RuntimeError("pydicom is required to read DICOM inputs.")
+
+    ds = pydicom.dcmread(input_path, force=True)
+    return _build_dicom_inputs(ds.pixel_array, ds)
+
+
+def load_measurement_inputs(
+    input_path: str,
+    cache: Optional["StudyFrameCache"] = None,
+) -> LinearMeasurementInputs:
     suffix = input_path.rsplit(".", 1)[-1].lower() if "." in input_path else ""
     if suffix == "avi":
         return _load_avi_inputs(input_path)
     if suffix == "dcm":
+        if cache is not None:
+            # One decode + one preprocess per instance, shared across every
+            # 2D measurement weight run in the same analysis job.
+            return cache.get_derived(
+                input_path,
+                LINEAR_INPUTS_RECIPE,
+                lambda decoded: _build_dicom_inputs(decoded.pixel_array, decoded.header),
+            )
         return _load_dicom_inputs(input_path)
     raise ValueError("Only .avi or .dcm inputs are supported")
 

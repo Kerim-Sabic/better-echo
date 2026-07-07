@@ -22,6 +22,7 @@ from app.database_models.instances import Instance
 from app.database_models.series import Series
 from app.database_models.studies import Study
 from app.helpers.doppler.doppler_tags import inspect_doppler_tags
+from app.helpers.media.frame_cache import get_study_frame_cache
 from app.services.inference.spectral_measurements.inference import (
     run_doppler_inference,
     unload_doppler_models,
@@ -288,6 +289,11 @@ def run_spectral_measurements(
                 model_weights=model_weights,
                 input_path=instance.file_path,
                 region_override=selected_region,
+                cache=get_study_frame_cache(
+                    instance.series.study.study_uid
+                    if instance.series and instance.series.study
+                    else None
+                ),
             )
         except Exception as err:
             logger.exception("[Doppler] Inference failed")

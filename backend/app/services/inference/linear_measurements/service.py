@@ -19,6 +19,7 @@ from app.core.config import settings
 from app.database_models.derived_results import DerivedResult
 from app.database_models.instances import Instance
 from app.helpers.inference_runtime.inference_functions import check_instance_exists_in_orthanc
+from app.helpers.media.frame_cache import get_study_frame_cache
 from app.services.inference.linear_measurements.geometry import (
     build_frame_geometry,
     load_measurement_inputs,
@@ -108,7 +109,10 @@ def _run_structured(
     defer_model_unload: bool,
 ) -> dict:
     start = time.time()
-    inputs = load_measurement_inputs(instance.file_path)
+    frame_cache = get_study_frame_cache(
+        instance.series.study.study_uid if instance.series and instance.series.study else None
+    )
+    inputs = load_measurement_inputs(instance.file_path, cache=frame_cache)
     try:
         prediction = predict_linear_measurement_points(
             model_weights=model_weights,

@@ -22,6 +22,7 @@ from app.database_models.instances import Instance
 from app.database_models.series import Series
 from app.database_models.studies import Study
 from app.helpers.inference_runtime.inference_functions import fetch_orthanc_instance_ids_from_study
+from app.helpers.media.frame_cache import StudyFrameCache, get_study_frame_cache
 
 orthanc_url = settings.ORTHANC_URL
 orthanc_user = settings.ORTHANC_USER
@@ -192,11 +193,43 @@ def download_dicoms_for_study(instance_ids: List[str]) -> List[Dict[str, str]]:
     return download_dicoms_for_instances(instance_ids, tmp_dir)
 
 
-def _stack_processed_dicoms(ep: Any, dicom_paths: List[str]) -> tuple[torch.Tensor, List[str]]:
+ECHOPRIME_CLIP_RECIPE = "echoprime_clip"
+
+
+def _cached_echoprime_clip(
+    ep: Any,
+    cache: StudyFrameCache,
+    dicom_path: str,
+) -> Optional[torch.Tensor]:
+    def _factory(decoded):
+        if decoded.required_force:
+            # EchoPrime historically rejects files that need force-parsing;
+            # preserve that behavior so the cached clip matches direct output.
+            return None
+        return ep.process_pixel_array(decoded.pixel_array, source=decoded.key)
+
+    try:
+        return cache.get_derived(dicom_path, ECHOPRIME_CLIP_RECIPE, _factory)
+    except Exception as exc:
+        logger.warning(
+            "[SecondaryAnalysis] Skipping unreadable DICOM %s: %s", dicom_path, exc
+        )
+        return None
+
+
+def _stack_processed_dicoms(
+    ep: Any,
+    dicom_paths: List[str],
+    cache: Optional[StudyFrameCache] = None,
+) -> tuple[torch.Tensor, List[str]]:
     clips = []
     processed_paths = []
+    use_cache = cache is not None and callable(getattr(ep, "process_pixel_array", None))
     for dicom_path in dicom_paths:
-        clip = ep.process_dicom_file(dicom_path)
+        if use_cache:
+            clip = _cached_echoprime_clip(ep, cache, dicom_path)
+        else:
+            clip = ep.process_dicom_file(dicom_path)
         if clip is None:
             continue
         clips.append(clip)
@@ -207,6 +240,32 @@ def _stack_processed_dicoms(ep: Any, dicom_paths: List[str]) -> tuple[torch.Tens
         return empty, processed_paths
 
     return torch.stack(clips), processed_paths
+
+
+def _local_file_paths_for_orthanc_ids(
+    *,
+    db: Session,
+    study_uid: str,
+    orthanc_instance_ids: List[str],
+) -> Dict[str, str]:
+    """Map Orthanc instance IDs to on-disk DICOM paths for this study."""
+    if not orthanc_instance_ids:
+        return {}
+    rows = (
+        db.query(Instance.instance_orthanc_id, Instance.file_path)
+        .join(Instance.series)
+        .join(Series.study)
+        .filter(
+            Study.study_uid == study_uid,
+            Instance.instance_orthanc_id.in_(orthanc_instance_ids),
+        )
+        .all()
+    )
+    return {
+        orthanc_id: file_path
+        for orthanc_id, file_path in rows
+        if orthanc_id and file_path and os.path.exists(file_path)
+    }
 
 
 # Part 3. Secondary analysis metrics inference service entrypoint.
@@ -229,17 +288,41 @@ def run_secondary_analysis_metrics(
     encoder_batch_size = _positive_int(settings.SECONDARY_ANALYSIS_ENCODER_BATCH, 4)
     chunk_dirs: List[str] = []
 
+    # Reuse on-disk uploads (and any frames already decoded during prefilter)
+    # instead of re-downloading every instance from Orthanc.
+    frame_cache = get_study_frame_cache(study_uid)
+    local_path_by_orthanc_id = _local_file_paths_for_orthanc_ids(
+        db=db,
+        study_uid=study_uid,
+        orthanc_instance_ids=instance_orthanc_ids,
+    )
+    if local_path_by_orthanc_id:
+        logger.info(
+            "[SecondaryAnalysis] Local DICOM fast-path available for %d/%d instance(s)",
+            len(local_path_by_orthanc_id),
+            len(instance_orthanc_ids),
+        )
+
     try:
         metrics_accumulator = ep.create_metrics_accumulator()
         processed_instances = 0
 
         for chunk_ids in _chunked(instance_orthanc_ids, metrics_chunk_size):
+            chunk_paths = [
+                local_path_by_orthanc_id[iid]
+                for iid in chunk_ids
+                if iid in local_path_by_orthanc_id
+            ]
+            remote_ids = [iid for iid in chunk_ids if iid not in local_path_by_orthanc_id]
             chunk_dir = tempfile.mkdtemp(prefix="secondary_analysis_metrics_chunk_")
             chunk_dirs.append(chunk_dir)
-            downloaded = download_dicoms_for_instances(chunk_ids, chunk_dir)
+            if remote_ids:
+                downloaded = download_dicoms_for_instances(remote_ids, chunk_dir)
+                chunk_paths.extend(record["path"] for record in downloaded)
             stack_of_videos, _processed_paths = _stack_processed_dicoms(
                 ep,
-                [record["path"] for record in downloaded],
+                chunk_paths,
+                cache=frame_cache,
             )
 
             if stack_of_videos.shape[0] > 0:
@@ -384,10 +467,15 @@ def classify_views_for_study(
 
     ep = get_secondary_analysis_model()
     classify_chunk_size = _positive_int(settings.SECONDARY_ANALYSIS_CLASSIFY_CHUNK_SIZE, 8)
+    frame_cache = get_study_frame_cache(study_uid)
     result_map: Dict[str, Dict[str, Optional[float | str]]] = {}
     try:
         for chunk_paths in _chunked(disk_files, classify_chunk_size):
-            stack_of_videos, processed_paths = _stack_processed_dicoms(ep, chunk_paths)
+            stack_of_videos, processed_paths = _stack_processed_dicoms(
+                ep,
+                chunk_paths,
+                cache=frame_cache,
+            )
             if stack_of_videos.shape[0] == 0:
                 continue
 

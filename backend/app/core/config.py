@@ -63,6 +63,10 @@ class Settings(BaseSettings):
     PIPELINE_POLL_INTERVAL_MS: int = 500
     PIPELINE_VIEW_CONFIDENCE_MIN: float = 0.75
 
+    # Per-study decoded DICOM frame cache (lifespan = one analysis job)
+    FRAME_CACHE_ENABLED: bool = True
+    FRAME_CACHE_MAX_MB: int = 4096
+
     # Preferred devices (auto | cpu | cuda:<index>)
     PRIMARY_ANALYSIS_DEVICE: str = "auto"
     SECONDARY_ANALYSIS_DEVICE: str = "auto"

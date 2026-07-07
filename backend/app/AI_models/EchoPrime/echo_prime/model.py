@@ -124,10 +124,15 @@ class EchoPrime:
             return np.linspace(0, frame_count - 1, self.frames_to_take).round().astype(int).tolist()
         return list(range(frame_count)) + [frame_count - 1] * (self.frames_to_take - frame_count)
 
-    def process_dicom_file(self, dicom_path):
+    def process_pixel_array(self, raw_pixels, source="pixel_array"):
+        """
+        Preprocess an already-decoded pixel array into a model clip tensor.
+
+        Returns a (3, frames_to_take, video_size, video_size) float32 CPU
+        tensor, or None when the pixel data is incompatible. Never mutates
+        the input array.
+        """
         try:
-            dcm = pydicom.dcmread(dicom_path)
-            raw_pixels = dcm.pixel_array
             try:
                 pixels = utils.mask_outside_ultrasound(raw_pixels)
             except Exception:
@@ -149,8 +154,17 @@ class EchoPrime:
             x.sub_(self.mean).div_(self.std)
             return x
         except Exception as exc:
+            logger.warning("[EchoPrime] Skipping unprocessable pixel data %s: %s", source, exc)
+            return None
+
+    def process_dicom_file(self, dicom_path):
+        try:
+            dcm = pydicom.dcmread(dicom_path)
+            raw_pixels = dcm.pixel_array
+        except Exception as exc:
             logger.warning("[EchoPrime] Skipping unreadable DICOM %s: %s", dicom_path, exc)
             return None
+        return self.process_pixel_array(raw_pixels, source=dicom_path)
 
     def process_dicom_paths(self, dicom_paths):
         stack_of_videos = []

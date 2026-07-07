@@ -12,6 +12,7 @@ from app.database_models.pipeline_artifact_sets import PipelineArtifactSet
 from app.database_models.pipeline_jobs import PipelineJob, PipelineJobStatus, PipelineRunMode
 from app.database_models.pipeline_stage_runs import PipelineStageRun, PipelineStageStatus
 from app.database_models.studies import Study
+from app.helpers.media.frame_cache import study_frame_cache_scope
 from app.services.pipeline.internal.registry import get_stage_handler
 from app.services.pipeline.internal.state import (
     _set_stage_completed,
@@ -136,58 +137,63 @@ def _process_job_skeleton(
             break
 
     # Part 2.4 Execute remaining stages in-order.
-    for stage_row in stage_rows:
-        if stage_row.status == PipelineStageStatus.completed:
-            continue
-        if stage_row.status == PipelineStageStatus.cancelled:
-            continue
+    # A per-study decoded frame cache lives exactly as long as this job, so
+    # every stage (view classification, EchoPrime, PanEcho, motion
+    # segmentation, measurements) shares one decode per cine.
+    job_study_uid = job.study.study_uid if job.study else None
+    with study_frame_cache_scope(job_study_uid):
+        for stage_row in stage_rows:
+            if stage_row.status == PipelineStageStatus.completed:
+                continue
+            if stage_row.status == PipelineStageStatus.cancelled:
+                continue
 
-        if job.cancel_requested_at:
-            study = db.query(Study).filter(Study.id == job.study_id).first()
-            if study:
-                finalize_cancelled_job(db, study=study, job=job, apply_cleanup=True)
-            return
+            if job.cancel_requested_at:
+                study = db.query(Study).filter(Study.id == job.study_id).first()
+                if study:
+                    finalize_cancelled_job(db, study=study, job=job, apply_cleanup=True)
+                return
 
-        stage_name = stage_row.stage_name
-        _set_stage_running(db=db, job=job, stage_row=stage_row)
-        stage_started_perf = perf_counter()
-        try:
-            payload = _execute_stage_for_job(
-                db=db,
-                job=job,
-                stage_name=stage_name,
-                draft_artifact_set=draft_artifact_set,
-                prefilter_payload=prefilter_payload,
-                stage_handlers=stage_handlers,
-            )
-            _set_stage_completed(db=db, stage_row=stage_row, payload=payload)
-            logger.info(
-                "[PIPELINE_QUEUE] Stage completed | job_id=%s stage=%s duration_s=%.3f",
-                job_id,
-                stage_name,
-                perf_counter() - stage_started_perf,
-            )
-            if stage_name == "prefilter" and isinstance(payload, dict):
-                prefilter_payload = payload
-        except Exception as exc:
-            logger.warning(
-                "[PIPELINE_QUEUE] Stage failed | job_id=%s stage=%s duration_s=%.3f error=%s",
-                job_id,
-                stage_name,
-                perf_counter() - stage_started_perf,
-                exc,
-            )
+            stage_name = stage_row.stage_name
+            _set_stage_running(db=db, job=job, stage_row=stage_row)
+            stage_started_perf = perf_counter()
             try:
-                _set_stage_failed(db=db, job=job, stage_row=stage_row, error=exc)
-            except Exception as state_exc:
-                db.rollback()
-                logger.warning(
-                    "[PIPELINE_QUEUE] Could not persist stage failure | job_id=%s stage=%s reason=%s",
+                payload = _execute_stage_for_job(
+                    db=db,
+                    job=job,
+                    stage_name=stage_name,
+                    draft_artifact_set=draft_artifact_set,
+                    prefilter_payload=prefilter_payload,
+                    stage_handlers=stage_handlers,
+                )
+                _set_stage_completed(db=db, stage_row=stage_row, payload=payload)
+                logger.info(
+                    "[PIPELINE_QUEUE] Stage completed | job_id=%s stage=%s duration_s=%.3f",
                     job_id,
                     stage_name,
-                    state_exc,
+                    perf_counter() - stage_started_perf,
                 )
-            return
+                if stage_name == "prefilter" and isinstance(payload, dict):
+                    prefilter_payload = payload
+            except Exception as exc:
+                logger.warning(
+                    "[PIPELINE_QUEUE] Stage failed | job_id=%s stage=%s duration_s=%.3f error=%s",
+                    job_id,
+                    stage_name,
+                    perf_counter() - stage_started_perf,
+                    exc,
+                )
+                try:
+                    _set_stage_failed(db=db, job=job, stage_row=stage_row, error=exc)
+                except Exception as state_exc:
+                    db.rollback()
+                    logger.warning(
+                        "[PIPELINE_QUEUE] Could not persist stage failure | job_id=%s stage=%s reason=%s",
+                        job_id,
+                        stage_name,
+                        state_exc,
+                    )
+                return
 
     # Part 2.5 Mark job complete once all stages are complete.
     if (not job.cancel_requested_at) and all(row.status == PipelineStageStatus.completed for row in stage_rows):

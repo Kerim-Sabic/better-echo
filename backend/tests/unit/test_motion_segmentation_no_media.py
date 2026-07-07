@@ -63,7 +63,7 @@ def test_structured_mode_creates_no_media_and_persists_overlay(
         hash_before = _file_hash(dcm_path)
 
         frames = [np.zeros((64, 80, 3), np.uint8) for _ in range(6)]
-        monkeypatch.setattr(svc, "_load_frames", lambda _path: (frames, 30.0, (80, 64)))
+        monkeypatch.setattr(svc, "_load_frames", lambda _path, cache=None: (frames, 30.0, (80, 64)))
 
         def fake_probs(frames_arg, _device, _batch):
             for _ in frames_arg:

@@ -121,12 +121,10 @@ def _normalize_frame_to_uint8(frame: np.ndarray) -> np.ndarray:
 
 
 # Part 2. Fast local DICOM frame sampler for primary analysis.
-def pick_frames_from_local_dicom(dicom_path: str, num_frames: int = 16) -> List[Image.Image]:
+def frames_from_pixel_array(pixels: np.ndarray, num_frames: int = 16) -> List[Image.Image]:
+    """Sample evenly spaced frames from a decoded pixel array (no mutation)."""
     if num_frames <= 0:
         raise ValueError("num_frames must be >= 1")
-
-    ds = pydicom.dcmread(dicom_path, force=True)
-    pixels = ds.pixel_array
 
     if pixels.ndim == 2:
         pixels = pixels[np.newaxis, ...]
@@ -149,6 +147,31 @@ def pick_frames_from_local_dicom(dicom_path: str, num_frames: int = 16) -> List[
         img = Image.fromarray(frame_u8, mode="L").convert("RGB")
         imgs.append(img.resize((224, 224), Image.BILINEAR))
     return imgs
+
+
+def pick_frames_from_local_dicom(dicom_path: str, num_frames: int = 16) -> List[Image.Image]:
+    if num_frames <= 0:
+        raise ValueError("num_frames must be >= 1")
+
+    ds = pydicom.dcmread(dicom_path, force=True)
+    return frames_from_pixel_array(ds.pixel_array, num_frames)
+
+
+PANECHO_TENSOR_RECIPE = "panecho_tensor"
+
+
+def cached_panecho_tensor(cache, dicom_path: str, num_frames: int = 16) -> torch.Tensor:
+    """
+    Primary-analysis input tensor via the study frame cache: decode + frame
+    sampling + normalization run once per instance per analysis job.
+    """
+    return cache.get_derived(
+        dicom_path,
+        f"{PANECHO_TENSOR_RECIPE}:{num_frames}",
+        lambda decoded: stack_to_tensor(
+            frames_from_pixel_array(decoded.pixel_array, num_frames)
+        ),
+    )
 
 
 def pick_frames_from_instance(instance_id: str, num_frames: int = 16) -> List[Image.Image]:
