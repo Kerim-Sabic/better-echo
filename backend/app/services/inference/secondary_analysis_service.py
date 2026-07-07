@@ -108,9 +108,12 @@ def get_secondary_analysis_model() -> Any:
                 ("repo_root", "encoder_checkpoint", "view_classifier_checkpoint"),
             )
             from app.AI_models.EchoPrime.echo_prime import EchoPrime
+            from app.helpers.inference_runtime.device_selector import get_device_for_model
 
             start = time.time()
-            _ep = EchoPrime()
+            # Honor SECONDARY_ANALYSIS_DEVICE (and reserved-device avoidance)
+            # instead of EchoPrime's own unconditional cuda:0 default.
+            _ep = EchoPrime(device=get_device_for_model("secondary_analysis"))
             device = getattr(_ep, "device", None)
             logger.info("[SecondaryAnalysis] Model initialized on device=%s in %.1fs", device, time.time() - start)
     return _ep

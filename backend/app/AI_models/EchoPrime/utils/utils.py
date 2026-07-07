@@ -307,9 +307,108 @@ def downsample_and_crop(testarray):
             testarray = testarray[:, :, bias:width-bias, :]
         return testarray
 
+def compute_ultrasound_sector_mask(original_pixels: np.array) -> np.array:
+    """
+    Compute the boolean ultrasound-sector mask for a video, without copying or
+    modifying the video.
+
+    Exactly the mask-construction math of the original ``mask_outside_ultrasound``
+    (per-frame accumulation over ALL frames, erode, first/last diff, hull fill),
+    split out so callers can mask only the frames they actually sample instead
+    of paying the per-frame apply cost for the whole cine.
+
+    Args:
+    original_pixels (np.ndarray): video frames, FxHxWxC. Read-only; never mutated.
+
+    Returns:
+    np.ndarray: HxW boolean mask, True inside the ultrasound sector.
+
+    Raises on incompatible input (e.g. grayscale) exactly like the original;
+    callers treat any exception as "no mask".
+    """
+    testarray = original_pixels
+    ##################### CREATE MASK #####################
+    # Sum all the frames
+    frame_sum = testarray[0].astype(np.float32)  # Start off the frameSum with the first frame
+    frame_sum = cv2.cvtColor(frame_sum, cv2.COLOR_YUV2RGB)
+    frame_sum = cv2.cvtColor(frame_sum, cv2.COLOR_RGB2GRAY)
+    frame_sum = np.where(frame_sum > 0, 1, 0) # make all non-zero values 1
+    frames = testarray.shape[0]
+    for i in range(frames): # Go through every frame
+        # astype(copy=False) and the boolean add produce values identical to
+        # the original astype/np.where/np.add chain (integer 0/1 counts) while
+        # avoiding two full-frame allocations per iteration.
+        frame = testarray[i, :, :, :].astype(np.uint8, copy=False)
+        frame = cv2.cvtColor(frame, cv2.COLOR_YUV2RGB)
+        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+        frame_sum += frame > 0 # make all non-zero values 1
+
+    # Erode to get rid of the EKG tracing
+    kernel = np.ones((3,3), np.uint8)
+    frame_sum = cv2.erode(np.uint8(frame_sum), kernel, iterations=10)
+
+    # Make binary
+    frame_sum = np.where(frame_sum > 0, 1, 0)
+
+    # Make the difference frame fr difference between 1st and last frame
+    # This gets rid of static elements
+    frame0 = testarray[0].astype(np.uint8)
+    frame0 = cv2.cvtColor(frame0, cv2.COLOR_YUV2RGB)
+    frame0 = cv2.cvtColor(frame0, cv2.COLOR_RGB2GRAY)
+    frame_last = testarray[testarray.shape[0] - 1].astype(np.uint8)
+    frame_last = cv2.cvtColor(frame_last, cv2.COLOR_YUV2RGB)
+    frame_last = cv2.cvtColor(frame_last, cv2.COLOR_RGB2GRAY)
+    frame_diff = abs(np.subtract(frame0, frame_last))
+    frame_diff = np.where(frame_diff > 0, 1, 0)
+
+    # Ensure the upper left hand corner 20x20 box all 0s.
+    # There is a weird dot that appears here some frames on Stanford echoes
+    frame_diff[0:20, 0:20] = np.zeros([20, 20])
+
+    # Take the overlap of the sum frame and the difference frame
+    frame_overlap = np.add(frame_sum,frame_diff)
+    frame_overlap = np.where(frame_overlap > 1, 1, 0)
+
+    # Dilate
+    kernel = np.ones((3,3), np.uint8)
+    frame_overlap = cv2.dilate(np.uint8(frame_overlap), kernel, iterations=10).astype(np.uint8)
+
+    # Fill everything that's outside the mask sector with some other number like 100
+    cv2.floodFill(frame_overlap, None, (0,0), 100)
+    # make all non-100 values 255. The rest are 0
+    frame_overlap = np.where(frame_overlap!=100,255,0).astype(np.uint8)
+    contours, hierarchy = cv2.findContours(frame_overlap, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    # contours[0] has shape (445, 1, 2). 445 coordinates. each coord is 1 row, 2 numbers
+    # Find the convex hull
+    for i in range(len(contours)):
+        hull = cv2.convexHull(contours[i])
+        cv2.drawContours(frame_overlap, [hull], -1, (255, 0, 0), 3)
+    frame_overlap = np.where(frame_overlap > 0, 1, 0).astype(np.uint8) #make all non-0 values 1
+    # Fill everything that's outside hull with some other number like 100
+    cv2.floodFill(frame_overlap, None, (0,0), 100)
+    # make all non-100 values 255. The rest are 0
+    return np.array(np.where(frame_overlap != 100, 255, 0),dtype=bool)
+
+
+def apply_ultrasound_sector_mask(frame: np.array, sector_mask: np.array) -> np.array:
+    """
+    Apply the sector mask to a single frame: identical per-frame math to the
+    original apply loop (uint8 cast, YUV->BGR, bitwise_and). Returns a new
+    uint8 BGR frame; the input is never mutated.
+    """
+    frame = frame.astype('uint8')
+    frame = cv2.cvtColor(frame, cv2.COLOR_YUV2BGR)
+    return cv2.bitwise_and(frame, frame, mask = sector_mask.astype(np.uint8))
+
+
 def mask_outside_ultrasound(original_pixels: np.array) -> np.array:
     """
     Masks all pixels outside the ultrasound region in a video.
+
+    Backwards-compatible whole-video wrapper around
+    ``compute_ultrasound_sector_mask`` + ``apply_ultrasound_sector_mask``.
+    Prefer the split functions when only a subset of frames is needed
+    (e.g. EchoPrime samples 16 frames per cine).
 
     Args:
     vid (np.ndarray): A numpy array representing the video frames. FxHxWxC
@@ -317,77 +416,12 @@ def mask_outside_ultrasound(original_pixels: np.array) -> np.array:
     Returns:
     np.ndarray: A numpy array with pixels outside the ultrasound region masked.
     """
+    vid=np.copy(original_pixels)
     try:
-        testarray=np.copy(original_pixels)
-        vid=np.copy(original_pixels)
-        ##################### CREATE MASK #####################
-        # Sum all the frames
-        frame_sum = testarray[0].astype(np.float32)  # Start off the frameSum with the first frame
-        frame_sum = cv2.cvtColor(frame_sum, cv2.COLOR_YUV2RGB)
-        frame_sum = cv2.cvtColor(frame_sum, cv2.COLOR_RGB2GRAY)
-        frame_sum = np.where(frame_sum > 0, 1, 0) # make all non-zero values 1
-        frames = testarray.shape[0]
-        for i in range(frames): # Go through every frame
-            frame = testarray[i, :, :, :].astype(np.uint8)
-            frame = cv2.cvtColor(frame, cv2.COLOR_YUV2RGB)
-            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
-            frame = np.where(frame>0,1,0) # make all non-zero values 1
-            frame_sum = np.add(frame_sum,frame)
-
-        # Erode to get rid of the EKG tracing
-        kernel = np.ones((3,3), np.uint8)
-        frame_sum = cv2.erode(np.uint8(frame_sum), kernel, iterations=10)
-
-        # Make binary
-        frame_sum = np.where(frame_sum > 0, 1, 0)
-
-        # Make the difference frame fr difference between 1st and last frame
-        # This gets rid of static elements
-        frame0 = testarray[0].astype(np.uint8)
-        frame0 = cv2.cvtColor(frame0, cv2.COLOR_YUV2RGB)
-        frame0 = cv2.cvtColor(frame0, cv2.COLOR_RGB2GRAY)
-        frame_last = testarray[testarray.shape[0] - 1].astype(np.uint8)
-        frame_last = cv2.cvtColor(frame_last, cv2.COLOR_YUV2RGB)
-        frame_last = cv2.cvtColor(frame_last, cv2.COLOR_RGB2GRAY)
-        frame_diff = abs(np.subtract(frame0, frame_last))
-        frame_diff = np.where(frame_diff > 0, 1, 0)
-
-        # Ensure the upper left hand corner 20x20 box all 0s.
-        # There is a weird dot that appears here some frames on Stanford echoes
-        frame_diff[0:20, 0:20] = np.zeros([20, 20])
-
-        # Take the overlap of the sum frame and the difference frame
-        frame_overlap = np.add(frame_sum,frame_diff)
-        frame_overlap = np.where(frame_overlap > 1, 1, 0)
-
-        # Dilate
-        kernel = np.ones((3,3), np.uint8)
-        frame_overlap = cv2.dilate(np.uint8(frame_overlap), kernel, iterations=10).astype(np.uint8)
-
-        # Fill everything that's outside the mask sector with some other number like 100
-        cv2.floodFill(frame_overlap, None, (0,0), 100)
-        # make all non-100 values 255. The rest are 0
-        frame_overlap = np.where(frame_overlap!=100,255,0).astype(np.uint8)
-        contours, hierarchy = cv2.findContours(frame_overlap, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        # contours[0] has shape (445, 1, 2). 445 coordinates. each coord is 1 row, 2 numbers
-        # Find the convex hull
-        for i in range(len(contours)):
-            hull = cv2.convexHull(contours[i])
-            cv2.drawContours(frame_overlap, [hull], -1, (255, 0, 0), 3)
-        frame_overlap = np.where(frame_overlap > 0, 1, 0).astype(np.uint8) #make all non-0 values 1
-        # Fill everything that's outside hull with some other number like 100
-        cv2.floodFill(frame_overlap, None, (0,0), 100)
-        # make all non-100 values 255. The rest are 0
-        frame_overlap = np.array(np.where(frame_overlap != 100, 255, 0),dtype=bool)
-        ################## Create your .avi file and apply mask ##################
-        # Store the dimension values
-
+        frame_overlap = compute_ultrasound_sector_mask(original_pixels)
         # Apply the mask to every frame and channel (changing in place)
         for i in range(len(vid)):
-            frame = vid[i, :, :, :].astype('uint8')
-            frame = cv2.cvtColor(frame, cv2.COLOR_YUV2BGR)
-            frame = cv2.bitwise_and(frame, frame, mask = frame_overlap.astype(np.uint8))
-            vid[i,:,:,:]=frame
+            vid[i,:,:,:]=apply_ultrasound_sector_mask(vid[i, :, :, :], frame_overlap)
         return vid
     except Exception as e:
         print("Error masking returned as is.")

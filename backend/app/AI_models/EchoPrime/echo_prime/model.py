@@ -46,8 +46,11 @@ class EchoPrime:
         self.video_size = 224
         self.mean = torch.tensor([29.110628, 28.076836, 29.096405]).reshape(3,1,1,1)
         self.std = torch.tensor([47.989223, 46.456997, 47.20083]).reshape(3,1,1,1)
-        # Determine device
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        # Determine device: honor an explicit caller choice, else prefer CUDA.
+        if device is None:
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        else:
+            device = torch.device(device)
         
         # Base path for all relative files
         base_dir = str(model_assets_dir("secondary_analysis"))
@@ -133,12 +136,18 @@ class EchoPrime:
         the input array.
         """
         try:
+            raw_pixels = np.asarray(raw_pixels)
+            # Sector masking: compute the mask once from the full cine (same
+            # math as before), but apply it only to the frames_to_take sampled
+            # frames instead of every frame of the video. Incompatible inputs
+            # (e.g. grayscale) raise here exactly as they used to and fall back
+            # to unmasked frames.
             try:
-                pixels = utils.mask_outside_ultrasound(raw_pixels)
+                sector_mask = utils.compute_ultrasound_sector_mask(raw_pixels)
             except Exception:
-                pixels = raw_pixels
+                sector_mask = None
 
-            pixels = self._coerce_pixels_to_rgb_frames(pixels)
+            pixels = self._coerce_pixels_to_rgb_frames(raw_pixels)
             if pixels is None or len(pixels) == 0:
                 return None
 
@@ -148,7 +157,16 @@ class EchoPrime:
 
             x = np.empty((self.frames_to_take, self.video_size, self.video_size, 3), dtype=np.float32)
             for output_idx, source_idx in enumerate(frame_indices):
-                x[output_idx] = utils.crop_and_scale(pixels[source_idx]).astype(np.float32, copy=False)
+                if sector_mask is not None:
+                    # Mirror the original whole-video path: masked frames were
+                    # written back into an array of the source dtype before the
+                    # crop/scale, so cast to keep the resize input identical.
+                    frame = utils.apply_ultrasound_sector_mask(
+                        raw_pixels[source_idx], sector_mask
+                    ).astype(raw_pixels.dtype, copy=False)
+                else:
+                    frame = pixels[source_idx]
+                x[output_idx] = utils.crop_and_scale(frame).astype(np.float32, copy=False)
 
             x = torch.as_tensor(x, dtype=torch.float32).permute([3, 0, 1, 2])
             x.sub_(self.mean).div_(self.std)

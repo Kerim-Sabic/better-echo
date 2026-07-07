@@ -127,6 +127,29 @@ a clinical reference set **before** being enabled in production.
 
 ---
 
+## Part 5 — EchoPrime sector-mask preprocessing
+
+`mask_outside_ultrasound` used to copy the full cine twice and convert + mask
+**every** frame, even though EchoPrime samples only 16 frames per cine. The
+mask construction math is unchanged (bit-identical masks), but it is now split
+into `compute_ultrasound_sector_mask` + `apply_ultrasound_sector_mask`
+([utils.py](../../backend/app/AI_models/EchoPrime/utils/utils.py)), and
+`process_pixel_array` applies the mask **only to the 16 sampled frames**. Two
+full-video copies and per-frame integer-array allocations were also removed
+using provably-equivalent integer math.
+
+* Output parity: bit-identical clips, pinned by
+  `tests/unit/test_echoprime_masking.py` against a verbatim copy of the
+  original implementation (including read-only cached arrays and the grayscale
+  fallback).
+* Measured speedup (CPU, synthetic 640×480 colour cines): **2.6× at 60 frames,
+  3.2× at 120, 3.9× at 240** for the masking step, which runs once per cine in
+  both view classification and metrics preprocessing.
+
+This is not gated by settings because outputs are exactly identical.
+
+---
+
 ## Validation
 
 `backend/scripts/benchmarks/validate_parity.py` is the merge gate. It runs each
@@ -161,6 +184,15 @@ INFERENCE_ALLOW_TF32=true
 MOTION_SEGMENTATION_BATCH=64
 STUDY_MEASUREMENTS_BATCH=32
 PRIMARY_ANALYSIS_BATCH=16
+
+# EchoPrime encoder batch: 4 is a low-VRAM default that underfeeds RTX GPUs.
+SECONDARY_ANALYSIS_ENCODER_BATCH=16
+SECONDARY_ANALYSIS_METRICS_CHUNK_SIZE=16
+
+# Keep models resident between stages/weights on >=16 GB GPUs. The "stage"
+# default reloads ~10 checkpoints per study (9x 2D DeepLabV3 + EchoPrime),
+# costing several seconds of pure load time that "never" eliminates.
+PIPELINE_UNLOAD_POLICY=never
 
 # Secondary analysis (EchoPrime) AMP — enable only after local view-classifier
 # parity check, since view classification is a discrete decision.
