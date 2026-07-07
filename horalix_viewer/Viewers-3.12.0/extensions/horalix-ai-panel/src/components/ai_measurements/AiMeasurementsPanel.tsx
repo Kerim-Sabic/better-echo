@@ -1,9 +1,11 @@
 import React from 'react';
 import {
+  GlsBullseyePayload,
   MeasurementItem,
   MeasurementSection,
 } from '../../horalixAiResults.types';
 import AiPanelHeader from '../AiPanelHeader';
+import GlsBullseyePanel from './GlsBullseyePanel';
 import MainMeasurements from './MainMeasurements';
 import SectionsList from './SectionsList';
 
@@ -12,6 +14,7 @@ type Props = {
   totalMeasurements?: number | null;
   mainMeasurements?: MeasurementItem[];
   measurementSections?: MeasurementSection[];
+  glsBullseye?: GlsBullseyePayload | null;
   onRequestSaveStudyAnalysisOverride?: (
     key: string,
     override: { value?: number; label?: string }
@@ -24,6 +27,7 @@ export default function AiMeasurementsPanel({
   totalMeasurements,
   mainMeasurements = [],
   measurementSections = [],
+  glsBullseye = null,
   onRequestSaveStudyAnalysisOverride,
   onRequestClearStudyAnalysisOverride,
 }: Props) {
@@ -46,6 +50,7 @@ export default function AiMeasurementsPanel({
           onRequestClearStudyAnalysisOverride
         }
       />
+      <GlsBullseyePanel bullseye={glsBullseye} />
       <SectionsList
         sections={measurementSections}
         onRequestSaveStudyAnalysisOverride={onRequestSaveStudyAnalysisOverride}

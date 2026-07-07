@@ -1,8 +1,15 @@
 import { NO_DERIVED_DICOM_VIEWER_TOKEN } from "./studyResults.constants";
-import { formatDynamicMeasurementsCombinedResultsDto } from "./studyResults.dto";
+import {
+  formatDynamicMeasurementsCombinedResultsDto,
+  formatStudyAnalysisCombinedResultsDto,
+} from "./studyResults.dto";
 
 function formatDynamicMeasurements(data, status = 200) {
   return formatDynamicMeasurementsCombinedResultsDto({ status, data });
+}
+
+function formatStudyAnalysis(data, status = 200) {
+  return formatStudyAnalysisCombinedResultsDto({ status, data });
 }
 
 describe("formatDynamicMeasurementsCombinedResultsDto", () => {
@@ -152,5 +159,52 @@ describe("formatDynamicMeasurementsCombinedResultsDto", () => {
     expect(result.viewerRefreshToken.length).toBeLessThan(48);
     expect(result.viewerRefreshToken).not.toContain("ai_derived_dicom_videos");
     expect(result.viewerRefreshToken).not.toContain("nested-path");
+  });
+});
+
+describe("formatStudyAnalysisCombinedResultsDto", () => {
+  test("preserves the GLS bullseye display document", () => {
+    const result = formatStudyAnalysis({
+      status: "complete",
+      analysis_results: {
+        edit_baselines: {},
+        overrides: {},
+        display: {
+          totalMeasurements: 1,
+          mainMeasurements: [{ key: "gls", displayValue: "-20.0" }],
+          Measurements: [],
+          glsBullseye: {
+            schema_version: 1,
+            data_completeness: "global_only",
+            global: {
+              value: -20,
+              status: "normal",
+            },
+            segments: [
+              {
+                id: 1,
+                code: "basal_anterior",
+                measured: false,
+              },
+            ],
+            trend: [
+              {
+                study_uid: "study-1",
+                label: "2026-03-01",
+                value: -20,
+                status: "normal",
+              },
+            ],
+          },
+        },
+      },
+    });
+
+    const display = result.studyAnalysisCombinedResults.display;
+
+    expect(result.state).toBe("ready");
+    expect(display.glsBullseye.global.value).toBe(-20);
+    expect(display.glsBullseye.segments).toHaveLength(1);
+    expect(display.glsBullseye.trend).toHaveLength(1);
   });
 });

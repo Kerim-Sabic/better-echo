@@ -25,6 +25,7 @@ from app.schemas.results.combined_study_analysis_schemas import (
 )
 from app.schemas.results.study_analysis_overrides_schemas import OverridesUpdateRequest
 from app.services.results import build_combined_display_payload
+from app.services.results.gls_trend_repository import build_patient_gls_trend
 from app.services.auth.principal_service import (
     get_current_doctor_user_id,
     get_current_study_read_principal,
@@ -42,9 +43,14 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-def _build_complete_payload(combined_results_row) -> dict:
+def _build_complete_payload(combined_results_row, *, db: Session = None, study=None) -> dict:
     payload = build_combined_sections_from_row(combined_results_row)
-    payload["display"] = build_combined_display_payload(combined_results_row)
+    display = build_combined_display_payload(combined_results_row)
+    # Attach the cross-study longitudinal GLS trend when we have DB + study
+    # context (read/patch endpoints); the pure display payload has neither.
+    if db is not None and study is not None and isinstance(display.get("glsBullseye"), dict):
+        display["glsBullseye"]["trend"] = build_patient_gls_trend(db, study)
+    payload["display"] = display
     return payload
 
 
@@ -82,7 +88,7 @@ def get_combined_results(
 
     # Part 2. Complete response for ready active artifact.
     if combined_results_row and combined_results_row.status == ResultStatus.complete:
-        payload = _build_complete_payload(combined_results_row)
+        payload = _build_complete_payload(combined_results_row, db=db, study=study)
         return CompleteResponse(status="complete", analysis_results=payload)
 
     # Part 3. Failed response for explicit failed row or failed queue stage.
@@ -205,6 +211,6 @@ def update_combined_overrides(
     flag_modified(combined_row, "value_json")
     db.commit()
 
-    result_payload = _build_complete_payload(combined_row)
+    result_payload = _build_complete_payload(combined_row, db=db, study=study)
     return CompleteResponse(status="complete", analysis_results=result_payload)
 

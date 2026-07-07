@@ -44,6 +44,27 @@ function formatStudyAnalysisDisplayDto(rawDisplay) {
       typeof display.totalMeasurements === "number"
         ? display.totalMeasurements
         : null,
+    glsBullseye: formatGlsBullseyeDto(display.glsBullseye),
+  };
+}
+
+function formatGlsBullseyeDto(rawBullseye) {
+  const bullseye = toObject(rawBullseye);
+  if (Object.keys(bullseye).length === 0) {
+    return null;
+  }
+
+  return {
+    ...bullseye,
+    global: toObject(bullseye.global),
+    reference_bands: toObject(bullseye.reference_bands),
+    segment_model: toObject(bullseye.segment_model),
+    segments: toArray(bullseye.segments)
+      .map(segment => toObject(segment))
+      .filter(segment => Object.keys(segment).length > 0),
+    trend: toArray(bullseye.trend)
+      .map(point => toObject(point))
+      .filter(point => Object.keys(point).length > 0),
   };
 }
 

@@ -21,6 +21,13 @@ REPORT_SUMMARY_TYPES = (REPORT_SUMMARY_TYPE,)
 MOTION_SEGMENTATION_TYPE = "MotionSegmentation_LV"
 MOTION_SEGMENTATION_TYPES = (MOTION_SEGMENTATION_TYPE,)
 
+# Forward-looking contract: a future speckle-tracking / segmental-strain model
+# persists per-segment peak systolic longitudinal strain here, keyed by ASE
+# 17-segment id. When present, the GLS bullseye renders measured segments; until
+# then the bullseye shows the measured global GLS only (no fabricated segments).
+SEGMENTAL_STRAIN_TYPE = "SegmentalStrain_LV"
+SEGMENTAL_STRAIN_TYPES = (SEGMENTAL_STRAIN_TYPE,)
+
 LV_SEGMENTATION_OVERLAY_TYPE = "lv_segmentation"
 LV_SEGMENTATION_OVERLAY_KIND = "lv_segmentation_overlay"
 LV_SEGMENTATION_OVERLAY_SCHEMA_VERSION = 1

@@ -23,10 +23,57 @@ export type MeasurementSection = {
   items?: MeasurementItem[];
 };
 
+export type GlsBullseyeGlobal = {
+  task_key?: string | null;
+  label?: string | null;
+  value?: number | null;
+  units?: string | null;
+  status?: string | null;
+  color?: string | null;
+  measured?: boolean;
+};
+
+export type GlsBullseyeSegment = {
+  id?: number | null;
+  code?: string | null;
+  name?: string | null;
+  ring?: number | null;
+  ring_name?: string | null;
+  wedge_index?: number | null;
+  wedge_count?: number | null;
+  territory?: string | null;
+  measured?: boolean;
+  value?: number | null;
+  status?: string | null;
+  color?: string | null;
+};
+
+export type GlsTrendPoint = {
+  study_uid?: string | null;
+  study_date?: string | null;
+  label?: string | null;
+  value?: number | null;
+  status?: string | null;
+};
+
+export type GlsBullseyePayload = {
+  schema_version?: number | null;
+  presentation?: string | null;
+  data_completeness?: string | null;
+  global?: GlsBullseyeGlobal | null;
+  reference_bands?: Record<string, unknown> | null;
+  segment_model?: Record<string, unknown> | null;
+  segments?: GlsBullseyeSegment[];
+  measured_segment_count?: number | null;
+  trend?: GlsTrendPoint[];
+  notes?: string | null;
+};
+
 export type HoralixAiMeasurements = {
   mainMeasurements?: MeasurementItem[];
   measurementSections?: MeasurementSection[];
   totalMeasurements?: number | null;
+  glsBullseye?: GlsBullseyePayload | null;
 };
 
 export type HoralixStudyAnalysisEditorState = {

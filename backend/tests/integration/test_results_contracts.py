@@ -528,6 +528,8 @@ def test_combined_results_complete_includes_display_payload(app, db_session_fact
 
     display = payload["display"]
     assert display.get("hasMainMeasurements") is True
+    assert display.get("glsBullseye", {}).get("global", {}).get("value") == -20.0
+    assert display.get("glsBullseye", {}).get("data_completeness") == "global_only"
     items = _display_items_by_key(display)
     assert items["ejection_fraction"]["displayValue"] == "50.00-55.00"
     assert items["trv"]["displayValue"] == "3.00"

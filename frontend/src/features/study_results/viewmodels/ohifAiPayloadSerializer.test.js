@@ -10,6 +10,12 @@ describe("buildStudyResultsOhifAiPayload", () => {
           totalMeasurements: 2,
           mainMeasurements: [{ key: "ef", value: 60 }],
           measurementSections: [{ title: "LV", items: [] }],
+          glsBullseye: {
+            schema_version: 1,
+            global: { value: -20, status: "normal" },
+            segments: [{ id: 1, measured: false }],
+            trend: [{ study_uid: "study-1", value: -20 }],
+          },
         },
       },
       llmReportEnabled: true,
@@ -55,6 +61,7 @@ describe("buildStudyResultsOhifAiPayload", () => {
     });
 
     expect(payload.studyAnalysisMeasurements.totalMeasurements).toBe(2);
+    expect(payload.studyAnalysisMeasurements.glsBullseye.global.value).toBe(-20);
     expect(payload.llmEchoReport.mainTitle).toBe("Report");
     expect(payload.studyAnalysisEditorState.hasOverrides).toBe(true);
     expect(payload.apiBaseUrl).toBe("http://localhost:8000/api");

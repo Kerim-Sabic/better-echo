@@ -216,6 +216,9 @@ export default function HoralixAiResultsPanelLayout({
               measurementSections={
                 payload.studyAnalysisMeasurements?.measurementSections ?? []
               }
+              glsBullseye={
+                payload.studyAnalysisMeasurements?.glsBullseye ?? null
+              }
               onRequestSaveStudyAnalysisOverride={
                 onRequestSaveStudyAnalysisOverride
               }

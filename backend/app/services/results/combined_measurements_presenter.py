@@ -19,6 +19,7 @@ from app.helpers.clinical.measurement_display import (
     is_range_display_task,
 )
 from app.helpers.row_to_dict.combined_results_row_to_dict import extract_combined_payload_parts
+from app.services.results.gls_bullseye import build_gls_bullseye_document
 
 
 EF_DISCREPANCY_THRESHOLD = 8.0
@@ -381,12 +382,23 @@ def build_combined_display_payload(derived_results: Any) -> Dict[str, Any]:
         len(section["items"]) for section in measurements
     )
 
+    # ASE/EACVI 17-segment GLS bullseye built from the real measured global GLS.
+    # Per-segment values are only populated from a genuine segmental-strain
+    # source (none today); the trend is attached by the API layer, which has DB
+    # access to the patient's prior studies.
+    gls_bullseye = build_gls_bullseye_document(
+        integrated_tasks=integrated_tasks,
+        overrides=overrides,
+        patient_sex=patient_sex,
+    )
+
     return {
         "mainMeasurements": main_measurements,
         "Measurements": measurements,
         "hasMainMeasurements": bool(main_measurements),
         "hasMeasurements": bool(measurements),
         "totalMeasurements": total_measurements,
+        "glsBullseye": gls_bullseye,
     }
 
 

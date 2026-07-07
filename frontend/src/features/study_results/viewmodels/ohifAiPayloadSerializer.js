@@ -33,6 +33,7 @@ export function buildStudyResultsOhifAiPayload({
       totalMeasurements: studyAnalysisDisplay.totalMeasurements,
       mainMeasurements: studyAnalysisDisplay.mainMeasurements,
       measurementSections: studyAnalysisDisplay.measurementSections,
+      glsBullseye: studyAnalysisDisplay.glsBullseye ?? null,
     },
 
     studyAnalysisEditorState: {

@@ -123,6 +123,9 @@ def test_build_combined_display_payload_builds_main_sections_and_derived_metrics
     ]
     assert display_payload["hasMainMeasurements"] is True
     assert display_payload["hasMeasurements"] is True
+    assert display_payload["glsBullseye"]["global"]["value"] == -20.0
+    assert display_payload["glsBullseye"]["data_completeness"] == "global_only"
+    assert display_payload["glsBullseye"]["measured_segment_count"] == 0
 
     assert items["ejection_fraction"]["displayValue"] == "50.00-55.00"
     assert items["ejection_fraction"]["units"] == "%"
