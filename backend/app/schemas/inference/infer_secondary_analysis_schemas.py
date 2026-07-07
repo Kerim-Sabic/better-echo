@@ -13,3 +13,5 @@ class SecondaryAnalysisResponse(BaseModel):
     study_uid: str
     num_instances: int
     predictions: Dict[str, float]
+    # "local" | "mixed" | "orthanc": which execution path served the DICOMs.
+    execution_path: Optional[str] = None

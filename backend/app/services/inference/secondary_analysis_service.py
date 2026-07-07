@@ -268,6 +268,42 @@ def _local_file_paths_for_orthanc_ids(
     }
 
 
+def _local_study_instance_paths(
+    *,
+    db: Session,
+    study_uid: str,
+) -> tuple[Dict[str, str], int]:
+    """
+    Resolve every registered instance of a study to its on-disk DICOM path.
+
+    Returns (orthanc_id -> existing local path, total registered instances).
+    The instance list can replace the Orthanc HTTP listing only when every
+    registered instance has a file on disk (fully-local study).
+    """
+    rows = (
+        db.query(Instance.instance_orthanc_id, Instance.file_path)
+        .join(Instance.series)
+        .join(Series.study)
+        .filter(Study.study_uid == study_uid)
+        .order_by(Instance.id.asc())
+        .all()
+    )
+    local = {
+        orthanc_id: file_path
+        for orthanc_id, file_path in rows
+        if orthanc_id and file_path and os.path.exists(file_path)
+    }
+    return local, len(rows)
+
+
+def _execution_path_label(local_count: int, total_count: int) -> str:
+    if total_count > 0 and local_count == total_count:
+        return "local"
+    if local_count == 0:
+        return "orthanc"
+    return "mixed"
+
+
 # Part 3. Secondary analysis metrics inference service entrypoint.
 def run_secondary_analysis_metrics(
     *,
@@ -278,30 +314,55 @@ def run_secondary_analysis_metrics(
 ) -> Dict[str, object]:
     logger.info("[SecondaryAnalysis] infer called with study_uid=%s", study_uid)
 
-    instance_orthanc_ids = include_instance_orthanc_ids or fetch_orthanc_instance_ids_from_study(study_uid)
+    # Part 3.1 Local-first instance resolution.
+    # Priority: local file path -> decode -> inference. The Orthanc HTTP
+    # listing/download path is only used for instances missing on disk.
+    if include_instance_orthanc_ids:
+        instance_orthanc_ids = list(include_instance_orthanc_ids)
+        local_path_by_orthanc_id = _local_file_paths_for_orthanc_ids(
+            db=db,
+            study_uid=study_uid,
+            orthanc_instance_ids=instance_orthanc_ids,
+        )
+    else:
+        local_map, registered_count = _local_study_instance_paths(
+            db=db, study_uid=study_uid
+        )
+        if registered_count > 0 and len(local_map) == registered_count:
+            # Fully-local study: the DB instance list stands in for the
+            # Orthanc listing, so no HTTP request is needed at all.
+            instance_orthanc_ids = list(local_map.keys())
+            local_path_by_orthanc_id = local_map
+        else:
+            instance_orthanc_ids = fetch_orthanc_instance_ids_from_study(study_uid)
+            local_path_by_orthanc_id = _local_file_paths_for_orthanc_ids(
+                db=db,
+                study_uid=study_uid,
+                orthanc_instance_ids=instance_orthanc_ids,
+            )
+
     if not instance_orthanc_ids:
         raise ValueError(f"No instances found for study_uid={study_uid}")
     _enforce_secondary_instance_limit(len(instance_orthanc_ids))
+
+    execution_path = _execution_path_label(
+        len(local_path_by_orthanc_id), len(instance_orthanc_ids)
+    )
+    logger.info(
+        "[SecondaryAnalysis] Execution path selected | study_uid=%s path=%s local_instances=%d/%d",
+        study_uid,
+        execution_path,
+        len(local_path_by_orthanc_id),
+        len(instance_orthanc_ids),
+    )
 
     ep = get_secondary_analysis_model()
     metrics_chunk_size = _positive_int(settings.SECONDARY_ANALYSIS_METRICS_CHUNK_SIZE, 8)
     encoder_batch_size = _positive_int(settings.SECONDARY_ANALYSIS_ENCODER_BATCH, 4)
     chunk_dirs: List[str] = []
 
-    # Reuse on-disk uploads (and any frames already decoded during prefilter)
-    # instead of re-downloading every instance from Orthanc.
+    # Reuse any frames already decoded during prefilter for local files.
     frame_cache = get_study_frame_cache(study_uid)
-    local_path_by_orthanc_id = _local_file_paths_for_orthanc_ids(
-        db=db,
-        study_uid=study_uid,
-        orthanc_instance_ids=instance_orthanc_ids,
-    )
-    if local_path_by_orthanc_id:
-        logger.info(
-            "[SecondaryAnalysis] Local DICOM fast-path available for %d/%d instance(s)",
-            len(local_path_by_orthanc_id),
-            len(instance_orthanc_ids),
-        )
 
     try:
         metrics_accumulator = ep.create_metrics_accumulator()
@@ -314,9 +375,10 @@ def run_secondary_analysis_metrics(
                 if iid in local_path_by_orthanc_id
             ]
             remote_ids = [iid for iid in chunk_ids if iid not in local_path_by_orthanc_id]
-            chunk_dir = tempfile.mkdtemp(prefix="secondary_analysis_metrics_chunk_")
-            chunk_dirs.append(chunk_dir)
+            chunk_dir: Optional[str] = None
             if remote_ids:
+                chunk_dir = tempfile.mkdtemp(prefix="secondary_analysis_metrics_chunk_")
+                chunk_dirs.append(chunk_dir)
                 downloaded = download_dicoms_for_instances(remote_ids, chunk_dir)
                 chunk_paths.extend(record["path"] for record in downloaded)
             stack_of_videos, _processed_paths = _stack_processed_dicoms(
@@ -336,8 +398,9 @@ def run_secondary_analysis_metrics(
 
             del stack_of_videos
             _clear_torch_cache()
-            shutil.rmtree(chunk_dir, ignore_errors=True)
-            chunk_dirs.remove(chunk_dir)
+            if chunk_dir is not None:
+                shutil.rmtree(chunk_dir, ignore_errors=True)
+                chunk_dirs.remove(chunk_dir)
 
         if processed_instances <= 0:
             raise ValueError("No EchoPrime-compatible DICOM instances found for secondary analysis.")
@@ -378,11 +441,16 @@ def run_secondary_analysis_metrics(
             db.commit()
             db.refresh(report_row)
 
-        logger.info("[SecondaryAnalysis] Metrics inference completed for study_uid=%s", study_uid)
+        logger.info(
+            "[SecondaryAnalysis] Metrics inference completed for study_uid=%s (execution_path=%s)",
+            study_uid,
+            execution_path,
+        )
         return {
             "study_uid": study_uid,
             "num_instances": processed_instances,
             "predictions": predictions,
+            "execution_path": execution_path,
         }
     except Exception as exc:
         _raise_memory_normalized(exc)
