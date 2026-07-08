@@ -73,6 +73,22 @@ class Settings(BaseSettings):
     # validated.
     SECONDARY_ANALYSIS_AMP_ENABLED: bool = False
 
+    # torch.compile for the fixed-shape inference CNNs. Opt-in (default off):
+    # needs a working Inductor/Triton backend and pays a one-time per-shape
+    # compile cost (use the *_WARMUP flags to move it off the first study).
+    # Falls back to eager per-graph on any compile failure; outputs unchanged
+    # within FP tolerance.
+    INFERENCE_TORCH_COMPILE: bool = False
+    INFERENCE_TORCH_COMPILE_MODE: str = "reduce-overhead"
+
+    # --- CPU/GPU overlap (Part 3) ---
+    # Overlap DICOM decode/preprocess and per-frame postprocess with GPU forward
+    # passes. Pure scheduling change; outputs are identical and order-preserved.
+    INFERENCE_CPU_GPU_OVERLAP: bool = True
+    # Thread count for per-frame motion-segmentation postprocess (0 => auto,
+    # a small CPU-bound default). OpenCV releases the GIL so threads help.
+    INFERENCE_POSTPROCESS_WORKERS: int = 0
+
     # --- Temporal sampling (Part 4) for the 2D keypoint / linear lane ---
     # Stride of 1 == process every frame (behaviour unchanged). Set to 2 to infer
     # every second frame and interpolate the skipped ones. Off by default: raising

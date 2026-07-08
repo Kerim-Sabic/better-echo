@@ -127,6 +127,46 @@ a clinical reference set **before** being enabled in production.
 
 ---
 
+## Part 6 — CPU/GPU overlap
+
+Historically each lane alternated strictly between CPU work (DICOM decode +
+preprocess, per-frame postprocess) and GPU forward passes, so one side idled
+while the other ran. [`prefetch.py`](../../backend/app/helpers/inference_runtime/prefetch.py)
+overlaps them without changing any output or ordering:
+
+- **Motion segmentation** ([service.py](../../backend/app/services/inference/motion_segmentation/service.py)):
+  per-frame postprocess (resize + Gaussian blur + morphology + contour smoothing
+  + RLE — all OpenCV, which releases the GIL) now runs on a small worker pool
+  via `map_ordered_submit` while the GPU produces the next batch. Results are
+  collected in source-frame order.
+- **Secondary analysis** ([secondary_analysis_service.py](../../backend/app/services/inference/secondary_analysis_service.py)):
+  the next chunk's download + decode + preprocess runs on a background thread
+  (`iter_with_prefetch`) while the encoder / view classifier runs the current
+  chunk — for both the metrics and classification loops.
+
+Both are pure scheduling changes: outputs are identical and order-preserved,
+proven by `tests/unit/test_prefetch.py` and a parity check of the motion lane's
+pooled postprocess against the sequential version. Controlled by
+`INFERENCE_CPU_GPU_OVERLAP` (default on) and `INFERENCE_POSTPROCESS_WORKERS`
+(0 = auto). A matched-cost simulation shows ~1.7× on the overlapped section;
+real gains depend on the CPU/GPU cost ratio per lane.
+
+## Part 7 — torch.compile (opt-in)
+
+All four hot models run at **fixed input shapes** (motion 112², measurements
+480×640, view classifier 224², encoder 16×224²) — the case `torch.compile`
+rewards most. `precision.maybe_compile` wraps each model at load time when
+`INFERENCE_TORCH_COMPILE` is on and a working Inductor/Triton backend exists;
+otherwise it returns the model unchanged (so Windows/CUDA and CPU hosts keep the
+eager path). Dynamo `suppress_errors` is set so a graph that fails to compile
+falls back to eager for that graph instead of failing the request.
+
+Caveats: the first forward per shape pays a one-time compile cost — enable the
+per-model `*_WARMUP` settings so it lands before the first patient study — and
+compiled FP16 output must clear the same `validate_parity.py` gate. Default off.
+
+---
+
 ## Part 5 — EchoPrime sector-mask preprocessing
 
 `mask_outside_ultrasound` used to copy the full cine twice and convert + mask
@@ -193,6 +233,13 @@ SECONDARY_ANALYSIS_METRICS_CHUNK_SIZE=16
 # default reloads ~10 checkpoints per study (9x 2D DeepLabV3 + EchoPrime),
 # costing several seconds of pure load time that "never" eliminates.
 PIPELINE_UNLOAD_POLICY=never
+
+# CPU/GPU overlap (Part 6) — pure scheduling, outputs unchanged.
+INFERENCE_CPU_GPU_OVERLAP=true
+INFERENCE_POSTPROCESS_WORKERS=0
+
+# torch.compile (Part 7) — Linux/CUDA + Triton only; enable warmup with it.
+INFERENCE_TORCH_COMPILE=false
 
 # Secondary analysis (EchoPrime) AMP — enable only after local view-classifier
 # parity check, since view classification is a discrete decision.

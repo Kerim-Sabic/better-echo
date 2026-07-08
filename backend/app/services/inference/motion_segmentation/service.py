@@ -19,6 +19,7 @@ from app.core.artifacts import (
 from app.database_models.instances import Instance
 from app.helpers.inference_runtime.batch_config import get_batch_size
 from app.helpers.inference_runtime.device_selector import get_device_for_model
+from app.helpers.inference_runtime.prefetch import map_ordered_submit, postprocess_workers
 from app.helpers.inference_runtime.inference_functions import check_instance_exists_in_orthanc
 from app.helpers.media.dicom_frame_reader import read_dicom_frames
 from app.helpers.media.frame_cache import StudyFrameCache, get_study_frame_cache
@@ -101,23 +102,28 @@ def _segment_frames(
 ) -> tuple[list[dict[str, Any]], str]:
     width, height = frame_size
 
+    def _postprocess(prob_small: np.ndarray) -> dict[str, Any]:
+        confidence = foreground_confidence(prob_small)
+        mask = binarize_and_clean(prob_small, frame_size)
+        area = int(mask.sum())
+        present = area > 0
+        rle = encode_binary_mask_rle(mask) if present else empty_rle(height, width)
+        return {
+            "rle": rle,
+            "area_px": area,
+            "confidence": round(confidence, 4),
+            "present": present,
+        }
+
     def collect(target_device: torch.device) -> list[dict[str, Any]]:
-        results: list[dict[str, Any]] = []
-        for prob_small in iter_lv_probabilities(frames, target_device, batch_size):
-            confidence = foreground_confidence(prob_small)
-            mask = binarize_and_clean(prob_small, frame_size)
-            area = int(mask.sum())
-            present = area > 0
-            rle = encode_binary_mask_rle(mask) if present else empty_rle(height, width)
-            results.append(
-                {
-                    "rle": rle,
-                    "area_px": area,
-                    "confidence": round(confidence, 4),
-                    "present": present,
-                }
-            )
-        return results
+        # Overlap the per-frame CPU postprocess (resize + morphology + contour +
+        # RLE; OpenCV releases the GIL) with the GPU producing the next batch.
+        # Results stay in source-frame order.
+        return map_ordered_submit(
+            iter_lv_probabilities(frames, target_device, batch_size),
+            _postprocess,
+            max_workers=postprocess_workers(),
+        )
 
     preferred_device = get_device_for_model("motion_segmentation")
     logger.info(

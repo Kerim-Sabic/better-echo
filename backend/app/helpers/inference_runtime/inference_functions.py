@@ -268,6 +268,7 @@ def get_model_and_device() -> Tuple[torch.nn.Module, torch.device]:
         )
         _model.to(_device).eval()
         precision.configure_backends(_device)
+        _model = precision.maybe_compile(_model, _device, label="primary_analysis")
         logger.info(
             "[INFERENCE_FUNCTIONS] Primary analysis model loaded successfully in %.1fs | %s",
             time.time() - start,

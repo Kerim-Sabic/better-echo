@@ -71,4 +71,15 @@ def test_autocast_respects_explicit_enabled_false(monkeypatch):
 def test_describe_dict_roundtrip():
     report = precision.describe(torch.device("cpu"))
     d = report.as_dict()
-    assert set(d) == {"device", "amp", "dtype", "channels_last", "cudnn_benchmark"}
+    assert set(d) == {
+        "device", "amp", "dtype", "channels_last", "cudnn_benchmark", "torch_compile",
+    }
+
+
+def test_compile_disabled_on_cpu_and_returns_model(monkeypatch):
+    monkeypatch.setattr(precision, "_settings", lambda: _fake_settings(INFERENCE_TORCH_COMPILE=True))
+    cpu = torch.device("cpu")
+    assert precision.compile_enabled(cpu) is False
+    model = torch.nn.Conv2d(3, 1, 3)
+    # maybe_compile is a no-op on CPU regardless of the flag.
+    assert precision.maybe_compile(model, cpu) is model

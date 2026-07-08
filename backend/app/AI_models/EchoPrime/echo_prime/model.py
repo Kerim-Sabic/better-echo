@@ -81,6 +81,18 @@ class EchoPrime:
         for param in view_classifier.parameters():
             param.requires_grad = False
 
+        # Optional torch.compile (fixed input shapes). No-op unless enabled and
+        # supported; falls back to eager per-graph on any compile failure.
+        try:
+            from app.helpers.inference_runtime import precision
+
+            echo_encoder = precision.maybe_compile(echo_encoder, device, label="echoprime_encoder")
+            view_classifier = precision.maybe_compile(
+                view_classifier, device, label="echoprime_view_classifier"
+            )
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.warning("[EchoPrime] torch.compile setup skipped: %s", exc)
+
         self.echo_encoder = echo_encoder
         self.view_classifier = view_classifier
         self.device = device

@@ -106,6 +106,7 @@ def load_2d_model(model_key: str) -> torch.nn.Module:
     model.eval()
     precision.configure_backends(device)
     model = precision.to_channels_last(model, device)
+    model = precision.maybe_compile(model, device, label=f"measurements_2d[{model_key}]")
     _loaded_models[model_key] = model
     logger.info(
         "[Measurements2D] Loaded model '%s' on %s in %.1fs | %s",

@@ -75,6 +75,7 @@ def load_motion_segmentation_model():
     # weights for the FP16 tensor-core conv kernels. No-ops on CPU.
     precision.configure_backends(device)
     model_instance = precision.to_channels_last(model_instance, device)
+    model_instance = precision.maybe_compile(model_instance, device, label="motion_segmentation")
     model = model_instance
     logger.info(
         "[MotionSegmentation] Model loaded on %s in %.1fs | %s",

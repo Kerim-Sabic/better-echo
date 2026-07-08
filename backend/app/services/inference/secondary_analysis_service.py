@@ -22,6 +22,7 @@ from app.database_models.instances import Instance
 from app.database_models.series import Series
 from app.database_models.studies import Study
 from app.helpers.inference_runtime import precision
+from app.helpers.inference_runtime.prefetch import iter_with_prefetch
 from app.helpers.inference_runtime.inference_functions import fetch_orthanc_instance_ids_from_study
 from app.helpers.media.frame_cache import StudyFrameCache, get_study_frame_cache
 
@@ -374,7 +375,12 @@ def run_secondary_analysis_metrics(
         metrics_accumulator = ep.create_metrics_accumulator()
         processed_instances = 0
 
-        for chunk_ids in _chunked(instance_orthanc_ids, metrics_chunk_size):
+        # Download (if remote) + decode + preprocess one chunk into a CPU stack.
+        # Run via iter_with_prefetch so the next chunk is prepared on a
+        # background thread while the GPU encodes the current one. Returns the
+        # stack plus its temp dir so the consumer can clean up after the GPU is
+        # done with it.
+        def _prepare_chunk(chunk_ids):
             chunk_paths = [
                 local_path_by_orthanc_id[iid]
                 for iid in chunk_ids
@@ -392,7 +398,10 @@ def run_secondary_analysis_metrics(
                 chunk_paths,
                 cache=frame_cache,
             )
+            return stack_of_videos, chunk_dir
 
+        chunks = list(_chunked(instance_orthanc_ids, metrics_chunk_size))
+        for stack_of_videos, chunk_dir in iter_with_prefetch(chunks, _prepare_chunk):
             if stack_of_videos.shape[0] > 0:
                 with precision.autocast(
                     getattr(ep, "device", None), setting_name=_SECONDARY_AMP_SETTING
@@ -409,7 +418,8 @@ def run_secondary_analysis_metrics(
             _clear_torch_cache()
             if chunk_dir is not None:
                 shutil.rmtree(chunk_dir, ignore_errors=True)
-                chunk_dirs.remove(chunk_dir)
+                if chunk_dir in chunk_dirs:
+                    chunk_dirs.remove(chunk_dir)
 
         if processed_instances <= 0:
             raise ValueError("No EchoPrime-compatible DICOM instances found for secondary analysis.")
@@ -547,12 +557,13 @@ def classify_views_for_study(
     frame_cache = get_study_frame_cache(study_uid)
     result_map: Dict[str, Dict[str, Optional[float | str]]] = {}
     try:
-        for chunk_paths in _chunked(disk_files, classify_chunk_size):
-            stack_of_videos, processed_paths = _stack_processed_dicoms(
-                ep,
-                chunk_paths,
-                cache=frame_cache,
-            )
+        # Prefetch: decode+preprocess the next chunk on a background thread
+        # while the view classifier runs on the current one.
+        classify_chunks = list(_chunked(disk_files, classify_chunk_size))
+        for stack_of_videos, processed_paths in iter_with_prefetch(
+            classify_chunks,
+            lambda chunk_paths: _stack_processed_dicoms(ep, chunk_paths, cache=frame_cache),
+        ):
             if stack_of_videos.shape[0] == 0:
                 continue
 

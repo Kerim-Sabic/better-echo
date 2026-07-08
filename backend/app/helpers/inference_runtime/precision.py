@@ -188,6 +188,70 @@ def as_channels_last(tensor: torch.Tensor, device: Any) -> torch.Tensor:
         return tensor
 
 
+def _compile_backend_available() -> bool:
+    """True when the Inductor CUDA backend can actually run (needs Triton)."""
+    try:
+        from torch.utils._triton import has_triton
+
+        return bool(has_triton())
+    except Exception:
+        try:
+            import triton  # noqa: F401
+
+            return True
+        except Exception:
+            return False
+
+
+def compile_enabled(device: Any) -> bool:
+    """
+    Decide whether torch.compile should be applied for ``device``.
+
+    Requires CUDA, the INFERENCE_TORCH_COMPILE opt-in (default off), and a
+    working Inductor backend (Triton) - so e.g. Windows CUDA hosts silently
+    keep the eager path.
+    """
+    dev = _as_device(device)
+    if dev.type != "cuda" or not torch.cuda.is_available():
+        return False
+    if not _flag("INFERENCE_TORCH_COMPILE", False):
+        return False
+    return _compile_backend_available()
+
+
+def maybe_compile(model: torch.nn.Module, device: Any, *, label: str = "model") -> torch.nn.Module:
+    """
+    Wrap ``model`` with torch.compile when enabled and supported; otherwise
+    return it unchanged.
+
+    All the hot inference models run at fixed input shapes, which is the case
+    compilation rewards most. Dynamo's ``suppress_errors`` is set so that any
+    graph that fails to compile at runtime falls back to eager for that graph
+    instead of failing the request. First forward per shape pays a one-time
+    compile cost - enable the per-model WARMUP settings to move that out of the
+    first study.
+    """
+    if not compile_enabled(device):
+        return model
+    try:
+        import torch._dynamo
+
+        torch._dynamo.config.suppress_errors = True
+        try:
+            mode = str(
+                getattr(_settings(), "INFERENCE_TORCH_COMPILE_MODE", "reduce-overhead")
+                or "reduce-overhead"
+            )
+        except Exception:
+            mode = "reduce-overhead"
+        compiled = torch.compile(model, mode=mode)
+        logger.info("[Precision] torch.compile enabled for %s (mode=%s)", label, mode)
+        return compiled
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.warning("[Precision] torch.compile skipped for %s: %s", label, exc)
+        return model
+
+
 @dataclass(frozen=True)
 class PrecisionReport:
     device: str
@@ -195,6 +259,7 @@ class PrecisionReport:
     dtype: str
     channels_last: bool
     cudnn_benchmark: bool
+    torch_compile: bool
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -203,6 +268,7 @@ class PrecisionReport:
             "dtype": self.dtype,
             "channels_last": self.channels_last,
             "cudnn_benchmark": self.cudnn_benchmark,
+            "torch_compile": self.torch_compile,
         }
 
 
@@ -220,6 +286,7 @@ def describe(device: Any, *, setting_name: str = "INFERENCE_AMP_ENABLED") -> Pre
             and torch.cuda.is_available()
             and _flag("INFERENCE_CUDNN_BENCHMARK", True)
         ),
+        torch_compile=compile_enabled(dev),
     )
 
 
@@ -236,8 +303,10 @@ __all__ = [
     "as_channels_last",
     "autocast",
     "channels_last_enabled",
+    "compile_enabled",
     "configure_backends",
     "describe",
+    "maybe_compile",
     "reset_backend_configuration_for_tests",
     "to_channels_last",
 ]
