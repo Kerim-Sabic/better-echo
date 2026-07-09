@@ -42,6 +42,9 @@ from app.services.auth.webauthn.encoding import b64url, b64url_to_bytes, seriali
 from app.services.auth.webauthn.fido import server_for_request
 from app.services.auth.webauthn.state import pending_auth, pending_register
 from app.services.auth.login_activity_service import mark_user_last_login
+from app.services.inference.secondary_analysis_service import (
+    start_secondary_analysis_preload_background,
+)
 from app.services.auth.principal_service import (
     USER_PRINCIPAL_TYPE,
     build_user_token_payload,
@@ -326,6 +329,8 @@ def complete_authenticate(
         secure=settings.COOKIE_SECURE,
     )
     mark_user_last_login(db, user)
+    if settings.SECONDARY_ANALYSIS_WARMUP_ON_LOGIN:
+        start_secondary_analysis_preload_background(warmup=True)
 
     return {
         "message": "Authentication successful",
