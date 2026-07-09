@@ -83,7 +83,24 @@ def load_motion_segmentation_model():
         time.time() - start,
         precision.describe(device).as_dict(),
     )
+    _maybe_warmup(model, device)
     return model
+
+
+def _maybe_warmup(model_instance, target_device) -> None:
+    from app.core.config import settings
+
+    if not bool(getattr(settings, "MOTION_SEGMENTATION_WARMUP", False)):
+        return
+    from app.helpers.inference_runtime.model_warmup import warmup_model
+
+    height, width = MODEL_INPUT_SIZE
+    warmup_model(
+        model_instance,
+        (1, 3, height, width),
+        target_device,
+        label="motion_segmentation",
+    )
 
 
 def unload_motion_segmentation_model() -> None:

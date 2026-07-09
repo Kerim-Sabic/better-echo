@@ -173,9 +173,16 @@ def startup_preload_models():
         load_motion_segmentation_model()
 
     def _preload_measurements():
-        from app.AI_models.measurements.runner_2d import _load_model, VALID_2D_WEIGHTS
+        # Preload the SAME loader the pipeline uses so the 9 weights are actually
+        # resident on the inference path. The old runner_2d._load_model warmed a
+        # different, unused module cache, so every weight still cold-loaded
+        # mid-study (visible as 9 "Loaded model ..." lines during the run).
+        # Doppler weights load cheaply on demand and are left lazy to avoid
+        # extra startup VRAM pressure.
+        from app.AI_models.measurements.constants import VALID_2D_WEIGHTS
+        from app.services.inference.linear_measurements.inference import load_2d_model
         for w in VALID_2D_WEIGHTS:
-            _load_model(w)
+            load_2d_model(w)
 
     # Primary analysis
     if settings.PRIMARY_ANALYSIS_PRELOAD:

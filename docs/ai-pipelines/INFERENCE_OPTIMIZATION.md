@@ -127,6 +127,29 @@ a clinical reference set **before** being enabled in production.
 
 ---
 
+## Part 5 — EchoPrime sector-mask preprocessing
+
+`mask_outside_ultrasound` used to copy the full cine twice and convert + mask
+**every** frame, even though EchoPrime samples only 16 frames per cine. The
+mask construction math is unchanged (bit-identical masks), but it is now split
+into `compute_ultrasound_sector_mask` + `apply_ultrasound_sector_mask`
+([utils.py](../../backend/app/AI_models/EchoPrime/utils/utils.py)), and
+`process_pixel_array` applies the mask **only to the 16 sampled frames**. Two
+full-video copies and per-frame integer-array allocations were also removed
+using provably-equivalent integer math.
+
+* Output parity: bit-identical clips, pinned by
+  `tests/unit/test_echoprime_masking.py` against a verbatim copy of the
+  original implementation (including read-only cached arrays and the grayscale
+  fallback).
+* Measured speedup (CPU, synthetic 640x480 colour cines): **2.6x at 60 frames,
+  3.2x at 120, 3.9x at 240** for the masking step, which runs once per cine in
+  both view classification and metrics preprocessing.
+
+This is not gated by settings because outputs are exactly identical.
+
+---
+
 ## Part 6 — CPU/GPU overlap
 
 Historically each lane alternated strictly between CPU work (DICOM decode +
@@ -167,26 +190,66 @@ compiled FP16 output must clear the same `validate_parity.py` gate. Default off.
 
 ---
 
-## Part 5 — EchoPrime sector-mask preprocessing
+## Part 8 — first-run warmup and resident model correctness
 
-`mask_outside_ultrasound` used to copy the full cine twice and convert + mask
-**every** frame, even though EchoPrime samples only 16 frames per cine. The
-mask construction math is unchanged (bit-identical masks), but it is now split
-into `compute_ultrasound_sector_mask` + `apply_ultrasound_sector_mask`
-([utils.py](../../backend/app/AI_models/EchoPrime/utils/utils.py)), and
-`process_pixel_array` applies the mask **only to the 16 sampled frames**. Two
-full-video copies and per-frame integer-array allocations were also removed
-using provably-equivalent integer math.
+The app already had preload flags, but the cold-start path still leaked into the
+first patient study in two ways:
 
-* Output parity: bit-identical clips, pinned by
-  `tests/unit/test_echoprime_masking.py` against a verbatim copy of the
-  original implementation (including read-only cached arrays and the grayscale
-  fallback).
-* Measured speedup (CPU, synthetic 640×480 colour cines): **2.6× at 60 frames,
-  3.2× at 120, 3.9× at 240** for the masking step, which runs once per cine in
-  both view classification and metrics preprocessing.
+- the study-measurement preload used the legacy `runner_2d` cache, while the
+  current pipeline uses `services/inference/linear_measurements`;
+- loading weights did not run a first forward pass, so cuDNN autotune and
+  optional `torch.compile` still ran on the first real batch.
 
-This is not gated by settings because outputs are exactly identical.
+`model_warmup.py` adds a best-effort CUDA-only dummy forward at each production
+shape. Primary analysis, motion segmentation, and 2D measurement model loaders
+call it when their `*_WARMUP` flag is enabled. Startup measurement preload now
+uses the same 2D/Doppler loaders that the pipeline uses, so preloaded models are
+actually resident on the hot path. Pair this with `PIPELINE_UNLOAD_POLICY=never`
+on high-VRAM machines; otherwise the staged unload policy deliberately throws
+away the warmed caches.
+
+This changes when the first-forward cost is paid, not model outputs.
+
+## Part 9 — uint8 2D measurement tensor cache
+
+The 2D lane used to cache a normalized CPU `float32` NCHW tensor. The cache now
+stores the shared NCHW tensor as `uint8`, moves 4x fewer bytes from host to GPU,
+and performs `float().div_(255)` on-device per batch before autocast. The same
+cached object is still shared across all routed 2D weights for the cine.
+
+This is primarily a bandwidth and memory-pressure improvement. Clinical parity
+is still gated by the same measurement tolerances in `validate_parity.py`.
+
+## Part 10 — vectorized contour smoothing
+
+Motion-segmentation postprocess still uses the same largest-contour smoothing
+algorithm, but the closed-contour moving average is now vectorized with
+`sliding_window_view` instead of looping point-by-point in Python. The unit test
+`test_contour_smoothing_vectorized.py` compares the vectorized output against a
+verbatim copy of the old loop.
+
+## Part 11 — draft progress commit throttling
+
+The dynamic measurement stage used to commit the draft progress row after every
+instance/weight update. A 6-instance study routed across ~9 2D weights can issue
+dozens of commits before the final result. `_persist_progress` now always
+updates the in-memory row but commits at most once per
+`PIPELINE_PROGRESS_COMMIT_INTERVAL_S` seconds, with the terminal stage result
+still committed unconditionally.
+
+Set `PIPELINE_PROGRESS_COMMIT_INTERVAL_S=0` to restore the old commit-every-time
+behavior.
+
+## Part 12 — Orthanc indexed UID lookup
+
+`check_instance_exists_in_orthanc` and `fetch_orthanc_instance_ids_from_study`
+now use Orthanc `POST /tools/lookup` to resolve DICOM UIDs through Orthanc's
+index instead of scanning all studies/instances. The legacy O(N) scan remains as
+a fallback when `/tools/lookup` is unavailable or fails.
+
+This matters most once Orthanc contains many prior studies; on a tiny archive
+the savings are small, but the large-archive behavior is no longer linear in the
+number of stored instances.
 
 ---
 
@@ -233,6 +296,15 @@ SECONDARY_ANALYSIS_METRICS_CHUNK_SIZE=16
 # default reloads ~10 checkpoints per study (9x 2D DeepLabV3 + EchoPrime),
 # costing several seconds of pure load time that "never" eliminates.
 PIPELINE_UNLOAD_POLICY=never
+
+# Move first CUDA forward / cuDNN autotune cost to startup preload time.
+PRIMARY_ANALYSIS_WARMUP=true
+MOTION_SEGMENTATION_WARMUP=true
+STUDY_MEASUREMENTS_WARMUP=true
+SECONDARY_ANALYSIS_WARMUP=true
+
+# Throttle draft progress commits; final stage commit is still unconditional.
+PIPELINE_PROGRESS_COMMIT_INTERVAL_S=1.0
 
 # CPU/GPU overlap (Part 6) — pure scheduling, outputs unchanged.
 INFERENCE_CPU_GPU_OVERLAP=true

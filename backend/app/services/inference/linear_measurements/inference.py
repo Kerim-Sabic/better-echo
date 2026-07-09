@@ -33,18 +33,21 @@ MODEL_INPUT_SIZE = (640, 480)
 
 def build_model_input_tensor(model_frames_bgr: list[np.ndarray]) -> torch.Tensor:
     """
-    Normalize source frames into the exact NCHW float tensor the 2D models
-    expect. Built once per instance (via the study frame cache) and shared
-    across every routed measurement weight, eliminating the per-weight
-    decode/colour-convert/normalise that used to repeat for each of the ~9
-    routed models on the same cine.
+    Convert source frames into the NCHW *uint8* tensor the 2D models consume.
+
+    Built once per instance (via the study frame cache) and shared across every
+    routed measurement weight. Kept as uint8 (not float) so the cached tensor is
+    4x smaller and the host->GPU copy moves 4x fewer bytes; the ``/255``
+    normalization is done on-device per batch in ``_infer_points_for_tensor``.
+    The normalization is bit-identical to the previous CPU float path (IEEE-754
+    division is the same on CPU and CUDA).
     """
     frames_rgb = np.stack(
         [cv2.cvtColor(frame, cv2.COLOR_BGR2RGB) for frame in model_frames_bgr],
         axis=0,
     )
-    tensor = torch.from_numpy(frames_rgb).float() / 255.0
-    return tensor.permute(0, 3, 1, 2).contiguous()
+    tensor = torch.from_numpy(frames_rgb)  # uint8 (N, H, W, C)
+    return tensor.permute(0, 3, 1, 2).contiguous()  # uint8 (N, C, H, W)
 
 _loaded_models: dict[str, torch.nn.Module] = {}
 _device: Optional[torch.device] = None
@@ -115,6 +118,18 @@ def load_2d_model(model_key: str) -> torch.nn.Module:
         time.time() - start,
         precision.describe(device).as_dict(),
     )
+    from app.core.config import settings
+
+    if bool(getattr(settings, "STUDY_MEASUREMENTS_WARMUP", False)):
+        from app.helpers.inference_runtime.model_warmup import warmup_model
+
+        model_width, model_height = MODEL_INPUT_SIZE
+        warmup_model(
+            model,
+            (1, 3, model_height, model_width),
+            device,
+            label=f"measurements_2d[{model_key}]",
+        )
     return model
 
 
@@ -149,7 +164,13 @@ def _infer_points_for_tensor(
     start = time.time()
 
     def _run_batch(batch_start: int, batch_end: int):
-        batch_tensor = tensor[batch_start:batch_end].to(device)
+        batch_tensor = tensor[batch_start:batch_end]
+        # Upload uint8 (4x fewer bytes) then normalize on-device. non_blocking is
+        # a harmless no-op unless the source is pinned.
+        if device.type == "cuda":
+            batch_tensor = batch_tensor.to(device, non_blocking=True).float().div_(255.0)
+        else:
+            batch_tensor = batch_tensor.to(device).float().div_(255.0)
         batch_tensor = precision.as_channels_last(batch_tensor, device)
         with torch.no_grad(), precision.autocast(device):
             logits = model(batch_tensor)["out"]

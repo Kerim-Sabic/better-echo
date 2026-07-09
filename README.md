@@ -28,11 +28,49 @@ explicit and reversible.
 | Temporal sampling | Optional stride-based keypoint inference with interpolation and a runtime self-check fallback. Off by default. | `backend/app/helpers/inference_runtime/temporal_sampling.py` |
 | Primary analysis | PanEcho batch inference now runs through the shared AMP path on CUDA. | `backend/app/services/inference/primary_analysis_service.py` |
 | Secondary analysis | EchoPrime AMP support is present but separately gated because view classification is precision-sensitive. | `backend/app/services/inference/secondary_analysis_service.py` |
+| First-run warmup | Startup preloads now hit the same model caches used by the pipeline and can run dummy forwards to move cuDNN/compile cold cost off the first study. | `backend/app/helpers/inference_runtime/model_warmup.py` |
+| Operational cleanup | Orthanc UID lookup, progress commit throttling, uint8 measurement tensors, and vectorized contour smoothing reduce avoidable per-study overhead. | `backend/app/helpers/inference_runtime/inference_functions.py` |
 | Validation | Benchmark and clinical parity harnesses were added for GPU speed and output-equivalence checks. | `backend/scripts/benchmarks/` |
 
 The detailed engineering note is here:
 
 - `docs/ai-pipelines/INFERENCE_OPTIMIZATION.md`
+
+### Latest Speed Batch
+
+This batch targets the gap between a cold first study and a warm steady-state
+study. The goal is to move unavoidable startup costs to app startup, remove
+avoidable per-study overhead, and keep the clinical inference path reversible.
+
+| Change | What happened | Why it matters |
+|---|---|---|
+| Same-path startup preload | Measurement startup preload now uses the same 2D and Doppler model loaders as the pipeline instead of warming an unused legacy cache. | Preloaded measurement weights are actually resident when the first study runs. |
+| CUDA warmup forwards | `model_warmup.py` can run one dummy forward at production shapes when `*_WARMUP=true`. | Moves cuDNN autotune and optional compile cost off the first patient study. |
+| Resident model mode | High-VRAM deployments should pair warmup with `PIPELINE_UNLOAD_POLICY=never`. | Prevents warmed models from being unloaded between stages or jobs. |
+| uint8 measurement tensor cache | 2D cine tensors are cached as NCHW `uint8`; normalization now happens on-device per batch. | Cuts cached tensor size and host-to-GPU transfer volume by 4x for that lane. |
+| Vectorized contour smoothing | Motion mask contour moving-average smoothing uses vectorized NumPy windows instead of a Python point loop. | Keeps the same mask algorithm while reducing postprocess overhead. |
+| Progress commit throttling | Dynamic measurement progress commits are rate-limited by `PIPELINE_PROGRESS_COMMIT_INTERVAL_S`. | Keeps polling snapshots fresh without dozens of DB commits during multi-weight passes. |
+| Orthanc indexed lookup | SOP/study UID resolution uses `POST /tools/lookup` with legacy scan fallback. | Avoids O(N) Orthanc scans as local archives grow. |
+
+For a high-VRAM workstation or server where first-study latency matters, start
+with:
+
+```dotenv
+PIPELINE_UNLOAD_POLICY=never
+PRIMARY_ANALYSIS_PRELOAD=true
+PRIMARY_ANALYSIS_WARMUP=true
+SECONDARY_ANALYSIS_PRELOAD=true
+SECONDARY_ANALYSIS_WARMUP=true
+MOTION_SEGMENTATION_PRELOAD=true
+MOTION_SEGMENTATION_WARMUP=true
+STUDY_MEASUREMENTS_PRELOAD=true
+STUDY_MEASUREMENTS_WARMUP=true
+PIPELINE_PROGRESS_COMMIT_INTERVAL_S=1.0
+```
+
+On low-VRAM machines, keep `PIPELINE_UNLOAD_POLICY=stage` and disable warmup
+flags that cause memory pressure. Warmup changes when the first-forward cost is
+paid; it does not change model outputs.
 
 ### Safety Defaults
 
@@ -47,6 +85,8 @@ The detailed engineering note is here:
 | `MOTION_SEGMENTATION_BATCH` | `16` | Conservative default; RTX deployments can test `64`. |
 | `STUDY_MEASUREMENTS_BATCH` | `16` | Conservative default; RTX deployments can test `32`. |
 | `LINEAR_TEMPORAL_STRIDE` | `1` | Temporal sampling disabled. Set `2` only after parity validation. |
+| `PIPELINE_PROGRESS_COMMIT_INTERVAL_S` | `1.0` | Throttles draft progress commits while preserving final-stage commit. |
+| `PIPELINE_UNLOAD_POLICY` | `stage` | Frees VRAM after stages by default; use `never` for resident warmed models. |
 
 Every optimization can be disabled through `backend/.env` without a code change.
 
@@ -200,6 +240,7 @@ Backend-only validation for this update:
 ```powershell
 cd backend
 pytest tests/unit/test_precision_helpers.py tests/unit/test_adaptive_batch.py tests/unit/test_temporal_sampling.py
+pytest tests/unit/test_contour_smoothing_vectorized.py tests/unit/test_orthanc_lookup.py
 python scripts/benchmarks/benchmark_precision.py --lane both
 ```
 
@@ -245,6 +286,7 @@ SECONDARY_ANALYSIS_AMP_ENABLED=false
 MOTION_SEGMENTATION_BATCH=16
 STUDY_MEASUREMENTS_BATCH=16
 LINEAR_TEMPORAL_STRIDE=1
+PIPELINE_PROGRESS_COMMIT_INTERVAL_S=0
 ```
 
 LLM process issues:

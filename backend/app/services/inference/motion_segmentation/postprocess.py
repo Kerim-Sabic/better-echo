@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import cv2
 import numpy as np
+from numpy.lib.stride_tricks import sliding_window_view
 
 PROB_THRESHOLD = 0.5
 EDGE_SMOOTHING_METHOD = "probability_cubic_blur_largest_contour"
@@ -16,11 +17,11 @@ def _moving_average_closed_contour(points: np.ndarray) -> np.ndarray:
 
     radius = _CONTOUR_SMOOTHING_WINDOW // 2
     padded = np.vstack([points[-radius:], points, points[:radius]])
-    smoothed = np.empty_like(points, dtype=np.float32)
-    for index in range(len(points)):
-        window = padded[index : index + _CONTOUR_SMOOTHING_WINDOW]
-        smoothed[index] = window.mean(axis=0)
-    return smoothed
+    # Vectorized equivalent of the per-point windowed mean: sliding_window_view
+    # reduces over exactly the same window elements as the original loop, so the
+    # smoothed coordinates are identical (same np.mean over the same values).
+    windows = sliding_window_view(padded, window_shape=_CONTOUR_SMOOTHING_WINDOW, axis=0)
+    return windows.mean(axis=-1).astype(np.float32)
 
 
 def _rasterize_largest_smoothed_contour(mask_binary: np.ndarray) -> np.ndarray:

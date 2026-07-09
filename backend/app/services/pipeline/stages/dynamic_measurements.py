@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from collections import OrderedDict
 from typing import Any, Dict, List
 
@@ -123,7 +124,12 @@ def _persist_progress(
     spectral_runs: int,
     skipped_instances: int,
     errors: List[str],
+    force: bool = False,
 ) -> None:
+    # Always refresh the in-memory snapshot; throttle the actual DB commit so a
+    # study with ~9 weights x N instances does not issue dozens of commits. The
+    # snapshot is a progress hint (status API polling); the terminal state is
+    # committed unconditionally at stage end.
     combined_row.value_json = _build_combined_payload(
         summaries=summaries,
         dynamic_runs=dynamic_runs,
@@ -133,7 +139,20 @@ def _persist_progress(
         errors=errors,
     )
     combined_row.status = ResultStatus.pending
-    db.commit()
+
+    try:
+        interval = float(getattr(settings, "PIPELINE_PROGRESS_COMMIT_INTERVAL_S", 1.0))
+    except Exception:
+        interval = 1.0
+    now = time.monotonic()
+    last = getattr(combined_row, "_last_progress_commit_ts", 0.0)
+    if force or interval <= 0 or (now - last) >= interval:
+        db.commit()
+        combined_row._last_progress_commit_ts = now
+    else:
+        # Keep the pending change flushed (visible within this session) without
+        # the round-trip cost of a commit.
+        db.flush()
 
 
 def _linear_overlay_summary(payload: Dict[str, Any], weight_name: str) -> Dict[str, Any]:

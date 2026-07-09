@@ -108,6 +108,9 @@ class Settings(BaseSettings):
     PIPELINE_MAX_ACTIVE_STUDIES: int = 1
     PIPELINE_POLL_INTERVAL_MS: int = 500
     PIPELINE_VIEW_CONFIDENCE_MIN: float = 0.75
+    # Min seconds between draft-progress DB commits in the dynamic stage (the
+    # per-instance/per-weight snapshot). 0 => commit every update (old behavior).
+    PIPELINE_PROGRESS_COMMIT_INTERVAL_S: float = 1.0
 
     # Per-study decoded DICOM frame cache (lifespan = one analysis job)
     FRAME_CACHE_ENABLED: bool = True

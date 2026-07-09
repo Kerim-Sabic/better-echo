@@ -28,42 +28,59 @@ orthanc_user = settings.ORTHANC_USER
 orthanc_pass = settings.ORTHANC_PASS
 
    
+def _orthanc_lookup(uid: str) -> List[dict]:
+    """Resolve a DICOM UID to Orthanc resources in one call via /tools/lookup."""
+    resp = requests.post(
+        f"{orthanc_url}/tools/lookup",
+        data=uid,
+        auth=(orthanc_user, orthanc_pass),
+        timeout=10,
+    )
+    resp.raise_for_status()
+    result = resp.json()
+    return result if isinstance(result, list) else []
+
+
 def check_instance_exists_in_orthanc(sop_instance_uid: str) -> bool:
     """
     Check if a DICOM instance (SOPInstanceUID) exists in Orthanc.
     Returns True if found, False otherwise.
 
-    Note: performs an O(N) scan of Orthanc instances and is tuned for
-    smaller deployments; large archives may want a query-based approach.
+    Uses Orthanc's O(1) /tools/lookup index; falls back to the legacy O(N)
+    instance scan only if lookup is unavailable (older Orthanc, transient error).
     """
+    logger.info(f"[INFERENCE_FUNCTIONS] Checking if instance exists in Orthanc: SOPInstanceUID={sop_instance_uid}")
     try:
-        logger.info(f"[INFERENCE_FUNCTIONS] Checking if instance exists in Orthanc: SOPInstanceUID={sop_instance_uid}")
-        
-        # Query all instances (O(N) scan over Orthanc instances)
+        matches = _orthanc_lookup(sop_instance_uid)
+        exists = any(entry.get("Type") == "Instance" for entry in matches)
+        if exists:
+            logger.info(f"[INFERENCE_FUNCTIONS] Instance {sop_instance_uid} exists in Orthanc.")
+        else:
+            logger.warning(f"[INFERENCE_FUNCTIONS] Instance {sop_instance_uid} not found in Orthanc.")
+        return exists
+    except requests.RequestException as e:
+        logger.warning(f"[INFERENCE_FUNCTIONS] /tools/lookup failed ({e}); falling back to instance scan")
+        return _check_instance_exists_scan(sop_instance_uid)
+
+
+def _check_instance_exists_scan(sop_instance_uid: str) -> bool:
+    try:
         r = requests.get(
             f"{orthanc_url}/instances",
             auth=(orthanc_user, orthanc_pass),
             timeout=10,
         )
         r.raise_for_status()
-        instances = r.json()  # list of instance Orthanc IDs
-
-        # Look for a matching SOPInstanceUID
-        for iid in instances:
+        for iid in r.json():
             r_info = requests.get(
                 f"{orthanc_url}/instances/{iid}",
                 auth=(orthanc_user, orthanc_pass),
                 timeout=10,
             )
             r_info.raise_for_status()
-            info = r_info.json()
-            if info.get("MainDicomTags", {}).get("SOPInstanceUID") == sop_instance_uid:
-                logger.info(f"[INFERENCE_FUNCTIONS] Instance {sop_instance_uid} exists in Orthanc.")
+            if r_info.json().get("MainDicomTags", {}).get("SOPInstanceUID") == sop_instance_uid:
                 return True
-
-        logger.warning(f"[INFERENCE_FUNCTIONS] Instance {sop_instance_uid} not found in Orthanc.")
         return False
-
     except requests.RequestException as e:
         logger.error(f"[INFERENCE_FUNCTIONS] Error checking instance in Orthanc: {e}")
         return False
@@ -72,18 +89,41 @@ def check_instance_exists_in_orthanc(sop_instance_uid: str) -> bool:
 def fetch_orthanc_instance_ids_from_study(study_uid: str) -> List[str]:
     """
     Resolve an Orthanc study by StudyInstanceUID and return a list of its instance IDs.
+
+    Uses /tools/lookup to resolve the study in one call; falls back to the legacy
+    O(N) study scan if lookup is unavailable.
     """
-    # Find Orthanc study by DICOM StudyInstanceUID, then list its instances
     logger.info(f"[INFERENCE_FUNCTIONS] Resolving Orthanc study for StudyInstanceUID={study_uid}")
+    try:
+        matches = _orthanc_lookup(study_uid)
+        match = next((entry.get("ID") for entry in matches if entry.get("Type") == "Study"), None)
+    except requests.RequestException as e:
+        logger.warning(f"[INFERENCE_FUNCTIONS] /tools/lookup failed ({e}); falling back to study scan")
+        return _fetch_study_instance_ids_scan(study_uid)
+
+    if not match:
+        logger.warning(f"[INFERENCE_FUNCTIONS] No Orthanc study matches StudyInstanceUID={study_uid}")
+        return []
+
+    insts = requests.get(
+        f"{orthanc_url}/studies/{match}/instances",
+        auth=(orthanc_user, orthanc_pass),
+        timeout=10,
+    ).json()
+    ids = [i["ID"] for i in insts]
+    logger.info(f"[INFERENCE_FUNCTIONS] Found {len(ids)} instance(s) in the study")
+    return ids
+
+
+def _fetch_study_instance_ids_scan(study_uid: str) -> List[str]:
     r = requests.get(
         f"{orthanc_url}/studies",
         auth=(orthanc_user, orthanc_pass),
         timeout=10,
     )
     r.raise_for_status()
-    studies = r.json()
     match = None
-    for sid in studies:
+    for sid in r.json():
         info = requests.get(
             f"{orthanc_url}/studies/{sid}",
             auth=(orthanc_user, orthanc_pass),
@@ -93,18 +133,13 @@ def fetch_orthanc_instance_ids_from_study(study_uid: str) -> List[str]:
             match = sid
             break
     if not match:
-        logger.warning(f"[INFERENCE_FUNCTIONS] No Orthanc study matches StudyInstanceUID={study_uid}")
         return []
-    
-    # Get all instances in that study
     insts = requests.get(
         f"{orthanc_url}/studies/{match}/instances",
         auth=(orthanc_user, orthanc_pass),
         timeout=10,
     ).json()
-    ids = [i["ID"] for i in insts]
-    logger.info(f"[INFERENCE_FUNCTIONS] Found {len(ids)} instance(s) in the study")
-    return ids
+    return [i["ID"] for i in insts]
 
 
 # Part 1. Normalize a DICOM frame into uint8 for primary-analysis frame sampling.
@@ -269,6 +304,11 @@ def get_model_and_device() -> Tuple[torch.nn.Module, torch.device]:
         _model.to(_device).eval()
         precision.configure_backends(_device)
         _model = precision.maybe_compile(_model, _device, label="primary_analysis")
+        if bool(getattr(settings, "PRIMARY_ANALYSIS_WARMUP", False)):
+            from app.helpers.inference_runtime.model_warmup import warmup_model
+
+            # PanEcho input: (N, C=3, T=16, 224, 224)
+            warmup_model(_model, (1, 3, 16, 224, 224), _device, label="primary_analysis")
         logger.info(
             "[INFERENCE_FUNCTIONS] Primary analysis model loaded successfully in %.1fs | %s",
             time.time() - start,
