@@ -41,7 +41,7 @@
     "test:all": "npm run test:backend && npm run test:frontend"
   },
   "dependencies": {
-    "axios": "^1.7.2"
+    "axios": "^1.18.1"
   },
   "devDependencies": {
     "@types/node": "^20.14.9",
