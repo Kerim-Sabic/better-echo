@@ -102,10 +102,8 @@ export function useNewStudyPageViewModel() {
 
       const totalUploadBytes = files.reduce((sum, f) => sum + (f?.size || 0), 0) || 1;
       let uploadedBytes = 0;
-      let fileIndex = 0;
-
-      for (const file of files) {
-        fileIndex += 1;
+      for (const [zeroBasedFileIndex, file] of files.entries()) {
+        const fileIndex = zeroBasedFileIndex + 1;
         const bytesBeforeFile = uploadedBytes;
         const reportProgress = loadedBytes =>
           setUploadProgress({
