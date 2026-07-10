@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, List
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.core.artifacts import COMBINED_ANALYSIS_TYPES
 from app.database_models.derived_results import ResultStatus
@@ -45,7 +45,8 @@ def build_patient_gls_trend(db: Session, study: Study) -> List[Dict[str, Any]]:
 
         studies = (
             db.query(Study)
-            .filter(Study.patient_id == patient_id)
+            .options(selectinload(Study.patient))
+            .filter(Study.patient_id == patient_id, Study.user_id == study.user_id)
             .order_by(Study.study_date.asc(), Study.uploaded_at.asc(), Study.id.asc())
             .all()
         )

@@ -5,6 +5,7 @@ from app.database_models.pipeline_artifact_sets import (
     PipelineArtifactSetState,
 )
 from app.database_models.studies import Study
+from app.database_models.users import User
 from app.services.results.gls_trend_repository import build_patient_gls_trend
 
 
@@ -105,5 +106,37 @@ def test_patient_gls_trend_uses_active_or_legacy_complete_results(
             seeded_study["study_uid"],
         ]
         assert [point["value"] for point in trend] == [-22.0, -18.0, -20.0]
+    finally:
+        db.close()
+
+
+def test_patient_gls_trend_excludes_studies_owned_by_a_different_user(
+    db_session_factory, seeded_study
+):
+    db = db_session_factory()
+    try:
+        current_study = db.query(Study).filter(Study.id == seeded_study["study_id"]).one()
+        other_user = User(username="trend-other-user", hashed_password="hash", full_name="Other")
+        db.add(other_user)
+        db.flush()
+
+        other_study = Study(
+            study_uid="gls-trend-other-user",
+            study_date="20250101",
+            description="Other user study",
+            study_orthanc_id="orthanc-gls-trend-other-user",
+            status="completed",
+            patient_id=current_study.patient_id,
+            user_id=other_user.id,
+        )
+        db.add(other_study)
+        db.flush()
+        db.add(_combined_row(current_study, value=-20.0))
+        db.add(_combined_row(other_study, value=-12.0))
+        db.commit()
+
+        trend = build_patient_gls_trend(db, current_study)
+
+        assert [point["study_uid"] for point in trend] == [seeded_study["study_uid"]]
     finally:
         db.close()

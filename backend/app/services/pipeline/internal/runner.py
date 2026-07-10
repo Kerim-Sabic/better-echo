@@ -166,12 +166,18 @@ def _process_job_skeleton(
                     prefilter_payload=prefilter_payload,
                     stage_handlers=stage_handlers,
                 )
+                duration_ms = round((perf_counter() - stage_started_perf) * 1000)
+                if isinstance(payload, dict):
+                    payload = {
+                        **payload,
+                        "_pipeline_runtime": {"duration_ms": duration_ms},
+                    }
                 _set_stage_completed(db=db, stage_row=stage_row, payload=payload)
                 logger.info(
                     "[PIPELINE_QUEUE] Stage completed | job_id=%s stage=%s duration_s=%.3f",
                     job_id,
                     stage_name,
-                    perf_counter() - stage_started_perf,
+                    duration_ms / 1000,
                 )
                 if stage_name == "prefilter" and isinstance(payload, dict):
                     prefilter_payload = payload

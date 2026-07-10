@@ -1,10 +1,11 @@
-from sqlalchemy import (Column, Integer, String, ForeignKey, Float)
+from sqlalchemy import Column, Float, ForeignKey, Index, Integer, String
 from sqlalchemy.orm import relationship
 from app.database.db import Base
 
 
 class Instance(Base):
     __tablename__ = "instances"
+    __table_args__ = (Index("ix_instances_series_id", "series_id"),)
 
     id = Column(Integer, primary_key=True, index=True)
     sop_instance_uid = Column(String, unique=True, nullable=False)  # DICOM tag (0008,0018)

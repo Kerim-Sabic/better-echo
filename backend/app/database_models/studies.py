@@ -1,10 +1,16 @@
-from sqlalchemy import ( Column, Integer, String, DateTime, ForeignKey, Float)
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Index, Integer, String
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.database.db import Base
 
 class Study(Base):
     __tablename__ = "studies"
+    __table_args__ = (
+        # Dashboard: newest studies for one authenticated clinician.
+        Index("ix_studies_user_uploaded_at", "user_id", "uploaded_at"),
+        # Longitudinal GLS: one clinician's studies for one patient, in time order.
+        Index("ix_studies_patient_user_date", "patient_id", "user_id", "study_date", "uploaded_at"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     study_uid = Column(String, unique=True, nullable=False)   # DICOM tag (0020,000D)

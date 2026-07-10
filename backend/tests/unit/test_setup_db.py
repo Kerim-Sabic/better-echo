@@ -58,3 +58,26 @@ def test_ensure_users_last_login_column_noops_when_column_present(monkeypatch):
     setup_db._ensure_users_last_login_column()
 
     assert statements == []
+
+
+def test_ensure_query_indexes_installs_every_hot_path_index(monkeypatch):
+    statements = []
+
+    class DummyInspector:
+        def get_table_names(self):
+            return [
+                "studies",
+                "series",
+                "instances",
+                "derived_results",
+                "pipeline_jobs",
+                "pipeline_stage_runs",
+            ]
+
+    monkeypatch.setattr(setup_db, "inspect", lambda _engine: DummyInspector())
+    monkeypatch.setattr(setup_db, "engine", _DummyEngine(statements))
+
+    setup_db._ensure_query_indexes()
+
+    assert len(statements) == len(setup_db._INDEX_MIGRATIONS)
+    assert all("CREATE INDEX IF NOT EXISTS" in statement for statement in statements)

@@ -1,14 +1,24 @@
+import importlib
 from types import SimpleNamespace
 
 import numpy as np
 import torch
 
-from app.AI_models.EchoPrime.echo_prime import model as echoprime_model
-from app.AI_models.EchoPrime.echo_prime.model import EchoPrime
+def _load_echoprime(monkeypatch, tmp_path):
+    """Import the algorithm without requiring its production checkpoint files."""
+    from app.core import runtime_paths
+
+    assets_dir = tmp_path / "assets"
+    assets_dir.mkdir()
+    (assets_dir / "per_section.json").write_text("{}", encoding="utf-8")
+    (assets_dir / "all_phr.json").write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(runtime_paths, "_source_model_dir", lambda _model_key: tmp_path)
+    model_module = importlib.import_module("app.AI_models.EchoPrime.echo_prime.model")
+    return model_module, model_module.EchoPrime
 
 
-def _lightweight_echoprime() -> EchoPrime:
-    ep = EchoPrime.__new__(EchoPrime)
+def _lightweight_echoprime(echoprime_type):
+    ep = echoprime_type.__new__(echoprime_type)
     ep.frames_to_take = 16
     ep.frame_stride = 1
     ep.video_size = 224
@@ -18,7 +28,7 @@ def _lightweight_echoprime() -> EchoPrime:
     return ep
 
 
-def _patch_pixels(monkeypatch, pixels) -> None:
+def _patch_pixels(monkeypatch, echoprime_model, pixels) -> None:
     monkeypatch.setattr(
         echoprime_model.pydicom,
         "dcmread",
@@ -37,9 +47,10 @@ def _patch_pixels(monkeypatch, pixels) -> None:
 
 
 def test_process_dicom_file_samples_long_cine_evenly(monkeypatch, tmp_path):
-    ep = _lightweight_echoprime()
+    echoprime_model, echoprime_type = _load_echoprime(monkeypatch, tmp_path)
+    ep = _lightweight_echoprime(echoprime_type)
     pixels = np.arange(32, dtype=np.float32).reshape(32, 1, 1)
-    _patch_pixels(monkeypatch, pixels)
+    _patch_pixels(monkeypatch, echoprime_model, pixels)
 
     output = ep.process_dicom_file(str(tmp_path / "long.dcm"))
 
@@ -51,9 +62,10 @@ def test_process_dicom_file_samples_long_cine_evenly(monkeypatch, tmp_path):
 
 
 def test_process_dicom_file_repeats_short_cine_last_frame(monkeypatch, tmp_path):
-    ep = _lightweight_echoprime()
+    echoprime_model, echoprime_type = _load_echoprime(monkeypatch, tmp_path)
+    ep = _lightweight_echoprime(echoprime_type)
     pixels = np.arange(3, dtype=np.float32).reshape(3, 1, 1)
-    _patch_pixels(monkeypatch, pixels)
+    _patch_pixels(monkeypatch, echoprime_model, pixels)
 
     output = ep.process_dicom_file(str(tmp_path / "short.dcm"))
 
@@ -64,9 +76,10 @@ def test_process_dicom_file_repeats_short_cine_last_frame(monkeypatch, tmp_path)
 
 
 def test_process_dicom_file_repeats_still_image(monkeypatch, tmp_path):
-    ep = _lightweight_echoprime()
+    echoprime_model, echoprime_type = _load_echoprime(monkeypatch, tmp_path)
+    ep = _lightweight_echoprime(echoprime_type)
     pixels = np.full((2, 2), 7, dtype=np.float32)
-    _patch_pixels(monkeypatch, pixels)
+    _patch_pixels(monkeypatch, echoprime_model, pixels)
 
     output = ep.process_dicom_file(str(tmp_path / "still.dcm"))
 
@@ -74,8 +87,9 @@ def test_process_dicom_file_repeats_still_image(monkeypatch, tmp_path):
     assert all(float(output[0, idx, 0, 0]) == 7.0 for idx in range(16))
 
 
-def test_metrics_accumulator_is_chunk_additive():
-    ep = _lightweight_echoprime()
+def test_metrics_accumulator_is_chunk_additive(monkeypatch, tmp_path):
+    _echoprime_model, echoprime_type = _load_echoprime(monkeypatch, tmp_path)
+    ep = _lightweight_echoprime(echoprime_type)
     ep.non_empty_sections = ["section-a", "section-b"]
     ep.section_weights = np.zeros((2, 11), dtype=np.float32)
     ep.section_weights[0, 0] = 1.0

@@ -18,6 +18,7 @@ class PipelineStageRun(Base):
     __tablename__ = "pipeline_stage_runs"
     __table_args__ = (
         Index("ix_pipeline_stage_runs_job_stage", "pipeline_job_id", "stage_name"),
+        Index("ix_pipeline_stage_runs_study_status_stage_finished", "study_id", "status", "stage_name", "finished_at"),
     )
 
     id = Column(Integer, primary_key=True, index=True)

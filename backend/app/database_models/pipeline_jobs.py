@@ -31,6 +31,7 @@ class PipelineJob(Base):
     __table_args__ = (
         Index("ix_pipeline_jobs_status_queued_at", "status", "queued_at"),
         Index("ix_pipeline_jobs_study_id_queued_at", "study_id", "queued_at"),
+        Index("ix_pipeline_jobs_study_status_queued_at", "study_id", "status", "queued_at"),
     )
 
     id = Column(Integer, primary_key=True, index=True)
