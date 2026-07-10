@@ -6,7 +6,6 @@ import warnings
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.staticfiles import StaticFiles
 import uvicorn
 
 from app.api.health.health_api import router as health_router
@@ -36,7 +35,6 @@ from app.services.auth.webauthn.state import assert_webauthn_state_runtime_safe
 from app.services.pipeline.scheduler import start_pipeline_scheduler, stop_pipeline_scheduler
 
 from app.core.config import settings
-from app.core.artifacts import UPLOAD_DIR
 from app.core.runtime_paths import logs_dir
 from app.vendor_access.router import router as vendor_access_router
 
@@ -109,8 +107,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.add_middleware(GZipMiddleware, minimum_size=1024)
-
-app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 # Routes
 app.include_router(health_router, prefix="/api", tags=["Health"])
