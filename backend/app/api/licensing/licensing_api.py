@@ -16,7 +16,8 @@ router = APIRouter(tags=["Licensing"])
 
 
 @router.get("/licensing/status", response_model=LicenseStatusResponse)
-def get_server_license_status():
+def get_server_license_status(request: Request):
+    require_loopback_request(request)
     return LicenseStatusResponse(**get_license_status())
 
 

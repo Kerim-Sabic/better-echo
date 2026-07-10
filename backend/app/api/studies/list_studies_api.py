@@ -1,6 +1,6 @@
 from typing import List, Dict, Any
 from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 import logging
 
 from app.database.db import get_db
@@ -40,6 +40,10 @@ def list_studies(
     """
     rows = (
         db.query(Study)
+        .options(
+            selectinload(Study.patient),
+            selectinload(Study.derived_results),
+        )
         .filter(Study.user_id == current_user_id)
         .order_by(Study.uploaded_at.desc())
         .all()

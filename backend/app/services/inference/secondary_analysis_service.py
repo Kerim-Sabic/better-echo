@@ -4,7 +4,7 @@ import tempfile
 import threading
 import time
 import shutil
-from typing import Any, Callable, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Optional
 
 import requests
 import torch
@@ -41,6 +41,9 @@ MEMORY_LIMIT_EXCEEDED = "MEMORY_LIMIT_EXCEEDED"
 _ep: Optional[Any] = None
 _ep_lock = threading.Lock()
 _preload_thread: Optional[threading.Thread] = None
+_preload_state_lock = threading.Lock()
+_warmup_requested = False
+_warmup_completed = False
 
 
 class SecondaryAnalysisStudyTooLargeError(RuntimeError):
@@ -147,20 +150,47 @@ def preload_secondary_analysis(warmup: bool = False) -> Optional[Any]:
         return None
 
 
-def _run_async(task: Callable[[], None]) -> None:
-    global _preload_thread
-    if _preload_thread and _preload_thread.is_alive():
-        return
-    _preload_thread = threading.Thread(target=task, name="secondary-analysis-preload", daemon=True)
-    _preload_thread.start()
-
-
 def start_secondary_analysis_preload_background(warmup: bool = False) -> None:
-    _run_async(lambda: preload_secondary_analysis(warmup))
+    """Queue one shared preload and upgrade it to GPU warm-up when requested."""
+    global _preload_thread, _warmup_requested
+
+    with _preload_state_lock:
+        _warmup_requested = _warmup_requested or warmup
+        if _preload_thread and _preload_thread.is_alive():
+            return
+
+        _preload_thread = threading.Thread(
+            target=_run_secondary_analysis_preload_worker,
+            name="secondary-analysis-preload",
+            daemon=True,
+        )
+        _preload_thread.start()
+
+
+def _run_secondary_analysis_preload_worker() -> None:
+    """Load once, then warm once if startup or login requested it."""
+    global _preload_thread, _warmup_completed
+
+    model = preload_secondary_analysis(warmup=False)
+    if model is None:
+        with _preload_state_lock:
+            _preload_thread = None
+        return
+
+    while True:
+        with _preload_state_lock:
+            should_warm = _warmup_requested and not _warmup_completed
+            if not should_warm:
+                _preload_thread = None
+                return
+
+        _warmup_secondary_analysis(model)
+        with _preload_state_lock:
+            _warmup_completed = True
 
 
 def unload_secondary_analysis_model() -> None:
-    global _ep
+    global _ep, _warmup_completed
     with _ep_lock:
         if _ep is None:
             return
@@ -171,6 +201,8 @@ def unload_secondary_analysis_model() -> None:
         import gc
         gc.collect()
         logger.info("[SecondaryAnalysis] Model unloaded and memory cleared")
+    with _preload_state_lock:
+        _warmup_completed = False
 
 
 # Part 2. Study input download and subset-build helpers.

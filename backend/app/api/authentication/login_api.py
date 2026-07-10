@@ -14,6 +14,9 @@ from app.core.config import settings
 from app.schemas.authentication.authentication_schemas import LoginRequest, AuthResponse
 from app.core.artifacts import AUTH_COOKIE_NAME
 from app.services.auth.login_activity_service import mark_user_last_login
+from app.services.inference.secondary_analysis_service import (
+    start_secondary_analysis_preload_background,
+)
 from app.services.auth.principal_service import (
     USER_PRINCIPAL_TYPE,
     build_user_token_payload,
@@ -58,6 +61,8 @@ def login(
         token_payload = build_user_token_payload(user)
         auth_principal = serialize_user_auth_principal(user)
         mark_user_last_login(db, user)
+        if settings.SECONDARY_ANALYSIS_WARMUP_ON_LOGIN:
+            start_secondary_analysis_preload_background(warmup=True)
     else:
         vendor_profile = authenticate_vendor_access(
             username=data.username,

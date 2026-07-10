@@ -94,6 +94,26 @@ def _enforce_study_upload_limit(db: Session, study_uid: str) -> None:
             detail=_dicom_upload_limit_detail(current_count, max_files),
         )
 
+
+def _assert_study_is_uploadable_by_user(
+    db: Session,
+    *,
+    study_uid: str,
+    current_user_id: int,
+) -> None:
+    """Reject a DICOM study UID already owned by another hospital user.
+
+    DICOM Study Instance UIDs are globally unique. Without this guard, an
+    upload could attach a new series to an existing study that the uploading
+    user cannot subsequently read, creating an ownership and audit mismatch.
+    """
+    existing_study = db.query(Study).filter(Study.study_uid == study_uid).first()
+    if existing_study and existing_study.user_id != current_user_id:
+        raise HTTPException(
+            status_code=409,
+            detail="This DICOM study is already owned by another user.",
+        )
+
 @router.post("/upload-dicom", response_model=UploadDicomResponseSchema)
 async def upload_dicom(file: UploadFile = File(...),
                        db: Session = Depends(get_db),
@@ -125,6 +145,11 @@ async def upload_dicom(file: UploadFile = File(...),
         except Exception as err:
             raise HTTPException(status_code=400, detail=f"Invalid DICOM file: {str(err)}")
 
+        _assert_study_is_uploadable_by_user(
+            db,
+            study_uid=str(study_uid),
+            current_user_id=current_user_id,
+        )
         _enforce_study_upload_limit(db, study_uid)
         
         # --- Step 3: create study specific folder ---
